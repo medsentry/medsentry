@@ -1,0 +1,11 @@
+project_id = "medsentry"
+
+[db]
+major_version = 15
+
+[auth]
+enabled = true
+enable_signup = false
+
+[functions.provision-user]
+verify_jwt = true

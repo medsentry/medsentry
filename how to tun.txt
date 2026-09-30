@@ -1,0 +1,8 @@
+1. flutter build web --release --base-href /
+
+2. cd build/web
+
+3. npx http-server -p 8000
+
+Credentials formerly listed in this file were removed. Rotate any real credential
+that was present here, and do not commit passwords, PINs, or provider account details.
