@@ -282,7 +282,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         SizedBox(
                           height: compactIllustrationHeight,
                           child: Image.asset(
-                            'assets/images/rhu_doctors.jpg',
+                            'assets/images/rhu_doctors.png',
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) =>
                                 const SizedBox.shrink(),
@@ -442,7 +442,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Image.asset(
-              'assets/images/rhu_doctors.jpg',
+              'assets/images/rhu_doctors.png',
               fit: BoxFit.contain,
               width: constraints.maxWidth,
               height: constraints.maxHeight,

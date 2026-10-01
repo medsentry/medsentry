@@ -40,6 +40,7 @@ class DashboardStats {
 /// Provider for dashboard statistics
 final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
   ref.keepAlive();
+  ref.watch(databaseChangesProvider);
   final db = ref.watch(databaseProvider);
 
   // Fetch all stats in parallel

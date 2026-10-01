@@ -75,6 +75,8 @@ class AuditLogEntry {
 
 /// Provider for settings data
 final settingsDataProvider = FutureProvider<SettingsData>((ref) async {
+  ref.watch(databaseChangesProvider);
+  final lastSync = ref.watch(lastSyncTimeProvider);
   final db = ref.watch(databaseProvider);
 
   // Fetch database stats
@@ -101,22 +103,18 @@ final settingsDataProvider = FutureProvider<SettingsData>((ref) async {
   // Calculate database size (simplified estimation)
   final estimatedSize =
       (patientCount * 2 + consultationCount * 3 + documentCount * 5);
-  final databaseSize = '${estimatedSize.toStringAsFixed(1)} MB';
+  final databaseSize = estimatedSize > 0 ? 'Stored on this device' : 'Empty';
 
   return SettingsData(
     appVersion: '1.0.0+1', // Would use package_info_plus in production
     databaseVersion: 'SQLite 3.0',
-    lastSync: DateTime.now().subtract(
-      const Duration(hours: 2),
-    ), // Mock last sync
+    lastSync: lastSync,
     databaseStats: DatabaseStats(
       patientCount: patientCount,
       consultationCount: consultationCount,
       documentCount: documentCount,
       databaseSize: databaseSize,
-      lastBackup: DateTime.now().subtract(
-        const Duration(days: 7),
-      ), // Mock last backup
+      lastBackup: null,
     ),
     recentAuditLogs: recentAuditLogs,
     timestamp: DateTime.now(),

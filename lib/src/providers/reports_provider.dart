@@ -3,14 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/patient.dart';
 import '../models/queue.dart';
 import '../models/generated_report.dart';
+import '../utils/report_date_filter.dart';
 import 'providers.dart';
 
-/// Selected analytics window (7, 30, or 90 days).
-final reportRangeDaysProvider = StateProvider<int>((ref) => 30);
+final reportFiltersProvider = StateProvider<ReportFilters>(
+  (ref) => ReportFilters.forPreset(ReportDatePreset.thisMonth),
+);
 
 /// Report statistics model
 class ReportStats {
   final int rangeDays;
+  final ReportGrouping grouping;
   final int totalConsultations;
   final int newPatients;
   final int followUps;
@@ -32,6 +35,7 @@ class ReportStats {
 
   ReportStats({
     required this.rangeDays,
+    required this.grouping,
     required this.totalConsultations,
     required this.newPatients,
     required this.followUps,
@@ -53,24 +57,25 @@ class ReportStats {
   });
 
   factory ReportStats.empty() => ReportStats(
-        rangeDays: 30,
-        totalConsultations: 0,
-        newPatients: 0,
-        followUps: 0,
-        avgWaitMinutes: 0,
-        completedQueueVisits: 0,
-        documentsInRange: 0,
-        topDiagnoses: [],
-        consultationTrends: [],
-        newPatientTrends: [],
-        patientsByBarangay: [],
-        patientsByCategory: [],
-        consultationsDelta: MetricDelta.empty(),
-        newPatientsDelta: MetricDelta.empty(),
-        followUpsDelta: MetricDelta.empty(),
-        avgWaitDelta: MetricDelta.empty(),
-        timestamp: DateTime.now(),
-      );
+    rangeDays: 30,
+    grouping: ReportGrouping.day,
+    totalConsultations: 0,
+    newPatients: 0,
+    followUps: 0,
+    avgWaitMinutes: 0,
+    completedQueueVisits: 0,
+    documentsInRange: 0,
+    topDiagnoses: [],
+    consultationTrends: [],
+    newPatientTrends: [],
+    patientsByBarangay: [],
+    patientsByCategory: [],
+    consultationsDelta: MetricDelta.empty(),
+    newPatientsDelta: MetricDelta.empty(),
+    followUpsDelta: MetricDelta.empty(),
+    avgWaitDelta: MetricDelta.empty(),
+    timestamp: DateTime.now(),
+  );
 }
 
 class MetricDelta {
@@ -85,10 +90,10 @@ class MetricDelta {
   });
 
   factory MetricDelta.empty() => const MetricDelta(
-        percentChange: 0,
-        isPositive: true,
-        label: 'vs previous period',
-      );
+    percentChange: 0,
+    isPositive: true,
+    label: 'vs previous period',
+  );
 
   String get formatted {
     if (percentChange.abs() < 0.05) return 'No change';
@@ -116,18 +121,13 @@ class ConsultationTrend {
   ConsultationTrend({required this.date, required this.count});
 }
 
-DateTime _startOfDay(DateTime date) =>
-    DateTime(date.year, date.month, date.day);
+DateTime _startOfDay(DateTime date) {
+  final localDate = date.toLocal();
+  return DateTime(localDate.year, localDate.month, localDate.day);
+}
 
-bool _isOnOrAfter(DateTime date, DateTime start) =>
-    !_startOfDay(date).isBefore(_startOfDay(start));
-
-bool _isOnOrBefore(DateTime date, DateTime end) =>
-    !_startOfDay(date).isAfter(_startOfDay(end));
-
-bool _isInRange(DateTime? date, DateTime start, DateTime end) {
-  if (date == null) return false;
-  return _isOnOrAfter(date, start) && _isOnOrBefore(date, end);
+bool _isInRange(DateTime? date, DateTime start, DateTime endExclusive) {
+  return isWithinReportInterval(date, start, endExclusive);
 }
 
 double _percentChange(num current, num previous) {
@@ -165,15 +165,26 @@ int _averageWaitMinutes(Iterable<QueueItem> items) {
   return waits.reduce((a, b) => a + b) ~/ waits.length;
 }
 
-List<ConsultationTrend> _buildDailyTrend({
-  required int totalDays,
+List<ConsultationTrend> _buildGroupedTrend({
+  required Iterable<DateTime?> dates,
+  required DateTime startDate,
   required DateTime endDate,
-  required int Function(DateTime day) counter,
+  required ReportGrouping grouping,
 }) {
+  final counts = <DateTime, int>{};
+  final endExclusive = endDate.add(const Duration(days: 1));
+  for (final date in dates) {
+    if (date == null || !_isInRange(date, startDate, endExclusive)) continue;
+    final bucket = reportBucketStart(date, grouping);
+    counts[bucket] = (counts[bucket] ?? 0) + 1;
+  }
+
   final trends = <ConsultationTrend>[];
-  for (int i = totalDays - 1; i >= 0; i--) {
-    final date = _startOfDay(endDate.subtract(Duration(days: i)));
-    trends.add(ConsultationTrend(date: date, count: counter(date)));
+  var bucket = reportBucketStart(startDate, grouping);
+  final lastBucket = reportBucketStart(endDate, grouping);
+  while (!bucket.isAfter(lastBucket)) {
+    trends.add(ConsultationTrend(date: bucket, count: counts[bucket] ?? 0));
+    bucket = nextReportBucket(bucket, grouping);
   }
   return trends;
 }
@@ -203,10 +214,7 @@ String _patientCategoryLabel(Patient patient) {
       'Uncategorized';
 }
 
-String _diagnosisLabel({
-  required String? code,
-  required String? description,
-}) {
+String _diagnosisLabel({required String? code, required String? description}) {
   if (code == null || code.isEmpty) return 'Unspecified';
   if (description == null || description.trim().isEmpty) return code;
   final short = description.trim();
@@ -217,7 +225,8 @@ String _diagnosisLabel({
 /// Provider for report statistics
 final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
   ref.keepAlive();
-  final days = ref.watch(reportRangeDaysProvider);
+  ref.watch(databaseChangesProvider);
+  final filters = ref.watch(reportFiltersProvider);
   final db = ref.watch(databaseProvider);
 
   final consultations = await db.getAllConsultations();
@@ -225,30 +234,33 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
   final queueItems = await db.getQueueItems();
   final documents = await db.getDocuments();
 
-  final now = DateTime.now();
-  final end = _startOfDay(now);
-  final start = _startOfDay(end.subtract(Duration(days: days - 1)));
-  final prevEnd = _startOfDay(start.subtract(const Duration(days: 1)));
-  final prevStart = _startOfDay(prevEnd.subtract(Duration(days: days - 1)));
+  final start = _startOfDay(filters.startDate);
+  final end = _startOfDay(filters.endDate);
+  final endExclusive = end.add(const Duration(days: 1));
+  final days = end.difference(start).inDays + 1;
+  final prevEndExclusive = start;
+  final prevStart = start.subtract(Duration(days: days));
 
   final consultationsInRange = consultations
-      .where((c) => _isInRange(c.createdAt, start, end))
+      .where((c) => _isInRange(c.createdAt, start, endExclusive))
       .toList();
   final consultationsPrevRange = consultations
-      .where((c) => _isInRange(c.createdAt, prevStart, prevEnd))
+      .where((c) => _isInRange(c.createdAt, prevStart, prevEndExclusive))
       .length;
 
-  final newPatientsInRange = patients
-      .where((p) => _isInRange(p.createdAt, start, end))
-      .length;
+  final patientsInRange = patients
+      .where((p) => _isInRange(p.createdAt, start, endExclusive))
+      .toList();
+  final newPatientsInRange = patientsInRange.length;
   final newPatientsPrevRange = patients
-      .where((p) => _isInRange(p.createdAt, prevStart, prevEnd))
+      .where((p) => _isInRange(p.createdAt, prevStart, prevEndExclusive))
       .length;
 
-  final followUpsInRange =
-      consultationsInRange.where((c) => c.isFollowUp).length;
+  final followUpsInRange = consultationsInRange
+      .where((c) => c.isFollowUp)
+      .length;
   final followUpsPrevRange = consultations
-      .where((c) => _isInRange(c.createdAt, prevStart, prevEnd))
+      .where((c) => _isInRange(c.createdAt, prevStart, prevEndExclusive))
       .where((c) => c.isFollowUp)
       .length;
 
@@ -256,7 +268,11 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
       .where(
         (q) =>
             q.status == QueueStatus.completed &&
-            _isInRange(q.endTime ?? q.updatedAt ?? q.arrivalTime, start, end),
+            _isInRange(
+              q.endTime ?? q.updatedAt ?? q.arrivalTime,
+              start,
+              endExclusive,
+            ),
       )
       .toList();
   final completedPrevRange = queueItems
@@ -266,7 +282,7 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
             _isInRange(
               q.endTime ?? q.updatedAt ?? q.arrivalTime,
               prevStart,
-              prevEnd,
+              prevEndExclusive,
             ),
       )
       .toList();
@@ -275,7 +291,7 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
   final avgWaitPrev = _averageWaitMinutes(completedPrevRange);
 
   final documentsInRange = documents
-      .where((d) => _isInRange(d.createdAt, start, end))
+      .where((d) => _isInRange(d.createdAt, start, endExclusive))
       .length;
 
   final diagnosisCounts = <String, int>{};
@@ -287,7 +303,7 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
     diagnosisCounts[label] = (diagnosisCounts[label] ?? 0) + 1;
   }
 
-  final activePatients = patients.where((p) => !p.isArchived);
+  final activePatients = patientsInRange.where((p) => !p.isArchived);
   final barangayCounts = <String, int>{};
   final categoryCounts = <String, int>{};
   for (final patient in activePatients) {
@@ -300,46 +316,37 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
     categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
   }
 
-  final consultationTrends = _buildDailyTrend(
-    totalDays: 90,
+  final consultationTrends = _buildGroupedTrend(
+    dates: consultationsInRange.map((c) => c.createdAt),
+    startDate: start,
     endDate: end,
-    counter: (day) => consultations.where((c) {
-      final createdAt = c.createdAt;
-      if (createdAt == null) return false;
-      return _startOfDay(createdAt) == day;
-    }).length,
+    grouping: filters.grouping,
   );
 
-  final newPatientTrends = _buildDailyTrend(
-    totalDays: 90,
+  final newPatientTrends = _buildGroupedTrend(
+    dates: patientsInRange.map((p) => p.createdAt),
+    startDate: start,
     endDate: end,
-    counter: (day) => patients.where((p) {
-      final createdAt = p.createdAt;
-      if (createdAt == null) return false;
-      return _startOfDay(createdAt) == day;
-    }).length,
+    grouping: filters.grouping,
   );
 
   ConsultationTrend? peakDay;
   for (final trend in consultationTrends) {
-    if (_isInRange(trend.date, start, end) &&
-        (peakDay == null || trend.count > peakDay.count)) {
+    if (peakDay == null || trend.count > peakDay.count) {
       peakDay = trend;
     }
   }
 
   return ReportStats(
     rangeDays: days,
+    grouping: filters.grouping,
     totalConsultations: consultationsInRange.length,
     newPatients: newPatientsInRange,
     followUps: followUpsInRange,
     avgWaitMinutes: avgWait,
     completedQueueVisits: completedInRange.length,
     documentsInRange: documentsInRange,
-    topDiagnoses: _buildDistribution(
-      diagnosisCounts,
-      topN: 6,
-    ),
+    topDiagnoses: _buildDistribution(diagnosisCounts, topN: 6),
     consultationTrends: consultationTrends,
     newPatientTrends: newPatientTrends,
     patientsByBarangay: _buildDistribution(barangayCounts, topN: 6),
@@ -364,7 +371,9 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
       previous: avgWaitPrev,
       lowerIsBetter: true,
     ),
-    peakConsultationLabel: peakDay != null ? _formatShortDate(peakDay.date) : null,
+    peakConsultationLabel: peakDay != null
+        ? _formatShortDate(peakDay.date)
+        : null,
     peakConsultationCount: peakDay?.count ?? 0,
     timestamp: DateTime.now(),
   );
@@ -392,6 +401,7 @@ String _formatShortDate(DateTime date) {
 final generatedReportsProvider = FutureProvider<List<GeneratedReport>>((
   ref,
 ) async {
+  ref.watch(databaseChangesProvider);
   final db = ref.watch(databaseProvider);
   return db.getGeneratedReports();
 });

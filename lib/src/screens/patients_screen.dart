@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,6 +32,7 @@ enum _PatientSortMode { byLocation, alphabetical }
 
 class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   final _searchController = TextEditingController();
+  Timer? _searchDebounce;
   String _searchQuery = '';
   String? _barangayFilter;
   String? _purokFilter;
@@ -65,6 +68,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -87,7 +91,10 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final patientsAsync = ref.watch(patientsProvider);
+    final query = _searchQuery.trim();
+    final patientsAsync = query.isEmpty
+        ? ref.watch(patientsProvider)
+        : ref.watch(patientSearchProvider(query));
     final canRegisterPatients = _canRegisterPatients;
 
     return Column(
@@ -131,9 +138,9 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                     sortMode: _sortMode,
                     barangays: barangays,
                     puroks: puroks,
-                    onSearchChanged: (value) =>
-                        setState(() => _searchQuery = value),
+                    onSearchChanged: _onSearchChanged,
                     onClearSearch: () {
+                      _searchDebounce?.cancel();
                       _searchController.clear();
                       setState(() => _searchQuery = '');
                     },
@@ -174,9 +181,23 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             },
             loading: () => const LoadingState(),
             error: (error, stack) => Center(
-              child: Text(
-                'Unable to load patients: $error',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Unable to load patients.'),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () {
+                      if (query.isEmpty) {
+                        ref.invalidate(patientsProvider);
+                      } else {
+                        ref.invalidate(patientSearchProvider(query));
+                      }
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
+                  ),
+                ],
               ),
             ),
           ),
@@ -197,11 +218,25 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   void _applyInitialSearch(String? value) {
     final search = value?.trim() ?? '';
     if (search == _searchQuery) return;
+    _searchDebounce?.cancel();
     _searchController.text = search;
     _searchQuery = search;
   }
 
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    final query = value.trim();
+    if (query.isEmpty) {
+      setState(() => _searchQuery = '');
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _searchQuery = query);
+    });
+  }
+
   void _clearFilters() {
+    _searchDebounce?.cancel();
     _searchController.clear();
     setState(() {
       _searchQuery = '';
@@ -229,6 +264,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       final matchesSearch =
           query.isEmpty ||
           patient.fullName.toLowerCase().contains(query) ||
+          patient.id.toLowerCase().contains(query) ||
+          (patient.localLguIdNumber?.toLowerCase().contains(query) ?? false) ||
           (patient.philHealthNumber?.toLowerCase().contains(query) ?? false) ||
           (patient.contactNumber?.toLowerCase().contains(query) ?? false) ||
           (patient.barangay?.toLowerCase().contains(query) ?? false) ||
@@ -499,7 +536,7 @@ class _PatientsToolbar extends StatelessWidget {
           TextField(
             controller: searchController,
             decoration: InputDecoration(
-              hintText: 'Search name, PhilHealth #, contact, barangay...',
+              hintText: 'Search by name, patient ID, or phone number...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: searchQuery.isNotEmpty
                   ? IconButton(
@@ -948,6 +985,7 @@ class _PatientRegistrationWizardState
 
   // Step 2: Contact Information
   final _streetController = TextEditingController();
+  final _purokController = TextEditingController();
   final _zipCodeController = TextEditingController();
   final _contactNumberController = TextEditingController();
   final _emailController = TextEditingController();
@@ -994,14 +1032,6 @@ class _PatientRegistrationWizardState
         const [];
   }
 
-  List<String> get _puroks {
-    final municipality = _selectedCity;
-    final barangay = _selectedBarangay;
-    if (municipality == null || barangay == null) return const [];
-    return municipalityAddressData[municipality]?.barangayPuroks[barangay] ??
-        const [];
-  }
-
   @override
   void dispose() {
     _firstNameController.dispose();
@@ -1009,6 +1039,7 @@ class _PatientRegistrationWizardState
     _middleNameController.dispose();
     _religionController.dispose();
     _streetController.dispose();
+    _purokController.dispose();
     _zipCodeController.dispose();
     _contactNumberController.dispose();
     _emailController.dispose();
@@ -1127,7 +1158,9 @@ class _PatientRegistrationWizardState
         dateOfBirth: _dateOfBirth,
         gender: _gender,
         civilStatus: _civilStatus,
-        contactNumber: _contactNumberController.text.trim(),
+        contactNumber: formatPhilippinePhone(
+          _contactNumberController.text.trim(),
+        ),
         email: _emailController.text.trim().isNotEmpty
             ? _emailController.text.trim()
             : null,
@@ -1144,7 +1177,9 @@ class _PatientRegistrationWizardState
             : null,
         bloodType: _bloodType,
         emergencyContactName: _emergencyNameController.text.trim(),
-        emergencyContactNumber: _emergencyContactController.text.trim(),
+        emergencyContactNumber: formatPhilippinePhone(
+          _emergencyContactController.text.trim(),
+        ),
         emergencyContactRelation:
             _emergencyRelationController.text.trim().isNotEmpty
             ? _emergencyRelationController.text.trim()
@@ -1251,6 +1286,35 @@ class _PatientRegistrationWizardState
     return value.replaceAll(RegExp(r'[^0-9]'), '');
   }
 
+  bool get _canDecreasePurokNumber {
+    final match = RegExp(
+      r'^(.*?)(\d+)$',
+    ).firstMatch(_purokController.text.trim());
+    final number = int.tryParse(match?.group(2) ?? '');
+    return number != null && number > 1;
+  }
+
+  void _adjustPurokNumber(int adjustment) {
+    final current = _purokController.text.trim();
+    final match = RegExp(r'^(.*?)(\d+)$').firstMatch(current);
+    late final String updated;
+
+    if (match == null) {
+      if (adjustment < 0) return;
+      updated = current.isEmpty ? 'Purok 1' : '$current 1';
+    } else {
+      final number = int.tryParse(match.group(2)!);
+      if (number == null || (adjustment < 0 && number <= 1)) return;
+      updated = '${match.group(1)}${number + adjustment}';
+    }
+
+    _purokController.value = TextEditingValue(
+      text: updated,
+      selection: TextSelection.collapsed(offset: updated.length),
+    );
+    setState(() => _selectedPurok = updated);
+  }
+
   bool _isSameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
@@ -1284,8 +1348,7 @@ class _PatientRegistrationWizardState
   }
 
   bool _isValidMobile(String value) {
-    final digits = _digitsOnly(value);
-    return digits.length == 11 && digits.startsWith('09');
+    return isValidPhilippinePhone(value);
   }
 
   bool _isValidOptionalEmail(String value) {
@@ -1698,6 +1761,7 @@ class _PatientRegistrationWizardState
                   _selectedCity = null;
                   _selectedBarangay = null;
                   _selectedPurok = null;
+                  _purokController.clear();
                   _zipCodeController.clear();
                 });
               },
@@ -1723,6 +1787,7 @@ class _PatientRegistrationWizardState
                 _selectedCity = value;
                 _selectedBarangay = null;
                 _selectedPurok = null;
+                _purokController.clear();
                 _zipCodeController.text =
                     municipalityAddressData[value]?.zipCode ?? '';
               });
@@ -1746,26 +1811,42 @@ class _PatientRegistrationWizardState
             onChanged: (value) => setState(() {
               _selectedBarangay = value;
               _selectedPurok = null;
+              _purokController.clear();
             }),
             errorText: _requiredValueError(_selectedBarangay, 'Barangay'),
             icon: Icons.holiday_village_outlined,
           ),
           const SizedBox(height: 12),
 
-          _buildDropdownField(
+          _buildFormField(
             label: 'Purok / Sitio',
-            hint: _selectedBarangay == null
-                ? 'Select barangay first'
-                : 'Select purok',
+            hint: 'Enter purok or sitio (e.g., Purok 1)',
             required: true,
-            value: _selectedPurok,
-            enabled: _selectedBarangay != null,
-            items: _puroks
-                .map(
-                  (purok) => DropdownMenuItem(value: purok, child: Text(purok)),
-                )
-                .toList(),
-            onChanged: (value) => setState(() => _selectedPurok = value),
+            controller: _purokController,
+            onChanged: (value) => setState(() {
+              final trimmed = value.trim();
+              _selectedPurok = trimmed.isEmpty ? null : trimmed;
+            }),
+            suffixIcon: SizedBox(
+              width: 96,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Decrease Purok number',
+                    onPressed: _canDecreasePurokNumber
+                        ? () => _adjustPurokNumber(-1)
+                        : null,
+                    icon: const Icon(Icons.remove),
+                  ),
+                  IconButton(
+                    tooltip: 'Increase Purok number',
+                    onPressed: () => _adjustPurokNumber(1),
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+            ),
             errorText: _requiredValueError(_selectedPurok, 'Purok / Sitio'),
             icon: Icons.location_on_outlined,
           ),
@@ -2180,6 +2261,7 @@ class _PatientRegistrationWizardState
     int? maxLines,
     double? width,
     IconData? icon,
+    Widget? suffixIcon,
     String? errorText,
     bool readOnly = false,
     List<TextInputFormatter>? inputFormatters,
@@ -2200,6 +2282,7 @@ class _PatientRegistrationWizardState
           hintText: hint,
           border: const OutlineInputBorder(),
           prefixIcon: icon != null ? Icon(icon) : null,
+          suffixIcon: suffixIcon,
           counterText: maxLength != null ? null : '',
           errorText: errorText,
         ),

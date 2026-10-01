@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart' as p;
 import 'package:encrypt/encrypt.dart' as encrypt;
@@ -24,6 +24,7 @@ class DocumentService {
         type: FileType.custom,
         allowedExtensions: allowedExtensions.toList(),
         allowMultiple: false,
+        withData: true,
       );
 
       if (result == null || result.files.isEmpty) {
@@ -34,7 +35,7 @@ class DocumentService {
 
       final picked = DocumentPickerResult(
         name: file.name,
-        path: file.path,
+        path: kIsWeb ? null : file.path,
         bytes: file.bytes,
         extension: file.extension?.toLowerCase() ?? 'unknown',
         size: file.size,
@@ -69,7 +70,7 @@ class DocumentService {
 
       final picked = DocumentPickerResult(
         name: fileName,
-        path: file.path,
+        path: kIsWeb ? null : file.path,
         bytes: bytes,
         extension: extension,
         size: bytes.length,

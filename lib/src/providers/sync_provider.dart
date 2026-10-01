@@ -1,15 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../models/consultation.dart';
+import '../models/audit_log.dart';
 import '../models/document.dart';
 import '../models/generated_report.dart';
 import '../models/patient.dart';
 import '../models/queue.dart';
+import '../models/system_notification.dart';
 import '../models/system_settings.dart';
+import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../services/document_service.dart';
 import 'providers.dart';
@@ -58,11 +62,27 @@ class SyncService extends StateNotifier<SyncServiceState> {
   final Ref _ref;
   final SupabaseClient _supabase = Supabase.instance.client;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<AuthState>? _authStateSubscription;
+  StreamSubscription<int>? _databaseChangesSubscription;
+  RealtimeChannel? _realtimeChannel;
+  Timer? _realtimeRefreshTimer;
+  Timer? _pendingSyncTimer;
+  int _realtimeSetupGeneration = 0;
+  String? _realtimeUserId;
   bool _wasOffline = false;
 
   SyncService(this._ref) : super(const SyncServiceState()) {
     _refreshDerivedStatus();
     _initConnectivityListener();
+    _databaseChangesSubscription = _ref
+        .read(databaseProvider)
+        .changes
+        .listen((_) => _schedulePendingSync());
+    _authStateSubscription = _supabase.auth.onAuthStateChange.listen((_) {
+      unawaited(_configureRealtimeSubscription());
+      _schedulePendingSync();
+    });
+    unawaited(_configureRealtimeSubscription());
   }
 
   void _initConnectivityListener() {
@@ -104,7 +124,98 @@ class SyncService extends StateNotifier<SyncServiceState> {
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
+    _authStateSubscription?.cancel();
+    _databaseChangesSubscription?.cancel();
+    _realtimeRefreshTimer?.cancel();
+    _pendingSyncTimer?.cancel();
+    _realtimeSetupGeneration++;
+    final channel = _realtimeChannel;
+    if (channel != null) unawaited(_supabase.removeChannel(channel));
     super.dispose();
+  }
+
+  Future<void> _configureRealtimeSubscription() async {
+    final generation = ++_realtimeSetupGeneration;
+    final session = _supabase.auth.currentSession;
+    final userId = session?.user.id;
+    if (userId == _realtimeUserId) return;
+    _realtimeUserId = userId;
+
+    final previous = _realtimeChannel;
+    _realtimeChannel = null;
+    if (previous != null) await _supabase.removeChannel(previous);
+    final activeSession = _supabase.auth.currentSession;
+    if (generation != _realtimeSetupGeneration ||
+        activeSession == null ||
+        activeSession.user.id != userId) {
+      return;
+    }
+
+    final channelName = 'medsentry-data-${activeSession.user.id}';
+    var channel = _supabase.channel(channelName);
+    const tables = [
+      'patients',
+      'queue_items',
+      'consultations',
+      'prescriptions',
+      'lab_orders',
+      'documents',
+      'users',
+      'audit_logs',
+      'notifications',
+      'generated_reports',
+      'system_settings',
+      'medical_snippets',
+      'sync_tombstones',
+    ];
+
+    for (final table in tables) {
+      channel = channel.onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: table,
+        callback: (_) => _scheduleRealtimeRefresh(),
+      );
+    }
+
+    _realtimeChannel = channel.subscribe();
+    unawaited(startSync());
+  }
+
+  void _scheduleRealtimeRefresh() {
+    _realtimeRefreshTimer?.cancel();
+    _realtimeRefreshTimer = Timer(const Duration(milliseconds: 350), () {
+      unawaited(_refreshAfterRealtimeChange());
+    });
+  }
+
+  Future<void> _refreshAfterRealtimeChange() async {
+    if (_supabase.auth.currentSession == null) return;
+    if (state.status == SyncStatus.syncing) {
+      _scheduleRealtimeRefresh();
+      return;
+    }
+    await startSync();
+  }
+
+  void _schedulePendingSync({
+    Duration delay = const Duration(milliseconds: 500),
+  }) {
+    if (_supabase.auth.currentSession == null) return;
+    _pendingSyncTimer?.cancel();
+    _pendingSyncTimer = Timer(delay, () async {
+      if (_supabase.auth.currentSession == null) return;
+      if (state.status == SyncStatus.syncing) {
+        _schedulePendingSync(delay: const Duration(seconds: 1));
+        return;
+      }
+      if (state.status == SyncStatus.offline ||
+          state.status == SyncStatus.error) {
+        return;
+      }
+      final pending = await _ref.read(databaseProvider).getPendingSyncCount();
+      if (pending > 0) await startSync();
+    });
   }
 
   static const int _synced = 0;
@@ -186,6 +297,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
         : await _performLocalSync();
 
     await _refreshDerivedStatus();
+    if (result.success) await _refreshDerivedStatus();
     if (result.success && state.status != SyncStatus.syncing) {
       // Keep success/error from operation when not overridden by pending count.
     }
@@ -357,6 +469,9 @@ class SyncService extends StateNotifier<SyncServiceState> {
       await _pullRemoteConsultations(db);
       await _pullRemotePrescriptionsAndLabs(db);
       await _pullRemoteDocuments(db);
+      await _pullRemoteUsers(db);
+      await _pullRemoteAuditLogs(db);
+      await _pullRemoteNotifications(db);
 
       final now = DateTime.now();
       final message = failed > 0
@@ -487,6 +602,114 @@ class SyncService extends StateNotifier<SyncServiceState> {
         await db.updateDocument(
           remote.copyWith(filePath: local?.filePath ?? '', syncStatus: _synced),
         );
+      }
+    }
+  }
+
+  Future<void> _pullRemoteUsers(dynamic db) async {
+    final localUsers = {
+      for (final user in await db.getAllUsers()) user.id: user,
+    };
+    final rows = await _supabase.from('users').select();
+    for (final raw in rows) {
+      final remote = User.fromJson(Map<String, dynamic>.from(raw));
+      final local = localUsers[remote.id];
+      if (local == null ||
+          (local.syncStatus == _synced &&
+              _isRemoteVersionNewer(remote.updatedAt, local.updatedAt))) {
+        final updated = remote.copyWith(
+          pinHash: local?.pinHash,
+          syncStatus: _synced,
+        );
+        if (local == null) {
+          await db.insertUser(updated);
+        } else {
+          await db.updateUser(updated);
+        }
+        final currentUser = _ref.read(currentUserProvider);
+        if (currentUser?.id == remote.id) {
+          _ref.read(currentUserProvider.notifier).state = updated;
+        }
+      }
+    }
+  }
+
+  Future<void> _pullRemoteAuditLogs(dynamic db) async {
+    final localIds = {for (final log in await db.getAllAuditLogs()) log.id};
+    final rows = await _supabase.from('audit_logs').select();
+    final users = {for (final user in await db.getAllUsers()) user.id: user};
+
+    for (final raw in rows) {
+      final row = Map<String, dynamic>.from(raw);
+      final id = row['id'] as String;
+      if (localIds.contains(id)) continue;
+      final userId = row['user_id'] as String? ?? 'system';
+      final user = users[userId];
+      final timestamp = row['occurred_at'] ?? row['timestamp'];
+      if (timestamp is! String) continue;
+      await db.insertAuditLog(
+        AuditLog(
+          id: id,
+          userId: userId,
+          userName: user?.fullName,
+          userRole: user?.roleDisplay,
+          action: _auditActionFromRemote(row['action']?.toString() ?? ''),
+          entityType: row['entity_type'] as String? ?? 'system',
+          entityId: row['entity_id'] as String?,
+          patientId: row['patient_id'] as String?,
+          oldValues: _auditJsonValue(row['old_values']),
+          newValues: _auditJsonValue(row['new_values']),
+          timestamp: DateTime.parse(timestamp),
+          isSynced: true,
+          syncStatus: _synced,
+        ),
+      );
+    }
+  }
+
+  AuditAction _auditActionFromRemote(String value) {
+    final action = value.toLowerCase().replaceAll('_', '');
+    if (action.contains('create') || action == 'insert') {
+      return AuditAction.create;
+    }
+    if (action.contains('update')) return AuditAction.update;
+    if (action.contains('delete')) return AuditAction.delete;
+    if (action.contains('login')) return AuditAction.login;
+    if (action.contains('logout')) return AuditAction.logout;
+    if (action.contains('export')) return AuditAction.export;
+    if (action.contains('print')) return AuditAction.print;
+    if (action.contains('sync')) return AuditAction.sync;
+    if (action.contains('backup')) return AuditAction.backup;
+    if (action.contains('restore')) return AuditAction.restore;
+    if (action.contains('password')) return AuditAction.passwordChange;
+    if (action.contains('pin')) return AuditAction.pinChange;
+    if (action.contains('role')) return AuditAction.roleChange;
+    if (action.contains('setting')) return AuditAction.settingsChange;
+    return AuditAction.other;
+  }
+
+  String? _auditJsonValue(dynamic value) {
+    if (value == null) return null;
+    return value is String ? value : jsonEncode(value);
+  }
+
+  Future<void> _pullRemoteNotifications(dynamic db) async {
+    final local = {
+      for (final notification in await db.getNotifications())
+        notification.id: notification,
+    };
+    final rows = await _supabase.from('notifications').select();
+    for (final raw in rows) {
+      final row = Map<String, dynamic>.from(raw);
+      final target = row['target'] == 'super_admin' ? 'admin' : row['target'];
+      final remote = SystemNotification.fromJson({...row, 'target': target});
+      final existing = local[remote.id];
+      if (existing == null ||
+          existing.title != remote.title ||
+          existing.message != remote.message ||
+          existing.isRead != remote.isRead ||
+          existing.priority != remote.priority) {
+        await db.insertNotification(remote);
       }
     }
   }

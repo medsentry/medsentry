@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
+import '../utils/context_extensions.dart';
+import '../utils/date_time_format.dart';
 
 class SyncScreen extends ConsumerStatefulWidget {
   const SyncScreen({super.key});
@@ -87,20 +89,22 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 icon: Icons.cloud_outlined,
                 title: 'Sync Status',
                 value: _statusLabel(syncStatus),
-                color: _statusColor(syncStatus),
+                color: _statusColor(context, syncStatus),
               ),
               _StatusCard(
                 icon: Icons.schedule_outlined,
                 title: 'Last Sync',
                 value: lastSync != null ? _formatDateTime(lastSync) : 'Never',
-                color: Colors.blue,
+                color: context.semanticColors.info,
               ),
               if (_stats != null)
                 _StatusCard(
                   icon: Icons.pending_actions_outlined,
                   title: 'Pending Records',
                   value: '${_stats!.pendingSync}',
-                  color: _stats!.pendingSync > 0 ? Colors.orange : Colors.green,
+                  color: _stats!.pendingSync > 0
+                      ? context.semanticColors.warning
+                      : context.semanticColors.normal,
                 ),
             ],
           ),
@@ -180,24 +184,24 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     }
   }
 
-  Color _statusColor(SyncStatus status) {
+  Color _statusColor(BuildContext context, SyncStatus status) {
+    final colors = context.semanticColors;
     switch (status) {
       case SyncStatus.synced:
-        return Colors.green;
+        return colors.normal;
       case SyncStatus.syncing:
-        return Colors.blue;
+        return colors.info;
       case SyncStatus.pending:
-        return Colors.orange;
+        return colors.warning;
       case SyncStatus.error:
-        return Colors.red;
+        return colors.critical;
       case SyncStatus.offline:
-        return Colors.grey;
+        return colors.neutral;
     }
   }
 
   String _formatDateTime(DateTime dt) {
-    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return formatDateTime12h(dt);
   }
 }
 

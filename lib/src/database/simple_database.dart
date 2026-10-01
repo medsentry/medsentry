@@ -16,6 +16,7 @@ class SimpleDatabase {
 
   final Map<String, Patient> _patients = {};
   final Map<String, User> _users = {};
+  final Map<String, Clinic> _clinics = {};
   final Map<String, QueueItem> _queueItems = {};
   final Map<String, Consultation> _consultations = {};
   final Map<String, Prescription> _prescriptions = {};
@@ -43,6 +44,7 @@ class SimpleDatabase {
     _loadFuture = null;
     _patients.clear();
     _users.clear();
+    _clinics.clear();
     _queueItems.clear();
     _consultations.clear();
     _prescriptions.clear();
@@ -69,6 +71,8 @@ class SimpleDatabase {
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     _restoreMap(decoded['patients'], _patients, Patient.fromJson);
     _restoreMap(decoded['users'], _users, User.fromJson);
+    _deduplicateUsers();
+    _restoreMap(decoded['clinics'], _clinics, Clinic.fromJson);
     _restoreMap(decoded['queue_items'], _queueItems, QueueItem.fromJson);
     _restoreMap(
       decoded['consultations'],
@@ -159,12 +163,45 @@ class SimpleDatabase {
       );
   }
 
+  void _deduplicateUsers() {
+    final seenEmails = <String, User>{};
+    final toRemove = <String>[];
+    for (final user in _users.values) {
+      final emailLower = user.email.toLowerCase();
+      if (seenEmails.containsKey(emailLower)) {
+        final existing = seenEmails[emailLower]!;
+        final userDate =
+            user.updatedAt ??
+            user.createdAt ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        final existingDate =
+            existing.updatedAt ??
+            existing.createdAt ??
+            DateTime.fromMillisecondsSinceEpoch(0);
+        if ((user.syncStatus == 0 && existing.syncStatus != 0) ||
+            userDate.isAfter(existingDate)) {
+          toRemove.add(existing.id);
+          seenEmails[emailLower] = user;
+        } else {
+          toRemove.add(user.id);
+        }
+      } else {
+        seenEmails[emailLower] = user;
+      }
+    }
+    for (final id in toRemove) {
+      _users.remove(id);
+      _userPasswordHashes.remove(id);
+    }
+  }
+
   Future<void> _saveToDisk() async {
     await _ensureLoaded();
     final data = {
       'version': 1,
       'patients': _patients.values.map((e) => e.toJson()).toList(),
       'users': _users.values.map((e) => e.toJson()).toList(),
+      'clinics': _clinics.values.map((e) => e.toJson()).toList(),
       'queue_items': _queueItems.values.map((e) => e.toJson()).toList(),
       'consultations': _consultations.values.map((e) => e.toJson()).toList(),
       'prescriptions': _prescriptions.values.map((e) => e.toJson()).toList(),
@@ -191,6 +228,7 @@ class SimpleDatabase {
       'version': 1,
       'patients': _patients.values.map((e) => e.toJson()).toList(),
       'users': _users.values.map((e) => e.toJson()).toList(),
+      'clinics': _clinics.values.map((e) => e.toJson()).toList(),
       'queue_items': _queueItems.values.map((e) => e.toJson()).toList(),
       'consultations': _consultations.values.map((e) => e.toJson()).toList(),
       'prescriptions': _prescriptions.values.map((e) => e.toJson()).toList(),
@@ -218,6 +256,7 @@ class SimpleDatabase {
 
     _patients.clear();
     _users.clear();
+    _clinics.clear();
     _queueItems.clear();
     _consultations.clear();
     _prescriptions.clear();
@@ -232,6 +271,7 @@ class SimpleDatabase {
 
     _restoreMap(decoded['patients'], _patients, Patient.fromJson);
     _restoreMap(decoded['users'], _users, User.fromJson);
+    _restoreMap(decoded['clinics'], _clinics, Clinic.fromJson);
     _restoreMap(decoded['queue_items'], _queueItems, QueueItem.fromJson);
     _restoreMap(
       decoded['consultations'],
@@ -299,6 +339,7 @@ class SimpleDatabase {
     _loadFuture = null;
     _patients.clear();
     _users.clear();
+    _clinics.clear();
     _queueItems.clear();
     _consultations.clear();
     _prescriptions.clear();
@@ -383,12 +424,27 @@ class SimpleDatabase {
 
   Future<List<Patient>> searchPatients(String query) async {
     await _ensureLoaded();
-    final lowerQuery = query.toLowerCase();
+    final lowerQuery = query.trim().toLowerCase();
+    if (lowerQuery.isEmpty) return getAllPatients();
+    final normalizedQuery = lowerQuery.replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    bool containsSearchTerm(String? value) {
+      if (value == null || value.isEmpty) return false;
+      final lowerValue = value.toLowerCase();
+      return lowerValue.contains(lowerQuery) ||
+          (normalizedQuery.isNotEmpty &&
+              lowerValue
+                  .replaceAll(RegExp(r'[^a-z0-9]'), '')
+                  .contains(normalizedQuery));
+    }
+
     return _patients.values.where((p) {
       if (p.isArchived) return false;
-      return p.firstName.toLowerCase().contains(lowerQuery) ||
-          p.lastName.toLowerCase().contains(lowerQuery) ||
-          (p.philHealthNumber?.toLowerCase().contains(lowerQuery) ?? false);
+      return containsSearchTerm(p.fullName) ||
+          containsSearchTerm(p.id) ||
+          containsSearchTerm(p.localLguIdNumber) ||
+          containsSearchTerm(p.contactNumber) ||
+          containsSearchTerm(p.philHealthNumber);
     }).toList();
   }
 
@@ -413,6 +469,20 @@ class SimpleDatabase {
 
   Future<void> insertUser(User user, {String? passwordHash}) async {
     await _ensureLoaded();
+    final duplicates = _users.values
+        .where(
+          (u) =>
+              u.email.toLowerCase() == user.email.toLowerCase() &&
+              u.id != user.id,
+        )
+        .toList();
+    for (final old in duplicates) {
+      _users.remove(old.id);
+      final oldHash = _userPasswordHashes.remove(old.id);
+      if (passwordHash == null && oldHash != null) {
+        passwordHash = oldHash;
+      }
+    }
     _users[user.id] = user;
     if (passwordHash != null) {
       _userPasswordHashes[user.id] = passwordHash;
@@ -438,8 +508,47 @@ class SimpleDatabase {
 
   Future<List<User>> getAllUsers() async {
     await _ensureLoaded();
+    _deduplicateUsers();
     return _users.values.toList();
   }
+
+  Future<void> insertClinic(Clinic clinic) async {
+    await _ensureLoaded();
+    final existing = _clinics[clinic.id];
+    if (existing != null && _sameClinic(existing, clinic)) return;
+    _clinics[clinic.id] = clinic;
+    await _saveToDisk();
+  }
+
+  Future<Clinic?> getClinicById(String id) async {
+    await _ensureLoaded();
+    return _clinics[id];
+  }
+
+  Future<List<Clinic>> getAllClinics() async {
+    await _ensureLoaded();
+    return _clinics.values.toList();
+  }
+
+  Future<void> updateClinic(Clinic clinic) => insertClinic(clinic);
+
+  Future<void> deleteClinic(String id) async {
+    await _ensureLoaded();
+    var usersChanged = false;
+    for (final entry in _users.entries) {
+      if (entry.value.clinicId == id) {
+        _users[entry.key] = entry.value.copyWith(clearClinicId: true);
+        usersChanged = true;
+      }
+    }
+    final clinicRemoved = _clinics.remove(id) != null;
+    if (clinicRemoved || usersChanged) {
+      await _saveToDisk();
+    }
+  }
+
+  bool _sameClinic(Clinic left, Clinic right) =>
+      jsonEncode(left.toJson()) == jsonEncode(right.toJson());
 
   Future<void> updateUser(
     User user, {
@@ -447,6 +556,20 @@ class SimpleDatabase {
     Object? newPinHash = _absent,
   }) async {
     await _ensureLoaded();
+    final duplicates = _users.values
+        .where(
+          (u) =>
+              u.email.toLowerCase() == user.email.toLowerCase() &&
+              u.id != user.id,
+        )
+        .toList();
+    for (final old in duplicates) {
+      _users.remove(old.id);
+      final oldHash = _userPasswordHashes.remove(old.id);
+      if (newPasswordHash == null && oldHash != null) {
+        newPasswordHash = oldHash;
+      }
+    }
     var updated = user;
     if (newPasswordHash != null) {
       _userPasswordHashes[user.id] = newPasswordHash;
@@ -632,6 +755,11 @@ class SimpleDatabase {
         .toList();
   }
 
+  Future<List<Prescription>> getAllPrescriptions() async {
+    await _ensureLoaded();
+    return _prescriptions.values.toList();
+  }
+
   Future<void> insertLabOrder(LabOrder labOrder) async {
     await _ensureLoaded();
     _labOrders[labOrder.id] = labOrder;
@@ -762,6 +890,7 @@ class SimpleDatabase {
     await _ensureLoaded();
     _patients.clear();
     _users.clear();
+    _clinics.clear();
     _queueItems.clear();
     _consultations.clear();
     _prescriptions.clear();

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/certificate_service.dart';
+import '../widgets/app_form_dialog.dart';
 
 class CertificatesScreen extends ConsumerStatefulWidget {
   const CertificatesScreen({super.key});
@@ -43,19 +44,18 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
         children: [
           Text(
             'Certificate Generation',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
           Text(
             'Generate medical certificates, consultation slips, and patient record summaries.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.68),
-                ),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.68),
+            ),
           ),
           const SizedBox(height: 24),
           Card(
@@ -67,8 +67,8 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
                   Text(
                     'Document Type',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -85,25 +85,36 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
                   Text(
                     'Select Patient',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   patientsAsync.when(
-                    data: (patients) => DropdownButtonFormField<Patient>(
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: 'Choose a patient',
+                    data: (patients) => AppSearchableDropdown<Patient>(
+                      label: 'Patient',
+                      hint: 'Search patient by name, ID, phone, or barangay...',
+                      value: _selectedPatient,
+                      items: patients,
+                      itemLabel: (p) => '${p.fullName} (${p.id})',
+                      itemSubtitle: (p) =>
+                          'Age: ${p.age ?? 'N/A'} • ${p.gender ?? ''} • Brgy. ${p.barangay ?? 'N/A'}',
+                      itemLeading: (p) => CircleAvatar(
+                        radius: 18,
+                        child: Text(
+                          p.initials,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       ),
-                      initialValue: _selectedPatient,
-                      items: patients
-                          .map(
-                            (p) => DropdownMenuItem(
-                              value: p,
-                              child: Text('${p.fullName} (${p.id})'),
-                            ),
-                          )
-                          .toList(),
+                      searchMatcher: (p, q) {
+                        final haystack = [
+                          p.fullName,
+                          p.id,
+                          p.contactNumber ?? '',
+                          p.barangay ?? '',
+                          p.philHealthNumber ?? '',
+                        ].join(' ').toLowerCase();
+                        return haystack.contains(q);
+                      },
                       onChanged: (p) async {
                         setState(() {
                           _selectedPatient = p;
@@ -191,17 +202,15 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
     );
   }
 
-  Future<void> _generate(
-    BuildContext context,
-    SystemSettings? settings,
-  ) async {
+  Future<void> _generate(BuildContext context, SystemSettings? settings) async {
     if (_selectedPatient == null) return;
 
     setState(() => _isGenerating = true);
     try {
       final service = ref.read(certificateServiceProvider);
       final user = ref.read(currentUserProvider);
-      final clinicSettings = settings ?? await ref.read(systemSettingsProvider.future);
+      final clinicSettings =
+          settings ?? await ref.read(systemSettingsProvider.future);
 
       if (clinicSettings == null) {
         throw StateError('Clinic settings are unavailable.');
@@ -235,7 +244,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${_selectedType.displayName} generated successfully.'),
+            content: Text(
+              '${_selectedType.displayName} generated successfully.',
+            ),
           ),
         );
       }

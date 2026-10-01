@@ -56,8 +56,9 @@ class PatientPreviewPanel extends StatelessWidget {
                       Text(
                         'ID: ${patient.id}',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.65),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.65,
+                          ),
                         ),
                       ),
                     ],
@@ -76,9 +77,11 @@ class PatientPreviewPanel extends StatelessWidget {
                     backgroundColor: categoryColor.withValues(alpha: 0.12),
                   ),
                 if (patient.isPwd)
-                  const Chip(label: Text('PWD'), avatar: Icon(Icons.accessible, size: 16)),
-                if (patient.is4PsBeneficiary)
-                  const Chip(label: Text('4Ps')),
+                  const Chip(
+                    label: Text('PWD'),
+                    avatar: Icon(Icons.accessible, size: 16),
+                  ),
+                if (patient.is4PsBeneficiary) const Chip(label: Text('4Ps')),
               ],
             ),
             const SizedBox(height: 20),
@@ -88,10 +91,7 @@ class PatientPreviewPanel extends StatelessWidget {
                 _PreviewRow('Age', '${patient.age ?? 'N/A'} years'),
                 _PreviewRow('Gender', patient.gender ?? 'N/A'),
                 _PreviewRow('Contact', patient.contactNumber ?? 'N/A'),
-                _PreviewRow(
-                  'Barangay',
-                  patient.barangay ?? 'Not recorded',
-                ),
+                _PreviewRow('Barangay', patient.barangay ?? 'Not recorded'),
               ],
             ),
             const SizedBox(height: 16),
@@ -100,10 +100,7 @@ class PatientPreviewPanel extends StatelessWidget {
               rows: [
                 _PreviewRow('Blood type', patient.bloodType ?? 'N/A'),
                 _PreviewRow('Allergies', patient.allergies ?? 'None recorded'),
-                _PreviewRow(
-                  'PhilHealth',
-                  patient.philHealthNumber ?? 'N/A',
-                ),
+                _PreviewRow('PhilHealth', patient.philHealthNumber ?? 'N/A'),
               ],
             ),
             const SizedBox(height: 24),
@@ -119,7 +116,8 @@ class PatientPreviewPanel extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: onOpenRecord ??
+                    onPressed:
+                        onOpenRecord ??
                         () => context.push('/patients/${patient.id}'),
                     icon: const Icon(Icons.open_in_new),
                     label: const Text('Open Record'),
@@ -176,9 +174,9 @@ class _PreviewSection extends StatelessWidget {
           children: [
             Text(
               title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 10),
             ...rows.map(
@@ -192,11 +190,10 @@ class _PreviewSection extends StatelessWidget {
                       child: Text(
                         row.label,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withValues(alpha: 0.6),
-                            ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
                       ),
                     ),
                     Expanded(

@@ -9,3 +9,4 @@ export 'document.dart';
 export 'audit_log.dart';
 export 'system_settings.dart';
 export 'system_notification.dart';
+export 'clinic.dart';

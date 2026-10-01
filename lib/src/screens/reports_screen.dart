@@ -2,13 +2,16 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 import '../models/generated_report.dart';
 import '../providers/providers.dart';
 import '../services/report_service.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/report_export_dialog.dart';
 import '../utils/context_extensions.dart';
+import '../utils/date_time_format.dart';
+import '../utils/report_date_filter.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -18,25 +21,22 @@ class ReportsScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
-  List<ConsultationTrend> _trendsForRange(
-    List<ConsultationTrend> trends,
-    int rangeDays,
-  ) {
-    if (trends.isEmpty) return trends;
-    final startIndex = math.max(0, trends.length - rangeDays);
-    return trends.sublist(startIndex);
+  late ReportFilters _draftFilters;
+
+  @override
+  void initState() {
+    super.initState();
+    _draftFilters = ref.read(reportFiltersProvider);
   }
 
   List<double> _valuesFromTrends(List<ConsultationTrend> trends) {
     return trends.map((t) => t.count.toDouble()).toList();
   }
 
-  String _rangeLabel(int days) => '${days}D';
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rangeDays = ref.watch(reportRangeDaysProvider);
+    ref.watch(reportFiltersProvider);
     final reportStatsAsync = ref.watch(reportStatsProvider);
     final generatedReportsAsync = ref.watch(generatedReportsProvider);
 
@@ -60,24 +60,34 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
           const SizedBox(height: 16),
 
-          _buildRangeSelector(context, rangeDays),
+          _buildRangeSelector(context),
           const SizedBox(height: 12),
 
           reportStatsAsync.when(
             skipLoadingOnReload: true,
             data: (stats) => Column(
               children: [
+                if (stats.totalConsultations == 0 &&
+                    stats.newPatients == 0 &&
+                    stats.completedQueueVisits == 0 &&
+                    stats.documentsInRange == 0) ...[
+                  _buildNoReportData(context),
+                  const SizedBox(height: 12),
+                ],
                 _buildInsightsStrip(context, stats),
                 const SizedBox(height: 12),
                 _buildKpiGrid(context, stats),
                 const SizedBox(height: 16),
-                _buildAnalyticsCharts(context, stats, rangeDays),
+                _buildAnalyticsCharts(context, stats),
                 const SizedBox(height: 16),
                 _buildDemographicsSection(context, stats),
               ],
             ),
             loading: () => const LoadingState(),
-            error: (error, stack) => Text('Error loading stats: $error'),
+            error: (error, stack) => _buildReportError(
+              context,
+              onRetry: () => ref.invalidate(reportStatsProvider),
+            ),
           ),
           const SizedBox(height: 20),
 
@@ -92,11 +102,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ),
             _buildReportCard(
               context,
-              'Medicine Dispensing',
-              'Medicines dispensed and inventory report',
+              'Medication Prescriptions',
+              'Prescriptions and quantities recorded for consultations',
               Icons.medication_outlined,
               context.semanticColors.neutral,
-              () => _showDateRangeDialog(context, 'Medicine Dispensing'),
+              () => _showDateRangeDialog(context, 'Medication Prescriptions'),
             ),
           ]),
           const SizedBox(height: 16),
@@ -159,55 +169,227 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   )
                 : _buildEmptyReportsSection(context),
             loading: () => const LoadingState(),
-            error: (error, stack) => Text('Unable to load reports: $error'),
+            error: (error, stack) => _buildReportError(
+              context,
+              onRetry: () => ref.invalidate(generatedReportsProvider),
+            ),
           ),
         ],
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
+  String _formatDate(DateTime date) => DateFormat('MMM d, yyyy').format(date);
 
-  Widget _buildRangeSelector(BuildContext context, int rangeDays) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 12,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        SegmentedButton<int>(
-          segments: const [
-            ButtonSegment(value: 7, label: Text('7 Days')),
-            ButtonSegment(value: 30, label: Text('30 Days')),
-            ButtonSegment(value: 90, label: Text('90 Days')),
-          ],
-          selected: {rangeDays},
-          onSelectionChanged: (Set<int> newSelection) {
-            ref.read(reportRangeDaysProvider.notifier).state =
-                newSelection.first;
-          },
-          style: ButtonStyle(visualDensity: VisualDensity.compact),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildRangeSelector(BuildContext context) {
+    final canApply =
+        !_draftFilters.endDate.isBefore(_draftFilters.startDate) &&
+        !_draftFilters.endDate.isAfter(DateTime.now());
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Icon(
-              Icons.info_outline,
-              size: 16,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Comparing last $rangeDays days vs prior $rangeDays days',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
+            SizedBox(
+              width: 180,
+              child: DropdownButtonFormField<ReportDatePreset>(
+                initialValue: _draftFilters.preset,
+                decoration: const InputDecoration(
+                  labelText: 'Date Range',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: ReportDatePreset.values
+                    .map(
+                      (preset) => DropdownMenuItem(
+                        value: preset,
+                        child: Text(preset.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (preset) {
+                  if (preset == null) return;
+                  setState(() {
+                    _draftFilters = ReportFilters.forPreset(
+                      preset,
+                      grouping: _draftFilters.grouping,
+                    );
+                  });
+                },
               ),
             ),
+            OutlinedButton.icon(
+              onPressed: _pickReportStartDate,
+              icon: const Icon(Icons.calendar_today_outlined, size: 18),
+              label: Text('From ${_formatDate(_draftFilters.startDate)}'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _pickReportEndDate,
+              icon: const Icon(Icons.event_outlined, size: 18),
+              label: Text('To ${_formatDate(_draftFilters.endDate)}'),
+            ),
+            SizedBox(
+              width: 150,
+              child: DropdownButtonFormField<ReportGrouping>(
+                initialValue: _draftFilters.grouping,
+                decoration: const InputDecoration(
+                  labelText: 'Group By',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: ReportGrouping.values
+                    .map(
+                      (grouping) => DropdownMenuItem(
+                        value: grouping,
+                        child: Text(grouping.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (grouping) {
+                  if (grouping != null) {
+                    setState(() {
+                      _draftFilters = _draftFilters.copyWith(
+                        grouping: grouping,
+                      );
+                    });
+                  }
+                },
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: canApply ? _applyReportFilters : null,
+              icon: const Icon(Icons.filter_alt_outlined),
+              label: const Text('Apply Filters'),
+            ),
+            FilledButton.icon(
+              onPressed: () => ReportExportDialog.show(
+                context,
+                reportType: 'Daily Consultation Report',
+                startDate: _draftFilters.startDate,
+                endDate: _draftFilters.endDate,
+              ),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Export PDF Report'),
+              style: FilledButton.styleFrom(
+                backgroundColor: context.semanticColors.info,
+                foregroundColor: Colors.white,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _resetReportFilters,
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Reset'),
+            ),
           ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Future<void> _pickReportStartDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _draftFilters.startDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _draftFilters = _draftFilters.copyWith(
+        preset: ReportDatePreset.custom,
+        startDate: selected,
+        endDate: _draftFilters.endDate.isBefore(selected)
+            ? selected
+            : _draftFilters.endDate,
+      );
+    });
+  }
+
+  Future<void> _pickReportEndDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _draftFilters.endDate.isBefore(_draftFilters.startDate)
+          ? _draftFilters.startDate
+          : _draftFilters.endDate,
+      firstDate: _draftFilters.startDate,
+      lastDate: DateTime.now(),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      _draftFilters = _draftFilters.copyWith(
+        preset: ReportDatePreset.custom,
+        endDate: selected,
+      );
+    });
+  }
+
+  void _applyReportFilters() {
+    if (_draftFilters.endDate.isBefore(_draftFilters.startDate) ||
+        _draftFilters.endDate.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a valid report date range.')),
+      );
+      return;
+    }
+    ref.read(reportFiltersProvider.notifier).state = _draftFilters;
+  }
+
+  void _resetReportFilters() {
+    final filters = ReportFilters.forPreset(ReportDatePreset.thisMonth);
+    setState(() => _draftFilters = filters);
+    ref.read(reportFiltersProvider.notifier).state = filters;
+  }
+
+  Widget _buildReportError(
+    BuildContext context, {
+    required VoidCallback onRetry,
+  }) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Unable to load report'),
+          const SizedBox(height: 8),
+          const Text("We couldn't retrieve the report data."),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Try Again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoReportData(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('No data for this period'),
+                  Text('Try another date range or change the report filters.'),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: _resetReportFilters,
+              child: const Text('Reset Filters'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -288,7 +470,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final kpis = [
       _KpiMetric(
         title: 'Consultations',
-        subtitle: 'Last ${stats.rangeDays} days',
+        subtitle: 'In selected period',
         value: stats.totalConsultations.toString(),
         delta: stats.consultationsDelta,
         icon: Icons.medical_services_outlined,
@@ -410,19 +592,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _buildAnalyticsCharts(
-    BuildContext context,
-    ReportStats stats,
-    int rangeDays,
-  ) {
-    final consultationTrends = _trendsForRange(
-      stats.consultationTrends,
-      rangeDays,
-    );
-    final newPatientTrends = _trendsForRange(stats.newPatientTrends, rangeDays);
+  Widget _buildAnalyticsCharts(BuildContext context, ReportStats stats) {
+    final consultationTrends = stats.consultationTrends;
+    final newPatientTrends = stats.newPatientTrends;
     final consultationValues = _valuesFromTrends(consultationTrends);
     final newPatientValues = _valuesFromTrends(newPatientTrends);
-    final rangeLabel = _rangeLabel(rangeDays);
+    final rangeLabel = 'Grouped by ${stats.grouping.label.toLowerCase()}';
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -434,6 +609,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           subtitle: rangeLabel,
           trends: consultationTrends,
           values: consultationValues,
+          grouping: stats.grouping,
           lineColor: Theme.of(context).colorScheme.primary,
         );
 
@@ -443,6 +619,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           subtitle: rangeLabel,
           trends: newPatientTrends,
           values: newPatientValues,
+          grouping: stats.grouping,
           lineColor: context.semanticColors.normal,
         );
 
@@ -531,15 +708,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required String subtitle,
     required List<ConsultationTrend> trends,
     required List<double> values,
+    required ReportGrouping grouping,
     required Color lineColor,
   }) {
     final total = trends.fold<int>(0, (sum, item) => sum + item.count);
     final average = trends.isEmpty ? 0.0 : total / trends.length;
     final startLabel = trends.isNotEmpty
-        ? _formatShortDate(trends.first.date)
+        ? _formatTrendLabel(trends.first.date, grouping)
         : '';
     final endLabel = trends.isNotEmpty
-        ? _formatShortDate(trends.last.date)
+        ? _formatTrendLabel(trends.last.date, grouping)
         : '';
 
     return Card(
@@ -560,7 +738,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       Text(
-                        '$subtitle · avg ${average.toStringAsFixed(1)}/day',
+                        '$subtitle · avg ${average.toStringAsFixed(1)} per period',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(
                             context,
@@ -726,24 +904,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  String _formatShortDate(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}';
-  }
-
   Widget _buildSection(
     BuildContext context,
     String title,
@@ -818,7 +978,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: Icon(icon, color: Colors.grey),
+        leading: Icon(icon, color: context.semanticColors.neutral),
         title: Text(report.title),
         subtitle: Text(
           [
@@ -853,271 +1013,80 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   void _showDateRangeDialog(BuildContext context, String reportType) {
-    final now = DateTime.now();
-    var startDate = DateTime(now.year, now.month, now.day);
-    var endDate = startDate;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Generate $reportType'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.calendar_today),
-                title: const Text('Start Date'),
-                subtitle: Text(_formatDate(startDate)),
-                onTap: () async {
-                  final selected = await showDatePicker(
-                    context: context,
-                    initialDate: startDate,
-                    firstDate: DateTime(2020),
-                    lastDate: now,
-                  );
-                  if (selected == null) return;
-                  setDialogState(() {
-                    startDate = selected;
-                    if (endDate.isBefore(startDate)) endDate = startDate;
-                  });
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.event_available_outlined),
-                title: const Text('End Date'),
-                subtitle: Text(_formatDate(endDate)),
-                onTap: () async {
-                  final selected = await showDatePicker(
-                    context: context,
-                    initialDate: endDate.isBefore(startDate)
-                        ? startDate
-                        : endDate,
-                    firstDate: startDate,
-                    lastDate: now,
-                  );
-                  if (selected == null) return;
-                  setDialogState(() => endDate = selected);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                _generateReport(
-                  context,
-                  reportType,
-                  startDate: startDate,
-                  endDate: endDate,
-                );
-              },
-              icon: const Icon(Icons.add_chart_outlined),
-              label: const Text('Generate'),
-            ),
-          ],
-        ),
-      ),
+    ReportExportDialog.show(
+      context,
+      reportType: reportType,
+      startDate: _draftFilters.startDate,
+      endDate: _draftFilters.endDate,
     );
   }
 
-  Future<void> _generateReport(
-    BuildContext context,
-    String reportType, {
-    required DateTime startDate,
-    required DateTime endDate,
-  }) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Generating report...'),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      final reportData = await _buildReportData(reportType, startDate, endDate);
-      final now = DateTime.now();
-      final reportId = const Uuid().v4();
-      final title = '$reportType - ${_formatDate(now)}';
-      final filename = '${_safeFileName(title)}_$reportId.json';
-      final filePath = await ReportService(
-        ref.read(databaseProvider),
-      ).exportReportToJson(reportData, filename: filename);
-
-      final newReport = GeneratedReport(
-        id: reportId,
-        title: title,
-        type: reportType,
-        generatedAt: now,
-        startDate: startDate,
-        endDate: endDate,
-        filePath: filePath,
-      );
-      await ref.read(databaseProvider).insertGeneratedReport(newReport);
-      ref.invalidate(generatedReportsProvider);
-
-      if (context.mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$reportType generated successfully')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to generate report: $e')),
-        );
-      }
-    }
-  }
-
-  Future<Map<String, dynamic>> _buildReportData(
-    String reportType,
-    DateTime startDate,
-    DateTime endDate,
-  ) async {
-    final service = ReportService(ref.read(databaseProvider));
-    final inclusiveEnd = endDate.add(const Duration(days: 1));
-
-    switch (reportType) {
-      case 'Disease Surveillance':
-        return service.generateDiseaseSurveillanceReport(
-          startDate: startDate,
-          endDate: inclusiveEnd,
-        );
-      case 'Patient Statistics':
-      case 'Daily Consultation Report':
-      case 'DOH Report':
-      case 'Medicine Dispensing':
-      default:
-        final stats = await ref.read(reportStatsProvider.future);
-        return {
-          'report_type': reportType,
-          'period': {
-            'start_date': startDate.toIso8601String(),
-            'end_date': inclusiveEnd.toIso8601String(),
-          },
-          'total_consultations': stats.totalConsultations,
-          'new_patients': stats.newPatients,
-          'follow_ups': stats.followUps,
-          'average_wait_minutes': stats.avgWaitMinutes,
-          'top_diagnoses': stats.topDiagnoses
-              .map(
-                (item) => {
-                  'label': item.label,
-                  'value': item.value,
-                  'percentage': item.percentage,
-                },
-              )
-              .toList(),
-          'generated_at': DateTime.now().toIso8601String(),
-        };
-    }
+  String _formatTrendLabel(DateTime date, ReportGrouping grouping) {
+    return switch (grouping) {
+      ReportGrouping.day => _formatDate(date),
+      ReportGrouping.week => 'Week of ${_formatDate(date)}',
+      ReportGrouping.month => DateFormat('MMM yyyy').format(date),
+      ReportGrouping.year => '${date.year}',
+    };
   }
 
   void _viewReport(BuildContext context, GeneratedReport report) {
-    final reportStatsAsync = ref.read(reportStatsProvider);
+    final coverage = report.startDate == null || report.endDate == null
+        ? 'Not specified'
+        : '${_formatDate(report.startDate!)} to ${_formatDate(report.endDate!)}';
 
-    reportStatsAsync.when(
-      data: (stats) {
-        final rangeDays = ref.read(reportRangeDaysProvider);
-        final trendData = _valuesFromTrends(
-          _trendsForRange(stats.consultationTrends, rangeDays),
-        );
-
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(report.title),
-            content: SizedBox(
-              width: 460,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 120,
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.08),
-                    ),
-                    child: trendData.isNotEmpty
-                        ? CustomPaint(
-                            painter: _TrendLinePainter(
-                              values: trendData.take(12).toList(),
-                              lineColor: Theme.of(context).colorScheme.primary,
-                              gridColor: Theme.of(
-                                context,
-                              ).colorScheme.outline.withValues(alpha: 0.2),
-                            ),
-                          )
-                        : Center(
-                            child: Text(
-                              'No trend data available',
-                              style: TextStyle(
-                                color: context.semanticColors.neutral,
-                              ),
-                            ),
-                          ),
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(report.title),
+        content: SizedBox(
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Report type: ${report.type}'),
+              const SizedBox(height: 8),
+              Text('Generated: ${formatDateTime12h(report.generatedAt)}'),
+              const SizedBox(height: 8),
+              Text('Coverage: $coverage'),
+              if (report.filePath != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Saved location: ${report.filePath}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Coverage: ${report.startDate == null || report.endDate == null ? 'Not specified' : '${_formatDate(report.startDate!)} to ${_formatDate(report.endDate!)}'}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.68),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Insights',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  if (stats.topDiagnoses.isNotEmpty) ...[
-                    Text('• Top diagnosis: ${stats.topDiagnoses.first.label}'),
-                    Text('• Total consultations: ${stats.totalConsultations}'),
-                    Text('• New patients: ${stats.newPatients}'),
-                  ] else
-                    const Text('• No consultation data available yet.'),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _downloadReport(context, report),
-                icon: const Icon(Icons.download),
-                label: const Text('Download PDF'),
-              ),
+                ),
+              ],
             ],
           ),
-        );
-      },
-      loading: () {},
-      error: (_, _) {},
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _downloadReport(context, report),
+            icon: const Icon(Icons.share_outlined),
+            label: const Text('Open / Share'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              ReportExportDialog.show(
+                context,
+                reportType: report.type,
+                startDate: report.startDate ?? _draftFilters.startDate,
+                endDate: report.endDate ?? _draftFilters.endDate,
+              );
+            },
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('Preview & Export PDF'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1164,34 +1133,33 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   ) async {
     final filePath = report.filePath;
     if (filePath == null || filePath.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No exported file is available.')),
+      ReportExportDialog.show(
+        context,
+        reportType: report.type,
+        startDate: report.startDate ?? _draftFilters.startDate,
+        endDate: report.endDate ?? _draftFilters.endDate,
       );
       return;
     }
 
     try {
-      await ReportService(ref.read(databaseProvider)).shareReport(filePath);
+      final reportService = ReportService(ref.read(databaseProvider));
+      final opened = await reportService.openExportedReport(filePath);
+      if (!opened && context.mounted) {
+        await reportService.shareReport(filePath);
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Report ready: $filePath')));
+        ).showSnackBar(SnackBar(content: Text('Report opened: $filePath')));
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Unable to share report: $e')));
+        ).showSnackBar(SnackBar(content: Text('Unable to open or share report: $e')));
       }
     }
-  }
-
-  String _safeFileName(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'_+'), '_')
-        .replaceAll(RegExp(r'^_|_$'), '');
   }
 }
 

@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/audit_log.dart';
 import '../providers/providers.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/status_badge.dart';
+import '../utils/context_extensions.dart';
+import '../utils/date_time_format.dart';
 
 class AuditLogsScreen extends ConsumerStatefulWidget {
   const AuditLogsScreen({super.key});
@@ -31,18 +34,17 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
               Text(
                 'Audit Logs & Activity Monitoring',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 'Track login history, record changes, staff actions, and suspicious activity.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.68),
-                    ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.68),
+                ),
               ),
               const SizedBox(height: 16),
               Row(
@@ -63,7 +65,10 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                     value: _filterAction,
                     hint: const Text('All Actions'),
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('All Actions')),
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('All Actions'),
+                      ),
                       ...AuditAction.values.map(
                         (a) => DropdownMenuItem(
                           value: a,
@@ -104,12 +109,27 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                 separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final log = filtered[index];
+                  final color = _actionColor(context, log.action);
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: _actionColor(log.action).withValues(alpha: 0.15),
-                      child: Icon(_actionIcon(log.action), color: _actionColor(log.action), size: 20),
+                      backgroundColor: color.withValues(alpha: 0.15),
+                      child: Icon(
+                        _actionIcon(log.action),
+                        color: color,
+                        size: 20,
+                      ),
                     ),
-                    title: Text('${log.actionDisplay} — ${log.entityType}'),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${log.actionDisplay} — ${log.entityType}',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        StatusBadge.info(text: log.action.name.toUpperCase()),
+                      ],
+                    ),
                     subtitle: Text(
                       '${log.userName ?? log.userId} • ${_formatDateTime(log.timestamp)}'
                       '${log.patientName != null ? ' • ${log.patientName}' : ''}'
@@ -169,22 +189,26 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
     }
   }
 
-  Color _actionColor(AuditAction action) {
+  Color _actionColor(BuildContext context, AuditAction action) {
+    final colors = context.semanticColors;
     switch (action) {
       case AuditAction.delete:
-        return Colors.red;
+        return colors.critical;
       case AuditAction.login:
       case AuditAction.logout:
-        return Colors.blue;
+        return colors.info;
       case AuditAction.sync:
-        return Colors.teal;
+      case AuditAction.backup:
+      case AuditAction.create:
+        return colors.normal;
+      case AuditAction.update:
+        return colors.warning;
       default:
-        return Colors.grey;
+        return colors.neutral;
     }
   }
 
   String _formatDateTime(DateTime dt) {
-    return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} '
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return formatDateTime12h(dt);
   }
 }

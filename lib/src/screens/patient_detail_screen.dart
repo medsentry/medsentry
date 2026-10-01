@@ -8,7 +8,9 @@ import '../models/document.dart';
 import '../models/patient.dart';
 import '../models/queue.dart';
 import '../providers/providers.dart';
+import '../utils/date_time_format.dart';
 import '../utils/patient_address_data.dart';
+import '../widgets/app_form_dialog.dart';
 import '../widgets/loading_state.dart';
 
 class PatientDetailScreen extends ConsumerWidget {
@@ -530,7 +532,7 @@ class _OverviewTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
       children: [
         Wrap(
           spacing: 8,
@@ -549,14 +551,10 @@ class _OverviewTab extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 760;
-            final gap = isWide ? 12.0 : 0.0;
-            final width = isWide
-                ? (constraints.maxWidth - gap) / 2
-                : constraints.maxWidth;
             final panels = [
               _SectionPanel(
                 title: 'Basic Information',
@@ -650,17 +648,40 @@ class _OverviewTab extends ConsumerWidget {
               ),
             ];
 
-            return Wrap(
-              spacing: gap,
-              runSpacing: 12,
-              children: panels
-                  .map(
-                    (panel) => SizedBox(
-                      width: width.isFinite ? width : constraints.maxWidth,
-                      child: panel,
-                    ),
-                  )
-                  .toList(),
+            if (!isWide) {
+              return Column(
+                children: [
+                  for (var index = 0; index < panels.length; index++) ...[
+                    panels[index],
+                    if (index < panels.length - 1) const SizedBox(height: 12),
+                  ],
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      panels[0],
+                      const SizedBox(height: 12),
+                      panels[2],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    children: [
+                      panels[1],
+                      const SizedBox(height: 12),
+                      panels[3],
+                    ],
+                  ),
+                ),
+              ],
             );
           },
         ),
@@ -760,6 +781,25 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
   String? _bloodType;
   DateTime? _dateOfBirth;
   PatientCategory? _category;
+  bool _isSaving = false;
+  bool _isDirty = false;
+
+  void _markDirty() {
+    if (!_isDirty && mounted) {
+      setState(() => _isDirty = true);
+    }
+  }
+
+  Future<void> _handleCancel() async {
+    if (!_isDirty || _isSaving) {
+      Navigator.of(context).pop(false);
+      return;
+    }
+    final shouldDiscard = await confirmDiscardUnsavedChanges(context);
+    if (shouldDiscard && mounted) {
+      Navigator.of(context).pop(false);
+    }
+  }
 
   List<String> get _suffixItems {
     if (!suffixOptions.contains(_suffix)) {
@@ -992,6 +1032,20 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
     _dateOfBirth = patient.dateOfBirth;
     _category =
         patientCategoryFromDateOfBirth(patient.dateOfBirth) ?? patient.category;
+
+    _firstNameController.addListener(_markDirty);
+    _middleInitialController.addListener(_markDirty);
+    _lastNameController.addListener(_markDirty);
+    _streetController.addListener(_markDirty);
+    _zipCodeController.addListener(_markDirty);
+    _contactController.addListener(_markDirty);
+    _emailController.addListener(_markDirty);
+    _emergencyNameController.addListener(_markDirty);
+    _emergencyRelationController.addListener(_markDirty);
+    _emergencyNumberController.addListener(_markDirty);
+    _philHealthController.addListener(_markDirty);
+    _allergiesController.addListener(_markDirty);
+    _medicalHistoryController.addListener(_markDirty);
   }
 
   @override
@@ -1014,186 +1068,378 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit Patient Information'),
-      content: SizedBox(
-        width: 760,
-        child: Form(
+    return PopScope(
+      canPop: !_isDirty || _isSaving,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _handleCancel();
+      },
+      child: AppFormDialog(
+        icon: Icons.person_outline,
+        title: 'Edit Patient Information',
+        subtitle:
+            'Update demographics, residential address, emergency contact, and clinical notes',
+        maxWidth: 820,
+        onClose: _isSaving ? null : _handleCancel,
+        isLoading: _isSaving,
+        loadingText: 'Saving patient modifications...',
+        content: Form(
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _responsiveRow([
-                  _textField(
-                    _firstNameController,
-                    'First Name',
-                    required: true,
-                  ),
-                  _textField(
-                    _middleInitialController,
-                    'Middle Initial',
-                    maxLength: 2,
-                    formatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+                AppFormSection(
+                  icon: Icons.badge_outlined,
+                  title: 'Personal Information',
+                  subtitle: 'Demographics and identification',
+                  child: Column(
+                    children: [
+                      _responsiveRow([
+                        AppTextField(
+                          controller: _firstNameController,
+                          label: 'First Name',
+                          required: true,
+                          onChanged: (_) => _markDirty(),
+                        ),
+                        AppTextField(
+                          controller: _middleInitialController,
+                          label: 'Middle Initial',
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[A-Za-z]'),
+                            ),
+                            LengthLimitingTextInputFormatter(2),
+                          ],
+                          onChanged: (v) {
+                            _formatMiddleInitialInput(v);
+                            _markDirty();
+                          },
+                        ),
+                        AppTextField(
+                          controller: _lastNameController,
+                          label: 'Last Name',
+                          required: true,
+                          onChanged: (_) => _markDirty(),
+                        ),
+                        AppDropdownField<String>(
+                          label: 'Suffix',
+                          value: _suffix,
+                          items: _suffixItems
+                              .map(
+                                (s) =>
+                                    DropdownMenuItem(value: s, child: Text(s)),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() {
+                            _suffix = v ?? 'None';
+                            _markDirty();
+                          }),
+                        ),
+                      ]),
+                      const SizedBox(height: 14),
+                      _responsiveRow([
+                        AppDropdownField<String>(
+                          label: 'Sex / Gender',
+                          required: true,
+                          value: _gender,
+                          items: _genderItems
+                              .map(
+                                (g) => DropdownMenuItem(
+                                  value: g,
+                                  child: Text(
+                                    g.isEmpty
+                                        ? g
+                                        : (g[0].toUpperCase() + g.substring(1)),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() {
+                            _gender = v;
+                            _markDirty();
+                          }),
+                        ),
+                        AppDropdownField<String>(
+                          label: 'Civil Status',
+                          required: true,
+                          value: _civilStatus,
+                          items: _civilStatusItems
+                              .map(
+                                (c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(
+                                    c == 'live-in'
+                                        ? 'Live-in'
+                                        : (c.isEmpty
+                                              ? c
+                                              : (c[0].toUpperCase() +
+                                                    c.substring(1))),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() {
+                            _civilStatus = v;
+                            _markDirty();
+                          }),
+                        ),
+                        AppDatePickerField(
+                          label: 'Date of Birth',
+                          required: true,
+                          selectedDate: _dateOfBirth,
+                          showAgeBadge: true,
+                          onDateSelected: (date) {
+                            setState(() {
+                              _dateOfBirth = date;
+                              if (date != null) {
+                                _category = patientCategoryFromDateOfBirth(
+                                  date,
+                                );
+                              }
+                              _markDirty();
+                            });
+                          },
+                        ),
+                      ]),
                     ],
-                    onChanged: _formatMiddleInitialInput,
                   ),
-                  _textField(_lastNameController, 'Last Name', required: true),
-                  _dropdown<String>(
-                    label: 'Suffix',
-                    value: _suffix,
-                    items: _suffixItems,
-                    onChanged: (value) =>
-                        setState(() => _suffix = value ?? 'None'),
-                  ),
-                ]),
-                const SizedBox(height: 12),
-                _responsiveRow([
-                  _dropdown<String>(
-                    label: 'Gender',
-                    value: _gender,
-                    items: _genderItems,
-                    required: true,
-                    itemLabel: (v) =>
-                        v.isEmpty ? v : (v[0].toUpperCase() + v.substring(1)),
-                    onChanged: (value) => setState(() => _gender = value),
-                  ),
-                  _dropdown<String>(
-                    label: 'Civil Status',
-                    value: _civilStatus,
-                    items: _civilStatusItems,
-                    required: true,
-                    itemLabel: (v) => v == 'live-in'
-                        ? 'Live-in'
-                        : (v.isEmpty
-                              ? v
-                              : (v[0].toUpperCase() + v.substring(1))),
-                    onChanged: (value) => setState(() => _civilStatus = value),
-                  ),
-                  _datePickerField(
-                    label: 'Date of Birth',
-                    value: _dateOfBirth,
-                    onChanged: (date) {
-                      setState(() {
-                        _dateOfBirth = date;
-                        if (date != null) {
-                          _category = patientCategoryFromDateOfBirth(date);
-                        }
-                      });
-                    },
-                  ),
-                ]),
-                const Divider(height: 28),
-                _responsiveRow([
-                  _dropdown<String>(
-                    label: 'Municipality',
-                    value: _municipality,
-                    items: _municipalities,
-                    required: true,
-                    onChanged: (value) {
-                      setState(() {
-                        _municipality = value;
-                        _barangay = null;
-                        _purok = null;
-                        _zipCodeController.text =
-                            municipalityAddressData[value]?.zipCode ?? '';
-                      });
-                    },
-                  ),
-                  _dropdown<String>(
-                    label: 'Barangay',
-                    value: _barangay,
-                    items: _barangays,
-                    required: true,
-                    onChanged: (value) => setState(() {
-                      _barangay = value;
-                      _purok = null;
-                    }),
-                  ),
-                ]),
-                const SizedBox(height: 12),
-                _responsiveRow([
-                  _dropdown<String>(
-                    label: 'Purok / Sitio',
-                    value: _purok,
-                    items: _puroks,
-                    required: true,
-                    onChanged: (value) => setState(() => _purok = value),
-                  ),
-                  _textField(_zipCodeController, 'ZIP Code', readOnly: true),
-                ]),
-                const SizedBox(height: 12),
-                _textField(
-                  _streetController,
-                  'Street / House No.',
-                  required: true,
                 ),
-                const Divider(height: 28),
-                _responsiveRow([
-                  _textField(
-                    _contactController,
-                    'Contact Number',
-                    required: true,
+                const SizedBox(height: 16),
+                AppFormSection(
+                  icon: Icons.location_on_outlined,
+                  title: 'Residential Address',
+                  subtitle: 'Geographical location within Surigao del Sur LGUs',
+                  child: Column(
+                    children: [
+                      _responsiveRow([
+                        AppDropdownField<String>(
+                          label: 'Municipality',
+                          required: true,
+                          value: _municipality,
+                          items: _municipalities
+                              .map(
+                                (m) =>
+                                    DropdownMenuItem(value: m, child: Text(m)),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() {
+                            _municipality = v;
+                            _barangay = null;
+                            _purok = null;
+                            _zipCodeController.text =
+                                municipalityAddressData[v]?.zipCode ?? '';
+                            _markDirty();
+                          }),
+                        ),
+                        AppDropdownField<String>(
+                          label: 'Barangay',
+                          required: true,
+                          value: _barangay,
+                          items: _barangays
+                              .map(
+                                (b) =>
+                                    DropdownMenuItem(value: b, child: Text(b)),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() {
+                            _barangay = v;
+                            _purok = null;
+                            _markDirty();
+                          }),
+                        ),
+                      ]),
+                      const SizedBox(height: 14),
+                      _responsiveRow([
+                        AppDropdownField<String>(
+                          label: 'Purok / Sitio',
+                          required: true,
+                          value: _purok,
+                          items: _puroks
+                              .map(
+                                (p) =>
+                                    DropdownMenuItem(value: p, child: Text(p)),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() {
+                            _purok = v;
+                            _markDirty();
+                          }),
+                        ),
+                        AppTextField(
+                          controller: _zipCodeController,
+                          label: 'ZIP Code',
+                          enabled: false,
+                          icon: Icons.pin_drop_outlined,
+                        ),
+                      ]),
+                      const SizedBox(height: 14),
+                      AppTextField(
+                        controller: _streetController,
+                        label: 'Street / House No. / Landmark',
+                        required: true,
+                        icon: Icons.home_outlined,
+                        onChanged: (_) => _markDirty(),
+                      ),
+                    ],
                   ),
-                  _textField(_emailController, 'Email Address'),
-                ]),
-                const SizedBox(height: 12),
-                _responsiveRow([
-                  _textField(
-                    _emergencyNameController,
-                    'Emergency Contact',
-                    required: true,
+                ),
+                const SizedBox(height: 16),
+                AppFormSection(
+                  icon: Icons.phone_outlined,
+                  title: 'Contact Information',
+                  subtitle: 'Patient communication channels',
+                  child: _responsiveRow([
+                    AppPhoneField(
+                      controller: _contactController,
+                      label: 'Primary Mobile Number',
+                      required: true,
+                      onChanged: (_) => _markDirty(),
+                    ),
+                    AppTextField(
+                      controller: _emailController,
+                      label: 'Email Address (Optional)',
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        final t = v?.trim() ?? '';
+                        if (t.isNotEmpty &&
+                            !RegExp(
+                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                            ).hasMatch(t)) {
+                          return 'Enter a valid email address.';
+                        }
+                        return null;
+                      },
+                      onChanged: (_) => _markDirty(),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 16),
+                AppFormSection(
+                  icon: Icons.contact_emergency_outlined,
+                  title: 'Emergency Contact',
+                  subtitle:
+                      'Designated contact person in case of medical crisis',
+                  child: Column(
+                    children: [
+                      _responsiveRow([
+                        AppTextField(
+                          controller: _emergencyNameController,
+                          label: 'Contact Full Name',
+                          required: true,
+                          icon: Icons.person_outline,
+                          onChanged: (_) => _markDirty(),
+                        ),
+                        AppTextField(
+                          controller: _emergencyRelationController,
+                          label: 'Relationship',
+                          required: true,
+                          hint: 'e.g. Spouse, Mother, Guardian',
+                          icon: Icons.family_restroom_outlined,
+                          onChanged: (_) => _markDirty(),
+                        ),
+                      ]),
+                      const SizedBox(height: 14),
+                      AppPhoneField(
+                        controller: _emergencyNumberController,
+                        label: 'Emergency Mobile Number',
+                        required: true,
+                        onChanged: (_) => _markDirty(),
+                      ),
+                    ],
                   ),
-                  _textField(
-                    _emergencyRelationController,
-                    'Relationship',
-                    required: true,
+                ),
+                const SizedBox(height: 16),
+                AppFormSection(
+                  icon: Icons.medical_information_outlined,
+                  title: 'Health & Clinical Profile',
+                  subtitle:
+                      'Insurance details, blood profile, allergies, and medical history',
+                  child: Column(
+                    children: [
+                      _responsiveRow([
+                        AppTextField(
+                          controller: _philHealthController,
+                          label: 'PhilHealth Identification (12 digits)',
+                          hint: 'XX-XXXXXXXXX-X',
+                          icon: Icons.credit_card_outlined,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(12),
+                          ],
+                          validator: (v) {
+                            final t = v?.trim() ?? '';
+                            if (t.isNotEmpty && t.length != 12) {
+                              return 'PhilHealth number must be 12 digits.';
+                            }
+                            return null;
+                          },
+                          onChanged: (_) => _markDirty(),
+                        ),
+                        AppDropdownField<String>(
+                          label: 'Blood Type',
+                          value: _bloodType,
+                          items: _bloodTypes
+                              .map(
+                                (b) =>
+                                    DropdownMenuItem(value: b, child: Text(b)),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() {
+                            _bloodType = v;
+                            _markDirty();
+                          }),
+                        ),
+                        _readOnlyField(
+                          label: 'Assigned Category',
+                          value: _category?.displayName ?? 'Auto based on age',
+                        ),
+                      ]),
+                      const SizedBox(height: 14),
+                      AppTextField(
+                        controller: _allergiesController,
+                        label: 'Known Allergies (Drugs, Food, Environmental)',
+                        hint: 'List allergies or enter "None Known"',
+                        icon: Icons.warning_amber_outlined,
+                        maxLines: 2,
+                        onChanged: (_) => _markDirty(),
+                      ),
+                      const SizedBox(height: 14),
+                      AppTextField(
+                        controller: _medicalHistoryController,
+                        label: 'Past Medical History & Chronic Conditions',
+                        hint: 'e.g. Hypertension, Type 2 Diabetes, Asthma',
+                        icon: Icons.history_outlined,
+                        maxLines: 2,
+                        onChanged: (_) => _markDirty(),
+                      ),
+                    ],
                   ),
-                  _textField(
-                    _emergencyNumberController,
-                    'Emergency Number',
-                    required: true,
-                  ),
-                ]),
-                const Divider(height: 28),
-                _responsiveRow([
-                  _textField(_philHealthController, 'PhilHealth Number'),
-                  _dropdown<String>(
-                    label: 'Blood Type',
-                    value: _bloodType,
-                    items: _bloodTypes,
-                    onChanged: (value) => setState(() => _bloodType = value),
-                  ),
-                  _readOnlyField(
-                    label: 'Category',
-                    value: _category?.displayName ?? 'Based on age',
-                  ),
-                ]),
-                const SizedBox(height: 12),
-                _textField(_allergiesController, 'Allergies', maxLines: 2),
-                const SizedBox(height: 12),
-                _textField(
-                  _medicalHistoryController,
-                  'Medical History',
-                  maxLines: 2,
                 ),
               ],
             ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : _handleCancel,
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: _isSaving ? null : _save,
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_outlined),
+            label: const Text('Save Changes'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton.icon(
-          onPressed: _save,
-          icon: const Icon(Icons.save_outlined),
-          label: const Text('Save'),
-        ),
-      ],
     );
   }
 
@@ -1227,101 +1473,6 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
     );
   }
 
-  Widget _textField(
-    TextEditingController controller,
-    String label, {
-    bool required = false,
-    bool readOnly = false,
-    int? maxLength,
-    int maxLines = 1,
-    List<TextInputFormatter>? formatters,
-    ValueChanged<String>? onChanged,
-  }) {
-    return TextFormField(
-      controller: controller,
-      readOnly: readOnly,
-      maxLength: maxLength,
-      maxLines: maxLines,
-      inputFormatters: formatters,
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
-        border: const OutlineInputBorder(),
-        counterText: '',
-      ),
-      validator: required
-          ? (value) => value == null || value.trim().isEmpty
-                ? '$label is required.'
-                : null
-          : null,
-    );
-  }
-
-  Widget _dropdown<T>({
-    required String label,
-    required T? value,
-    required List<T> items,
-    required ValueChanged<T?> onChanged,
-    String Function(T value)? itemLabel,
-    bool required = false,
-  }) {
-    return DropdownButtonFormField<T>(
-      initialValue: items.contains(value) ? value : null,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: required ? '$label *' : label,
-        border: const OutlineInputBorder(),
-      ),
-      items: items
-          .map(
-            (item) => DropdownMenuItem<T>(
-              value: item,
-              child: Text(
-                itemLabel?.call(item) ?? item.toString(),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          )
-          .toList(),
-      onChanged: onChanged,
-      validator: required
-          ? (value) => value == null ? '$label is required.' : null
-          : null,
-    );
-  }
-
-  Widget _datePickerField({
-    required String label,
-    required DateTime? value,
-    required ValueChanged<DateTime?> onChanged,
-  }) {
-    final text = value != null
-        ? '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}'
-        : 'Select Date';
-    return InkWell(
-      onTap: () async {
-        final now = DateTime.now();
-        final picked = await showDatePicker(
-          context: context,
-          initialDate: value ?? DateTime(now.year - 20, 1, 1),
-          firstDate: DateTime(1900),
-          lastDate: now,
-        );
-        if (picked != null) {
-          onChanged(picked);
-        }
-      },
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 20),
-        ),
-        child: Text(text, overflow: TextOverflow.ellipsis),
-      ),
-    );
-  }
-
   Widget _readOnlyField({required String label, required String value}) {
     return InputDecorator(
       decoration: InputDecoration(
@@ -1344,14 +1495,28 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final contact = _contactController.text.trim();
-    final emergency = _emergencyNumberController.text.trim();
-    if (!RegExp(r'^09\d{9}$').hasMatch(contact) ||
-        !RegExp(r'^09\d{9}$').hasMatch(emergency)) {
+    final rawContact = _contactController.text.trim();
+    final rawEmergency = _emergencyNumberController.text.trim();
+    final contactNormalized = normalizePhilippinePhone(rawContact);
+    final emergencyNormalized = normalizePhilippinePhone(rawEmergency);
+
+    if (contactNormalized.length != 11 || !contactNormalized.startsWith('09')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Contact numbers must start with 09 and contain 11 digits.',
+            'Patient contact number must contain 11 digits starting with 09 (e.g. 0906-985-6320).',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (emergencyNormalized.length != 11 ||
+        !emergencyNormalized.startsWith('09')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Emergency contact number must contain 11 digits starting with 09 (e.g. 0906-985-6320).',
           ),
         ),
       );
@@ -1369,59 +1534,65 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
       return;
     }
 
-    final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    final clearFields = <String>{
-      if (_middleInitialController.text.trim().isEmpty) 'middleName',
-      if (_suffix == 'None') 'suffix',
-      if (email.isEmpty) 'email',
-      if (_philHealthController.text.trim().isEmpty) 'philHealthNumber',
-      if (_bloodType == null) 'bloodType',
-      if (_allergiesController.text.trim().isEmpty) 'allergies',
-      if (_medicalHistoryController.text.trim().isEmpty) 'medicalHistory',
-    };
+    setState(() => _isSaving = true);
 
-    await ref
-        .read(patientRepositoryProvider)
-        .updatePatient(
-          id: widget.patient.id,
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
-          middleName: _middleInitialController.text.trim(),
-          suffix: _suffix,
-          dateOfBirth: _dateOfBirth ?? widget.patient.dateOfBirth,
-          gender: _gender,
-          civilStatus: _civilStatus,
-          contactNumber: contact,
-          email: email.isEmpty ? null : email,
-          address: _streetController.text.trim(),
-          barangay: _barangay,
-          purokSitio: _purok,
-          city: _municipality,
-          province: widget.patient.province ?? 'Surigao del Sur',
-          zipCode: _zipCodeController.text.trim(),
-          philHealthNumber: _philHealthController.text.trim().isEmpty
-              ? null
-              : _philHealthController.text.trim(),
-          bloodType: _bloodType,
-          emergencyContactName: _emergencyNameController.text.trim(),
-          emergencyContactNumber: emergency,
-          emergencyContactRelation: _emergencyRelationController.text.trim(),
-          allergies: _allergiesController.text.trim().isEmpty
-              ? null
-              : _allergiesController.text.trim(),
-          medicalHistory: _medicalHistoryController.text.trim().isEmpty
-              ? null
-              : _medicalHistoryController.text.trim(),
-          category: _category,
-          clearFields: clearFields,
-          userId: userId,
-        );
+    try {
+      final userId = ref.read(currentUserProvider)?.id ?? 'system';
+      final clearFields = <String>{
+        if (_middleInitialController.text.trim().isEmpty) 'middleName',
+        if (_suffix == 'None') 'suffix',
+        if (email.isEmpty) 'email',
+        if (_philHealthController.text.trim().isEmpty) 'philHealthNumber',
+        if (_bloodType == null) 'bloodType',
+        if (_allergiesController.text.trim().isEmpty) 'allergies',
+        if (_medicalHistoryController.text.trim().isEmpty) 'medicalHistory',
+      };
 
-    if (!mounted) return;
-    Navigator.pop(context, true);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Patient information saved')));
+      await ref
+          .read(patientRepositoryProvider)
+          .updatePatient(
+            id: widget.patient.id,
+            firstName: _firstNameController.text.trim(),
+            lastName: _lastNameController.text.trim(),
+            middleName: _middleInitialController.text.trim(),
+            suffix: _suffix,
+            dateOfBirth: _dateOfBirth ?? widget.patient.dateOfBirth,
+            gender: _gender,
+            civilStatus: _civilStatus,
+            contactNumber: formatPhilippinePhone(contactNormalized),
+            email: email.isEmpty ? null : email,
+            address: _streetController.text.trim(),
+            barangay: _barangay,
+            purokSitio: _purok,
+            city: _municipality,
+            province: widget.patient.province ?? 'Surigao del Sur',
+            zipCode: _zipCodeController.text.trim(),
+            philHealthNumber: _philHealthController.text.trim().isEmpty
+                ? null
+                : _philHealthController.text.trim(),
+            bloodType: _bloodType,
+            emergencyContactName: _emergencyNameController.text.trim(),
+            emergencyContactNumber: formatPhilippinePhone(emergencyNormalized),
+            emergencyContactRelation: _emergencyRelationController.text.trim(),
+            allergies: _allergiesController.text.trim().isEmpty
+                ? null
+                : _allergiesController.text.trim(),
+            medicalHistory: _medicalHistoryController.text.trim().isEmpty
+                ? null
+                : _medicalHistoryController.text.trim(),
+            category: _category,
+            clearFields: clearFields,
+            userId: userId,
+          );
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Patient information saved successfully')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 }
 
@@ -1806,6 +1977,7 @@ class _RecordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
@@ -1828,7 +2000,14 @@ class _RecordCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Text(details),
                 ],
@@ -1887,7 +2066,14 @@ class _ConsultationCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Text(details),
                   if (consultation.updatedAt != null) ...[
@@ -1974,26 +2160,37 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 160,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.62),
-                fontWeight: FontWeight.w600,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final labelWidth = (constraints.maxWidth * 0.4).clamp(96.0, 160.0);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: labelWidth,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.62),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  value?.isNotEmpty == true ? value! : 'N/A',
+                  softWrap: true,
+                ),
+              ),
+            ],
           ),
-          Expanded(child: Text(value?.isNotEmpty == true ? value! : 'N/A')),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -2099,7 +2296,13 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: Colors.grey),
+            Icon(
+              icon,
+              size: 56,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.38),
+            ),
             const SizedBox(height: 12),
             Text(
               title,
@@ -2110,7 +2313,11 @@ class _EmptyState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.65),
+              ),
             ),
           ],
         ),
@@ -2134,9 +2341,7 @@ String _shortDate(DateTime? date) {
 }
 
 String _formatDateTime(DateTime date) {
-  final hour = date.hour.toString().padLeft(2, '0');
-  final minute = date.minute.toString().padLeft(2, '0');
-  return '${_shortDate(date)} $hour:$minute';
+  return formatDateTime12h(date);
 }
 
 class _KeepAliveTab extends StatefulWidget {

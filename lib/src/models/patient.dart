@@ -284,6 +284,12 @@ class Patient {
     return parts.where((part) => part.trim().isNotEmpty).join(' ');
   }
 
+  String get initials {
+    final first = firstName.isNotEmpty ? firstName[0].toUpperCase() : '';
+    final last = lastName.isNotEmpty ? lastName[0].toUpperCase() : '';
+    return '$first$last'.isNotEmpty ? '$first$last' : 'P';
+  }
+
   int? get age {
     if (dateOfBirth == null) return null;
     final now = DateTime.now();

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
+import '../utils/date_time_format.dart';
 
 class AppNavigationItem {
   final String label;
@@ -182,7 +183,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
   Widget _buildSidebar(BuildContext context) {
     final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
     final width = _sidebarExpanded
         ? _sidebarExpandedWidth
         : _sidebarCollapsedWidth;
@@ -195,7 +195,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildSidebarHeader(context, primary),
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -216,75 +215,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           _buildSidebarToggle(context),
         ],
       ),
-    );
-  }
-
-  Widget _buildSidebarHeader(BuildContext context, Color primary) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        _sidebarExpanded ? 16 : 12,
-        18,
-        _sidebarExpanded ? 16 : 12,
-        14,
-      ),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.35),
-          ),
-        ),
-      ),
-      child: _sidebarExpanded
-          ? Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.local_hospital, color: primary, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'MedSentry',
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: primary,
-                        ),
-                      ),
-                      Text(
-                        widget.title,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.6,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : Center(
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.local_hospital, color: primary, size: 22),
-              ),
-            ),
     );
   }
 
@@ -369,12 +299,18 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 ),
               ),
               Text(
-                'RHU Madrid, Surigao del Sur',
+                ref.watch(currentUserProvider)?.isSuperAdmin == true
+                    ? 'Super Admin • All RHUs'
+                    : 'Healthcare Management Network',
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: Colors.white.withValues(alpha: 0.85),
                   fontSize: 11,
+                  fontWeight:
+                      ref.watch(currentUserProvider)?.isSuperAdmin == true
+                      ? FontWeight.w700
+                      : FontWeight.normal,
                 ),
               ),
             ],
@@ -394,29 +330,43 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         controller: _searchController,
         focusNode: _searchFocusNode,
         onSubmitted: _onSearch,
+        onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
-          hintText: enabled
-              ? 'Search patients...'
-              : 'Patient search unavailable',
+          hintText: 'Search patients by name, ID, or phone...',
           hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
           prefixIcon: Icon(
             Icons.search,
             color: Colors.white.withValues(alpha: 0.7),
           ),
-          suffixIcon: Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              'Ctrl+K',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 12,
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_searchController.text.isNotEmpty)
+                IconButton(
+                  tooltip: 'Clear search',
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.clear),
+                  color: Colors.white70,
+                ),
+              Container(
+                margin: const EdgeInsets.all(8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Ctrl+K',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 12,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.15),
@@ -686,9 +636,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   }
 
   String _formatTime(DateTime dateTime) {
-    final hour = dateTime.hour.toString().padLeft(2, '0');
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    return formatTime12h(dateTime);
   }
 
   String _formatDate(DateTime dateTime) {

@@ -45,6 +45,8 @@ credentials.txt
 *.db
 *_output.txt
 providers_analyze.txt
+scratch/
+supabase/.temp/
 
 # Symbolication related
 app.*.symbols

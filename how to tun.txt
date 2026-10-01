@@ -1,8 +1,44 @@
-1. flutter build web --release --base-href /
+MEDSENTRY - HOW TO RUN (PWA WEB)
+=====================================
 
-2. cd build/web
+METHOD 1: Run directly from project root (Recommended)
+------------------------------------------------------
+1. Build PWA:
+   flutter build web --release --base-href /
 
-3. npx http-server -p 8000
+2. Serve PWA:
+   npx serve build\web -s -p 8080
 
-Credentials formerly listed in this file were removed. Rotate any real credential
-that was present here, and do not commit passwords, PINs, or provider account details.
+------------------------------------------------------
+METHOD 2: If your terminal is inside build\web
+------------------------------------------------------
+If your terminal path shows: ...\MedSentry\build\web>
+
+Run:
+   npx serve -s -p 8080
+
+(Note: Do NOT type "build\web" when you are already inside build\web!)
+
+------------------------------------------------------
+METHOD 3: Using http-server
+------------------------------------------------------
+From project root:
+   npx http-server build/web -p 8080 -c-1
+
+From inside build\web:
+   npx http-server -p 8080 -c-1
+
+------------------------------------------------------
+LOGIN CREDENTIALS:
+------------------------------------------------------
+Super Admin (All RHUs):
+Email: superadmin@gmail.com
+Password: Password123!
+
+RHU Parang Admin:
+Email: admin@gmail.com
+Password: Password123!
+
+RHU Parang Staff:
+Email: staff@gmail.com
+Password: Password123!

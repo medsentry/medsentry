@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/clinic.dart';
 import '../models/queue.dart';
 import '../models/patient.dart';
 import '../models/audit_log.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
 import '../utils/context_extensions.dart';
+import '../utils/date_time_format.dart';
+import '../widgets/app_card.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/status_badge.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -16,6 +20,11 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(currentUserProvider);
+
+    if (currentUser?.isSuperAdmin == true) {
+      return _buildSuperAdminDashboard(context, ref, currentUser!);
+    }
+
     final syncStatus = ref.watch(syncStatusProvider);
     final dashboardStats = ref.watch(dashboardStatsProvider);
     final extendedStats = ref.watch(extendedDashboardStatsProvider);
@@ -295,7 +304,7 @@ class DashboardScreen extends ConsumerWidget {
                         '${stats.unreadNotifications} unread notification${stats.unreadNotifications == 1 ? '' : 's'}',
                     description:
                         'Review alerts for sync failures, security events, and pending tasks.',
-                    color: MedSentryColors.green700,
+                    color: colors.normal,
                   ),
                 ],
               );
@@ -317,7 +326,7 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 _buildCompactMetric(
                   context,
-                  'Active Staff',
+                  'Active Users',
                   stats.activeStaffCount.toString(),
                   Icons.groups_outlined,
                   () => context.go('/staff'),
@@ -474,7 +483,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   String _formatTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return formatTime12h(dt);
   }
 
   Widget _buildWelcomeHero(BuildContext context, String name) {
@@ -611,8 +620,8 @@ class DashboardScreen extends ConsumerWidget {
       ),
       _WorkflowAction(
         icon: Icons.admin_panel_settings_outlined,
-        title: 'Manage Staff',
-        description: 'Create staff accounts, assign roles, and manage access.',
+        title: 'Manage Users',
+        description: 'Create user accounts, assign roles, and manage access.',
         color: colors.neutral,
         onTap: () => context.go('/staff'),
       ),
@@ -823,17 +832,21 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 data.title,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.68),
+                ),
               ),
               if (data.subtitle != null) ...[
                 const SizedBox(height: 4),
                 Text(
                   data.subtitle!,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.grey[500]),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
                 ),
               ],
             ],
@@ -870,9 +883,11 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     description,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.68),
+                    ),
                   ),
                 ],
               ),
@@ -880,6 +895,408 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSuperAdminDashboard(
+    BuildContext context,
+    WidgetRef ref,
+    User currentUser,
+  ) {
+    final clinicsAsync = ref.watch(clinicsProvider);
+    final usersAsync = ref.watch(usersProvider);
+    final patientsAsync = ref.watch(patientsProvider);
+    final auditLogsAsync = ref.watch(auditLogsProvider);
+    final syncStatus = ref.watch(syncStatusProvider);
+    final colors = context.semanticColors;
+
+    final totalClinics = clinicsAsync.value?.length ?? 0;
+    final totalUsers = usersAsync.value?.length ?? 0;
+    final totalPatients = patientsAsync.value?.length ?? 0;
+    final totalLogs = auditLogsAsync.value?.length ?? 0;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSuperAdminHero(context, currentUser.fullName),
+          const SizedBox(height: 24),
+          Text(
+            'Provincial Overview',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              SizedBox(
+                width: 260,
+                child: _buildStatCard(
+                  context,
+                  _StatCardData(
+                    icon: Icons.domain_outlined,
+                    title: 'Rural Health Units',
+                    value: clinicsAsync.isLoading
+                        ? '...'
+                        : totalClinics.toString(),
+                    subtitle: 'Active healthcare facilities',
+                    color: colors.info,
+                    onTap: () => context.go('/rhus'),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 260,
+                child: _buildStatCard(
+                  context,
+                  _StatCardData(
+                    icon: Icons.badge_outlined,
+                    title: 'Platform Users',
+                    value: usersAsync.isLoading ? '...' : totalUsers.toString(),
+                    subtitle: 'RHU admins & health staff',
+                    color: colors.normal,
+                    onTap: () => context.go('/staff'),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 260,
+                child: _buildStatCard(
+                  context,
+                  _StatCardData(
+                    icon: Icons.people_outline,
+                    title: 'Total Patients',
+                    value: patientsAsync.isLoading
+                        ? '...'
+                        : totalPatients.toString(),
+                    subtitle: 'Registered across province',
+                    color: colors.neutral,
+                    onTap: () => context.go('/reports'),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 260,
+                child: _buildStatCard(
+                  context,
+                  _StatCardData(
+                    icon: Icons.shield_outlined,
+                    title: 'Audit Logs',
+                    value: auditLogsAsync.isLoading
+                        ? '...'
+                        : totalLogs.toString(),
+                    subtitle: 'Recorded security & audit events',
+                    color: colors.warning,
+                    onTap: () => context.go('/audit-logs'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildAlertCard(
+            context,
+            icon: Icons.verified_user_outlined,
+            title: 'Platform System Status: Operational',
+            description: syncStatus == SyncStatus.synced
+                ? 'All RHU municipal databases are synchronized and encrypted with cloud backup.'
+                : 'Synchronization process active. Cloud sync is maintaining data consistency.',
+            color: syncStatus == SyncStatus.synced
+                ? colors.normal
+                : colors.warning,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'System Management Workflows',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Platform configuration, municipality onboarding, and provincial oversight.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.68),
+            ),
+          ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth > 680 ? 2 : 1;
+              final width =
+                  (constraints.maxWidth - (12 * (columns - 1))) / columns;
+
+              final actions = [
+                _WorkflowAction(
+                  icon: Icons.domain_add_outlined,
+                  title: 'Manage Rural Health Units',
+                  description:
+                      'Create new RHU facilities, configure clinic codes, addresses, and scopes.',
+                  color: colors.info,
+                  onTap: () => context.go('/rhus'),
+                ),
+                _WorkflowAction(
+                  icon: Icons.manage_accounts_outlined,
+                  title: 'Manage RHU Administrators',
+                  description:
+                      'Provision municipal admin credentials and oversee staff assignments.',
+                  color: colors.normal,
+                  onTap: () => context.go('/staff'),
+                ),
+                _WorkflowAction(
+                  icon: Icons.query_stats_outlined,
+                  title: 'Provincial Health Reports',
+                  description:
+                      'Aggregate FHSIS summaries, morbidity data, and cross-facility analytics.',
+                  color: colors.neutral,
+                  onTap: () => context.go('/reports'),
+                ),
+                _WorkflowAction(
+                  icon: Icons.history_edu_outlined,
+                  title: 'Global Security & Audit Trail',
+                  description:
+                      'Audit access patterns, failed logins, credential changes, and system events.',
+                  color: colors.warning,
+                  onTap: () => context.go('/audit-logs'),
+                ),
+              ];
+
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: actions
+                    .map(
+                      (action) => SizedBox(
+                        width: width,
+                        child: _buildWorkflowCard(context, action),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          clinicsAsync.when(
+            data: (clinics) => _buildSuperAdminClinicsPanel(context, clinics),
+            loading: () => const AppSkeletonLoader(height: 140),
+            error: (_, _) => const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 24),
+          auditLogsAsync.when(
+            data: (logs) => _buildSuperAdminAuditPanel(context, logs),
+            loading: () => const AppSkeletonLoader(height: 140),
+            error: (_, _) => const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuperAdminHero(BuildContext context, String name) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: AppRadius.roundedLg,
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.22),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: AppRadius.roundedMd,
+            ),
+            child: const Icon(
+              Icons.shield_outlined,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Welcome back, $name',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.24),
+                        borderRadius: AppRadius.roundedPill,
+                      ),
+                      child: const Text(
+                        'SUPER ADMIN',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Provincial Health Command Center • MedSentry Platform Oversight',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuperAdminClinicsPanel(
+    BuildContext context,
+    List<Clinic> clinics,
+  ) {
+    return AppCard(
+      titleText: 'Rural Health Units (${clinics.length})',
+      subtitle: 'Registered municipality healthcare facilities in province',
+      headerAction: TextButton.icon(
+        onPressed: () => context.go('/rhus'),
+        icon: const Icon(Icons.open_in_new, size: 16),
+        label: const Text('Manage RHUs'),
+      ),
+      child: clinics.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text('No Rural Health Units registered yet.'),
+              ),
+            )
+          : Column(
+              children: clinics.take(5).map((clinic) {
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.12),
+                    child: Icon(
+                      Icons.local_hospital_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          clinic.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      StatusBadge.active(text: clinic.code),
+                    ],
+                  ),
+                  subtitle: Text(
+                    clinic.address?.isNotEmpty == true
+                        ? clinic.address!
+                        : (clinic.contactNumber ?? 'No contact info'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.chevron_right, size: 18),
+                  onTap: () => context.go('/rhus'),
+                );
+              }).toList(),
+            ),
+    );
+  }
+
+  Widget _buildSuperAdminAuditPanel(
+    BuildContext context,
+    List<AuditLog> activity,
+  ) {
+    return AppCard(
+      titleText: 'Global Audit Trail',
+      subtitle: 'Recent platform-wide transactions and security logs',
+      headerAction: TextButton.icon(
+        onPressed: () => context.go('/audit-logs'),
+        icon: const Icon(Icons.open_in_new, size: 16),
+        label: const Text('View All Logs'),
+      ),
+      child: activity.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: Text('No audit logs recorded yet.')),
+            )
+          : Column(
+              children: activity.take(5).map((log) {
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  leading: Icon(
+                    Icons.history,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 20,
+                  ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${log.actionDisplay} — ${log.entityType}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      StatusBadge.info(text: log.action.name.toUpperCase()),
+                    ],
+                  ),
+                  subtitle: Text(
+                    '${log.userName ?? log.userId} • ${_formatTime(log.timestamp)}',
+                  ),
+                );
+              }).toList(),
+            ),
     );
   }
 }

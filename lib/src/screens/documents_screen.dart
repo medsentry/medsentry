@@ -8,6 +8,7 @@ import '../models/patient.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/status_badge.dart';
 
 class DocumentsScreen extends ConsumerStatefulWidget {
   const DocumentsScreen({super.key});
@@ -617,7 +618,6 @@ class _DocumentCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final typeColor = _typeColor(document.type);
-    final statusColor = _statusColor(document.status);
     final date = document.scanDate ?? document.createdAt;
 
     return Card(
@@ -666,10 +666,7 @@ class _DocumentCard extends ConsumerWidget {
                               label: document.typeDisplay,
                               color: typeColor,
                             ),
-                            _Badge(
-                              label: document.statusDisplay,
-                              color: statusColor,
-                            ),
+                            StatusBadge.fromDocumentStatus(document.status),
                           ],
                         ),
                       ],
@@ -709,16 +706,18 @@ class _DocumentCard extends ConsumerWidget {
                           ),
                         ),
                       if (canManage)
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'delete',
                           child: ListTile(
                             leading: Icon(
                               Icons.delete_outline,
-                              color: Colors.red,
+                              color: Theme.of(context).colorScheme.error,
                             ),
                             title: Text(
                               'Delete',
-                              style: TextStyle(color: Colors.red),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
                             ),
                             contentPadding: EdgeInsets.zero,
                             dense: true,
@@ -964,15 +963,7 @@ Color _typeColor(DocumentType type) {
     DocumentType.prescription => const Color(0xFF8B5CF6),
     DocumentType.medicalCertificate => MedSentryColors.green800,
     DocumentType.referral => const Color(0xFFF59E0B),
-    DocumentType.other => Colors.grey,
-  };
-}
-
-Color _statusColor(DocumentStatus status) {
-  return switch (status) {
-    DocumentStatus.pending => const Color(0xFFF59E0B),
-    DocumentStatus.verified => const Color(0xFF16A34A),
-    DocumentStatus.archived => Colors.grey,
+    DocumentType.other => MedSentryColors.statusNeutral,
   };
 }
 

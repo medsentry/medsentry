@@ -17,14 +17,17 @@ import '../screens/audit_logs_screen.dart';
 import '../screens/archive_screen.dart';
 import '../screens/certificates_screen.dart';
 import '../screens/sync_screen.dart';
+import '../screens/rhu_management_screen.dart';
 import '../widgets/app_shell.dart';
 import '../providers/providers.dart';
 import '../models/user.dart';
 
 bool _canAccessRoute(User user, String path) {
-  if (path == '/dashboard' || path == '/profile') return true;
+  if (path == '/profile') return true;
+  if (path == '/dashboard') return true;
+  if (path.startsWith('/rhus')) return user.isSuperAdmin;
   if (path.startsWith('/settings')) return user.canManageSystemData;
-  if (path.startsWith('/staff')) return user.canManageSystemData;
+  if (path.startsWith('/staff')) return user.canManageStaffAccounts;
   if (path.startsWith('/audit-logs')) return user.canViewAuditLogs;
   if (path.startsWith('/archive')) return user.canManageArchive;
   if (path.startsWith('/sync')) return user.canSyncRecords;
@@ -86,8 +89,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) =>
-            LoginScreen(locked: state.uri.queryParameters['locked'] == '1'),
+        builder: (context, state) => Theme(
+          data: buildMedSentryTheme(
+            Brightness.light,
+            accentTheme: ref.read(accentThemeProvider),
+          ),
+          child: LoginScreen(
+            locked: state.uri.queryParameters['locked'] == '1',
+          ),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -252,6 +262,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (context, state) => _noTransitionPage(
                   state: state,
                   child: const ProfileScreen(),
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/rhus',
+                name: 'rhus',
+                pageBuilder: (context, state) => _noTransitionPage(
+                  state: state,
+                  child: const RhuManagementScreen(),
                 ),
               ),
             ],

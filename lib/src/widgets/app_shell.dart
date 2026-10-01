@@ -80,7 +80,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   );
 
   static const _staffNavigationItem = AppNavigationItem(
-    label: 'Staff',
+    label: 'Users',
     path: '/staff',
     icon: Icons.groups_outlined,
     selectedIcon: Icons.groups,
@@ -93,7 +93,24 @@ class _AppShellState extends ConsumerState<AppShell> {
     selectedIcon: Icons.settings,
   );
 
+  static const _rhuNavigationItem = AppNavigationItem(
+    label: 'RHU Units',
+    path: '/rhus',
+    icon: Icons.domain_outlined,
+    selectedIcon: Icons.domain,
+  );
+
   static const _fallbackNavigationItems = [_dashboardNavigationItem];
+
+  /// Super Admin: Dashboard, RHUs, Staff, Reports, Audit Logs, Settings
+  static const _superAdminNavigationItems = [
+    _dashboardNavigationItem,
+    _rhuNavigationItem,
+    _staffNavigationItem,
+    _reportsNavigationItem,
+    _auditNavigationItem,
+    _settingsNavigationItem,
+  ];
 
   /// Admin: Dashboard, Patients, Documents, Reports, Audit, Archive, Staff, Settings
   static const _adminNavigationItems = [
@@ -120,7 +137,8 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   List<AppNavigationItem> _navigationItems(User? user) {
     if (user == null) return _fallbackNavigationItems;
-    if (user.canManageSystemData) return _adminNavigationItems;
+    if (user.isSuperAdmin) return _superAdminNavigationItems;
+    if (user.isAdmin) return _adminNavigationItems;
     if (user.role == UserRole.staff) return _staffNavigationItems;
 
     return _staffNavigationItems;
@@ -152,6 +170,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   /// Maps sidebar destinations to [StatefulShellRoute] branch indices.
   int _branchIndexForPath(String path) {
+    if (path.startsWith('/rhus')) return 12;
     if (path.startsWith('/patients')) return 1;
     if (path.startsWith('/queue')) return 2;
     if (path.startsWith('/documents')) return 3;

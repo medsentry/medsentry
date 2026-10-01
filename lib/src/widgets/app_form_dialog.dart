@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+export 'forms/app_form_components.dart';
+
 /// A professional, reusable form dialog widget for MedSentry EMR.
 /// Provides consistent styling, responsive sizing, and professional
 /// presentation across all form-based modals in the application.
@@ -15,6 +17,7 @@ class AppFormDialog extends StatelessWidget {
   final EdgeInsets contentPadding;
   final bool showCloseButton;
   final Color? headerColor;
+  final VoidCallback? onClose;
 
   const AppFormDialog({
     super.key,
@@ -29,6 +32,7 @@ class AppFormDialog extends StatelessWidget {
     this.contentPadding = const EdgeInsets.fromLTRB(24, 0, 24, 24),
     this.showCloseButton = true,
     this.headerColor,
+    this.onClose,
   });
 
   @override
@@ -106,7 +110,7 @@ class AppFormDialog extends StatelessWidget {
                     ),
                     if (showCloseButton && !isLoading)
                       IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: onClose ?? () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close, color: Colors.white70),
                         tooltip: 'Close',
                       ),

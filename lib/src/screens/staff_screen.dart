@@ -16,20 +16,19 @@ class StaffScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Staff',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            'Users',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
-            'Manage staff accounts, roles, passwords, and access permissions.',
+            'Manage administrators and staff accounts for this RHU.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.72),
-                ),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -41,11 +40,8 @@ class StaffScreen extends ConsumerWidget {
                 child: StaffManagementPanel(
                   embedded: true,
                   onAddUser: () => _showStaffFormDialog(context, ref),
-                  onEditUser: (user) => _showStaffFormDialog(
-                    context,
-                    ref,
-                    existingUser: user,
-                  ),
+                  onEditUser: (user) =>
+                      _showStaffFormDialog(context, ref, existingUser: user),
                   onDeactivateUser: (user) =>
                       _confirmDeactivateStaff(context, ref, user),
                 ),
@@ -62,6 +58,19 @@ class StaffScreen extends ConsumerWidget {
     WidgetRef ref, {
     User? existingUser,
   }) async {
+    final currentUser = ref.read(currentUserProvider);
+    if (existingUser?.role == UserRole.superAdmin &&
+        currentUser?.isSuperAdmin != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Administrators cannot edit Super Administrator accounts.',
+          ),
+        ),
+      );
+      return;
+    }
+
     final saved = await showDialog<bool>(
       context: context,
       builder: (_) => StaffFormDialog(existingUser: existingUser),
@@ -69,7 +78,6 @@ class StaffScreen extends ConsumerWidget {
 
     if (saved == true) {
       ref.invalidate(usersProvider);
-      final currentUser = ref.read(currentUserProvider);
       if (currentUser != null && currentUser.id == existingUser?.id) {
         final refreshed = await ref
             .read(authRepositoryProvider)
@@ -87,6 +95,16 @@ class StaffScreen extends ConsumerWidget {
     User user,
   ) async {
     final currentUser = ref.read(currentUserProvider);
+    if (user.role == UserRole.superAdmin && currentUser?.isSuperAdmin != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Administrators cannot deactivate Super Administrator accounts.',
+          ),
+        ),
+      );
+      return;
+    }
     if (currentUser?.id == user.id) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -99,8 +117,10 @@ class StaffScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Deactivate Staff'),
-        content: Text('Deactivate ${user.fullName}? They will no longer be able to sign in.'),
+        title: const Text('Deactivate User'),
+        content: Text(
+          'Deactivate ${user.fullName}? They will no longer be able to sign in.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -123,9 +143,9 @@ class StaffScreen extends ConsumerWidget {
     ref.invalidate(usersProvider);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${user.fullName} deactivated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${user.fullName} deactivated')));
     }
   }
 }

@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../database/drift_database.dart';
 import '../database/simple_database.dart';
@@ -8,12 +11,14 @@ import '../services/database_seed_service.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/consultation_repository.dart';
 import '../repositories/patient_repository.dart';
+import '../repositories/clinic_repository.dart';
 import '../models/user.dart';
 import '../models/patient.dart';
 import '../models/queue.dart';
 import '../models/document.dart';
 import '../models/consultation.dart';
 import '../models/audit_log.dart';
+import '../models/clinic.dart';
 
 // Export other providers
 export 'theme_provider.dart';
@@ -85,11 +90,49 @@ QueueRepository queueRepository(Ref ref) {
   return QueueRepository(db);
 }
 
+final clinicRepositoryProvider = Provider<ClinicRepository>((ref) {
+  final db = ref.watch(databaseProvider);
+  final audit = ref.watch(auditServiceProvider);
+  return ClinicRepository(db, audit);
+});
+
+final clinicsProvider = FutureProvider<List<Clinic>>((ref) async {
+  ref.watch(databaseChangesProvider);
+  final currentUser = ref.watch(currentUserProvider);
+  final client = Supabase.instance.client;
+
+  // Local writes refresh this provider through databaseChangesProvider. This
+  // channel refreshes the RHU list when another signed-in device changes it.
+  if (currentUser != null && client.auth.currentSession != null) {
+    final channel = client
+        .channel('medsentry-clinics-${currentUser.id}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'clinics',
+          callback: (change) {
+            if (change.eventType == PostgresChangeEvent.delete) {
+              final id = change.oldRecord['id'];
+              if (id is String) {
+                unawaited(ref.read(databaseProvider).deleteClinic(id));
+              }
+            }
+            ref.invalidateSelf();
+          },
+        )
+        .subscribe();
+    ref.onDispose(() => client.removeChannel(channel));
+  }
+
+  return ref.watch(clinicRepositoryProvider).getClinics();
+});
+
 // Auth State
 final currentUserProvider = StateProvider<User?>((ref) => null);
 
 @Riverpod(keepAlive: true)
 Future<List<User>> users(Ref ref) async {
+  ref.watch(databaseChangesProvider);
   final repository = ref.watch(authRepositoryProvider);
   final u = await repository.getAllUsers();
   u.sort(
@@ -111,6 +154,14 @@ Future<List<Patient>> patients(Ref ref) {
   ref.watch(databaseChangesProvider);
   return ref.watch(databaseProvider).getAllPatients();
 }
+
+final patientSearchProvider = FutureProvider.family<List<Patient>, String>((
+  ref,
+  query,
+) async {
+  ref.watch(databaseChangesProvider);
+  return ref.watch(patientRepositoryProvider).searchPatients(query);
+});
 
 @Riverpod(keepAlive: true)
 Future<Patient?> patient(Ref ref, String patientId) {

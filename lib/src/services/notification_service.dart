@@ -69,7 +69,10 @@ class NotificationService {
     }
   }
 
-  Future<void> notifyIncompleteRecord(String patientId, String patientName) async {
+  Future<void> notifyIncompleteRecord(
+    String patientId,
+    String patientName,
+  ) async {
     await _upsertNotification(
       id: 'incomplete_$patientId',
       type: NotificationType.incompleteRecord,
@@ -93,6 +96,12 @@ class NotificationService {
     final existing = (await _db.getNotifications()).where((n) => n.id == id);
     if (existing.isNotEmpty) {
       final current = existing.first;
+      if (current.title == title &&
+          current.message == message &&
+          current.priority == priority &&
+          !current.isRead) {
+        return;
+      }
       await _db.insertNotification(
         current.copyWith(
           title: title,

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../database/simple_database.dart';
 import '../models/models.dart';
+import '../utils/report_date_filter.dart';
 import '../utils/file_exporter/file_exporter.dart';
 
 /// Service for generating DOH reports and analytics
@@ -10,6 +11,194 @@ class ReportService {
   final FileExporter _fileExporter = createFileExporter();
 
   ReportService(this._db);
+
+  Future<Map<String, dynamic>> generateRangeReport({
+    required String reportType,
+    required DateTime startDate,
+    required DateTime endDate,
+    required ReportGrouping grouping,
+  }) async {
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final end = DateTime(endDate.year, endDate.month, endDate.day);
+    if (end.isBefore(start)) {
+      throw ArgumentError('Report end date cannot be before its start date');
+    }
+    final today = DateTime.now();
+    if (end.isAfter(DateTime(today.year, today.month, today.day))) {
+      throw ArgumentError('Report dates cannot be in the future');
+    }
+    final endExclusive = end.add(const Duration(days: 1));
+    bool inRange(DateTime? value) {
+      return isWithinReportInterval(value, start, endExclusive);
+    }
+
+    final allPatients = await _db.getAllPatients(includeArchived: true);
+    final consultations = (await _db.getAllConsultations())
+        .where((item) => inRange(item.createdAt))
+        .toList();
+    final patients = allPatients
+        .where((item) => !item.isArchived && inRange(item.createdAt))
+        .toList();
+    final queueItems = (await _db.getQueueItems()).where((item) {
+      return item.status == QueueStatus.completed &&
+          inRange(item.endTime ?? item.updatedAt ?? item.arrivalTime);
+    }).toList();
+    final documents = (await _db.getDocuments())
+        .where((item) => inRange(item.createdAt))
+        .toList();
+
+    final patientById = {
+      for (final patient in allPatients) patient.id: patient,
+    };
+    final visitingPatientIds = consultations
+        .map((item) => item.patientId)
+        .toSet();
+    final newPatientIds = patients.map((item) => item.id).toSet();
+    final diagnosisCounts = <String, int>{};
+    for (final consultation in consultations) {
+      final code = consultation.icd10Code ?? 'Unspecified';
+      diagnosisCounts[code] = (diagnosisCounts[code] ?? 0) + 1;
+    }
+
+    final groupedConsultations = <String, int>{};
+    for (final consultation in consultations) {
+      final date = consultation.createdAt;
+      if (date == null) continue;
+      final bucket = reportBucketStart(date, grouping);
+      final key = _reportBucketLabel(bucket, grouping);
+      groupedConsultations[key] = (groupedConsultations[key] ?? 0) + 1;
+    }
+
+    final period = {
+      'start_date': start.toIso8601String(),
+      'end_date': end.toIso8601String(),
+      'grouping': grouping.name,
+    };
+    final summary = {
+      'new_patients': patients.length,
+      'patients_with_consultations': visitingPatientIds.length,
+      'returning_patients': visitingPatientIds.difference(newPatientIds).length,
+      'consultations': consultations.length,
+      'completed_visits': queueItems.length,
+      'documents': documents.length,
+    };
+    final common = {
+      'report_type': reportType,
+      'period': period,
+      'summary': summary,
+      'consultations_by_period': groupedConsultations,
+      'top_diagnoses': _getTopDiagnoses(consultations, 10),
+      'generated_at': DateTime.now().toIso8601String(),
+    };
+
+    switch (reportType) {
+      case 'Patient Statistics':
+        final genderCounts = <String, int>{};
+        final categoryCounts = <String, int>{};
+        for (final patient in patients) {
+          final gender = patient.gender ?? 'Unknown';
+          genderCounts[gender] = (genderCounts[gender] ?? 0) + 1;
+          final category = patient.category?.displayName ?? 'Uncategorized';
+          categoryCounts[category] = (categoryCounts[category] ?? 0) + 1;
+        }
+        return {
+          ...common,
+          'patients_by_gender': genderCounts,
+          'patients_by_category': categoryCounts,
+          'patient_records': patients
+              .map(
+                (patient) => {
+                  'id': patient.id,
+                  'name': patient.fullName,
+                  'age': patient.age,
+                  'gender': patient.gender ?? 'Unknown',
+                  'category': patient.category?.displayName ?? 'Uncategorized',
+                  'barangay': patient.barangay ?? 'Unspecified',
+                  'registered_at': patient.createdAt?.toIso8601String(),
+                },
+              )
+              .toList(),
+        };
+      case 'Disease Surveillance':
+        return {
+          ...common,
+          'disease_breakdown': diagnosisCounts,
+          'notifiable_diseases': _extractNotifiableDiseases(consultations),
+        };
+      case 'Medication Prescriptions':
+        final consultationById = {
+          for (final item in await _db.getAllConsultations()) item.id: item,
+        };
+        final prescriptions = (await _db.getAllPrescriptions()).where((item) {
+          final date =
+              item.createdAt ??
+              consultationById[item.consultationId]?.createdAt;
+          return inRange(date);
+        }).toList();
+        final medicationCounts = <String, int>{};
+        for (final prescription in prescriptions) {
+          medicationCounts[prescription.medicationName] =
+              (medicationCounts[prescription.medicationName] ?? 0) +
+              prescription.quantity;
+        }
+        return {
+          ...common,
+          'prescription_count': prescriptions.length,
+          'total_quantity': prescriptions.fold<int>(
+            0,
+            (total, item) => total + item.quantity,
+          ),
+          'quantity_by_medication': medicationCounts,
+          'prescriptions': prescriptions
+              .map(
+                (item) => {
+                  'medication': item.medicationName,
+                  'generic_name': item.genericName,
+                  'quantity': item.quantity,
+                  'dosage': item.dosage,
+                  'frequency': item.frequency,
+                  'consultation_id': item.consultationId,
+                },
+              )
+              .toList(),
+        };
+      default:
+        return {
+          ...common,
+          'consultation_records': consultations
+              .map(
+                (item) {
+                  final patient = patientById[item.patientId];
+                  return {
+                    'id': item.id,
+                    'patient_id': item.patientId,
+                    'patient_name': patient?.fullName ?? 'Unknown',
+                    'patient_age': patient?.age,
+                    'patient_gender': patient?.gender ?? 'Unknown',
+                    'patient_barangay': patient?.barangay ?? 'Unspecified',
+                    'date': item.createdAt?.toIso8601String(),
+                    'diagnosis_code': item.icd10Code,
+                    'diagnosis': item.icd10Description,
+                    'follow_up': item.isFollowUp,
+                    'created_by': item.createdBy,
+                  };
+                },
+              )
+              .toList(),
+        };
+    }
+  }
+
+  String _reportBucketLabel(DateTime date, ReportGrouping grouping) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return switch (grouping) {
+      ReportGrouping.day => '${date.year}-$month-$day',
+      ReportGrouping.week => 'Week of ${date.year}-$month-$day',
+      ReportGrouping.month => '${date.year}-$month',
+      ReportGrouping.year => '${date.year}',
+    };
+  }
 
   /// Generate monthly patient statistics report
   Future<Map<String, dynamic>> generateMonthlyStats({
@@ -270,6 +459,35 @@ class ReportService {
       debugPrint('Error sharing report: $e');
       throw Exception('Failed to share report: $e');
     }
+  }
+
+  /// Exports PDF report bytes to a user-selected location via native FilePicker / Save dialog.
+  /// Returns the saved file path on Desktop/Mobile or filename on Web, or null if the user cancelled.
+  Future<String?> exportReportToPdf({
+    required Uint8List pdfBytes,
+    required String filename,
+    String? dialogTitle,
+  }) async {
+    try {
+      final path = await _fileExporter.saveBinaryFile(
+        filename: filename,
+        bytes: pdfBytes,
+        dialogTitle: dialogTitle ?? 'Save Report PDF',
+        mimeType: 'application/pdf',
+      );
+      if (path != null) {
+        debugPrint('Report PDF saved to: $path');
+      }
+      return path;
+    } catch (e) {
+      debugPrint('Error exporting PDF report: $e');
+      throw Exception('Failed to export PDF report: $e');
+    }
+  }
+
+  /// Opens an exported report file with the system viewer.
+  Future<bool> openExportedReport(String filePath) async {
+    return _fileExporter.openFile(filePath);
   }
 
   /// Get summary statistics for dashboard

@@ -44,9 +44,11 @@ class ExtendedDashboardStats {
   });
 }
 
-final extendedDashboardStatsProvider =
-    FutureProvider<ExtendedDashboardStats>((ref) async {
+final extendedDashboardStatsProvider = FutureProvider<ExtendedDashboardStats>((
+  ref,
+) async {
   ref.keepAlive();
+  ref.watch(databaseChangesProvider);
   final db = ref.watch(databaseProvider);
   final user = ref.watch(currentUserProvider);
   final notificationTarget = user?.canManageSystemData == true
@@ -98,21 +100,26 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 });
 
 final systemSettingsProvider = FutureProvider<SystemSettings>((ref) async {
+  ref.watch(databaseChangesProvider);
   return ref.watch(databaseProvider).getSystemSettings();
 });
 
 final notificationsProvider =
-    FutureProvider.family<List<SystemNotification>, NotificationTarget?>(
-  (ref, target) async {
-    return ref.watch(databaseProvider).getNotifications(target: target);
-  },
-);
+    FutureProvider.family<List<SystemNotification>, NotificationTarget?>((
+      ref,
+      target,
+    ) async {
+      ref.watch(databaseChangesProvider);
+      return ref.watch(databaseProvider).getNotifications(target: target);
+    });
 
 final archivedPatientsProvider = FutureProvider<List<Patient>>((ref) async {
+  ref.watch(databaseChangesProvider);
   return ref.watch(databaseProvider).getArchivedPatients();
 });
 
 final auditLogsProvider = FutureProvider<List<AuditLog>>((ref) async {
+  ref.watch(databaseChangesProvider);
   return ref.watch(databaseProvider).getAllAuditLogs();
 });
 

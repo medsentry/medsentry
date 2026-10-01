@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/patient.dart';
 import '../models/queue.dart';
 import '../providers/providers.dart';
+import '../widgets/forms/app_form_components.dart';
 import '../widgets/loading_state.dart';
 
 class ConsultationScreen extends ConsumerStatefulWidget {
@@ -21,10 +22,24 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
   final _objectiveController = TextEditingController();
   final _assessmentController = TextEditingController();
   final _planController = TextEditingController();
-  final _icdSearchController = TextEditingController();
 
   String _selectedIcd10Code = '';
   bool _isLoading = false;
+  bool _isDirty = false;
+
+  void _markDirty() {
+    if (!_isDirty && mounted) {
+      setState(() => _isDirty = true);
+    }
+  }
+
+  Future<void> _handleCancel() async {
+    if (_isDirty) {
+      final discard = await confirmDiscardUnsavedChanges(context);
+      if (!discard || !mounted) return;
+    }
+    if (mounted) context.pop();
+  }
 
   @override
   void dispose() {
@@ -32,7 +47,6 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
     _objectiveController.dispose();
     _assessmentController.dispose();
     _planController.dispose();
-    _icdSearchController.dispose();
     super.dispose();
   }
 
@@ -40,25 +54,35 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
   Widget build(BuildContext context) {
     final queueItemAsync = ref.watch(queueItemProvider(widget.queueId));
 
-    return queueItemAsync.when(
-      data: (queueItem) {
-        final patientId = queueItem?.patientId ?? widget.queueId;
-        final patientAsync = ref.watch(patientProvider(patientId));
-
-        return patientAsync.when(
-          data: (patient) {
-            if (patient == null) {
-              return const Center(child: Text('Patient not found'));
-            }
-
-            return _buildConsultationForm(context, patient, queueItem);
-          },
-          loading: () => const LoadingState(),
-          error: (error, stack) => Center(child: Text('Error: $error')),
-        );
+    return PopScope(
+      canPop: !_isDirty || _isLoading,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldDiscard = await confirmDiscardUnsavedChanges(context);
+        if (shouldDiscard && context.mounted) {
+          context.pop();
+        }
       },
-      loading: () => const LoadingState(),
-      error: (error, stack) => Center(child: Text('Error: $error')),
+      child: queueItemAsync.when(
+        data: (queueItem) {
+          final patientId = queueItem?.patientId ?? widget.queueId;
+          final patientAsync = ref.watch(patientProvider(patientId));
+
+          return patientAsync.when(
+            data: (patient) {
+              if (patient == null) {
+                return const Center(child: Text('Patient not found'));
+              }
+
+              return _buildConsultationForm(context, patient, queueItem);
+            },
+            loading: () => const LoadingState(),
+            error: (error, stack) => Center(child: Text('Error: $error')),
+          );
+        },
+        loading: () => const LoadingState(),
+        error: (error, stack) => Center(child: Text('Error: $error')),
+      ),
     );
   }
 
@@ -158,7 +182,7 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: _isLoading ? null : () => context.pop(),
+                onPressed: _isLoading ? null : _handleCancel,
               ),
               const SizedBox(width: 8),
               Text(
@@ -172,7 +196,7 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
           Row(
             children: [
               OutlinedButton.icon(
-                onPressed: _isLoading ? null : () => context.pop(),
+                onPressed: _isLoading ? null : _handleCancel,
                 icon: const Icon(Icons.close),
                 label: const Text('Cancel'),
               ),
@@ -204,103 +228,58 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
     TextEditingController controller,
     IconData icon,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: controller,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: hint,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ],
+    return AppFormSection(
+      title: title,
+      icon: icon,
+      child: TextFormField(
+        controller: controller,
+        maxLines: 4,
+        onChanged: (_) => _markDirty(),
+        decoration: InputDecoration(
+          hintText: hint,
+          border: const OutlineInputBorder(),
         ),
       ),
     );
   }
 
   Widget _buildIcd10Selector(BuildContext context) {
-    final query = _icdSearchController.text.trim().toLowerCase();
-    final codes = _icd10Codes.where((code) {
-      if (query.isEmpty) return true;
-      return code.code.toLowerCase().contains(query) ||
-          code.description.toLowerCase().contains(query);
-    }).toList();
+    final selectedCode = _selectedIcd10Code.isNotEmpty
+        ? _icd10Codes.cast<_Icd10Code?>().firstWhere(
+            (c) => c?.code == _selectedIcd10Code,
+            orElse: () => null,
+          )
+        : null;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.manage_search_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'ICD-10 Diagnosis',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+    return AppFormSection(
+      title: 'ICD-10 Diagnosis',
+      icon: Icons.manage_search_outlined,
+      subtitle: 'Standardized clinical classification code',
+      child: AppSearchableDropdown<_Icd10Code>(
+        label: 'Diagnosis Classification',
+        hint: 'Search ICD-10 code (e.g. I10, J06, Hypertension)',
+        items: _icd10Codes,
+        value: selectedCode,
+        itemLabel: (code) => '${code.code} — ${code.description}',
+        itemSubtitle: (code) => code.description,
+        itemLeading: (code) => CircleAvatar(
+          radius: 14,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          child: Text(
+            code.code.substring(0, code.code.length.clamp(0, 3)),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _icdSearchController,
-              decoration: const InputDecoration(
-                hintText: 'Search code or diagnosis',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedIcd10Code.isEmpty
-                  ? null
-                  : _selectedIcd10Code,
-              hint: const Text('Select diagnosis code'),
-              items: codes.map((code) {
-                return DropdownMenuItem(
-                  value: code.code,
-                  child: Text('${code.code} - ${code.description}'),
-                );
-              }).toList(),
-              onChanged: (value) {
-                final selected = _icd10Codes.firstWhere(
-                  (code) => code.code == value,
-                  orElse: () => const _Icd10Code('', ''),
-                );
-                setState(() {
-                  _selectedIcd10Code = selected.code;
-                });
-              },
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-            ),
-          ],
+          ),
         ),
+        onChanged: (code) {
+          setState(() {
+            _selectedIcd10Code = code?.code ?? '';
+          });
+          _markDirty();
+        },
       ),
     );
   }
@@ -355,6 +334,8 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
 
       ref.invalidate(patientConsultationsProvider(patient.id));
       ref.invalidate(patientProvider(patient.id));
+
+      _isDirty = false;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

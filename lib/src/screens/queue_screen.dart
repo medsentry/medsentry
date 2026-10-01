@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/patient.dart';
 import '../models/queue.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
 import '../services/triage_service.dart';
-import '../widgets/loading_state.dart';
+import '../utils/context_extensions.dart';
+import '../utils/date_time_format.dart';
+import '../widgets/app_form_dialog.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/loading_state.dart';
+import '../widgets/status_badge.dart';
 
 class QueueScreen extends ConsumerStatefulWidget {
   const QueueScreen({super.key});
@@ -88,6 +93,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
               waitingCount: waitingCount,
               urgentCount: urgentCount,
               avgWaitMinutes: avgWait,
+              onAddToQueue: canManageQueue
+                  ? () => _showAddToQueueDialog(context, ref)
+                  : null,
             ),
             _QueueFiltersBar(
               searchQuery: _searchQuery,
@@ -146,19 +154,27 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context, User? currentUser) {
+    final canManageQueue = currentUser?.canManageQueue == true;
     final canRegisterPatients = currentUser?.canRegisterPatients == true;
 
     return EmptyState(
       icon: Icons.queue_outlined,
       title: 'Queue is currently empty',
-      message: 'Patients added from registration will appear here for triage and consultation.',
-      action: canRegisterPatients
-          ? ElevatedButton.icon(
-              onPressed: () => context.go('/patients'),
-              icon: const Icon(Icons.person_search_outlined),
-              label: const Text('Register or Search Patient'),
+      message:
+          'Patients added from registration will appear here for triage and consultation.',
+      action: canManageQueue
+          ? FilledButton.icon(
+              onPressed: () => _showAddToQueueDialog(context, ref),
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              label: const Text('Add Patient to Queue'),
             )
-          : null,
+          : (canRegisterPatients
+                ? ElevatedButton.icon(
+                    onPressed: () => context.go('/patients'),
+                    icon: const Icon(Icons.person_search_outlined),
+                    label: const Text('Register or Search Patient'),
+                  )
+                : null),
     );
   }
 
@@ -256,6 +272,184 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           ref.invalidate(patientQueueHistoryProvider(updatedItem.patientId));
         },
       ),
+    );
+  }
+
+  void _showAddToQueueDialog(BuildContext context, WidgetRef ref) {
+    if (!(ref.read(currentUserProvider)?.canManageQueue ?? false)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Only staff and administrators can add patients to the queue.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => _AddToQueueModal(
+        onSaved: () {
+          ref.invalidate(queueProvider);
+        },
+      ),
+    );
+  }
+}
+
+class _AddToQueueModal extends ConsumerStatefulWidget {
+  final VoidCallback onSaved;
+
+  const _AddToQueueModal({required this.onSaved});
+
+  @override
+  ConsumerState<_AddToQueueModal> createState() => _AddToQueueModalState();
+}
+
+class _AddToQueueModalState extends ConsumerState<_AddToQueueModal> {
+  final _formKey = GlobalKey<FormState>();
+  Patient? _selectedPatient;
+  final _purposeController = TextEditingController(
+    text: 'General Consultation',
+  );
+  final _complaintController = TextEditingController();
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _purposeController.dispose();
+    _complaintController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_selectedPatient == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please search and select a patient first.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final patient = _selectedPatient!;
+      final purpose = _purposeController.text.trim().isEmpty
+          ? 'General Consultation'
+          : _purposeController.text.trim();
+
+      await ref
+          .read(queueRepositoryProvider)
+          .addToQueue(patient.id, patient.fullName, purpose);
+
+      widget.onSaved();
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${patient.fullName} added to triage queue.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add to queue: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final patientsAsync = ref.watch(patientsProvider);
+    final patients = patientsAsync.valueOrNull ?? [];
+
+    return AppFormDialog(
+      icon: Icons.person_add_outlined,
+      title: 'Add Patient to Queue',
+      subtitle: 'Search registered patient and assign intake triage purpose',
+      maxWidth: 580,
+      isLoading: _isSaving,
+      loadingText: 'Adding patient to queue...',
+      content: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppFormSection(
+              icon: Icons.person_search_outlined,
+              title: 'Patient Selection',
+              subtitle: 'Search by full name, PhilHealth, contact, or barangay',
+              child: AppSearchableDropdown<Patient>(
+                label: 'Registered Patient',
+                hint: 'Search patient...',
+                required: true,
+                value: _selectedPatient,
+                items: patients,
+                itemLabel: (p) => '${p.fullName} (${p.id})',
+                itemSubtitle: (p) =>
+                    'Age: ${p.age ?? 'N/A'} • ${p.gender ?? ''} • Brgy. ${p.barangay ?? 'N/A'}',
+                itemLeading: (p) => CircleAvatar(
+                  radius: 18,
+                  child: Text(p.initials, style: const TextStyle(fontSize: 12)),
+                ),
+                searchMatcher: (p, q) {
+                  final haystack = [
+                    p.fullName,
+                    p.id,
+                    p.contactNumber ?? '',
+                    p.barangay ?? '',
+                    p.philHealthNumber ?? '',
+                  ].join(' ').toLowerCase();
+                  return haystack.contains(q);
+                },
+                onChanged: (p) => setState(() => _selectedPatient = p),
+              ),
+            ),
+            const SizedBox(height: 16),
+            AppFormSection(
+              icon: Icons.receipt_long_outlined,
+              title: 'Visit Details',
+              subtitle: 'Specify primary purpose of visit',
+              child: Column(
+                children: [
+                  AppTextField(
+                    controller: _purposeController,
+                    label: 'Purpose of Visit',
+                    required: true,
+                    icon: Icons.medical_services_outlined,
+                    hint: 'e.g. General Consultation, Prenatal, Immunization',
+                  ),
+                  const SizedBox(height: 12),
+                  AppTextField(
+                    controller: _complaintController,
+                    label: 'Chief Complaint (Optional)',
+                    icon: Icons.chat_bubble_outline,
+                    hint: 'Brief patient-reported primary symptom',
+                    maxLines: 2,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton.icon(
+          onPressed: _isSaving ? null : _submit,
+          icon: const Icon(Icons.check),
+          label: const Text('Add to Queue'),
+        ),
+      ],
     );
   }
 }
@@ -577,40 +771,68 @@ class _VitalsDialogState extends State<_VitalsDialog> {
   Widget build(BuildContext context) {
     final calculated = _calculatePreview();
 
-    return AlertDialog(
-      title: Text(
-        'Record Vitals - ${widget.queueItem.patientName ?? 'Patient'}',
-      ),
-      content: SizedBox(
-        width: 760,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildVitalsGrid(),
-              const SizedBox(height: 16),
-              _buildPainAndNormalControls(),
-              const SizedBox(height: 16),
-              _buildRedFlags(),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _notesController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Nurse notes',
-                  hintText: 'Brief intake notes or chief complaint details',
-                  border: OutlineInputBorder(),
-                ),
+    return AppFormDialog(
+      icon: Icons.monitor_heart_outlined,
+      title: 'Record Patient Vitals',
+      subtitle:
+          '${widget.queueItem.patientName ?? 'Patient'} • Queue ID: ${widget.queueItem.id}',
+      maxWidth: 820,
+      isLoading: _isSaving,
+      loadingText: 'Saving patient vitals & updating priority...',
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppFormSection(
+              icon: Icons.speed_outlined,
+              title: 'Vital Signs Measurements',
+              subtitle:
+                  'Input current measurements with live physiological range checks',
+              child: _buildVitalsGrid(),
+            ),
+            const SizedBox(height: 16),
+            AppFormSection(
+              icon: Icons.healing_outlined,
+              title: 'Pain Assessment & Stability',
+              subtitle:
+                  'Self-reported pain intensity scale and clinical observation',
+              child: _buildPainAndNormalControls(),
+            ),
+            const SizedBox(height: 16),
+            AppFormSection(
+              icon: Icons.warning_amber_rounded,
+              title: 'Emergency Red Flag Screening',
+              subtitle:
+                  'Check all present high-risk indicators to escalate triage priority',
+              child: _buildRedFlags(),
+            ),
+            const SizedBox(height: 16),
+            AppFormSection(
+              icon: Icons.note_alt_outlined,
+              title: 'Triage Intake Notes & Classification',
+              subtitle: 'Calculated BMI and priority categorization',
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _notesController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Nurse / Triage Notes',
+                      hintText: 'Brief intake notes or chief complaint details',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _TriagePreview(
+                    priority: calculated.priority,
+                    bmi: calculated.bmi,
+                    bmiCategory: calculated.bmiCategory,
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              _TriagePreview(
-                priority: calculated.priority,
-                bmi: calculated.bmi,
-                bmiCategory: calculated.bmiCategory,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       actions: [
@@ -641,13 +863,22 @@ class _VitalsDialogState extends State<_VitalsDialog> {
         final fields = [
           _VitalsField(
             label: 'Temperature',
-            suffix: 'C',
+            suffix: '°C',
             controller: _temperatureController,
+            contextualWarning: (v) {
+              final val = double.tryParse(v ?? '');
+              return ClinicalRanges.evaluateTemp(val);
+            },
           ),
           _VitalsField(
             label: 'BP Systolic',
             suffix: 'mmHg',
             controller: _systolicController,
+            contextualWarning: (v) {
+              final sys = double.tryParse(v ?? '');
+              final dia = double.tryParse(_diastolicController.text);
+              return ClinicalRanges.evaluateBP(sys, dia);
+            },
           ),
           _VitalsField(
             label: 'BP Diastolic',
@@ -658,16 +889,28 @@ class _VitalsDialogState extends State<_VitalsDialog> {
             label: 'Heart Rate',
             suffix: 'bpm',
             controller: _heartRateController,
+            contextualWarning: (v) {
+              final val = double.tryParse(v ?? '');
+              return ClinicalRanges.evaluateHR(val);
+            },
           ),
           _VitalsField(
             label: 'Resp. Rate',
-            suffix: '/min',
+            suffix: 'cpm',
             controller: _respiratoryRateController,
+            contextualWarning: (v) {
+              final val = double.tryParse(v ?? '');
+              return ClinicalRanges.evaluateRR(val);
+            },
           ),
           _VitalsField(
             label: 'Oxygen Sat.',
             suffix: '%',
             controller: _oxygenController,
+            contextualWarning: (v) {
+              final val = double.tryParse(v ?? '');
+              return ClinicalRanges.evaluateSpO2(val);
+            },
           ),
           _VitalsField(
             label: 'Weight',
@@ -781,8 +1024,9 @@ class _VitalsDialogState extends State<_VitalsDialog> {
   Future<void> _save() async {
     final validationError = _validateVitals();
     if (validationError != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(validationError)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(validationError)));
       return;
     }
 
@@ -988,23 +1232,44 @@ class _VitalsField extends StatelessWidget {
   final String label;
   final String suffix;
   final TextEditingController controller;
+  final String? Function(String?)? contextualWarning;
 
   const _VitalsField({
     required this.label,
     required this.suffix,
     required this.controller,
+    this.contextualWarning,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: label,
-        suffixText: suffix,
-        border: const OutlineInputBorder(),
-      ),
+    final warning = contextualWarning?.call(controller.text);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: label,
+            suffixText: suffix,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        if (warning != null && warning.isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Text(
+            warning,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.amber.shade900,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1107,37 +1372,45 @@ class _QueueDashboardHeader extends StatelessWidget {
   final int waitingCount;
   final int urgentCount;
   final int avgWaitMinutes;
+  final VoidCallback? onAddToQueue;
 
   const _QueueDashboardHeader({
     required this.totalCount,
     required this.waitingCount,
     required this.urgentCount,
     required this.avgWaitMinutes,
+    this.onAddToQueue,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Triage Queue',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Prioritized patient flow for staff intake and consultation',
-                      style: TextStyle(color: Colors.grey),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.65,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1145,26 +1418,34 @@ class _QueueDashboardHeader extends StatelessWidget {
               _MetricChip(
                 label: 'Total',
                 value: '$totalCount',
-                color: Colors.blue,
+                color: context.semanticColors.info,
               ),
               const SizedBox(width: 8),
               _MetricChip(
                 label: 'Waiting',
                 value: '$waitingCount',
-                color: Colors.orange,
+                color: context.semanticColors.warning,
               ),
               const SizedBox(width: 8),
               _MetricChip(
                 label: 'Urgent',
                 value: '$urgentCount',
-                color: Colors.red,
+                color: context.semanticColors.critical,
               ),
               const SizedBox(width: 8),
               _MetricChip(
                 label: 'Avg Wait',
                 value: '${avgWaitMinutes}m',
-                color: Colors.green,
+                color: context.semanticColors.normal,
               ),
+              if (onAddToQueue != null) ...[
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: onAddToQueue,
+                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+                  label: const Text('Add to Queue'),
+                ),
+              ],
             ],
           ),
         ],
@@ -1333,15 +1614,18 @@ class _QueueProfessionalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final waitColor = _getWaitTimeColor(waitMinutes);
-    final priorityColor = queueItem.prioritySemanticColor(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final waitColor = _getWaitTimeColor(context, waitMinutes);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -1382,36 +1666,34 @@ class _QueueProfessionalCard extends StatelessWidget {
                   children: [
                     Text(
                       queueItem.patientName ?? 'Unknown Patient',
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Arrived ${_formatTime(queueItem.arrivalTime)} • ${queueItem.purpose ?? 'General Consultation'}',
-                      style: const TextStyle(color: Colors.grey),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        _TagChip(
-                          label: queueItem.priorityDisplay.toUpperCase(),
-                          color: priorityColor,
-                        ),
-                        _TagChip(
-                          label: queueItem.statusDisplay,
-                          color: queueItem.statusSemanticColor(context),
-                        ),
-                        _TagChip(
-                          label: queueItem.vitalsTaken
+                        StatusBadge.fromPriority(queueItem.priority),
+                        StatusBadge.fromQueueStatus(queueItem.status),
+                        StatusBadge(
+                          text: queueItem.vitalsTaken
                               ? 'Vitals Complete'
                               : 'Vitals Pending',
-                          color: queueItem.vitalsTaken
-                              ? Colors.green
-                              : Colors.orange,
+                          status: queueItem.vitalsTaken
+                              ? BadgeStatus.normal
+                              : BadgeStatus.warning,
+                          icon: queueItem.vitalsTaken
+                              ? Icons.favorite
+                              : Icons.favorite_outline,
                         ),
                       ],
                     ),
@@ -1439,7 +1721,7 @@ class _QueueProfessionalCard extends StatelessWidget {
                   IconButton(
                     tooltip: 'Remove from queue',
                     icon: const Icon(Icons.remove_circle_outline),
-                    color: Colors.red,
+                    color: colorScheme.error,
                     onPressed: onRemove,
                   ),
                 ],
@@ -1451,42 +1733,14 @@ class _QueueProfessionalCard extends StatelessWidget {
     );
   }
 
-  static Color _getWaitTimeColor(int minutes) {
-    if (minutes < 30) return Colors.green;
-    if (minutes < 60) return Colors.orange;
-    return Colors.red;
+  static Color _getWaitTimeColor(BuildContext context, int minutes) {
+    final colors = context.semanticColors;
+    if (minutes < 30) return colors.normal;
+    if (minutes < 60) return colors.warning;
+    return colors.critical;
   }
 
   static String _formatTime(DateTime time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-}
-
-class _TagChip extends StatelessWidget {
-  final String label;
-  final Color color;
-
-  const _TagChip({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.24)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
+    return formatTime12h(time);
   }
 }

@@ -1,7 +1,33 @@
-enum UserRole { admin, staff }
+enum UserRole { superAdmin, admin, staff }
+
+extension UserRoleX on UserRole {
+  String get dbValue {
+    switch (this) {
+      case UserRole.superAdmin:
+        return 'super_admin';
+      case UserRole.admin:
+        return 'admin';
+      case UserRole.staff:
+        return 'staff';
+    }
+  }
+
+  static UserRole fromDbValue(String value) {
+    switch (value.toLowerCase()) {
+      case 'super_admin':
+      case 'superadmin':
+        return UserRole.superAdmin;
+      case 'admin':
+        return UserRole.admin;
+      default:
+        return UserRole.staff;
+    }
+  }
+}
 
 class User {
   final String id;
+  final String? clinicId;
   final String email;
   final String firstName;
   final String lastName;
@@ -20,6 +46,7 @@ class User {
 
   User({
     required this.id,
+    this.clinicId,
     required this.email,
     required this.firstName,
     required this.lastName,
@@ -54,45 +81,33 @@ class User {
     return 'U';
   }
 
+  bool get isSuperAdmin => role == UserRole.superAdmin;
   bool get isAdmin => role == UserRole.admin;
   bool get isStaff => role == UserRole.staff;
 
   bool get canRegisterPatients => isStaff;
-
   bool get canManageQueue => isStaff;
-
-  bool get canViewQueue => isAdmin || isStaff;
-
+  bool get canViewQueue => isStaff;
   bool get canRecordVitals => isStaff;
-
   bool get canConsult => isStaff;
-
   bool get canManageDocuments => isAdmin || isStaff;
-
-  bool get canManageSystemData => isAdmin;
-
-  bool get canViewAuditLogs => isAdmin;
-
+  bool get canManageSystemData => isSuperAdmin || isAdmin;
+  bool get canViewAuditLogs => isSuperAdmin || isAdmin;
   bool get canManageArchive => isAdmin;
-
-  bool get canManageStaffAccounts => isAdmin;
-
-  bool get canManageSecurity => isAdmin;
-
+  bool get canManageStaffAccounts => isSuperAdmin || isAdmin;
+  bool get canManageSecurity => isSuperAdmin || isAdmin;
   bool get canManageBackupSync => isAdmin;
-
   bool get canSyncRecords => isAdmin || isStaff;
-
   bool get canGenerateCertificates => isStaff;
-
-  bool get canAccessPatientRecords => isAdmin || isStaff;
-
-  bool get canGenerateReports => isAdmin || isStaff;
+  bool get canAccessPatientRecords => isSuperAdmin || isAdmin || isStaff;
+  bool get canGenerateReports => isSuperAdmin || isAdmin || isStaff;
 
   String get homePath => '/dashboard';
 
   User copyWith({
     String? id,
+    String? clinicId,
+    bool clearClinicId = false,
     String? email,
     String? firstName,
     String? lastName,
@@ -111,6 +126,7 @@ class User {
   }) {
     return User(
       id: id ?? this.id,
+      clinicId: clearClinicId ? null : (clinicId ?? this.clinicId),
       email: email ?? this.email,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
@@ -132,10 +148,11 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      if (clinicId != null) 'clinic_id': clinicId,
       'email': email,
       'first_name': firstName,
       'last_name': lastName,
-      'role': role.name,
+      'role': role.dbValue,
       'license_number': licenseNumber,
       'specialization': specialization,
       'contact_number': contactNumber,
@@ -153,16 +170,17 @@ class User {
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as String,
+      clinicId: json['clinic_id'] as String?,
       email: json['email'] as String,
       firstName: json['first_name'] as String,
       lastName: json['last_name'] as String,
-      role: _roleFromJson(json['role'] as String),
+      role: UserRoleX.fromDbValue(json['role'] as String? ?? 'staff'),
       licenseNumber: json['license_number'] as String?,
       specialization: json['specialization'] as String?,
       contactNumber: json['contact_number'] as String?,
       profileImageUrl: json['profile_image_url'] as String?,
-      isActive: json['is_active'] as bool,
-      pinEnabled: json['pin_enabled'] as bool,
+      isActive: json['is_active'] as bool? ?? true,
+      pinEnabled: json['pin_enabled'] as bool? ?? false,
       pinHash: json['pin_hash'] as String?,
       lastLoginAt: json['last_login_at'] != null
           ? DateTime.parse(json['last_login_at'] as String)
@@ -175,19 +193,6 @@ class User {
           : null,
       syncStatus: json['sync_status'] as int?,
     );
-  }
-
-  static UserRole _roleFromJson(String value) {
-    switch (value) {
-      case 'admin':
-        return UserRole.admin;
-      case 'doctor':
-      case 'nurse':
-      case 'staff':
-        return UserRole.staff;
-      default:
-        return UserRole.staff;
-    }
   }
 
   @override
