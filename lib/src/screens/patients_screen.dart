@@ -11,6 +11,7 @@ import '../utils/patient_address_data.dart';
 import '../widgets/app_form_dialog.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/layout/responsive_layout.dart';
 
 class PatientsScreen extends ConsumerStatefulWidget {
   final bool openAddPatient;
@@ -97,8 +98,9 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
         : ref.watch(patientSearchProvider(query));
     final canRegisterPatients = _canRegisterPatients;
 
-    return Column(
-      children: [
+    return ResponsiveContentContainer(
+      child: Column(
+        children: [
         Expanded(
           child: patientsAsync.when(
             skipLoadingOnReload: true,
@@ -203,7 +205,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           ),
         ),
       ],
-    );
+    ),
+  );
   }
 
   bool get _hasActiveFilters =>

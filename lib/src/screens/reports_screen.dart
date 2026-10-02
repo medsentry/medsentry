@@ -9,6 +9,7 @@ import '../providers/providers.dart';
 import '../services/report_service.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/report_export_dialog.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 import '../utils/report_date_filter.dart';
@@ -41,9 +42,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final generatedReportsAsync = ref.watch(generatedReportsProvider);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: ResponsiveLayout.pagePadding(context),
+      child: ResponsiveContentContainer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Reports & Analytics',
@@ -176,7 +178,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   String _formatDate(DateTime date) => DateFormat('MMM d, yyyy').format(date);
@@ -919,7 +922,25 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        ...children,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 768;
+            if (!isDesktop || children.length <= 1) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: children,
+              );
+            }
+            final width = (constraints.maxWidth - 12) / 2;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: children
+                  .map((child) => SizedBox(width: width, child: child))
+                  .toList(),
+            );
+          },
+        ),
       ],
     );
   }
@@ -975,6 +996,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     IconData icon,
     VoidCallback onTap,
   ) {
+    final isMobile = context.isMobile;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -987,26 +1010,78 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               '${_formatDate(report.startDate!)} to ${_formatDate(report.endDate!)}',
           ].join(' - '),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.visibility),
-              tooltip: 'View',
-              onPressed: onTap,
-            ),
-            IconButton(
-              icon: const Icon(Icons.download),
-              tooltip: 'Download',
-              onPressed: () => _downloadReport(context, report),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: 'Delete',
-              onPressed: () => _deleteReport(context, report),
-            ),
-          ],
-        ),
+        trailing: isMobile
+            ? PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                tooltip: 'Report options',
+                onSelected: (value) {
+                  switch (value) {
+                    case 'view':
+                      onTap();
+                      break;
+                    case 'download':
+                      _downloadReport(context, report);
+                      break;
+                    case 'delete':
+                      _deleteReport(context, report);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'view',
+                    child: ListTile(
+                      leading: Icon(Icons.visibility_outlined),
+                      title: Text('View Report'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'download',
+                    child: ListTile(
+                      leading: Icon(Icons.download_outlined),
+                      title: Text('Download'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.delete_outline,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      title: Text(
+                        'Delete',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.visibility),
+                    tooltip: 'View',
+                    onPressed: onTap,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.download),
+                    tooltip: 'Download',
+                    onPressed: () => _downloadReport(context, report),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Delete',
+                    onPressed: () => _deleteReport(context, report),
+                  ),
+                ],
+              ),
         onTap: onTap,
       ),
     );

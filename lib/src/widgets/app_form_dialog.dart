@@ -40,12 +40,21 @@ class AppFormDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final primary = headerColor ?? theme.colorScheme.primary;
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final responsiveMaxWidth = screenWidth < 600
+        ? screenWidth * 0.94
+        : screenWidth <= 1024
+            ? screenWidth * 0.78
+            : (maxWidth ?? 560.0);
+
     return Dialog(
       backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: maxWidth ?? 520,
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxWidth: responsiveMaxWidth,
+          maxHeight: screenHeight * 0.88,
         ),
         child: Card(
           elevation: 8,
@@ -160,7 +169,7 @@ class AppFormDialog extends StatelessWidget {
                   ),
                 ),
 
-                // Actions
+                // Actions (Wrap ensures buttons never overflow on narrow screens)
                 if (actions != null && actions!.isNotEmpty)
                   Container(
                     decoration: BoxDecoration(
@@ -173,9 +182,15 @@ class AppFormDialog extends StatelessWidget {
                         ),
                       ),
                     ),
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: actions!,
                     ),
                   ),

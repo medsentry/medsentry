@@ -32,4 +32,35 @@ extension BuildContextExtensions on BuildContext {
     }
     return extension;
   }
+
+  /// Responsive layout helpers
+  bool get isMobile => MediaQuery.sizeOf(this).width < 600.0;
+  bool get isTablet {
+    final width = MediaQuery.sizeOf(this).width;
+    return width >= 600.0 && width <= 1024.0;
+  }
+  bool get isDesktop => MediaQuery.sizeOf(this).width > 1024.0;
+  bool get isUltraWide => MediaQuery.sizeOf(this).width > 1600.0;
+
+  double get screenWidth => MediaQuery.sizeOf(this).width;
+  double get screenHeight => MediaQuery.sizeOf(this).height;
+
+  /// Returns responsive value based on screen width
+  T responsiveValue<T>({
+    required T mobile,
+    T? tablet,
+    T? desktop,
+    T? ultraWide,
+  }) {
+    final width = screenWidth;
+    if (width < 600.0) {
+      return mobile;
+    } else if (width <= 1024.0) {
+      return tablet ?? desktop ?? mobile;
+    } else if (width <= 1600.0) {
+      return desktop ?? tablet ?? mobile;
+    } else {
+      return ultraWide ?? desktop ?? tablet ?? mobile;
+    }
+  }
 }

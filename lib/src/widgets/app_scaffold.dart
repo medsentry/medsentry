@@ -6,6 +6,7 @@ import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/date_time_format.dart';
+import 'layout/responsive_layout.dart';
 
 class AppNavigationItem {
   final String label;
@@ -100,6 +101,18 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final syncStatus = ref.watch(syncStatusProvider);
+    final isMobile = ResponsiveLayout.isMobile(context);
+    final isTablet = ResponsiveLayout.isTablet(context);
+
+    if (isMobile) {
+      return Scaffold(
+        appBar: _buildMobileAppBar(context, user, syncStatus),
+        drawer: _buildDrawer(context, user, syncStatus),
+        bottomNavigationBar: _buildMobileBottomNav(context),
+        body: SafeArea(child: widget.body),
+        floatingActionButton: widget.floatingActionButton,
+      );
+    }
 
     return Scaffold(
       appBar: PreferredSize(
@@ -122,14 +135,14 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final isSmall = constraints.maxWidth < 600;
-                  final spacing = isSmall ? 8.0 : 24.0;
+                  final isCompact = constraints.maxWidth < 800;
+                  final spacing = isCompact ? 12.0 : 24.0;
 
                   return Row(
                     children: [
                       // LEFT ZONE: Identity & Context
                       Flexible(
-                        flex: isSmall ? 1 : 0,
+                        flex: isCompact ? 1 : 0,
                         child: _buildIdentityZone(context),
                       ),
                       SizedBox(width: spacing),
@@ -144,7 +157,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                       SizedBox(width: spacing),
                       // RIGHT ZONE: Status & User Profile (flexible to avoid overflow)
                       Flexible(
-                        flex: isSmall ? 1 : 0,
+                        flex: isCompact ? 1 : 0,
                         child: _buildStatusZone(context, user, syncStatus),
                       ),
                     ],
@@ -157,7 +170,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       ),
       body: Row(
         children: [
-          _buildSidebar(context),
+          // On tablet, lock sidebar to collapsed rail (72px) with tooltips
+          _buildSidebar(context, forceCollapsed: isTablet),
           VerticalDivider(
             thickness: 1,
             width: 1,
@@ -170,8 +184,348 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
+  PreferredSizeWidget _buildMobileAppBar(
+    BuildContext context,
+    User? user,
+    SyncStatus syncStatus,
+  ) {
+    return AppBar(
+      backgroundColor:
+          Theme.of(context).appBarTheme.backgroundColor ??
+          Theme.of(context).primaryColor,
+      leading: Builder(
+        builder: (drawerContext) => IconButton(
+          tooltip: 'Open menu',
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: () => Scaffold.of(drawerContext).openDrawer(),
+        ),
+      ),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.local_hospital,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'MedSentry',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        if (user?.canAccessPatientRecords == true)
+          IconButton(
+            tooltip: 'Search Patients',
+            icon: const Icon(Icons.search, color: Colors.white),
+            onPressed: () => _showMobileSearchDialog(context),
+          ),
+        _SyncStatusDropdown(status: syncStatus),
+        const SizedBox(width: 4),
+        if (user != null) _buildMobileUserAvatar(context, user),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildMobileUserAvatar(BuildContext context, User user) {
+    return PopupMenuButton<String>(
+      tooltip: 'Account Menu',
+      offset: const Offset(0, 48),
+      child: CircleAvatar(
+        radius: 16,
+        backgroundColor: Colors.white.withValues(alpha: 0.25),
+        child: Text(
+          user.initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          enabled: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user.displayName,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                user.roleDisplay,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'profile',
+          child: Row(
+            children: [
+              Icon(Icons.person_outline),
+              SizedBox(width: 8),
+              Text('My Profile'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Log Out', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+      onSelected: (value) async {
+        if (value == 'profile') {
+          context.push('/profile');
+        } else if (value == 'logout') {
+          try {
+            await ref.read(authRepositoryProvider).logout();
+            ref.read(currentUserProvider.notifier).state = null;
+            if (context.mounted) {
+              context.go('/login');
+            }
+          } catch (e) {
+            AppNotification.error(
+              title: 'Logout Failed',
+              message: '$e',
+            );
+          }
+        }
+      },
+    );
+  }
+
+  Widget? _buildMobileBottomNav(BuildContext context) {
+    // Only display on mobile if there are enough core items
+    if (widget.navigationItems.length < 3) return null;
+
+    final primaryItems = widget.navigationItems.take(4).toList();
+    final currentIndex = widget.currentIndex;
+    final selectedIndex = currentIndex < 4 ? currentIndex : 4;
+
+    return NavigationBar(
+      selectedIndex: selectedIndex,
+      height: 64,
+      onDestinationSelected: (index) {
+        if (index == 4) {
+          // Open drawer for extra destinations
+          Scaffold.of(context).openDrawer();
+          return;
+        }
+        _onNavigationSelected(index, context);
+      },
+      destinations: [
+        ...primaryItems.map(
+          (item) => NavigationDestination(
+            icon: Icon(item.icon),
+            selectedIcon: Icon(item.selectedIcon),
+            label: item.label,
+          ),
+        ),
+        const NavigationDestination(
+          icon: Icon(Icons.menu),
+          selectedIcon: Icon(Icons.menu_open),
+          label: 'More',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDrawer(
+    BuildContext context,
+    User? user,
+    SyncStatus syncStatus,
+  ) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              color: primary,
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.local_hospital,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'MedSentry',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 19,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              user?.isSuperAdmin == true
+                                  ? 'Super Admin Network'
+                                  : 'Rural Health Unit',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    user?.displayName ?? 'User',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    user?.email ?? '',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                itemCount: widget.navigationItems.length,
+                itemBuilder: (context, index) {
+                  final item = widget.navigationItems[index];
+                  final selected = widget.currentIndex == index;
+                  return _SidebarNavItem(
+                    item: item,
+                    selected: selected,
+                    expanded: true,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _onNavigationSelected(index, context);
+                    },
+                  );
+                },
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('My Profile'),
+              onTap: () {
+                Navigator.of(context).pop();
+                context.push('/profile');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Log Out', style: TextStyle(color: Colors.red)),
+              onTap: () async {
+                Navigator.of(context).pop();
+                try {
+                  await ref.read(authRepositoryProvider).logout();
+                  ref.read(currentUserProvider.notifier).state = null;
+                  if (context.mounted) {
+                    context.go('/login');
+                  }
+                } catch (e) {
+                  AppNotification.error(
+                    title: 'Logout Failed',
+                    message: '$e',
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showMobileSearchDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Search Patients'),
+        content: TextField(
+          controller: _searchController,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Enter patient name or ID...',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.clear),
+              onPressed: () => _searchController.clear(),
+            ),
+          ),
+          onSubmitted: (query) {
+            Navigator.of(dialogCtx).pop();
+            _onSearch(query);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              _onSearch(_searchController.text);
+            },
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onNavigationSelected(int index, BuildContext context) {
-    // If onTabChanged is provided, use it (for persistent tabs)
     if (widget.onTabChanged != null) {
       widget.onTabChanged!(index);
     } else {
@@ -181,9 +535,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     }
   }
 
-  Widget _buildSidebar(BuildContext context) {
+  Widget _buildSidebar(BuildContext context, {bool forceCollapsed = false}) {
     final theme = Theme.of(context);
-    final width = _sidebarExpanded
+    final isExpanded = !forceCollapsed && _sidebarExpanded;
+    final width = isExpanded
         ? _sidebarExpandedWidth
         : _sidebarCollapsedWidth;
 
@@ -205,14 +560,16 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 return _SidebarNavItem(
                   item: item,
                   selected: selected,
-                  expanded: _sidebarExpanded,
+                  expanded: isExpanded,
                   onTap: () => _onNavigationSelected(index, context),
                 );
               },
             ),
           ),
-          const Divider(height: 1),
-          _buildSidebarToggle(context),
+          if (!forceCollapsed) ...[
+            const Divider(height: 1),
+            _buildSidebarToggle(context),
+          ],
         ],
       ),
     );
@@ -685,51 +1042,55 @@ class _SidebarNavItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
+        mouseCursor: SystemMouseCursors.click,
         onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: expanded ? 12 : 0,
-            vertical: 10,
-          ),
-          child: expanded
-              ? Row(
-                  children: [
-                    Icon(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: expanded ? 12 : 0,
+              vertical: 8,
+            ),
+            child: expanded
+                ? Row(
+                    children: [
+                      Icon(
+                        selected ? item.selectedIcon : item.icon,
+                        size: 22,
+                        color: foreground,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          item.label,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: foreground,
+                          ),
+                        ),
+                      ),
+                      if (selected)
+                        Container(
+                          width: 4,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                    ],
+                  )
+                : Center(
+                    child: Icon(
                       selected ? item.selectedIcon : item.icon,
                       size: 22,
                       color: foreground,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        item.label,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: selected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: foreground,
-                        ),
-                      ),
-                    ),
-                    if (selected)
-                      Container(
-                        width: 4,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: primary,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                  ],
-                )
-              : Center(
-                  child: Icon(
-                    selected ? item.selectedIcon : item.icon,
-                    size: 22,
-                    color: foreground,
                   ),
-                ),
+          ),
         ),
       ),
     );

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:medsentry/src/config/app_design_tokens.dart';
 import 'package:medsentry/src/providers/theme_provider.dart';
 
 void main() {
@@ -15,20 +14,34 @@ void main() {
       expect(AppSpacing.xxxl, equals(32.0));
     });
 
-    test('AppRadius constants provide consistent healthcare rounded corners', () {
-      expect(AppRadius.xs, equals(4.0));
-      expect(AppRadius.sm, equals(6.0));
-      expect(AppRadius.md, equals(10.0));
-      expect(AppRadius.lg, equals(14.0));
-      expect(AppRadius.xl, equals(20.0));
-      expect(AppRadius.pill, equals(999.0));
-    });
+    test(
+      'AppRadius constants provide consistent healthcare rounded corners',
+      () {
+        expect(AppRadius.xs, equals(4.0));
+        expect(AppRadius.sm, equals(6.0));
+        expect(AppRadius.md, equals(10.0));
+        expect(AppRadius.lg, equals(14.0));
+        expect(AppRadius.xl, equals(20.0));
+        expect(AppRadius.pill, equals(999.0));
+      },
+    );
 
     test('AppAccentTheme contains all 7 healthcare palettes', () {
       expect(AppAccentTheme.values.length, equals(7));
 
       final ids = AppAccentTheme.values.map((t) => t.id).toSet();
-      expect(ids, containsAll(['emerald', 'blue', 'teal', 'indigo', 'purple', 'amber', 'rose']));
+      expect(
+        ids,
+        containsAll([
+          'emerald',
+          'blue',
+          'teal',
+          'indigo',
+          'purple',
+          'amber',
+          'rose',
+        ]),
+      );
 
       expect(AppAccentTheme.fromId('blue'), equals(AppAccentTheme.blue));
       expect(AppAccentTheme.fromId('unknown'), equals(AppAccentTheme.emerald));
@@ -63,14 +76,29 @@ void main() {
       expect(colors.inactive, equals(colors.neutral));
     });
 
-    test('buildMedSentryTheme produces valid light and dark ThemeData with accents', () {
-      final lightTheme = buildMedSentryTheme(Brightness.light, accentTheme: AppAccentTheme.teal);
-      expect(lightTheme.brightness, equals(Brightness.light));
-      expect(lightTheme.colorScheme.primary, equals(AppAccentTheme.teal.primaryColor));
+    test(
+      'buildMedSentryTheme produces valid light and dark ThemeData with accents',
+      () {
+        final lightTheme = buildMedSentryTheme(
+          Brightness.light,
+          accentTheme: AppAccentTheme.teal,
+        );
+        expect(lightTheme.brightness, equals(Brightness.light));
+        expect(
+          lightTheme.colorScheme.primary,
+          equals(AppAccentTheme.teal.primaryColor),
+        );
 
-      final darkTheme = buildMedSentryTheme(Brightness.dark, accentTheme: AppAccentTheme.indigo);
-      expect(darkTheme.brightness, equals(Brightness.dark));
-      expect(darkTheme.colorScheme.primary, equals(AppAccentTheme.indigo.darkPrimaryColor));
-    });
+        final darkTheme = buildMedSentryTheme(
+          Brightness.dark,
+          accentTheme: AppAccentTheme.indigo,
+        );
+        expect(darkTheme.brightness, equals(Brightness.dark));
+        expect(
+          darkTheme.colorScheme.primary,
+          equals(AppAccentTheme.indigo.darkPrimaryColor),
+        );
+      },
+    );
   });
 }

@@ -13,6 +13,7 @@ import '../widgets/app_form_dialog.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/layout/responsive_layout.dart';
 
 class QueueScreen extends ConsumerStatefulWidget {
   const QueueScreen({super.key});
@@ -86,8 +87,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           return _buildEmptyState(context, currentUser);
         }
 
-        return Column(
-          children: [
+        return ResponsiveContentContainer(
+          child: Column(
+            children: [
             _QueueDashboardHeader(
               totalCount: items.length,
               waitingCount: waitingCount,
@@ -146,7 +148,8 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                     ),
             ),
           ],
-        );
+        ),
+      );
       },
       loading: () => const LoadingState(),
       error: (error, stack) => _buildErrorState(context, error),
@@ -1388,9 +1391,83 @@ class _QueueDashboardHeader extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 900;
+          final chips = [
+            _MetricChip(
+              label: 'Total',
+              value: '$totalCount',
+              color: context.semanticColors.info,
+            ),
+            _MetricChip(
+              label: 'Waiting',
+              value: '$waitingCount',
+              color: context.semanticColors.warning,
+            ),
+            _MetricChip(
+              label: 'Urgent',
+              value: '$urgentCount',
+              color: context.semanticColors.critical,
+            ),
+            _MetricChip(
+              label: 'Avg Wait',
+              value: '${avgWaitMinutes}m',
+              color: context.semanticColors.normal,
+            ),
+          ];
+
+          if (isCompact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Triage Queue',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Prioritized patient intake and triage flow',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.65,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (onAddToQueue != null)
+                      FilledButton.icon(
+                        onPressed: onAddToQueue,
+                        icon: const Icon(
+                          Icons.person_add_alt_1_outlined,
+                          size: 18,
+                        ),
+                        label: const Text('Add to Queue'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: chips,
+                ),
+              ],
+            );
+          }
+
+          return Row(
             children: [
               Expanded(
                 child: Column(
@@ -1415,28 +1492,10 @@ class _QueueDashboardHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              _MetricChip(
-                label: 'Total',
-                value: '$totalCount',
-                color: context.semanticColors.info,
-              ),
-              const SizedBox(width: 8),
-              _MetricChip(
-                label: 'Waiting',
-                value: '$waitingCount',
-                color: context.semanticColors.warning,
-              ),
-              const SizedBox(width: 8),
-              _MetricChip(
-                label: 'Urgent',
-                value: '$urgentCount',
-                color: context.semanticColors.critical,
-              ),
-              const SizedBox(width: 8),
-              _MetricChip(
-                label: 'Avg Wait',
-                value: '${avgWaitMinutes}m',
-                color: context.semanticColors.normal,
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: chips,
               ),
               if (onAddToQueue != null) ...[
                 const SizedBox(width: 12),
@@ -1447,8 +1506,8 @@ class _QueueDashboardHeader extends StatelessWidget {
                 ),
               ],
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1701,31 +1760,101 @@ class _QueueProfessionalCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Column(
-                children: [
-                  IconButton(
-                    tooltip: 'Record Vitals',
-                    icon: const Icon(Icons.favorite_outline),
-                    onPressed: onVitalsTap,
-                  ),
-                  IconButton(
-                    tooltip: 'Update Status',
-                    icon: const Icon(Icons.manage_history_outlined),
-                    onPressed: onStatusTap,
-                  ),
-                  IconButton(
-                    tooltip: 'Open SOAP',
-                    icon: const Icon(Icons.arrow_forward),
-                    onPressed: onTap,
-                  ),
-                  IconButton(
-                    tooltip: 'Remove from queue',
-                    icon: const Icon(Icons.remove_circle_outline),
-                    color: colorScheme.error,
-                    onPressed: onRemove,
-                  ),
-                ],
-              ),
+              if (context.isMobile)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  tooltip: 'Actions',
+                  onSelected: (action) {
+                    switch (action) {
+                      case 'vitals':
+                        onVitalsTap?.call();
+                        break;
+                      case 'status':
+                        onStatusTap?.call();
+                        break;
+                      case 'soap':
+                        onTap?.call();
+                        break;
+                      case 'remove':
+                        onRemove?.call();
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (onVitalsTap != null)
+                      const PopupMenuItem(
+                        value: 'vitals',
+                        child: ListTile(
+                          leading: Icon(Icons.favorite_outline),
+                          title: Text('Record Vitals'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    if (onStatusTap != null)
+                      const PopupMenuItem(
+                        value: 'status',
+                        child: ListTile(
+                          leading: Icon(Icons.manage_history_outlined),
+                          title: Text('Update Status'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    if (onTap != null)
+                      const PopupMenuItem(
+                        value: 'soap',
+                        child: ListTile(
+                          leading: Icon(Icons.arrow_forward),
+                          title: Text('Open SOAP'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    if (onRemove != null)
+                      PopupMenuItem(
+                        value: 'remove',
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.remove_circle_outline,
+                            color: colorScheme.error,
+                          ),
+                          title: Text(
+                            'Remove from Queue',
+                            style: TextStyle(color: colorScheme.error),
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                  ],
+                )
+              else
+                Column(
+                  children: [
+                    if (onVitalsTap != null)
+                      IconButton(
+                        tooltip: 'Record Vitals',
+                        icon: const Icon(Icons.favorite_outline),
+                        onPressed: onVitalsTap,
+                      ),
+                    if (onStatusTap != null)
+                      IconButton(
+                        tooltip: 'Update Status',
+                        icon: const Icon(Icons.manage_history_outlined),
+                        onPressed: onStatusTap,
+                      ),
+                    if (onTap != null)
+                      IconButton(
+                        tooltip: 'Open SOAP',
+                        icon: const Icon(Icons.arrow_forward),
+                        onPressed: onTap,
+                      ),
+                    if (onRemove != null)
+                      IconButton(
+                        tooltip: 'Remove from queue',
+                        icon: const Icon(Icons.remove_circle_outline),
+                        color: colorScheme.error,
+                        onPressed: onRemove,
+                      ),
+                  ],
+                ),
             ],
           ),
         ),

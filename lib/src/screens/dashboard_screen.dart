@@ -11,6 +11,7 @@ import '../providers/providers.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 import '../widgets/app_card.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
 
@@ -32,55 +33,58 @@ class DashboardScreen extends ConsumerWidget {
     final reportStats = ref.watch(reportStatsProvider);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildWelcomeHero(context, currentUser?.name ?? 'User'),
-          const SizedBox(height: 20),
-          Text(
-            'Today\'s Overview',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          dashboardStats.when(
-            skipLoadingOnReload: true,
-            data: (stats) => _buildKpiRow(context, stats, currentUser),
-            loading: () => const LoadingState(),
-            error: (error, _) => Text('Error loading stats: $error'),
-          ),
-          if (currentUser?.canGenerateReports == true) ...[
+      padding: ResponsiveLayout.pagePadding(context),
+      child: ResponsiveContentContainer(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildWelcomeHero(context, currentUser?.name ?? 'User'),
             const SizedBox(height: 20),
-            reportStats.when(
+            Text(
+              'Today\'s Overview',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            dashboardStats.when(
               skipLoadingOnReload: true,
-              data: (stats) => _buildAnalyticsPreview(context, stats),
+              data: (stats) => _buildKpiRow(context, stats, currentUser),
+              loading: () => const LoadingState(),
+              error: (error, _) => Text('Error loading stats: $error'),
+            ),
+            if (currentUser?.canGenerateReports == true) ...[
+              const SizedBox(height: 20),
+              reportStats.when(
+                skipLoadingOnReload: true,
+                data: (stats) => _buildAnalyticsPreview(context, stats),
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+            ],
+            if (currentUser?.canViewQueue == true) ...[
+              const SizedBox(height: 20),
+              _buildLiveQueueStrip(context, queueAsync, currentUser),
+            ],
+            const SizedBox(height: 24),
+            _buildWorkflowSection(context, currentUser),
+            const SizedBox(height: 24),
+            _buildAlertsColumn(
+              context,
+              dashboardStats,
+              syncStatus,
+              extendedStats,
+              currentUser,
+            ),
+            const SizedBox(height: 24),
+            extendedStats.when(
+              data: (stats) => _buildBottomPanels(context, currentUser, stats),
               loading: () => const SizedBox.shrink(),
               error: (_, _) => const SizedBox.shrink(),
             ),
           ],
-          if (currentUser?.canViewQueue == true) ...[
-            const SizedBox(height: 20),
-            _buildLiveQueueStrip(context, queueAsync, currentUser),
-          ],
-          const SizedBox(height: 24),
-          _buildWorkflowSection(context, currentUser),
-          const SizedBox(height: 24),
-          _buildAlertsColumn(
-            context,
-            dashboardStats,
-            syncStatus,
-            extendedStats,
-            currentUser,
-          ),
-          const SizedBox(height: 24),
-          extendedStats.when(
-            data: (stats) => _buildBottomPanels(context, currentUser, stats),
-            loading: () => const SizedBox.shrink(),
-            error: (_, _) => const SizedBox.shrink(),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -96,7 +100,7 @@ class DashboardScreen extends ConsumerWidget {
         subtitle: stats.newPatientsToday > 0
             ? '+${stats.newPatientsToday} registered today'
             : 'Registered in clinic',
-        color: colors.info, // Changed to Info (Blue) as it's general info
+        color: colors.info,
         onTap: user?.canAccessPatientRecords == true
             ? () => context.go('/patients')
             : null,
@@ -135,15 +139,31 @@ class DashboardScreen extends ConsumerWidget {
       ),
     ];
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: cards
-          .map(
-            (card) =>
-                SizedBox(width: 260, child: _buildStatCard(context, card)),
-          )
-          .toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        // Mobile (< 480): 1 col, Tablet (480-1024): 2 cols, Desktop (> 1024): 4 cols
+        final int columns = width < 480
+            ? 1
+            : width <= 1024
+                ? 2
+                : 4;
+        const spacing = 12.0;
+        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: cards
+              .map(
+                (card) => SizedBox(
+                  width: cardWidth,
+                  child: _buildStatCard(context, card),
+                ),
+              )
+              .toList(),
+        );
+      },
     );
   }
 
@@ -391,12 +411,33 @@ class DashboardScreen extends ConsumerWidget {
 
     if (!hasPatients && !hasActivity) return const SizedBox.shrink();
 
+    // Desktop split layout (> 1024px): Side-by-side 2-column data panels
+    if (context.isDesktop && hasPatients && hasActivity) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: _buildRecentPatientsPanel(
+              context,
+              user,
+              stats.recentPatients,
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: _buildStaffActivityPanel(context, stats.recentActivity),
+          ),
+        ],
+      );
+    }
+
+    // Mobile & Tablet: Stacked clean cards
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (hasPatients)
           _buildRecentPatientsPanel(context, user, stats.recentPatients),
-        if (hasPatients && hasActivity) const SizedBox(height: 24),
+        if (hasPatients && hasActivity) const SizedBox(height: 20),
         if (hasActivity)
           _buildStaffActivityPanel(context, stats.recentActivity),
       ],
@@ -814,12 +855,17 @@ class DashboardScreen extends ConsumerWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        mouseCursor: data.onTap != null
+            ? SystemMouseCursors.click
+            : MouseCursor.defer,
         onTap: data.onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 120),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Icon(data.icon, color: data.color, size: 32),
               const SizedBox(height: 12),
               Text(
@@ -853,8 +899,9 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildAlertCard(
     BuildContext context, {
@@ -916,27 +963,33 @@ class DashboardScreen extends ConsumerWidget {
     final totalLogs = auditLogsAsync.value?.length ?? 0;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSuperAdminHero(context, currentUser.fullName),
-          const SizedBox(height: 24),
-          Text(
-            'Provincial Overview',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              SizedBox(
-                width: 260,
-                child: _buildStatCard(
-                  context,
+      padding: ResponsiveLayout.pagePadding(context),
+      child: ResponsiveContentContainer(
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSuperAdminHero(context, currentUser.fullName),
+            const SizedBox(height: 24),
+            Text(
+              'Provincial Overview',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final int columns = width < 480
+                    ? 1
+                    : width <= 1024
+                        ? 2
+                        : 4;
+                const spacing = 12.0;
+                final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+                final cards = [
                   _StatCardData(
                     icon: Icons.domain_outlined,
                     title: 'Rural Health Units',
@@ -947,12 +1000,6 @@ class DashboardScreen extends ConsumerWidget {
                     color: colors.info,
                     onTap: () => context.go('/rhus'),
                   ),
-                ),
-              ),
-              SizedBox(
-                width: 260,
-                child: _buildStatCard(
-                  context,
                   _StatCardData(
                     icon: Icons.badge_outlined,
                     title: 'Platform Users',
@@ -961,12 +1008,6 @@ class DashboardScreen extends ConsumerWidget {
                     color: colors.normal,
                     onTap: () => context.go('/staff'),
                   ),
-                ),
-              ),
-              SizedBox(
-                width: 260,
-                child: _buildStatCard(
-                  context,
                   _StatCardData(
                     icon: Icons.people_outline,
                     title: 'Total Patients',
@@ -977,12 +1018,6 @@ class DashboardScreen extends ConsumerWidget {
                     color: colors.neutral,
                     onTap: () => context.go('/reports'),
                   ),
-                ),
-              ),
-              SizedBox(
-                width: 260,
-                child: _buildStatCard(
-                  context,
                   _StatCardData(
                     icon: Icons.shield_outlined,
                     title: 'Audit Logs',
@@ -993,107 +1028,148 @@ class DashboardScreen extends ConsumerWidget {
                     color: colors.warning,
                     onTap: () => context.go('/audit-logs'),
                   ),
-                ),
+                ];
+
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: cards
+                      .map(
+                        (card) => SizedBox(
+                          width: cardWidth,
+                          child: _buildStatCard(context, card),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            _buildAlertCard(
+              context,
+              icon: Icons.verified_user_outlined,
+              title: 'Platform System Status: Operational',
+              description: syncStatus == SyncStatus.synced
+                  ? 'All RHU municipal databases are synchronized and encrypted with cloud backup.'
+                  : 'Synchronization process active. Cloud sync is maintaining data consistency.',
+              color: syncStatus == SyncStatus.synced
+                  ? colors.normal
+                  : colors.warning,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'System Management Workflows',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Platform configuration, municipality onboarding, and provincial oversight.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.68),
+              ),
+            ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth > 680 ? 2 : 1;
+                final width =
+                    (constraints.maxWidth - (12 * (columns - 1))) / columns;
+
+                final actions = [
+                  _WorkflowAction(
+                    icon: Icons.domain_add_outlined,
+                    title: 'Manage Rural Health Units',
+                    description:
+                        'Create new RHU facilities, configure clinic codes, addresses, and scopes.',
+                    color: colors.info,
+                    onTap: () => context.go('/rhus'),
+                  ),
+                  _WorkflowAction(
+                    icon: Icons.manage_accounts_outlined,
+                    title: 'Manage RHU Administrators',
+                    description:
+                        'Provision municipal admin credentials and oversee staff assignments.',
+                    color: colors.normal,
+                    onTap: () => context.go('/staff'),
+                  ),
+                  _WorkflowAction(
+                    icon: Icons.query_stats_outlined,
+                    title: 'Provincial Health Reports',
+                    description:
+                        'Aggregate FHSIS summaries, morbidity data, and cross-facility analytics.',
+                    color: colors.neutral,
+                    onTap: () => context.go('/reports'),
+                  ),
+                  _WorkflowAction(
+                    icon: Icons.history_edu_outlined,
+                    title: 'Global Security & Audit Trail',
+                    description:
+                        'Audit access patterns, failed logins, credential changes, and system events.',
+                    color: colors.warning,
+                    onTap: () => context.go('/audit-logs'),
+                  ),
+                ];
+
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: actions
+                      .map(
+                        (action) => SizedBox(
+                          width: width,
+                          child: _buildWorkflowCard(context, action),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            // Desktop (> 1024px): Side-by-side data panels
+            if (context.isDesktop)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: clinicsAsync.when(
+                      data: (clinics) =>
+                          _buildSuperAdminClinicsPanel(context, clinics),
+                      loading: () => const AppSkeletonLoader(height: 140),
+                      error: (_, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: auditLogsAsync.when(
+                      data: (logs) =>
+                          _buildSuperAdminAuditPanel(context, logs),
+                      loading: () => const AppSkeletonLoader(height: 140),
+                      error: (_, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              )
+            else ...[
+              clinicsAsync.when(
+                data: (clinics) =>
+                    _buildSuperAdminClinicsPanel(context, clinics),
+                loading: () => const AppSkeletonLoader(height: 140),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 20),
+              auditLogsAsync.when(
+                data: (logs) =>
+                    _buildSuperAdminAuditPanel(context, logs),
+                loading: () => const AppSkeletonLoader(height: 140),
+                error: (_, _) => const SizedBox.shrink(),
               ),
             ],
-          ),
-          const SizedBox(height: 24),
-          _buildAlertCard(
-            context,
-            icon: Icons.verified_user_outlined,
-            title: 'Platform System Status: Operational',
-            description: syncStatus == SyncStatus.synced
-                ? 'All RHU municipal databases are synchronized and encrypted with cloud backup.'
-                : 'Synchronization process active. Cloud sync is maintaining data consistency.',
-            color: syncStatus == SyncStatus.synced
-                ? colors.normal
-                : colors.warning,
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'System Management Workflows',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Platform configuration, municipality onboarding, and provincial oversight.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.68),
-            ),
-          ),
-          const SizedBox(height: 12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final columns = constraints.maxWidth > 680 ? 2 : 1;
-              final width =
-                  (constraints.maxWidth - (12 * (columns - 1))) / columns;
-
-              final actions = [
-                _WorkflowAction(
-                  icon: Icons.domain_add_outlined,
-                  title: 'Manage Rural Health Units',
-                  description:
-                      'Create new RHU facilities, configure clinic codes, addresses, and scopes.',
-                  color: colors.info,
-                  onTap: () => context.go('/rhus'),
-                ),
-                _WorkflowAction(
-                  icon: Icons.manage_accounts_outlined,
-                  title: 'Manage RHU Administrators',
-                  description:
-                      'Provision municipal admin credentials and oversee staff assignments.',
-                  color: colors.normal,
-                  onTap: () => context.go('/staff'),
-                ),
-                _WorkflowAction(
-                  icon: Icons.query_stats_outlined,
-                  title: 'Provincial Health Reports',
-                  description:
-                      'Aggregate FHSIS summaries, morbidity data, and cross-facility analytics.',
-                  color: colors.neutral,
-                  onTap: () => context.go('/reports'),
-                ),
-                _WorkflowAction(
-                  icon: Icons.history_edu_outlined,
-                  title: 'Global Security & Audit Trail',
-                  description:
-                      'Audit access patterns, failed logins, credential changes, and system events.',
-                  color: colors.warning,
-                  onTap: () => context.go('/audit-logs'),
-                ),
-              ];
-
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: actions
-                    .map(
-                      (action) => SizedBox(
-                        width: width,
-                        child: _buildWorkflowCard(context, action),
-                      ),
-                    )
-                    .toList(),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          clinicsAsync.when(
-            data: (clinics) => _buildSuperAdminClinicsPanel(context, clinics),
-            loading: () => const AppSkeletonLoader(height: 140),
-            error: (_, _) => const SizedBox.shrink(),
-          ),
-          const SizedBox(height: 24),
-          auditLogsAsync.when(
-            data: (logs) => _buildSuperAdminAuditPanel(context, logs),
-            loading: () => const AppSkeletonLoader(height: 140),
-            error: (_, _) => const SizedBox.shrink(),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1142,19 +1218,19 @@ class DashboardScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 10,
+                  runSpacing: 4,
                   children: [
-                    Flexible(
-                      child: Text(
-                        'Welcome back, $name',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    Text(
+                      'Welcome back, $name',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(width: 10),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,

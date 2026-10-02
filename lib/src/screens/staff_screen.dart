@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/user.dart';
 import '../providers/providers.dart';
+import '../widgets/layout/responsive_layout.dart';
 import 'settings_screen.dart';
 
 class StaffScreen extends ConsumerWidget {
@@ -10,9 +11,10 @@ class StaffScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
+    return ResponsiveContentContainer(
+      child: Padding(
+        padding: ResponsiveLayout.pagePadding(context),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -50,7 +52,8 @@ class StaffScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _showStaffFormDialog(

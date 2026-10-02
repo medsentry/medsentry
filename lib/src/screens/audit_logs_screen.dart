@@ -5,6 +5,7 @@ import '../models/audit_log.dart';
 import '../providers/providers.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 
@@ -23,34 +24,40 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
   Widget build(BuildContext context) {
     final logsAsync = ref.watch(auditLogsProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Audit Logs & Activity Monitoring',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+    return ResponsiveContentContainer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              context.isMobile ? 16 : 24,
+              20,
+              context.isMobile ? 16 : 24,
+              0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Audit Logs & Activity Monitoring',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Track login history, record changes, staff actions, and suspicious activity.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.68),
+                const SizedBox(height: 4),
+                Text(
+                  'Track login history, record changes, staff actions, and suspicious activity.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
+                const SizedBox(height: 16),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 600;
+                    final searchField = TextField(
                       decoration: const InputDecoration(
                         hintText: 'Search by user, patient, or description...',
                         prefixIcon: Icon(Icons.search),
@@ -58,31 +65,51 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                         isDense: true,
                       ),
                       onChanged: (v) => setState(() => _searchQuery = v),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  DropdownButton<AuditAction?>(
-                    value: _filterAction,
-                    hint: const Text('All Actions'),
-                    items: [
-                      const DropdownMenuItem(
-                        value: null,
-                        child: Text('All Actions'),
-                      ),
-                      ...AuditAction.values.map(
-                        (a) => DropdownMenuItem(
-                          value: a,
-                          child: Text(_actionLabel(a)),
+                    );
+                    final actionDropdown = DropdownButton<AuditAction?>(
+                      value: _filterAction,
+                      hint: const Text('All Actions'),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('All Actions'),
                         ),
-                      ),
-                    ],
-                    onChanged: (v) => setState(() => _filterAction = v),
-                  ),
-                ],
-              ),
-            ],
+                        ...AuditAction.values.map(
+                          (a) => DropdownMenuItem(
+                            value: a,
+                            child: Text(_actionLabel(a)),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _filterAction = v),
+                    );
+
+                    if (isMobile) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          searchField,
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: actionDropdown,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(child: searchField),
+                        const SizedBox(width: 12),
+                        actionDropdown,
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
         const SizedBox(height: 12),
         Expanded(
           child: logsAsync.when(
@@ -145,7 +172,8 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
           ),
         ),
       ],
-    );
+    ),
+  );
   }
 
   String _actionLabel(AuditAction action) {
