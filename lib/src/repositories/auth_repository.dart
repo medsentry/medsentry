@@ -1,4 +1,4 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
@@ -177,10 +177,12 @@ class AuthRepository {
           (user.email.toLowerCase() == 'superadmin@gmail.com' ||
               user.role == UserRole.superAdmin)) {
         try {
-          await _supabase.auth.signInWithPassword(
-            email: user.email,
-            password: SeedCredentials.defaultPassword,
-          );
+          await _supabase.auth
+              .signInWithPassword(
+                email: user.email,
+                password: SeedCredentials.defaultPassword,
+              )
+              .timeout(const Duration(seconds: 3));
           if (_supabase.auth.currentSession != null) return;
         } catch (e) {
           debugPrint('Silent re-auth using default password warning: $e');
@@ -189,10 +191,12 @@ class AuthRepository {
     }
 
     try {
-      await _supabase.auth.signInWithPassword(
-        email: 'superadmin@gmail.com',
-        password: SeedCredentials.defaultPassword,
-      );
+      await _supabase.auth
+          .signInWithPassword(
+            email: 'superadmin@gmail.com',
+            password: SeedCredentials.defaultPassword,
+          )
+          .timeout(const Duration(seconds: 3));
     } catch (e) {
       debugPrint('Silent superadmin session acquisition failed: $e');
     }
@@ -366,7 +370,7 @@ class AuthRepository {
   Future<User?> authenticate(String email, String password) async {
     final normalizedEmail = email.trim().toLowerCase();
 
-    // 1. Direct seed account verification (Super Admin)
+    // 1. Direct seed account verification (Super Admin) - instant login
     final seedAccount = _seedAccountForEmail(normalizedEmail);
     if (seedAccount != null &&
         (password == SeedCredentials.defaultPassword ||
@@ -376,27 +380,55 @@ class AuthRepository {
       await _setCurrentUserId(user.id);
       await unlockSession();
 
-      // Sign in to Supabase in background so session token is active for remote queries
-      try {
-        await _supabase.auth.signInWithPassword(
-          email: normalizedEmail,
-          password: password,
-        );
-      } catch (e) {
-        debugPrint('Supabase background auth warning: $e');
-      }
+      // Sign in to Supabase in background without blocking UI
+      unawaited(
+        _supabase.auth
+            .signInWithPassword(
+              email: normalizedEmail,
+              password: password,
+            )
+            .timeout(const Duration(seconds: 3))
+            .then((_) => null)
+            .catchError((e) {
+              debugPrint('Supabase background auth warning: $e');
+              return null;
+            }),
+      );
 
       return user;
     }
 
-    try {
-      final response = await _supabase.auth.signInWithPassword(
-        email: normalizedEmail,
-        password: password,
+    // 2. Fast-path: Check local offline database first for instant login
+    final localUser = await _authenticateLocal(normalizedEmail, password);
+    if (localUser != null) {
+      // Authenticated locally! Sync session with Supabase in background
+      unawaited(
+        _supabase.auth
+            .signInWithPassword(
+              email: normalizedEmail,
+              password: password,
+            )
+            .timeout(const Duration(seconds: 3))
+            .then((_) => null)
+            .catchError((e) {
+              debugPrint('Supabase background auth warning: $e');
+              return null;
+            }),
       );
+      return localUser;
+    }
+
+    // 3. Fall back to online Supabase with strict timeout
+    try {
+      final response = await _supabase.auth
+          .signInWithPassword(
+            email: normalizedEmail,
+            password: password,
+          )
+          .timeout(const Duration(seconds: 3));
 
       if (response.user == null) {
-        return await _authenticateLocal(normalizedEmail, password);
+        return null;
       }
 
       final cachedUser = await _db.getUserByEmail(normalizedEmail);
@@ -408,67 +440,55 @@ class AuthRepository {
             'last_login_at,created_at,updated_at',
           )
           .eq('auth_user_id', response.user!.id)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 3));
 
       if (profile == null) {
-        final local = await _authenticateLocal(normalizedEmail, password);
-        if (local != null) return local;
-        await _supabase.auth.signOut();
+        unawaited(_supabase.auth.signOut().catchError((_) {}));
         return null;
       }
 
       final serverUser = User.fromJson(Map<String, dynamic>.from(profile));
-      final localUser = serverUser.copyWith(pinHash: cachedUser?.pinHash);
-      if (!localUser.isActive) {
-        await _supabase.auth.signOut();
+      final mergedUser = serverUser.copyWith(pinHash: cachedUser?.pinHash);
+      if (!mergedUser.isActive) {
+        unawaited(_supabase.auth.signOut().catchError((_) {}));
         return null;
       }
 
-      try {
-        await _supabase.rpc(
+      unawaited(
+        _supabase.rpc(
           'medsentry_log_auth_event',
           params: {'event_action': 'LOGIN'},
-        );
-      } catch (e) {
-        debugPrint('medsentry_log_auth_event non-fatal: $e');
-      }
+        ).catchError((e) => debugPrint('medsentry_log_auth_event non-fatal: $e')),
+      );
 
       if (cachedUser == null) {
-        await _db.insertUser(localUser);
+        await _db.insertUser(mergedUser);
       } else {
-        await _db.updateUser(localUser);
+        await _db.updateUser(mergedUser);
       }
-      await _db.clearUserPasswordHash(localUser.id);
+      await _db.updateUserPassword(mergedUser.id, _hashPassword(password));
 
-      await _db.updateUserLastLogin(localUser.id);
+      await _db.updateUserLastLogin(mergedUser.id);
 
       await _auditService.logAction(
-        userId: localUser.id,
+        userId: mergedUser.id,
         action: AuditAction.login,
         entityType: 'user',
-        entityId: localUser.id,
+        entityId: mergedUser.id,
         description: 'User logged in: $normalizedEmail',
       );
 
       // Store the user ID for PIN login
-      await _setCurrentUserId(localUser.id);
+      await _setCurrentUserId(mergedUser.id);
       await unlockSession();
-      return localUser;
+      return mergedUser;
     } on AuthException catch (e) {
       debugPrint('AuthException during login: ${e.message}');
-      return await _authenticateLocal(normalizedEmail, password);
+      return null;
     } catch (e) {
       debugPrint('Login exception: $e');
-      return await _authenticateLocal(normalizedEmail, password);
-    }
-  }
-
-  Future<bool> _isDeviceOffline() async {
-    try {
-      final results = await Connectivity().checkConnectivity();
-      return results.every((result) => result == ConnectivityResult.none);
-    } catch (_) {
-      return false;
+      return null;
     }
   }
 
@@ -992,10 +1012,23 @@ class AuthRepository {
   Future<User?> getCurrentUser() async {
     if (await isSessionLocked()) return null;
 
-    // First check Supabase auth
+    // Check local session first
+    final userId = await _getCurrentUserId();
+    User? localUser;
+    if (userId != null) {
+      localUser = await getUserById(userId);
+      if (localUser != null && !localUser.isActive) {
+        await _clearCurrentUserSession();
+        return null;
+      }
+    }
+
+    // Check Supabase auth if session exists, but protect with strict timeout
     final supabaseUser = _supabase.auth.currentUser;
     if (supabaseUser != null) {
-      final localUser = await _db.getUserByEmail(supabaseUser.email ?? '');
+      final emailUser = await _db.getUserByEmail(supabaseUser.email ?? '');
+      final candidateUser = localUser ?? emailUser;
+
       try {
         final profile = await _supabase
             .from('users')
@@ -1005,43 +1038,41 @@ class AuthRepository {
               'last_login_at,created_at,updated_at',
             )
             .eq('auth_user_id', supabaseUser.id)
-            .maybeSingle();
-        if (profile == null) {
-          await _supabase.auth.signOut();
-          await _clearCurrentUserSession();
-          return null;
-        }
+            .maybeSingle()
+            .timeout(const Duration(seconds: 3));
 
-        final remoteUser = User.fromJson(Map<String, dynamic>.from(profile));
-        if (!remoteUser.isActive) {
-          await _supabase.auth.signOut();
-          await _clearCurrentUserSession();
-          return null;
-        }
+        if (profile != null) {
+          final remoteUser = User.fromJson(Map<String, dynamic>.from(profile));
+          if (!remoteUser.isActive) {
+            unawaited(_supabase.auth.signOut().catchError((_) {}));
+            await _clearCurrentUserSession();
+            return null;
+          }
 
-        final currentUser = remoteUser.copyWith(pinHash: localUser?.pinHash);
-        if (localUser == null) {
-          await _db.insertUser(currentUser);
-        } else {
-          await _db.updateUser(currentUser);
+          final currentUser = remoteUser.copyWith(pinHash: candidateUser?.pinHash);
+          if (candidateUser == null) {
+            await _db.insertUser(currentUser);
+          } else {
+            await _db.updateUser(currentUser);
+          }
+          return currentUser;
         }
-        await _db.clearUserPasswordHash(currentUser.id);
-        return currentUser;
-      } catch (_) {
-        if (await _isDeviceOffline() && localUser?.isActive == true) {
-          return localUser!.copyWith(role: UserRole.staff);
-        }
-        await _supabase.auth.signOut();
-        await _clearCurrentUserSession();
-        return null;
+      } catch (e) {
+        debugPrint('Supabase getCurrentUser profile lookup non-fatal: $e');
+      }
+
+      // If remote profile fetch timed out or failed, fall back safely to cached user
+      if (candidateUser != null && candidateUser.isActive) {
+        return candidateUser;
       }
     }
 
     // Fallback to local session
-    final userId = await _getCurrentUserId();
-    if (userId == null) return null;
-    final user = await getUserById(userId);
-    return user?.isActive == true ? user : null;
+    if (localUser != null && localUser.isActive) {
+      return localUser;
+    }
+
+    return null;
   }
 
   // Helper methods for session management
