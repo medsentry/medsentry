@@ -59,3 +59,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Vercel & CI build artifacts
+_flutter/
+.vercel/
