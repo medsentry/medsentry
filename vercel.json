@@ -10,7 +10,7 @@
   ],
   "headers": [
     {
-      "source": "/(index\\.html|flutter_service_worker\\.js|version\\.json|sw\\.js)",
+      "source": "/(index\\.html|flutter_service_worker\\.js|version\\.json|sw\\.js|robots\\.txt|sitemap\\.xml)",
       "headers": [
         {
           "key": "Cache-Control",
