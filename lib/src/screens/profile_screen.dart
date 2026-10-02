@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
 import '../widgets/app_form_dialog.dart';
+import '../widgets/layout/responsive_layout.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -16,7 +17,8 @@ class ProfileScreen extends ConsumerWidget {
       return const Center(child: Text('No user logged in'));
     }
 
-    return Padding(
+    return ResponsiveContentContainer(
+      maxWidth: 720,
       padding: const EdgeInsets.all(16.0),
       child: ListView(
         children: [

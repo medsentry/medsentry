@@ -6,6 +6,7 @@ import '../models/patient.dart';
 import '../models/queue.dart';
 import '../providers/providers.dart';
 import '../widgets/forms/app_form_components.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 
 class ConsultationScreen extends ConsumerStatefulWidget {
@@ -98,52 +99,56 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
         _buildStickyActionHeader(context, patient, queueItem, canConsult),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PatientSummaryCard(patient: patient, queueItem: queueItem),
-                if (!canConsult) ...[
-                  const SizedBox(height: 12),
-                  const _PermissionBanner(
-                    message: 'Only staff can save SOAP consultations.',
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
+            child: ResponsiveContentContainer(
+              maxWidth: 960,
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PatientSummaryCard(patient: patient, queueItem: queueItem),
+                  if (!canConsult) ...[
+                    const SizedBox(height: 12),
+                    const _PermissionBanner(
+                      message: 'Only staff can save SOAP consultations.',
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  _buildSection(
+                    context,
+                    'Subjective',
+                    'Chief complaint, symptoms, history of present illness...',
+                    _subjectiveController,
+                    Icons.chat_bubble_outline,
                   ),
+                  const SizedBox(height: 12),
+                  _buildSection(
+                    context,
+                    'Objective',
+                    'Vitals, physical exam findings, observations...',
+                    _objectiveController,
+                    Icons.visibility_outlined,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSection(
+                    context,
+                    'Assessment',
+                    'Clinical diagnosis and differential impressions...',
+                    _assessmentController,
+                    Icons.assignment_turned_in_outlined,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSection(
+                    context,
+                    'Plan',
+                    'Treatment plan, diagnostics, referrals, follow-up...',
+                    _planController,
+                    Icons.fact_check_outlined,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildIcd10Selector(context),
                 ],
-                const SizedBox(height: 16),
-                _buildSection(
-                  context,
-                  'Subjective',
-                  'Chief complaint, symptoms, history of present illness...',
-                  _subjectiveController,
-                  Icons.chat_bubble_outline,
-                ),
-                const SizedBox(height: 12),
-                _buildSection(
-                  context,
-                  'Objective',
-                  'Vitals, physical exam findings, observations...',
-                  _objectiveController,
-                  Icons.visibility_outlined,
-                ),
-                const SizedBox(height: 12),
-                _buildSection(
-                  context,
-                  'Assessment',
-                  'Clinical diagnosis and differential impressions...',
-                  _assessmentController,
-                  Icons.assignment_turned_in_outlined,
-                ),
-                const SizedBox(height: 12),
-                _buildSection(
-                  context,
-                  'Plan',
-                  'Treatment plan, diagnostics, referrals, follow-up...',
-                  _planController,
-                  Icons.fact_check_outlined,
-                ),
-                const SizedBox(height: 12),
-                _buildIcd10Selector(context),
-              ],
+              ),
             ),
           ),
         ),
@@ -158,7 +163,7 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
     bool canConsult,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
@@ -175,48 +180,102 @@ class _ConsultationScreenState extends ConsumerState<ConsultationScreen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 620;
+
+          if (isMobile) {
+            return Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: 'Back',
+                  onPressed: _isLoading ? null : _handleCancel,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'SOAP Notes',
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Cancel',
+                  icon: const Icon(Icons.close),
+                  onPressed: _isLoading ? null : _handleCancel,
+                ),
+                const SizedBox(width: 4),
+                ElevatedButton.icon(
+                  onPressed: _isLoading || !canConsult
+                      ? null
+                      : () => _saveConsultation(patient, queueItem),
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined, size: 18),
+                  label: const Text('Save'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: _isLoading ? null : _handleCancel,
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: _isLoading ? null : _handleCancel,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'SOAP Consultation',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                'SOAP Consultation',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _handleCancel,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    onPressed: _isLoading || !canConsult
+                        ? null
+                        : () => _saveConsultation(patient, queueItem),
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: const Text('Save Consultation'),
+                  ),
+                ],
               ),
             ],
-          ),
-          Row(
-            children: [
-              OutlinedButton.icon(
-                onPressed: _isLoading ? null : _handleCancel,
-                icon: const Icon(Icons.close),
-                label: const Text('Cancel'),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                onPressed: _isLoading || !canConsult
-                    ? null
-                    : () => _saveConsultation(patient, queueItem),
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: const Text('Save Consultation'),
-              ),
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../models/user.dart';
 import '../providers/providers.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
 import '../utils/context_extensions.dart';
@@ -40,15 +41,17 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
+        child: ResponsiveContentContainer(
+          maxWidth: 1400,
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              LayoutBuilder(
+                builder: (context, headerConstraints) {
+                  final isNarrow = headerConstraints.maxWidth < 600;
+                  final titleSection = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -66,22 +69,42 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         ),
                       ),
                     ],
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: () => _showAddClinicDialog(context),
-                  icon: const Icon(Icons.add, size: 20),
-                  label: const Text('Add Facility'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
+                  );
+
+                  final addButton = FilledButton.icon(
+                    onPressed: () => _showAddClinicDialog(context),
+                    icon: const Icon(Icons.add, size: 20),
+                    label: const Text('Add Facility'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+                  );
+
+                  if (isNarrow) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        titleSection,
+                        const SizedBox(height: 16),
+                        addButton,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: titleSection),
+                      const SizedBox(width: 16),
+                      addButton,
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
 
             // Metrics / KPIs
             clinicsAsync.when(
@@ -92,38 +115,73 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     .where((User u) => u.clinicId != null)
                     .length;
 
-                return Row(
-                  children: [
-                    Expanded(
-                      child: _buildKpiCard(
-                        context,
-                        title: 'Total RHU Units',
-                        value: '${clinics.length}',
-                        icon: Icons.domain_outlined,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildKpiCard(
-                        context,
-                        title: 'Active Facilities',
-                        value: '$activeCount',
-                        icon: Icons.check_circle_outline,
-                        color: context.semanticColors.normal,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildKpiCard(
-                        context,
-                        title: 'Assigned Personnel',
-                        value: '$totalAssignedStaff',
-                        icon: Icons.people_outline,
-                        color: context.semanticColors.info,
-                      ),
-                    ),
-                  ],
+                return LayoutBuilder(
+                  builder: (context, kpiConstraints) {
+                    final card1 = _buildKpiCard(
+                      context,
+                      title: 'Total RHU Units',
+                      value: '${clinics.length}',
+                      icon: Icons.domain_outlined,
+                      color: colorScheme.primary,
+                    );
+                    final card2 = _buildKpiCard(
+                      context,
+                      title: 'Active Facilities',
+                      value: '$activeCount',
+                      icon: Icons.check_circle_outline,
+                      color: context.semanticColors.normal,
+                    );
+                    final card3 = _buildKpiCard(
+                      context,
+                      title: 'Assigned Personnel',
+                      value: '$totalAssignedStaff',
+                      icon: Icons.people_outline,
+                      color: context.semanticColors.info,
+                    );
+
+                    if (kpiConstraints.maxWidth < 600) {
+                      return Column(
+                        children: [
+                          card1,
+                          const SizedBox(height: 12),
+                          card2,
+                          const SizedBox(height: 12),
+                          card3,
+                        ],
+                      );
+                    }
+
+                    if (kpiConstraints.maxWidth < 900) {
+                      return Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          SizedBox(
+                            width: (kpiConstraints.maxWidth - 16) / 2,
+                            child: card1,
+                          ),
+                          SizedBox(
+                            width: (kpiConstraints.maxWidth - 16) / 2,
+                            child: card2,
+                          ),
+                          SizedBox(
+                            width: kpiConstraints.maxWidth,
+                            child: card3,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(child: card1),
+                        const SizedBox(width: 16),
+                        Expanded(child: card2),
+                        const SizedBox(width: 16),
+                        Expanded(child: card3),
+                      ],
+                    );
+                  },
                 );
               },
               loading: () => const SizedBox.shrink(),
@@ -143,41 +201,40 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText:
-                              'Search facilities by name, code, or location...',
-                          prefixIcon: const Icon(Icons.search, size: 20),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 18),
-                                  onPressed: () {
-                                    setState(() {
-                                      _searchController.clear();
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                          isDense: true,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 10,
-                          ),
+                child: LayoutBuilder(
+                  builder: (context, filterConstraints) {
+                    final isNarrow = filterConstraints.maxWidth < 640;
+                    final searchField = TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Search facilities by name, code, or location...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
                         ),
-                        onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val.trim().toLowerCase();
-                          });
-                        },
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    SegmentedButton<String>(
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val.trim().toLowerCase();
+                        });
+                      },
+                    );
+
+                    final filterButtons = SegmentedButton<String>(
                       segments: const [
                         ButtonSegment(value: 'all', label: Text('All')),
                         ButtonSegment(value: 'active', label: Text('Active')),
@@ -192,8 +249,30 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                           _statusFilter = val.first;
                         });
                       },
-                    ),
-                  ],
+                    );
+
+                    if (isNarrow) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          searchField,
+                          const Divider(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: filterButtons,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(child: searchField),
+                        const SizedBox(width: 16),
+                        filterButtons,
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -275,6 +354,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

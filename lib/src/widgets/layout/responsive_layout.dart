@@ -32,6 +32,24 @@ class ResponsiveBreakpoints {
     }
   }
 
+  /// Helper to check if current context is Mobile (< 600px).
+  static bool isMobile(BuildContext context) =>
+      MediaQuery.sizeOf(context).width < mobile;
+
+  /// Helper to check if current context is Tablet (600px - 1024px).
+  static bool isTablet(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    return width >= mobile && width <= tablet;
+  }
+
+  /// Helper to check if current context is Desktop (> 1024px).
+  static bool isDesktop(BuildContext context) =>
+      MediaQuery.sizeOf(context).width > tablet;
+
+  /// Helper to check if current context is Ultra-Wide (> 1600px).
+  static bool isUltraWide(BuildContext context) =>
+      MediaQuery.sizeOf(context).width > desktop;
+
   /// Get standard grid columns count based on width.
   static int getGridColumns(
     double width, {

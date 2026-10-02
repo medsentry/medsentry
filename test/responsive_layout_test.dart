@@ -159,5 +159,32 @@ void main() {
       expect(isTablet, isFalse);
       expect(isDesktop, isFalse);
     });
+
+    testWidgets('ResponsiveBreakpoints static helpers evaluate context correctly', (tester) async {
+      tester.view.physicalSize = const Size(500, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      late bool isMobile;
+      late bool isTablet;
+      late bool isDesktop;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              isMobile = ResponsiveBreakpoints.isMobile(context);
+              isTablet = ResponsiveBreakpoints.isTablet(context);
+              isDesktop = ResponsiveBreakpoints.isDesktop(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      expect(isMobile, isTrue);
+      expect(isTablet, isFalse);
+      expect(isDesktop, isFalse);
+    });
   });
 }

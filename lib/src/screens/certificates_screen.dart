@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/certificate_service.dart';
 import '../widgets/app_form_dialog.dart';
+import '../widgets/layout/responsive_layout.dart';
 
 class CertificatesScreen extends ConsumerStatefulWidget {
   const CertificatesScreen({super.key});
@@ -39,7 +40,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      child: Column(
+      child: ResponsiveContentContainer(
+        maxWidth: 960,
+        padding: EdgeInsets.zero,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -198,6 +202,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

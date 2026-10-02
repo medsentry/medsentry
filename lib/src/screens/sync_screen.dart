@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 
@@ -62,7 +63,10 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      child: Column(
+      child: ResponsiveContentContainer(
+        maxWidth: 960,
+        padding: EdgeInsets.zero,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -165,6 +169,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             ),
           ],
         ],
+      ),
       ),
     );
   }

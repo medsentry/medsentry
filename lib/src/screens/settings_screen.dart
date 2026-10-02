@@ -6,6 +6,7 @@ import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../widgets/app_form_dialog.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
 import '../utils/context_extensions.dart';
@@ -24,9 +25,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final settingsAsync = ref.watch(settingsDataProvider);
     final currentUser = ref.watch(currentUserProvider);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-      children: [
+    return ResponsiveContentContainer(
+      maxWidth: 880,
+      padding: EdgeInsets.zero,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+        children: [
         Text(
           'Settings & Administration',
           style: Theme.of(
@@ -240,6 +244,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ],
+      ),
     );
   }
 

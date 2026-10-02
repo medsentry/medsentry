@@ -7,6 +7,7 @@ import '../models/document.dart';
 import '../models/patient.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
 
@@ -126,60 +127,64 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _DocumentsPageHeader(
-                      totalCount: documents.length,
-                      filteredCount: filtered.length,
-                      pendingCount: pendingCount,
-                      verifiedCount: verifiedCount,
-                      todayCount: todayCount,
-                      canUpload: canManage,
-                      onUpload: () => _showUploadDialog(context),
-                    ),
-                    const SizedBox(height: 16),
-                    _DocumentsToolbar(
-                      searchController: _searchController,
-                      typeFilter: _typeFilter,
-                      statusFilter: _statusFilter,
-                      sortMode: _sortMode,
-                      viewMode: _viewMode,
-                      hasFilters: _hasFilters,
-                      onSearchChanged: (value) =>
-                          setState(() => _searchQuery = value),
-                      onTypeChanged: (value) =>
-                          setState(() => _typeFilter = value),
-                      onStatusChanged: (value) =>
-                          setState(() => _statusFilter = value),
-                      onSortModeChanged: (value) =>
-                          setState(() => _sortMode = value),
-                      onViewModeChanged: (value) =>
-                          setState(() => _viewMode = value),
-                      onClearFilters: _clearFilters,
-                    ),
-                    const SizedBox(height: 16),
-                    if (filtered.isEmpty)
-                      _EmptyDocumentsState(
-                        hasFilters: _hasFilters,
+                child: ResponsiveContentContainer(
+                  maxWidth: 1400,
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _DocumentsPageHeader(
+                        totalCount: documents.length,
+                        filteredCount: filtered.length,
+                        pendingCount: pendingCount,
+                        verifiedCount: verifiedCount,
+                        todayCount: todayCount,
                         canUpload: canManage,
                         onUpload: () => _showUploadDialog(context),
-                      )
-                    else if (_viewMode == _DocumentViewMode.grid)
-                      _DocumentsGrid(
-                        documents: filtered,
-                        patientMap: patientMap,
-                        canManage: canManage,
-                        onChanged: _invalidateDocuments,
-                      )
-                    else
-                      _DocumentsList(
-                        documents: filtered,
-                        patientMap: patientMap,
-                        canManage: canManage,
-                        onChanged: _invalidateDocuments,
                       ),
-                  ],
+                      const SizedBox(height: 16),
+                      _DocumentsToolbar(
+                        searchController: _searchController,
+                        typeFilter: _typeFilter,
+                        statusFilter: _statusFilter,
+                        sortMode: _sortMode,
+                        viewMode: _viewMode,
+                        hasFilters: _hasFilters,
+                        onSearchChanged: (value) =>
+                            setState(() => _searchQuery = value),
+                        onTypeChanged: (value) =>
+                            setState(() => _typeFilter = value),
+                        onStatusChanged: (value) =>
+                            setState(() => _statusFilter = value),
+                        onSortModeChanged: (value) =>
+                            setState(() => _sortMode = value),
+                        onViewModeChanged: (value) =>
+                            setState(() => _viewMode = value),
+                        onClearFilters: _clearFilters,
+                      ),
+                      const SizedBox(height: 16),
+                      if (filtered.isEmpty)
+                        _EmptyDocumentsState(
+                          hasFilters: _hasFilters,
+                          canUpload: canManage,
+                          onUpload: () => _showUploadDialog(context),
+                        )
+                      else if (_viewMode == _DocumentViewMode.grid)
+                        _DocumentsGrid(
+                          documents: filtered,
+                          patientMap: patientMap,
+                          canManage: canManage,
+                          onChanged: _invalidateDocuments,
+                        )
+                      else
+                        _DocumentsList(
+                          documents: filtered,
+                          patientMap: patientMap,
+                          canManage: canManage,
+                          onChanged: _invalidateDocuments,
+                        ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -230,36 +235,55 @@ class _DocumentsPageHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Patient Documents',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 600;
+            final titleWidget = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Patient Documents',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Scanned records, lab results, referrals, and certificates linked to patients.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.68,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Scanned records, lab results, referrals, and certificates linked to patients.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.68,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            FilledButton.icon(
+                ),
+              ],
+            );
+
+            final uploadButton = FilledButton.icon(
               onPressed: canUpload ? onUpload : null,
               icon: const Icon(Icons.upload_file_outlined),
               label: const Text('Upload Document'),
-            ),
-          ],
+            );
+
+            if (isNarrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  titleWidget,
+                  const SizedBox(height: 12),
+                  uploadButton,
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(child: titleWidget),
+                const SizedBox(width: 16),
+                uploadButton,
+              ],
+            );
+          },
         ),
         const SizedBox(height: 16),
         Wrap(

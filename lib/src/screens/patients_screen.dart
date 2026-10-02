@@ -357,54 +357,84 @@ class _PatientsPageHeader extends StatelessWidget {
                 ),
               ],
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.people_alt_outlined,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 520;
+                final titleSection = Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.people_alt_outlined,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Patient Registry',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            'Search, filter, and open patient records',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+
+                final registerButton = onAddPatient != null
+                    ? FilledButton.icon(
+                        onPressed: onAddPatient,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: primary,
+                        ),
+                        icon: const Icon(Icons.person_add_alt_1, size: 18),
+                        label: const Text('Register'),
+                      )
+                    : null;
+
+                if (isNarrow) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Patient Registry',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Text(
-                        'Search, filter, and open patient records',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 13,
-                        ),
-                      ),
+                      titleSection,
+                      if (registerButton != null) ...[
+                        const SizedBox(height: 12),
+                        registerButton,
+                      ],
                     ],
-                  ),
-                ),
-                if (onAddPatient != null)
-                  FilledButton.icon(
-                    onPressed: onAddPatient,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: primary,
-                    ),
-                    icon: const Icon(Icons.person_add_alt_1, size: 18),
-                    label: const Text('Register'),
-                  ),
-              ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: titleSection),
+                    if (registerButton != null) ...[
+                      const SizedBox(width: 12),
+                      registerButton,
+                    ],
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 12),

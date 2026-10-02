@@ -11,6 +11,7 @@ import '../providers/providers.dart';
 import '../utils/date_time_format.dart';
 import '../utils/patient_address_data.dart';
 import '../widgets/app_form_dialog.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 
 class PatientDetailScreen extends ConsumerWidget {
@@ -35,43 +36,35 @@ class PatientDetailScreen extends ConsumerWidget {
         final documentsAsync = ref.watch(patientDocumentsProvider(patient.id));
         final queueAsync = ref.watch(patientQueueHistoryProvider(patient.id));
 
-        final screenWidth = MediaQuery.of(context).size.width;
-        final isNarrow = screenWidth < 900;
-        final isVeryNarrow = screenWidth < 500;
-        final identityExtent = isNarrow
-            ? (isVeryNarrow ? 170.0 : 140.0)
-            : 100.0;
-
-        return DefaultTabController(
-          length: 4,
-          child: NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) {
-              return [
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _PatientIdentityHeaderDelegate(
-                    extent: identityExtent,
-                    patient: patient,
-                    onAddToQueue: currentUser?.canManageQueue == true
-                        ? () => _showAddToQueueDialog(
-                            context: context,
-                            ref: ref,
-                            patient: patient,
-                          )
-                        : null,
-                    onNewConsultation: currentUser?.canConsult == true
-                        ? () => context.push('/queue/${patient.id}/soap')
-                        : null,
-                    onDocuments: currentUser?.canManageDocuments == true
-                        ? () => context.push('/documents')
-                        : null,
-                    onArchive:
-                        currentUser?.canManageArchive == true &&
-                            !patient.isArchived
-                        ? () => _archivePatient(context, ref, patient)
-                        : null,
+        return ResponsiveContentContainer(
+          child: DefaultTabController(
+            length: 4,
+            child: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverToBoxAdapter(
+                    child: _PatientIdentityHeader(
+                      patient: patient,
+                      onAddToQueue: currentUser?.canManageQueue == true
+                          ? () => _showAddToQueueDialog(
+                              context: context,
+                              ref: ref,
+                              patient: patient,
+                            )
+                          : null,
+                      onNewConsultation: currentUser?.canConsult == true
+                          ? () => context.push('/queue/${patient.id}/soap')
+                          : null,
+                      onDocuments: currentUser?.canManageDocuments == true
+                          ? () => context.push('/documents')
+                          : null,
+                      onArchive:
+                          currentUser?.canManageArchive == true &&
+                              !patient.isArchived
+                          ? () => _archivePatient(context, ref, patient)
+                          : null,
+                    ),
                   ),
-                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 14.0),
@@ -121,8 +114,9 @@ class PatientDetailScreen extends ConsumerWidget {
               ],
             ),
           ),
-        );
-      },
+        ),
+      );
+    },
       loading: () => const LoadingState(),
       error: (error, stack) => Center(child: Text('Error: $error')),
     );
@@ -262,34 +256,27 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-class _PatientIdentityHeaderDelegate extends SliverPersistentHeaderDelegate {
+class _PatientIdentityHeader extends StatelessWidget {
   final Patient patient;
   final VoidCallback? onAddToQueue;
   final VoidCallback? onNewConsultation;
   final VoidCallback? onDocuments;
   final VoidCallback? onArchive;
-  final double extent;
 
-  const _PatientIdentityHeaderDelegate({
+  const _PatientIdentityHeader({
     required this.patient,
     required this.onAddToQueue,
     required this.onNewConsultation,
     required this.onDocuments,
     this.onArchive,
-    required this.extent,
   });
 
   @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+  Widget build(BuildContext context) {
     return Material(
-      elevation: overlapsContent || shrinkOffset > 0 ? 4 : 0,
       color: Theme.of(context).colorScheme.surface,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isNarrow = constraints.maxWidth < 900;
@@ -300,46 +287,32 @@ class _PatientIdentityHeaderDelegate extends SliverPersistentHeaderDelegate {
               onArchive: onArchive,
             );
 
-            return Column(
+            if (isNarrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PatientIdentity(patient: patient),
+                  const SizedBox(height: 14),
+                  actions,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (isNarrow)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _PatientIdentity(patient: patient),
-                      const SizedBox(height: 12),
-                      actions,
-                    ],
-                  )
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: _PatientIdentity(patient: patient)),
-                      const SizedBox(width: 12),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        child: actions,
-                      ),
-                    ],
-                  ),
+                Expanded(child: _PatientIdentity(patient: patient)),
+                const SizedBox(width: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 540),
+                  child: actions,
+                ),
               ],
             );
           },
         ),
       ),
     );
-  }
-
-  @override
-  double get maxExtent => extent;
-
-  @override
-  double get minExtent => extent;
-
-  @override
-  bool shouldRebuild(covariant _PatientIdentityHeaderDelegate oldDelegate) {
-    return patient != oldDelegate.patient || extent != oldDelegate.extent;
   }
 }
 
@@ -425,33 +398,112 @@ class _HeaderActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.end,
-      children: [
-        if (onArchive != null)
-          OutlinedButton.icon(
-            onPressed: onArchive,
-            icon: const Icon(Icons.archive_outlined),
-            label: const Text('Archive'),
-          ),
-        OutlinedButton.icon(
-          onPressed: onDocuments,
-          icon: const Icon(Icons.folder_outlined),
-          label: const Text('Documents'),
-        ),
-        OutlinedButton.icon(
-          onPressed: onAddToQueue,
-          icon: const Icon(Icons.queue),
-          label: const Text('Add Queue'),
-        ),
-        ElevatedButton.icon(
-          onPressed: onNewConsultation,
-          icon: const Icon(Icons.medical_services_outlined),
-          label: const Text('New Consultation'),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 520;
+
+        if (isMobile) {
+          return Row(
+            children: [
+              if (onNewConsultation != null)
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: onNewConsultation,
+                    icon: const Icon(Icons.medical_services_outlined, size: 18),
+                    label: const Text('Consultation'),
+                  ),
+                )
+              else if (onAddToQueue != null)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onAddToQueue,
+                    icon: const Icon(Icons.queue, size: 18),
+                    label: const Text('Add Queue'),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                tooltip: 'More Actions',
+                onSelected: (action) {
+                  switch (action) {
+                    case 'queue':
+                      onAddToQueue?.call();
+                      break;
+                    case 'docs':
+                      onDocuments?.call();
+                      break;
+                    case 'archive':
+                      onArchive?.call();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (onAddToQueue != null && onNewConsultation != null)
+                    const PopupMenuItem(
+                      value: 'queue',
+                      child: ListTile(
+                        leading: Icon(Icons.queue),
+                        title: Text('Add to Queue'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  if (onDocuments != null)
+                    const PopupMenuItem(
+                      value: 'docs',
+                      child: ListTile(
+                        leading: Icon(Icons.folder_outlined),
+                        title: Text('Documents'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  if (onArchive != null)
+                    const PopupMenuItem(
+                      value: 'archive',
+                      child: ListTile(
+                        leading: Icon(Icons.archive_outlined),
+                        title: Text('Archive Patient'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          );
+        }
+
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.end,
+          children: [
+            if (onArchive != null)
+              OutlinedButton.icon(
+                onPressed: onArchive,
+                icon: const Icon(Icons.archive_outlined),
+                label: const Text('Archive'),
+              ),
+            if (onDocuments != null)
+              OutlinedButton.icon(
+                onPressed: onDocuments,
+                icon: const Icon(Icons.folder_outlined),
+                label: const Text('Documents'),
+              ),
+            if (onAddToQueue != null)
+              OutlinedButton.icon(
+                onPressed: onAddToQueue,
+                icon: const Icon(Icons.queue),
+                label: const Text('Add Queue'),
+              ),
+            if (onNewConsultation != null)
+              ElevatedButton.icon(
+                onPressed: onNewConsultation,
+                icon: const Icon(Icons.medical_services_outlined),
+                label: const Text('New Consultation'),
+              ),
+          ],
+        );
+      },
     );
   }
 }
