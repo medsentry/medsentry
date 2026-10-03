@@ -288,9 +288,14 @@
           .catch(function(err) {
             console.warn('[MedSentry PWA] Service Worker registration skipped/failed:', err);
           });
+
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          console.log('[MedSentry PWA] Controller updated. Auto-reloading with latest version.');
+          window.location.reload();
+        });
       });
     }
   </script>
-  <script src="flutter_bootstrap.js?v=1.0.2" async></script>
+  <script src="flutter_bootstrap.js?v=1.0.4" async></script>
 </body>
 </html>

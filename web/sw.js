@@ -1,6 +1,6 @@
 // MedSentry Offline-First Service Worker
-// Version: 1.0.2
-const CACHE_NAME = 'medsentry-cache-v1.0.2';
+// Version: 1.0.4
+const CACHE_NAME = 'medsentry-cache-v1.0.4';
 
 // Essential assets to cache immediately upon installation
 const PRECACHE_ASSETS = [
