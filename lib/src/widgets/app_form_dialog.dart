@@ -42,19 +42,36 @@ class AppFormDialog extends StatelessWidget {
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final screenHeight = MediaQuery.sizeOf(context).height;
-    final responsiveMaxWidth = screenWidth < 600
-        ? screenWidth * 0.94
+    final isCompactHeight = screenHeight < 550;
+    final isCompactWidth = screenWidth < 600;
+
+    final responsiveMaxWidth = isCompactWidth
+        ? screenWidth * 0.95
         : screenWidth <= 1024
-            ? screenWidth * 0.78
+            ? screenWidth * 0.82
             : (maxWidth ?? 560.0);
+
+    final responsiveMaxHeight = isCompactHeight
+        ? screenHeight * 0.96
+        : screenHeight * 0.88;
+
+    final effectiveContentPadding = EdgeInsets.fromLTRB(
+      isCompactWidth ? 16.0 : contentPadding.left,
+      contentPadding.top,
+      isCompactWidth ? 16.0 : contentPadding.right,
+      isCompactHeight ? 14.0 : contentPadding.bottom,
+    );
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isCompactWidth ? 10 : 16,
+        vertical: isCompactHeight ? 8 : 24,
+      ),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: responsiveMaxWidth,
-          maxHeight: screenHeight * 0.88,
+          maxHeight: responsiveMaxHeight,
         ),
         child: Card(
           elevation: 8,
@@ -76,20 +93,29 @@ class AppFormDialog extends StatelessWidget {
                     end: Alignment.bottomRight,
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(24, 20, 16, 20),
+                padding: EdgeInsets.fromLTRB(
+                  isCompactWidth ? 16 : 24,
+                  isCompactHeight ? 12 : 20,
+                  16,
+                  isCompactHeight ? 12 : 20,
+                ),
                 child: Row(
                   children: [
                     if (icon != null) ...[
                       Container(
-                        width: 44,
-                        height: 44,
+                        width: isCompactHeight ? 36 : 44,
+                        height: isCompactHeight ? 36 : 44,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(icon, color: Colors.white, size: 24),
+                        child: Icon(
+                          icon,
+                          color: Colors.white,
+                          size: isCompactHeight ? 20 : 24,
+                        ),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: isCompactWidth ? 10 : 16),
                     ],
                     Expanded(
                       child: Column(
@@ -97,9 +123,9 @@ class AppFormDialog extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
-                              fontSize: 20,
+                              fontSize: isCompactHeight ? 17 : 20,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -109,7 +135,7 @@ class AppFormDialog extends StatelessWidget {
                               subtitle!,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 13,
+                                fontSize: isCompactHeight ? 12 : 13,
                                 height: 1.3,
                               ),
                             ),
@@ -164,7 +190,7 @@ class AppFormDialog extends StatelessWidget {
                 // Content
                 Flexible(
                   child: SingleChildScrollView(
-                    padding: contentPadding,
+                    padding: effectiveContentPadding,
                     child: content,
                   ),
                 ),
@@ -182,9 +208,9 @@ class AppFormDialog extends StatelessWidget {
                         ),
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompactWidth ? 16 : 20,
+                      vertical: isCompactHeight ? 10 : 14,
                     ),
                     child: Wrap(
                       alignment: WrapAlignment.end,

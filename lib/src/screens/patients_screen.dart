@@ -1476,6 +1476,9 @@ class _PatientRegistrationWizardState
 
   Widget _buildStepProgress() {
     final steps = List.generate(_totalSteps, (index) => index);
+    final isCompact = MediaQuery.sizeOf(context).width < 420;
+    final markerSize = isCompact ? 28.0 : 34.0;
+
     return Row(
       children: steps.expand((index) {
         final isActive = index == _currentStep;
@@ -1486,8 +1489,8 @@ class _PatientRegistrationWizardState
 
         final marker = AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          width: 34,
-          height: 34,
+          width: markerSize,
+          height: markerSize,
           decoration: BoxDecoration(
             color: isDone || isActive
                 ? color
@@ -1497,7 +1500,11 @@ class _PatientRegistrationWizardState
           ),
           child: Center(
             child: isDone
-                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                ? Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: isCompact ? 15 : 18,
+                  )
                 : Text(
                     '${index + 1}',
                     style: TextStyle(
@@ -1505,6 +1512,7 @@ class _PatientRegistrationWizardState
                           ? Colors.white
                           : Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w700,
+                      fontSize: isCompact ? 12 : 14,
                     ),
                   ),
           ),
@@ -1516,7 +1524,7 @@ class _PatientRegistrationWizardState
             Expanded(
               child: Container(
                 height: 2,
-                margin: const EdgeInsets.symmetric(horizontal: 8),
+                margin: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 8),
                 color: color.withValues(alpha: isDone ? 1 : 0.35),
               ),
             ),
@@ -1560,8 +1568,7 @@ class _PatientRegistrationWizardState
   }
 
   Widget _buildStep1PersonalInfo() {
-    return SingleChildScrollView(
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Full Name', Icons.badge_outlined),
@@ -1744,13 +1751,11 @@ class _PatientRegistrationWizardState
             ),
           ]),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildStep2ContactInfo() {
-    return SingleChildScrollView(
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('Philippine Address', Icons.home_outlined),
@@ -1940,13 +1945,11 @@ class _PatientRegistrationWizardState
             ),
           ]),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildStep3EmergencyContact() {
-    return SingleChildScrollView(
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -2043,13 +2046,11 @@ class _PatientRegistrationWizardState
             icon: Icons.phone_outlined,
           ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildStep4MedicalInfo() {
-    return SingleChildScrollView(
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader(
@@ -2139,8 +2140,7 @@ class _PatientRegistrationWizardState
           const SizedBox(height: 24),
           _buildRegistrationSummary(),
         ],
-      ),
-    );
+      );
   }
 
   Widget _buildRegistrationSummary() {
@@ -2246,13 +2246,20 @@ class _PatientRegistrationWizardState
   Widget _buildFormRow(List<Widget> children) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        Widget unwrapFlex(Widget child) {
+          if (child is Expanded) return child.child;
+          if (child is Flexible) return child.child;
+          return child;
+        }
+
         if (constraints.maxWidth < 680) {
           return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: children
                 .map(
                   (child) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: child,
+                    child: unwrapFlex(child),
                   ),
                 )
                 .toList(),

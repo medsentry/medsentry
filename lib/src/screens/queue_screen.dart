@@ -1570,69 +1570,78 @@ class _QueueFiltersBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: 280,
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: 'Search patient or purpose',
-                prefixIcon: Icon(Icons.search),
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
-              onChanged: onSearchChanged,
-            ),
-          ),
-          DropdownButton<QueueStatus?>(
-            value: statusFilter,
-            hint: const Text('Status'),
-            onChanged: onStatusChanged,
-            items: [
-              const DropdownMenuItem<QueueStatus?>(
-                value: null,
-                child: Text('All Status'),
-              ),
-              ...QueueStatus.values.map(
-                (status) => DropdownMenuItem<QueueStatus?>(
-                  value: status,
-                  child: Text(_statusLabel(status)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth - 32;
+        final searchWidth = availableWidth < 300
+            ? availableWidth.clamp(140.0, 280.0)
+            : 280.0;
+
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: searchWidth,
+                child: TextField(
+                  decoration: const InputDecoration(
+                    hintText: 'Search patient or purpose',
+                    prefixIcon: Icon(Icons.search),
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: onSearchChanged,
                 ),
               ),
-            ],
-          ),
-          DropdownButton<Priority?>(
-            value: priorityFilter,
-            hint: const Text('Priority'),
-            onChanged: onPriorityChanged,
-            items: [
-              const DropdownMenuItem<Priority?>(
-                value: null,
-                child: Text('All Priority'),
+              DropdownButton<QueueStatus?>(
+                value: statusFilter,
+                hint: const Text('Status'),
+                onChanged: onStatusChanged,
+                items: [
+                  const DropdownMenuItem<QueueStatus?>(
+                    value: null,
+                    child: Text('All Status'),
+                  ),
+                  ...QueueStatus.values.map(
+                    (status) => DropdownMenuItem<QueueStatus?>(
+                      value: status,
+                      child: Text(_statusLabel(status)),
+                    ),
+                  ),
+                ],
               ),
-              ...Priority.values.map(
-                (priority) => DropdownMenuItem<Priority?>(
-                  value: priority,
-                  child: Text(priority.name.toUpperCase()),
+              DropdownButton<Priority?>(
+                value: priorityFilter,
+                hint: const Text('Priority'),
+                onChanged: onPriorityChanged,
+                items: [
+                  const DropdownMenuItem<Priority?>(
+                    value: null,
+                    child: Text('All Priority'),
+                  ),
+                  ...Priority.values.map(
+                    (priority) => DropdownMenuItem<Priority?>(
+                      value: priority,
+                      child: Text(priority.name.toUpperCase()),
+                    ),
+                  ),
+                ],
+              ),
+              if (searchQuery.isNotEmpty ||
+                  statusFilter != null ||
+                  priorityFilter != null)
+                TextButton.icon(
+                  onPressed: onClearFilters,
+                  icon: const Icon(Icons.clear),
+                  label: const Text('Clear'),
                 ),
-              ),
             ],
           ),
-          if (searchQuery.isNotEmpty ||
-              statusFilter != null ||
-              priorityFilter != null)
-            TextButton.icon(
-              onPressed: onClearFilters,
-              icon: const Icon(Icons.clear),
-              label: const Text('Clear'),
-            ),
-        ],
-      ),
+        );
+      },
     );
   }
 

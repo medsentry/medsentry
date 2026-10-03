@@ -28,18 +28,17 @@ class ArchiveScreen extends ConsumerWidget {
                 Text(
                   'Archive & Recovery Management',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Manage inactive patient records. Restore archived records when needed.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.68),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
                 ),
               ],
             ),
@@ -90,7 +89,9 @@ class ArchiveScreen extends ConsumerWidget {
                                     ref.invalidate(archivedPatientsProvider);
                                     ref.invalidate(patientsProvider);
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             '${patient.fullName} restored successfully.',
@@ -128,7 +129,9 @@ class ArchiveScreen extends ConsumerWidget {
                                     ref.invalidate(archivedPatientsProvider);
                                     ref.invalidate(patientsProvider);
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             '${patient.fullName} restored successfully.',

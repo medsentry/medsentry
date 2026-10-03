@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../providers/theme_provider.dart';
+import '../widgets/layout/responsive_layout.dart';
 
 extension BuildContextExtensions on BuildContext {
   /// Easy access to ThemeData
@@ -34,13 +35,18 @@ extension BuildContextExtensions on BuildContext {
   }
 
   /// Responsive layout helpers
-  bool get isMobile => MediaQuery.sizeOf(this).width < 600.0;
-  bool get isTablet {
-    final width = MediaQuery.sizeOf(this).width;
-    return width >= 600.0 && width <= 1024.0;
-  }
-  bool get isDesktop => MediaQuery.sizeOf(this).width > 1024.0;
-  bool get isUltraWide => MediaQuery.sizeOf(this).width > 1600.0;
+  bool get isMobile => ResponsiveBreakpoints.isMobile(this);
+  bool get isTablet => ResponsiveBreakpoints.isTablet(this);
+  bool get isDesktop => ResponsiveBreakpoints.isDesktop(this);
+  bool get isUltraWide => ResponsiveBreakpoints.isUltraWide(this);
+
+  /// Vertical dimension helpers
+  bool get isCompactHeight => ResponsiveBreakpoints.isCompactHeight(this);
+  bool get isShortHeight => ResponsiveBreakpoints.isShortHeight(this);
+
+  /// Orientation helpers
+  bool get isLandscape => ResponsiveBreakpoints.isLandscape(this);
+  bool get isPortrait => ResponsiveBreakpoints.isPortrait(this);
 
   double get screenWidth => MediaQuery.sizeOf(this).width;
   double get screenHeight => MediaQuery.sizeOf(this).height;
@@ -53,11 +59,11 @@ extension BuildContextExtensions on BuildContext {
     T? ultraWide,
   }) {
     final width = screenWidth;
-    if (width < 600.0) {
+    if (width < ResponsiveBreakpoints.mobile) {
       return mobile;
-    } else if (width <= 1024.0) {
+    } else if (width <= ResponsiveBreakpoints.tablet) {
       return tablet ?? desktop ?? mobile;
-    } else if (width <= 1600.0) {
+    } else if (width <= ResponsiveBreakpoints.desktop) {
       return desktop ?? tablet ?? mobile;
     } else {
       return ultraWide ?? desktop ?? tablet ?? mobile;

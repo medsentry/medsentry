@@ -16,12 +16,19 @@ class ResponsiveBreakpoints {
   /// Desktop breakpoint: 1024 dp < width <= 1600 dp (laptops, standard monitors).
   static const double desktop = 1600.0;
 
+  /// Compact height breakpoint: height < 500 dp (landscape smartphones, active virtual keyboards).
+  static const double compactHeight = 500.0;
+
+  /// Short height breakpoint: height < 650 dp (small laptops, multi-window split screens).
+  static const double shortHeight = 650.0;
+
   /// Minimum touch target size according to Material 3 & WCAG 2.1 AA.
   static const double minTouchTargetSize = 48.0;
 
-  /// Classify screen type based on width in dp.
-  static ResponsiveScreenType getScreenType(double width) {
-    if (width < mobile) {
+  /// Classify screen type based on width (and optional height) in dp.
+  static ResponsiveScreenType getScreenType(double width, [double? height]) {
+    if (width < mobile ||
+        (height != null && height < compactHeight && width < tablet)) {
       return ResponsiveScreenType.mobile;
     } else if (width < tablet) {
       return ResponsiveScreenType.tablet;
@@ -32,23 +39,50 @@ class ResponsiveBreakpoints {
     }
   }
 
-  /// Helper to check if current context is Mobile (< 600px).
-  static bool isMobile(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < mobile;
-
-  /// Helper to check if current context is Tablet (600px - 1024px).
-  static bool isTablet(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return width >= mobile && width <= tablet;
+  /// Helper to check if current context is Mobile (< 600px width, or landscape phone with compact height).
+  static bool isMobile(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return size.width < mobile ||
+        (size.height < compactHeight && size.width < tablet);
   }
 
-  /// Helper to check if current context is Desktop (> 1024px).
-  static bool isDesktop(BuildContext context) =>
-      MediaQuery.sizeOf(context).width > tablet;
+  /// Helper to check if current context is Tablet (600px - 1024px width, with sufficient vertical height).
+  static bool isTablet(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return !isMobile(context) && size.width <= tablet;
+  }
+
+  /// Helper to check if current context is Desktop (> 1024px and <= 1600px).
+  static bool isDesktop(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return !isMobile(context) &&
+        !isTablet(context) &&
+        size.width <= desktop;
+  }
 
   /// Helper to check if current context is Ultra-Wide (> 1600px).
   static bool isUltraWide(BuildContext context) =>
       MediaQuery.sizeOf(context).width > desktop;
+
+  /// Check if the viewport height is compact (< 500px, e.g. landscape phone or active keyboard).
+  static bool isCompactHeight(BuildContext context) =>
+      MediaQuery.sizeOf(context).height < compactHeight;
+
+  /// Check if the viewport height is short (< 650px).
+  static bool isShortHeight(BuildContext context) =>
+      MediaQuery.sizeOf(context).height < shortHeight;
+
+  /// Check if the device is currently in landscape orientation.
+  static bool isLandscape(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return size.width > size.height;
+  }
+
+  /// Check if the device is currently in portrait orientation.
+  static bool isPortrait(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return size.height >= size.width;
+  }
 
   /// Get standard grid columns count based on width.
   static int getGridColumns(
@@ -95,45 +129,57 @@ class ResponsiveLayout extends StatelessWidget {
     this.useConstraints = true,
   });
 
-  /// Check if the current context or width is Mobile (< 600px).
-  static bool isMobile(BuildContext context) {
-    return MediaQuery.sizeOf(context).width < ResponsiveBreakpoints.mobile;
-  }
+  /// Check if the current context or width is Mobile (< 600px width, or landscape phone with compact height).
+  static bool isMobile(BuildContext context) =>
+      ResponsiveBreakpoints.isMobile(context);
 
   /// Check if the current context or width is Tablet (600px - 1024px).
-  static bool isTablet(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return width >= ResponsiveBreakpoints.mobile &&
-        width <= ResponsiveBreakpoints.tablet;
-  }
+  static bool isTablet(BuildContext context) =>
+      ResponsiveBreakpoints.isTablet(context);
 
   /// Check if the current context or width is Desktop (> 1024px).
-  static bool isDesktop(BuildContext context) {
-    return MediaQuery.sizeOf(context).width > ResponsiveBreakpoints.tablet;
-  }
+  static bool isDesktop(BuildContext context) =>
+      ResponsiveBreakpoints.isDesktop(context);
 
   /// Check if the current context or width is Ultra-Wide (> 1600px).
-  static bool isUltraWide(BuildContext context) {
-    return MediaQuery.sizeOf(context).width > ResponsiveBreakpoints.desktop;
-  }
+  static bool isUltraWide(BuildContext context) =>
+      ResponsiveBreakpoints.isUltraWide(context);
+
+  /// Check if current context has compact height (< 500px).
+  static bool isCompactHeight(BuildContext context) =>
+      ResponsiveBreakpoints.isCompactHeight(context);
+
+  /// Check if current context has short height (< 650px).
+  static bool isShortHeight(BuildContext context) =>
+      ResponsiveBreakpoints.isShortHeight(context);
+
+  /// Check if current context is landscape orientation.
+  static bool isLandscape(BuildContext context) =>
+      ResponsiveBreakpoints.isLandscape(context);
+
+  /// Check if current context is portrait orientation.
+  static bool isPortrait(BuildContext context) =>
+      ResponsiveBreakpoints.isPortrait(context);
 
   /// Resolve current [ResponsiveScreenType] from [BuildContext].
   static ResponsiveScreenType getScreenType(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    return getScreenTypeFromWidth(width);
-  }
-
-  /// Resolve [ResponsiveScreenType] from raw pixel width.
-  static ResponsiveScreenType getScreenTypeFromWidth(double width) {
-    if (width < ResponsiveBreakpoints.mobile) {
+    if (isMobile(context)) {
       return ResponsiveScreenType.mobile;
-    } else if (width <= ResponsiveBreakpoints.tablet) {
+    } else if (isTablet(context)) {
       return ResponsiveScreenType.tablet;
-    } else if (width <= ResponsiveBreakpoints.desktop) {
+    } else if (isDesktop(context)) {
       return ResponsiveScreenType.desktop;
     } else {
       return ResponsiveScreenType.ultraWide;
     }
+  }
+
+  /// Resolve [ResponsiveScreenType] from raw pixel width and optional height.
+  static ResponsiveScreenType getScreenTypeFromWidth(
+    double width, [
+    double? height,
+  ]) {
+    return ResponsiveBreakpoints.getScreenType(width, height);
   }
 
   /// Returns a responsive value based on the active screen type.
@@ -198,7 +244,10 @@ class ResponsiveLayout extends StatelessWidget {
     if (useConstraints) {
       return LayoutBuilder(
         builder: (context, constraints) {
-          final type = getScreenTypeFromWidth(constraints.maxWidth);
+          final type = getScreenTypeFromWidth(
+            constraints.maxWidth,
+            constraints.hasBoundedHeight ? constraints.maxHeight : null,
+          );
           switch (type) {
             case ResponsiveScreenType.mobile:
               return mobile;

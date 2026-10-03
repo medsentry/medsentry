@@ -262,9 +262,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             final isTall = height >= 820;
 
             if (!isWide) {
-              final compactIllustrationHeight = (height * 0.32).clamp(
-                160.0,
-                280.0,
+              final showIllustration = height >= 580;
+              final compactIllustrationHeight = (height * 0.28).clamp(
+                120.0,
+                240.0,
               );
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -278,16 +279,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildTopBar(context, compact: true),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: compactIllustrationHeight,
-                          child: Image.asset(
-                            'assets/images/rhu_doctors.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const SizedBox.shrink(),
+                        if (showIllustration) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: compactIllustrationHeight,
+                            child: Image.asset(
+                              'assets/images/rhu_doctors.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const SizedBox.shrink(),
+                            ),
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 16),
                         _buildAuthForm(context, isTall: false),
                         const SizedBox(height: 20),
@@ -303,7 +306,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             final formMaxWidth = (width * 0.28).clamp(380.0, 480.0);
             final columnGap = (width * 0.035).clamp(28.0, 64.0);
 
-            return Column(
+            final wideContent = Column(
               children: [
                 _buildTopBar(
                   context,
@@ -353,6 +356,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ],
             );
+
+            if (height < 560) {
+              return SingleChildScrollView(
+                child: SizedBox(
+                  height: 560,
+                  child: wideContent,
+                ),
+              );
+            }
+
+            return wideContent;
           },
         ),
       ),

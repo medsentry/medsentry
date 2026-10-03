@@ -189,7 +189,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     User? user,
     SyncStatus syncStatus,
   ) {
+    final isCompact = ResponsiveLayout.isCompactHeight(context);
     return AppBar(
+      toolbarHeight: isCompact ? 48 : 56,
       backgroundColor:
           Theme.of(context).appBarTheme.backgroundColor ??
           Theme.of(context).primaryColor,
@@ -319,6 +321,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   }
 
   Widget? _buildMobileBottomNav(BuildContext context) {
+    // Hide bottom navigation on compact/short viewports (e.g. landscape phone, virtual keyboard)
+    // to give maximum vertical space to content. Full navigation is accessible via the Drawer.
+    if (MediaQuery.sizeOf(context).height < 520) return null;
+
     // Only display on mobile if there are enough core items
     if (widget.navigationItems.length < 3) return null;
 
