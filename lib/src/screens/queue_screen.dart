@@ -143,6 +143,19 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                           onStatusTap: canManageQueue
                               ? () => _showStatusDialog(context, ref, item)
                               : null,
+                          onCallPatient: canManageQueue &&
+                                  item.status == QueueStatus.waiting
+                              ? () => _callPatient(item)
+                              : null,
+                          onComplete: canManageQueue &&
+                                  item.status == QueueStatus.inProgress
+                              ? () => _completeVisit(item)
+                              : null,
+                          onMarkNoShow: canManageQueue &&
+                                  (item.status == QueueStatus.waiting ||
+                                      item.status == QueueStatus.inProgress)
+                              ? () => _markNoShow(item)
+                              : null,
                         );
                       },
                     ),
@@ -234,6 +247,145 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _callPatient(QueueItem item) async {
+    try {
+      final updated = item.copyWith(
+        status: QueueStatus.inProgress,
+        startTime: item.startTime ?? DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await ref.read(queueRepositoryProvider).updateQueueItem(updated);
+      ref.invalidate(queueProvider);
+      ref.invalidate(patientQueueHistoryProvider(item.patientId));
+      ref.invalidate(dashboardStatsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Called ${item.patientName ?? "patient"} into station.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: context.semanticColors.normal,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to call patient: $e'),
+            backgroundColor: context.semanticColors.critical,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _completeVisit(QueueItem item) async {
+    try {
+      final updated = item.copyWith(
+        status: QueueStatus.completed,
+        endTime: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      await ref.read(queueRepositoryProvider).updateQueueItem(updated);
+      ref.invalidate(queueProvider);
+      ref.invalidate(patientQueueHistoryProvider(item.patientId));
+      ref.invalidate(dashboardStatsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.task_alt, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Completed visit for ${item.patientName ?? "patient"}.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: context.semanticColors.normal,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to complete visit: $e'),
+            backgroundColor: context.semanticColors.critical,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _markNoShow(QueueItem item) async {
+    try {
+      final currentNotes = item.notes ?? '';
+      final updatedNotes = currentNotes.isEmpty
+          ? 'Marked as No-show'
+          : '$currentNotes • Marked as No-show';
+      final updated = item.copyWith(
+        status: QueueStatus.cancelled,
+        endTime: DateTime.now(),
+        notes: updatedNotes,
+        updatedAt: DateTime.now(),
+      );
+      await ref.read(queueRepositoryProvider).updateQueueItem(updated);
+      ref.invalidate(queueProvider);
+      ref.invalidate(patientQueueHistoryProvider(item.patientId));
+      ref.invalidate(dashboardStatsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.person_off_outlined,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${item.patientName ?? "patient"} marked as No-show.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: context.semanticColors.warning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update: $e'),
+            backgroundColor: context.semanticColors.critical,
+          ),
+        );
+      }
+    }
   }
 
   void _showVitalsDialog(BuildContext context, WidgetRef ref, QueueItem item) {
@@ -447,10 +599,12 @@ class _AddToQueueModalState extends ConsumerState<_AddToQueueModal> {
           onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton.icon(
-          onPressed: _isSaving ? null : _submit,
-          icon: const Icon(Icons.check),
-          label: const Text('Add to Queue'),
+        AppAsyncSubmitButton(
+          label: 'Add to Queue',
+          loadingLabel: 'Adding...',
+          icon: Icons.check,
+          isSubmitting: _isSaving,
+          onPressed: _submit,
         ),
       ],
     );
@@ -1670,6 +1824,9 @@ class _QueueProfessionalCard extends StatelessWidget {
   final VoidCallback? onRemove;
   final VoidCallback? onVitalsTap;
   final VoidCallback? onStatusTap;
+  final VoidCallback? onCallPatient;
+  final VoidCallback? onComplete;
+  final VoidCallback? onMarkNoShow;
 
   const _QueueProfessionalCard({
     required this.queueItem,
@@ -1678,6 +1835,9 @@ class _QueueProfessionalCard extends StatelessWidget {
     required this.onRemove,
     required this.onVitalsTap,
     required this.onStatusTap,
+    this.onCallPatient,
+    this.onComplete,
+    this.onMarkNoShow,
   });
 
   @override
@@ -1768,106 +1928,260 @@ class _QueueProfessionalCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               if (context.isMobile)
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: 'Actions',
-                  onSelected: (action) {
-                    switch (action) {
-                      case 'vitals':
-                        onVitalsTap?.call();
-                        break;
-                      case 'status':
-                        onStatusTap?.call();
-                        break;
-                      case 'soap':
-                        onTap?.call();
-                        break;
-                      case 'remove':
-                        onRemove?.call();
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    if (onVitalsTap != null)
-                      const PopupMenuItem(
-                        value: 'vitals',
-                        child: ListTile(
-                          leading: Icon(Icons.favorite_outline),
-                          title: Text('Record Vitals'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    if (onStatusTap != null)
-                      const PopupMenuItem(
-                        value: 'status',
-                        child: ListTile(
-                          leading: Icon(Icons.manage_history_outlined),
-                          title: Text('Update Status'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    if (onTap != null)
-                      const PopupMenuItem(
-                        value: 'soap',
-                        child: ListTile(
-                          leading: Icon(Icons.arrow_forward),
-                          title: Text('Open SOAP'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    if (onRemove != null)
-                      PopupMenuItem(
-                        value: 'remove',
-                        child: ListTile(
-                          leading: Icon(
-                            Icons.remove_circle_outline,
-                            color: colorScheme.error,
-                          ),
-                          title: Text(
-                            'Remove from Queue',
-                            style: TextStyle(color: colorScheme.error),
-                          ),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                  ],
-                )
+                _buildMobileActions(context, colorScheme)
               else
-                Column(
-                  children: [
-                    if (onVitalsTap != null)
-                      IconButton(
-                        tooltip: 'Record Vitals',
-                        icon: const Icon(Icons.favorite_outline),
-                        onPressed: onVitalsTap,
-                      ),
-                    if (onStatusTap != null)
-                      IconButton(
-                        tooltip: 'Update Status',
-                        icon: const Icon(Icons.manage_history_outlined),
-                        onPressed: onStatusTap,
-                      ),
-                    if (onTap != null)
-                      IconButton(
-                        tooltip: 'Open SOAP',
-                        icon: const Icon(Icons.arrow_forward),
-                        onPressed: onTap,
-                      ),
-                    if (onRemove != null)
-                      IconButton(
-                        tooltip: 'Remove from queue',
-                        icon: const Icon(Icons.remove_circle_outline),
-                        color: colorScheme.error,
-                        onPressed: onRemove,
-                      ),
-                  ],
-                ),
+                _buildDesktopActions(context, colorScheme),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileActions(BuildContext context, ColorScheme colorScheme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (queueItem.status == QueueStatus.waiting && onCallPatient != null)
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            ),
+            onPressed: onCallPatient,
+            child: const Text('Call'),
+          )
+        else if (queueItem.status == QueueStatus.inProgress && onComplete != null)
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            ),
+            onPressed: onComplete,
+            child: const Text('Done'),
+          )
+        else if (onTap != null)
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            ),
+            onPressed: onTap,
+            child: const Text('SOAP'),
+          ),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          tooltip: 'Actions',
+          onSelected: (action) {
+            switch (action) {
+              case 'call':
+                onCallPatient?.call();
+                break;
+              case 'complete':
+                onComplete?.call();
+                break;
+              case 'vitals':
+                onVitalsTap?.call();
+                break;
+              case 'status':
+                onStatusTap?.call();
+                break;
+              case 'soap':
+                onTap?.call();
+                break;
+              case 'noshow':
+                onMarkNoShow?.call();
+                break;
+              case 'remove':
+                onRemove?.call();
+                break;
+            }
+          },
+          itemBuilder: (context) => [
+            if (onCallPatient != null && queueItem.status == QueueStatus.waiting)
+              const PopupMenuItem(
+                value: 'call',
+                child: ListTile(
+                  leading: Icon(Icons.record_voice_over_outlined),
+                  title: Text('Call Patient'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            if (onVitalsTap != null)
+              PopupMenuItem(
+                value: 'vitals',
+                child: ListTile(
+                  leading: const Icon(Icons.favorite_outline),
+                  title: Text(
+                    queueItem.vitalsTaken ? 'Edit Vitals' : 'Record Vitals',
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            if (onTap != null)
+              const PopupMenuItem(
+                value: 'soap',
+                child: ListTile(
+                  leading: Icon(Icons.arrow_forward),
+                  title: Text('Open SOAP Notes'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            if (onComplete != null && queueItem.status == QueueStatus.inProgress)
+              const PopupMenuItem(
+                value: 'complete',
+                child: ListTile(
+                  leading: Icon(Icons.task_alt),
+                  title: Text('Complete Visit'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            if (onStatusTap != null)
+              const PopupMenuItem(
+                value: 'status',
+                child: ListTile(
+                  leading: Icon(Icons.manage_history_outlined),
+                  title: Text('Update Station / Status'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            if (onMarkNoShow != null)
+              const PopupMenuItem(
+                value: 'noshow',
+                child: ListTile(
+                  leading: Icon(Icons.person_off_outlined),
+                  title: Text('Mark as No-Show'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            if (onRemove != null)
+              PopupMenuItem(
+                value: 'remove',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.remove_circle_outline,
+                    color: colorScheme.error,
+                  ),
+                  title: Text(
+                    'Remove from Queue',
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopActions(BuildContext context, ColorScheme colorScheme) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (queueItem.status == QueueStatus.waiting) ...[
+          if (onCallPatient != null)
+            FilledButton.icon(
+              icon: const Icon(Icons.record_voice_over_outlined, size: 16),
+              label: const Text('Call Patient'),
+              onPressed: onCallPatient,
+            ),
+          if (onVitalsTap != null)
+            OutlinedButton.icon(
+              icon: Icon(
+                queueItem.vitalsTaken
+                    ? Icons.edit_note
+                    : Icons.favorite_outline,
+                size: 16,
+              ),
+              label: Text(
+                queueItem.vitalsTaken ? 'Edit Vitals' : 'Take Vitals',
+              ),
+              onPressed: onVitalsTap,
+            ),
+          if (onTap != null)
+            OutlinedButton.icon(
+              icon: const Icon(Icons.medical_services_outlined, size: 16),
+              label: const Text('SOAP'),
+              onPressed: onTap,
+            ),
+        ] else if (queueItem.status == QueueStatus.inProgress) ...[
+          if (onTap != null)
+            FilledButton.icon(
+              icon: const Icon(Icons.medical_services_outlined, size: 16),
+              label: const Text('SOAP Notes'),
+              onPressed: onTap,
+            ),
+          if (onComplete != null)
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.task_alt, size: 16),
+              label: const Text('Complete'),
+              onPressed: onComplete,
+            ),
+          if (onVitalsTap != null)
+            OutlinedButton.icon(
+              icon: const Icon(Icons.favorite_outline, size: 16),
+              label: const Text('Vitals'),
+              onPressed: onVitalsTap,
+            ),
+        ],
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_horiz),
+          tooltip: 'More actions',
+          onSelected: (action) {
+            switch (action) {
+              case 'status':
+                onStatusTap?.call();
+                break;
+              case 'noshow':
+                onMarkNoShow?.call();
+                break;
+              case 'remove':
+                onRemove?.call();
+                break;
+            }
+          },
+          itemBuilder: (context) => [
+            if (onStatusTap != null)
+              const PopupMenuItem(
+                value: 'status',
+                child: ListTile(
+                  leading: Icon(Icons.manage_history_outlined),
+                  title: Text('Update Station / Status'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            if (onMarkNoShow != null)
+              const PopupMenuItem(
+                value: 'noshow',
+                child: ListTile(
+                  leading: Icon(Icons.person_off_outlined),
+                  title: Text('Mark as No-Show'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            if (onRemove != null)
+              PopupMenuItem(
+                value: 'remove',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.remove_circle_outline,
+                    color: colorScheme.error,
+                  ),
+                  title: Text(
+                    'Remove from Queue',
+                    style: TextStyle(color: colorScheme.error),
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 

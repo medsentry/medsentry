@@ -9,6 +9,7 @@ class MedSentryApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(syncServiceStateProvider);
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
     final accentTheme = ref.watch(accentThemeProvider);
@@ -18,7 +19,10 @@ class MedSentryApp extends ConsumerWidget {
         title: 'MedSentry',
         debugShowCheckedModeBanner: false,
         theme: buildMedSentryTheme(Brightness.light, accentTheme: accentTheme),
-        darkTheme: buildMedSentryTheme(Brightness.dark, accentTheme: accentTheme),
+        darkTheme: buildMedSentryTheme(
+          Brightness.dark,
+          accentTheme: accentTheme,
+        ),
         themeMode: themeMode,
         routerConfig: router,
       ),

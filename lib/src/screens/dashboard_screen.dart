@@ -40,6 +40,8 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildWelcomeHero(context, currentUser?.name ?? 'User'),
+            const SizedBox(height: 16),
+            _buildQuickActionBar(context, currentUser),
             const SizedBox(height: 20),
             Text(
               'Today\'s Overview',
@@ -586,6 +588,73 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildQuickActionBar(BuildContext context, User? user) {
+    final canRegister = user?.canRegisterPatients == true;
+    final canQueue = user?.canManageQueue == true;
+    final canVitals = user?.canRecordVitals == true;
+    final canConsult = user?.canConsult == true;
+    final canReports = user?.canGenerateReports == true;
+    final canDocs = user?.canManageDocuments == true;
+    final canStaff = user?.canManageStaffAccounts == true || user?.isSuperAdmin == true;
+
+    final actions = <Widget>[
+      if (canRegister)
+        _QuickActionButton(
+          icon: Icons.person_add_alt_1_outlined,
+          label: 'Register Patient',
+          onTap: () => context.go('/patients?add=true'),
+          isPrimary: true,
+        ),
+      if (canQueue)
+        _QuickActionButton(
+          icon: Icons.queue_outlined,
+          label: 'Manage Queue',
+          onTap: () => context.go('/queue'),
+        ),
+      if (canVitals && !canQueue)
+        _QuickActionButton(
+          icon: Icons.monitor_heart_outlined,
+          label: 'Record Vitals',
+          onTap: () => context.go('/queue'),
+        ),
+      if (canConsult)
+        _QuickActionButton(
+          icon: Icons.medical_services_outlined,
+          label: 'Consultation Station',
+          onTap: () => context.go('/queue'),
+        ),
+      if (canDocs)
+        _QuickActionButton(
+          icon: Icons.document_scanner_outlined,
+          label: 'Document Hub',
+          onTap: () => context.go('/documents'),
+        ),
+      if (canReports)
+        _QuickActionButton(
+          icon: Icons.insights_outlined,
+          label: 'Reports & Analytics',
+          onTap: () => context.go('/reports'),
+        ),
+      if (canStaff)
+        _QuickActionButton(
+          icon: Icons.manage_accounts_outlined,
+          label: 'Staff Directory',
+          onTap: () => context.go('/staff'),
+        ),
+    ];
+
+    if (actions.isEmpty) return const SizedBox.shrink();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: actions
+            .map((w) => Padding(padding: const EdgeInsets.only(right: 10), child: w))
+            .toList(),
+      ),
+    );
+  }
+
   Widget _buildWorkflowSection(BuildContext context, User? user) {
     final title = user?.canManageSystemData == true
         ? 'Admin Flow'
@@ -852,56 +921,8 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildStatCard(BuildContext context, _StatCardData data) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        mouseCursor: data.onTap != null
-            ? SystemMouseCursors.click
-            : MouseCursor.defer,
-        onTap: data.onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 120),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              Icon(data.icon, color: data.color, size: 32),
-              const SizedBox(height: 12),
-              Text(
-                data.value,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: data.color,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                data.title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.68),
-                ),
-              ),
-              if (data.subtitle != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  data.subtitle!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.55),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-}
+    return _InteractiveStatCard(data: data);
+  }
 
   Widget _buildAlertCard(
     BuildContext context, {
@@ -1524,3 +1545,177 @@ class _WorkflowAction {
     required this.onTap,
   });
 }
+
+class _InteractiveStatCard extends StatefulWidget {
+  final _StatCardData data;
+
+  const _InteractiveStatCard({required this.data});
+
+  @override
+  State<_InteractiveStatCard> createState() => _InteractiveStatCardState();
+}
+
+class _InteractiveStatCardState extends State<_InteractiveStatCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = widget.data;
+    final isClickable = data.onTap != null;
+    final theme = Theme.of(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _isHovered && isClickable
+              ? data.color.withValues(alpha: 0.5)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+          width: _isHovered && isClickable ? 1.5 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _isHovered && isClickable
+                ? data.color.withValues(alpha: 0.15)
+                : Colors.black.withValues(alpha: 0.04),
+            blurRadius: _isHovered && isClickable ? 14 : 8,
+            offset: Offset(0, _isHovered && isClickable ? 6 : 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          mouseCursor: isClickable
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          onHover: (hovering) {
+            if (isClickable && mounted) {
+              setState(() => _isHovered = hovering);
+            }
+          },
+          onTap: data.onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 120),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: data.color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(data.icon, color: data.color, size: 24),
+                      ),
+                      if (isClickable)
+                        Tooltip(
+                          message: 'View ${data.title}',
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: _isHovered
+                                  ? data.color.withValues(alpha: 0.15)
+                                  : theme.colorScheme.surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 16,
+                              color: _isHovered
+                                  ? data.color
+                                  : theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    data.value,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                      color: data.color,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    data.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                    ),
+                  ),
+                  if (data.subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      data.subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isPrimary;
+
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isPrimary = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isPrimary) {
+      return FilledButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+
+    return FilledButton.tonalIcon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+}
+

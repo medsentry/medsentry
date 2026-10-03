@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
@@ -67,13 +68,15 @@ class SyncService extends StateNotifier<SyncServiceState> {
   RealtimeChannel? _realtimeChannel;
   Timer? _realtimeRefreshTimer;
   Timer? _pendingSyncTimer;
+  Timer? _retrySyncTimer;
   int _realtimeSetupGeneration = 0;
+  int _retryAttempt = 0;
   String? _realtimeUserId;
   bool _wasOffline = false;
 
   SyncService(this._ref) : super(const SyncServiceState()) {
-    _refreshDerivedStatus();
     _initConnectivityListener();
+    unawaited(_initializeSync());
     _databaseChangesSubscription = _ref
         .read(databaseProvider)
         .changes
@@ -91,14 +94,20 @@ class SyncService extends StateNotifier<SyncServiceState> {
     ) async {
       final isOnline = results.any((r) => r != ConnectivityResult.none);
       if (isOnline) {
-        if (_wasOffline) {
-          _wasOffline = false;
-          AppNotification.info(
-            title: 'Back Online',
-            message: 'Connection restored. Syncing changes to cloud...',
-          );
+        final wasOffline = _wasOffline || state.status == SyncStatus.offline;
+        _wasOffline = false;
+        if (_supabase.auth.currentSession != null &&
+            (wasOffline ||
+                state.status == SyncStatus.pending ||
+                state.status == SyncStatus.error)) {
+          if (wasOffline) {
+            AppNotification.info(
+              title: 'Back Online',
+              message: 'Connection restored. Syncing changes to cloud...',
+            );
+          }
           final result = await startSync();
-          if (result.success) {
+          if (wasOffline && result.success) {
             AppNotification.success(
               title: 'Cloud Synchronized',
               message: 'All local changes synchronized successfully.',
@@ -121,6 +130,15 @@ class SyncService extends StateNotifier<SyncServiceState> {
     });
   }
 
+  Future<void> _initializeSync() async {
+    final online = await _hasNetworkConnection();
+    _wasOffline = !online;
+    await _refreshDerivedStatus();
+    if (online && _supabase.auth.currentSession != null) {
+      await startSync();
+    }
+  }
+
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
@@ -128,6 +146,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
     _databaseChangesSubscription?.cancel();
     _realtimeRefreshTimer?.cancel();
     _pendingSyncTimer?.cancel();
+    _retrySyncTimer?.cancel();
     _realtimeSetupGeneration++;
     final channel = _realtimeChannel;
     if (channel != null) unawaited(_supabase.removeChannel(channel));
@@ -240,8 +259,9 @@ class SyncService extends StateNotifier<SyncServiceState> {
     try {
       final results = await Connectivity().checkConnectivity();
       return results.any((r) => r != ConnectivityResult.none);
-    } catch (_) {
-      return true;
+    } catch (error) {
+      debugPrint('Unable to determine network connectivity: $error');
+      return false;
     }
   }
 
@@ -250,7 +270,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
     try {
       await _supabase.from('patients').select('id').limit(1);
       return true;
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Cloud sync health check failed: $error');
       return false;
     }
   }
@@ -280,10 +301,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
       );
     }
 
+    _retrySyncTimer?.cancel();
     state = state.copyWith(status: SyncStatus.syncing);
 
     final online = await _hasNetworkConnection();
     if (!online) {
+      _wasOffline = true;
       state = state.copyWith(status: SyncStatus.offline);
       return const SyncResult(
         message: 'No internet connection',
@@ -292,17 +315,42 @@ class SyncService extends StateNotifier<SyncServiceState> {
     }
 
     final cloudReady = await _canSyncToCloud();
+    final hasSession = _supabase.auth.currentSession != null;
     final result = cloudReady
         ? await _performCloudSync()
+        : hasSession
+        ? const SyncResult(
+            message:
+                'Cloud is unavailable. Changes remain saved locally and will retry automatically.',
+            success: false,
+          )
         : await _performLocalSync();
 
-    await _refreshDerivedStatus();
-    if (result.success) await _refreshDerivedStatus();
-    if (result.success && state.status != SyncStatus.syncing) {
-      // Keep success/error from operation when not overridden by pending count.
+    if (result.success) {
+      _retryAttempt = 0;
+      _retrySyncTimer?.cancel();
+      await _refreshDerivedStatus();
+    } else if (hasSession) {
+      state = state.copyWith(status: SyncStatus.error);
+      _scheduleSyncRetry();
+    } else {
+      await _refreshDerivedStatus();
     }
 
     return result;
+  }
+
+  void _scheduleSyncRetry() {
+    if (_supabase.auth.currentSession == null) return;
+    _retrySyncTimer?.cancel();
+    const retryDelays = [2, 5, 15, 30, 60];
+    final delay = Duration(
+      seconds: retryDelays[_retryAttempt.clamp(0, retryDelays.length - 1)],
+    );
+    _retryAttempt++;
+    _retrySyncTimer = Timer(delay, () {
+      if (_supabase.auth.currentSession != null) unawaited(startSync());
+    });
   }
 
   Future<SyncResult> _performLocalSync() async {
@@ -482,7 +530,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
       state = state.copyWith(
         status: failed > 0 ? SyncStatus.error : SyncStatus.synced,
-        lastSyncTime: now,
+        lastSyncTime: failed == 0 ? now : null,
       );
 
       return SyncResult(message: message, success: failed == 0);
@@ -493,9 +541,10 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   Future<void> _pullRemoteDeletions(dynamic db) async {
-    final rows = await _supabase
-        .from('sync_tombstones')
-        .select('entity_type,record_id');
+    final rows = await _selectAllRows(
+      'sync_tombstones',
+      columns: 'entity_type,record_id',
+    );
     for (final raw in rows) {
       final deletion = Map<String, dynamic>.from(raw);
       final table = deletion['entity_type'] as String;
@@ -521,7 +570,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
     final localItems = {
       for (final item in await db.getQueueItems()) item.id: item,
     };
-    final rows = await _supabase.from('queue_items').select();
+    final rows = await _selectAllRows('queue_items');
     for (final raw in rows) {
       final remote = QueueItem.fromJson(Map<String, dynamic>.from(raw));
       final local = localItems[remote.id];
@@ -537,7 +586,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
     final localItems = {
       for (final item in await db.getAllConsultations()) item.id: item,
     };
-    final rows = await _supabase.from('consultations').select();
+    final rows = await _selectAllRows('consultations');
     for (final raw in rows) {
       final remote = Consultation.fromJson(Map<String, dynamic>.from(raw));
       final local = localItems[remote.id];
@@ -565,7 +614,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
       }
     }
 
-    final remotePrescriptions = await _supabase.from('prescriptions').select();
+    final remotePrescriptions = await _selectAllRows('prescriptions');
     for (final raw in remotePrescriptions) {
       final remote = Prescription.fromJson(Map<String, dynamic>.from(raw));
       final local = prescriptions[remote.id];
@@ -576,7 +625,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
       }
     }
 
-    final remoteLabOrders = await _supabase.from('lab_orders').select();
+    final remoteLabOrders = await _selectAllRows('lab_orders');
     for (final raw in remoteLabOrders) {
       final remote = LabOrder.fromJson(Map<String, dynamic>.from(raw));
       final local = labOrders[remote.id];
@@ -592,7 +641,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
     final localItems = {
       for (final item in await db.getDocuments()) item.id: item,
     };
-    final rows = await _supabase.from('documents').select();
+    final rows = await _selectAllRows('documents');
     for (final raw in rows) {
       final remote = MedicalDocument.fromJson(Map<String, dynamic>.from(raw));
       final local = localItems[remote.id];
@@ -610,7 +659,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
     final localUsers = {
       for (final user in await db.getAllUsers()) user.id: user,
     };
-    final rows = await _supabase.from('users').select();
+    final rows = await _selectAllRows('users');
     for (final raw in rows) {
       final remote = User.fromJson(Map<String, dynamic>.from(raw));
       final local = localUsers[remote.id];
@@ -636,7 +685,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
   Future<void> _pullRemoteAuditLogs(dynamic db) async {
     final localIds = {for (final log in await db.getAllAuditLogs()) log.id};
-    final rows = await _supabase.from('audit_logs').select();
+    final rows = await _selectAllRows('audit_logs');
     final users = {for (final user in await db.getAllUsers()) user.id: user};
 
     for (final raw in rows) {
@@ -693,12 +742,31 @@ class SyncService extends StateNotifier<SyncServiceState> {
     return value is String ? value : jsonEncode(value);
   }
 
+  Future<List<Map<String, dynamic>>> _selectAllRows(
+    String table, {
+    String columns = '*',
+  }) async {
+    const pageSize = 500;
+    final rows = <Map<String, dynamic>>[];
+    var offset = 0;
+
+    while (true) {
+      final page = await _supabase
+          .from(table)
+          .select(columns)
+          .range(offset, offset + pageSize - 1);
+      rows.addAll(List<Map<String, dynamic>>.from(page));
+      if (page.length < pageSize) return rows;
+      offset += pageSize;
+    }
+  }
+
   Future<void> _pullRemoteNotifications(dynamic db) async {
     final local = {
       for (final notification in await db.getNotifications())
         notification.id: notification,
     };
-    final rows = await _supabase.from('notifications').select();
+    final rows = await _selectAllRows('notifications');
     for (final raw in rows) {
       final row = Map<String, dynamic>.from(raw);
       final target = row['target'] == 'super_admin' ? 'admin' : row['target'];
@@ -766,7 +834,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
   ) async {
     final localReports =
         await db.getGeneratedReports() as List<GeneratedReport>;
-    final remoteIds = await _supabase.from('generated_reports').select('id');
+    final remoteIds = await _selectAllRows('generated_reports', columns: 'id');
     final remoteReportIds = remoteIds.map((row) => row['id'] as String).toSet();
     for (final report in localReports) {
       if (remoteReportIds.contains(report.id)) continue;
@@ -781,7 +849,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
       });
     }
 
-    final remoteReports = await _supabase.from('generated_reports').select();
+    final remoteReports = await _selectAllRows('generated_reports');
     final localReportIds = localReports.map((report) => report.id).toSet();
     for (final raw in remoteReports) {
       final data = Map<String, dynamic>.from(raw)..['file_path'] = null;
@@ -792,26 +860,22 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   Future<void> _pullRemotePatients(dynamic db) async {
-    try {
-      final remotePatients = await _supabase.from('patients').select();
-      for (final raw in remotePatients) {
-        final data = Map<String, dynamic>.from(raw);
-        final remote = Patient.fromJson(data);
-        final existing = await db.getPatientById(remote.id);
-        // Never overwrite an unsynced local edit. For clean local records,
-        // accept only a newer authoritative server version.
-        final remoteUpdatedAt = remote.updatedAt;
-        final localUpdatedAt = existing?.updatedAt;
-        if (existing == null ||
-            (existing.syncStatus == _synced &&
-                remoteUpdatedAt != null &&
-                (localUpdatedAt == null ||
-                    remoteUpdatedAt.isAfter(localUpdatedAt)))) {
-          await db.updatePatient(remote.copyWith(syncStatus: _synced));
-        }
+    final remotePatients = await _selectAllRows('patients');
+    for (final raw in remotePatients) {
+      final data = Map<String, dynamic>.from(raw);
+      final remote = Patient.fromJson(data);
+      final existing = await db.getPatientById(remote.id);
+      // Never overwrite an unsynced local edit. For clean local records,
+      // accept only a newer authoritative server version.
+      final remoteUpdatedAt = remote.updatedAt;
+      final localUpdatedAt = existing?.updatedAt;
+      if (existing == null ||
+          (existing.syncStatus == _synced &&
+              remoteUpdatedAt != null &&
+              (localUpdatedAt == null ||
+                  remoteUpdatedAt.isAfter(localUpdatedAt)))) {
+        await db.updatePatient(remote.copyWith(syncStatus: _synced));
       }
-    } catch (_) {
-      // Pull is best-effort.
     }
   }
 }

@@ -12,6 +12,8 @@ import '../widgets/app_form_dialog.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/layout/responsive_layout.dart';
+import '../widgets/patient_preview_panel.dart';
+import '../utils/context_extensions.dart';
 
 class PatientsScreen extends ConsumerStatefulWidget {
   final bool openAddPatient;
@@ -40,6 +42,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   PatientCategory? _categoryFilter;
   _PatientViewMode _viewMode = _PatientViewMode.list;
   _PatientSortMode _sortMode = _PatientSortMode.byLocation;
+  Patient? _selectedPatient;
 
   @override
   void initState() {
@@ -169,14 +172,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                                 ? () => _showAddPatientDialog(context)
                                 : null,
                           )
-                        : _PatientsContentView(
-                            patients: filteredPatients,
-                            groupedPatients: _groupPatients(filteredPatients),
-                            viewMode: _viewMode,
-                            sortMode: _sortMode,
-                            onPatientTap: (patient) =>
-                                context.push('/patients/${patient.id}'),
-                          ),
+                        : _buildMainContent(context, filteredPatients),
                   ),
                 ],
               );
@@ -315,6 +311,112 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       grouped[barangay]![purok]!.add(patient);
     }
     return grouped;
+  }
+
+  Widget _buildMainContent(
+    BuildContext context,
+    List<Patient> filteredPatients,
+  ) {
+    final canManageQueue =
+        ref.watch(currentUserProvider)?.canManageQueue ?? false;
+    final isWide = MediaQuery.sizeOf(context).width >= 1100;
+
+    final contentView = _PatientsContentView(
+      patients: filteredPatients,
+      groupedPatients: _groupPatients(filteredPatients),
+      viewMode: _viewMode,
+      sortMode: _sortMode,
+      selectedPatientId: _selectedPatient?.id,
+      onPatientTap: _handlePatientTap,
+      onAddToQueue: canManageQueue
+          ? (patient) => _showQuickAddToQueue(context, patient)
+          : null,
+    );
+
+    if (!isWide || _selectedPatient == null) {
+      return contentView;
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: contentView),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 380,
+          child: Card(
+            margin: const EdgeInsets.only(bottom: 18),
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(
+                color: Theme.of(context)
+                    .colorScheme
+                    .outlineVariant
+                    .withValues(alpha: 0.6),
+              ),
+            ),
+            child: Stack(
+              children: [
+                PatientPreviewPanel(
+                  patient: _selectedPatient!,
+                  onAddToQueue: canManageQueue
+                      ? () => _showQuickAddToQueue(context, _selectedPatient!)
+                      : null,
+                  onOpenRecord: () =>
+                      context.push('/patients/${_selectedPatient!.id}'),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Close preview',
+                    onPressed: () => setState(() => _selectedPatient = null),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handlePatientTap(Patient patient) {
+    final isWide = MediaQuery.sizeOf(context).width >= 1100;
+    if (isWide) {
+      setState(() {
+        _selectedPatient =
+            (_selectedPatient?.id == patient.id) ? null : patient;
+      });
+    } else {
+      context.push('/patients/${patient.id}');
+    }
+  }
+
+  void _showQuickAddToQueue(BuildContext context, Patient patient) {
+    final canManageQueue =
+        ref.read(currentUserProvider)?.canManageQueue ?? false;
+    if (!canManageQueue) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Only staff can add patients to the queue.'),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => _QuickAddToQueueDialog(
+        patient: patient,
+        onAdded: () {
+          ref.invalidate(queueProvider);
+          ref.invalidate(dashboardStatsProvider);
+        },
+      ),
+    );
   }
 }
 
@@ -719,14 +821,18 @@ class _PatientsContentView extends StatelessWidget {
   final Map<String, Map<String, List<Patient>>> groupedPatients;
   final _PatientViewMode viewMode;
   final _PatientSortMode sortMode;
+  final String? selectedPatientId;
   final ValueChanged<Patient> onPatientTap;
+  final ValueChanged<Patient>? onAddToQueue;
 
   const _PatientsContentView({
     required this.patients,
     required this.groupedPatients,
     required this.viewMode,
     required this.sortMode,
+    this.selectedPatientId,
     required this.onPatientTap,
+    this.onAddToQueue,
   });
 
   @override
@@ -734,7 +840,12 @@ class _PatientsContentView extends StatelessWidget {
     final sorted = _sortedPatients();
 
     if (viewMode == _PatientViewMode.grid) {
-      return _PatientsGridView(patients: sorted, onPatientTap: onPatientTap);
+      return _PatientsGridView(
+        patients: sorted,
+        selectedPatientId: selectedPatientId,
+        onPatientTap: onPatientTap,
+        onAddToQueue: onAddToQueue,
+      );
     }
 
     if (sortMode == _PatientSortMode.alphabetical) {
@@ -747,7 +858,9 @@ class _PatientsContentView extends StatelessWidget {
           return _PatientListTile(
             patient: patient,
             showLocation: true,
+            isSelected: selectedPatientId == patient.id,
             onTap: () => onPatientTap(patient),
+            onAddToQueue: onAddToQueue,
           );
         },
       );
@@ -783,7 +896,9 @@ class _PatientsContentView extends StatelessWidget {
                   child: _PatientListTile(
                     patient: patient,
                     showLocation: true,
+                    isSelected: selectedPatientId == patient.id,
                     onTap: () => onPatientTap(patient),
+                    onAddToQueue: onAddToQueue,
                   ),
                 ),
               ),
@@ -854,9 +969,16 @@ class _BarangaySectionHeader extends StatelessWidget {
 
 class _PatientsGridView extends StatelessWidget {
   final List<Patient> patients;
+  final String? selectedPatientId;
   final ValueChanged<Patient> onPatientTap;
+  final ValueChanged<Patient>? onAddToQueue;
 
-  const _PatientsGridView({required this.patients, required this.onPatientTap});
+  const _PatientsGridView({
+    required this.patients,
+    this.selectedPatientId,
+    required this.onPatientTap,
+    this.onAddToQueue,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -883,7 +1005,9 @@ class _PatientsGridView extends StatelessWidget {
                       width: width,
                       child: _PatientGridCard(
                         patient: patient,
+                        isSelected: selectedPatientId == patient.id,
                         onTap: () => onPatientTap(patient),
+                        onAddToQueue: onAddToQueue,
                       ),
                     ),
                   )
@@ -2423,25 +2547,253 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
+class _QuickAddToQueueDialog extends ConsumerStatefulWidget {
+  final Patient patient;
+  final VoidCallback onAdded;
+
+  const _QuickAddToQueueDialog({
+    required this.patient,
+    required this.onAdded,
+  });
+
+  @override
+  ConsumerState<_QuickAddToQueueDialog> createState() =>
+      _QuickAddToQueueDialogState();
+}
+
+class _QuickAddToQueueDialogState
+    extends ConsumerState<_QuickAddToQueueDialog> {
+  final _purposeController =
+      TextEditingController(text: 'General Consultation');
+  final _complaintController = TextEditingController();
+  bool _isSaving = false;
+
+  final _commonPurposes = const [
+    'General Consultation',
+    'Follow-up Visit',
+    'Prenatal Checkup',
+    'Immunization',
+    'Dental Care',
+    'Urgent / Triage',
+  ];
+
+  @override
+  void dispose() {
+    _purposeController.dispose();
+    _complaintController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() => _isSaving = true);
+    try {
+      final purpose = _purposeController.text.trim().isEmpty
+          ? 'General Consultation'
+          : _purposeController.text.trim();
+      final complaint = _complaintController.text.trim();
+
+      await ref
+          .read(queueRepositoryProvider)
+          .addToQueue(widget.patient.id, widget.patient.fullName, purpose);
+
+      if (complaint.isNotEmpty) {
+        final currentQueue = await ref.read(queueProvider.future);
+        final created = currentQueue.firstWhere(
+          (item) => item.patientId == widget.patient.id,
+          orElse: () => currentQueue.first,
+        );
+        if (created.patientId == widget.patient.id) {
+          await ref.read(queueRepositoryProvider).updateQueueItem(
+                created.copyWith(complaint: complaint),
+              );
+        }
+      }
+
+      widget.onAdded();
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${widget.patient.fullName} added to triage queue.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: context.semanticColors.normal,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add to queue: $e'),
+            backgroundColor: context.semanticColors.critical,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppFormDialog(
+      icon: Icons.person_add_outlined,
+      title: 'Add to Triage Queue',
+      subtitle: widget.patient.fullName,
+      maxWidth: 480,
+      isLoading: _isSaving,
+      loadingText: 'Adding patient to queue...',
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  child: Text(
+                    _patientInitials(widget.patient),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.patient.fullName,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        'Age: ${widget.patient.age ?? "N/A"} • Brgy. ${widget.patient.barangay ?? "N/A"}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Select Purpose of Visit',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _commonPurposes.map((p) {
+              final isSelected = _purposeController.text == p;
+              return ChoiceChip(
+                label: Text(p),
+                selected: isSelected,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() => _purposeController.text = p);
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          AppTextField(
+            controller: _purposeController,
+            label: 'Purpose of Visit',
+            required: true,
+            icon: Icons.medical_services_outlined,
+            hint: 'e.g. Consultation, Triage',
+          ),
+          const SizedBox(height: 12),
+          AppTextField(
+            controller: _complaintController,
+            label: 'Chief Complaint (Optional)',
+            icon: Icons.chat_bubble_outline,
+            hint: 'Primary reported symptom (e.g. fever for 3 days)',
+            maxLines: 2,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _isSaving ? null : _submit,
+          icon: const Icon(Icons.check, size: 18),
+          label: const Text('Add to Queue'),
+        ),
+      ],
+    );
+  }
+}
+
 class _PatientListTile extends StatelessWidget {
   final Patient patient;
   final bool showLocation;
+  final bool isSelected;
   final VoidCallback onTap;
+  final ValueChanged<Patient>? onAddToQueue;
 
   const _PatientListTile({
     required this.patient,
     this.showLocation = false,
+    this.isSelected = false,
     required this.onTap,
+    this.onAddToQueue,
   });
 
   @override
   Widget build(BuildContext context) {
     final categoryColor = _patientCategoryColor(patient.category);
     final initials = _patientInitials(patient);
+    final theme = Theme.of(context);
 
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isSelected
+            ? BorderSide(
+                color: theme.colorScheme.primary,
+                width: 2,
+              )
+            : BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+      ),
+      color: isSelected
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
+          : null,
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -2470,7 +2822,7 @@ class _PatientListTile extends StatelessWidget {
                           child: Text(
                             patient.fullName,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleSmall
+                            style: theme.textTheme.titleSmall
                                 ?.copyWith(fontWeight: FontWeight.w800),
                           ),
                         ),
@@ -2486,11 +2838,10 @@ class _PatientListTile extends StatelessWidget {
                             ),
                             child: Text(
                               patient.category!.displayName,
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: categoryColor,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: categoryColor,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                       ],
@@ -2498,10 +2849,8 @@ class _PatientListTile extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '${patient.age ?? 'N/A'} yrs • ${patient.gender?.toUpperCase() ?? 'N/A'} • PHN: ${patient.philHealthNumber ?? 'N/A'}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.65),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                       ),
                     ),
                     if (showLocation) ...[
@@ -2511,14 +2860,14 @@ class _PatientListTile extends StatelessWidget {
                           Icon(
                             Icons.location_on_outlined,
                             size: 14,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: theme.colorScheme.primary,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               '${_locationLabel(patient.barangay, 'No barangay')} • ${_locationLabel(patient.purokSitio, 'No purok')}',
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall,
+                              style: theme.textTheme.bodySmall,
                             ),
                           ),
                         ],
@@ -2527,11 +2876,30 @@ class _PatientListTile extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onAddToQueue != null) ...[
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => onAddToQueue!(patient),
+                  icon: const Icon(Icons.queue_outlined, size: 14),
+                  label: const Text('Queue', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+              const SizedBox(width: 8),
               Icon(
                 Icons.chevron_right,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.35),
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.35),
               ),
             ],
           ),
@@ -2543,16 +2911,38 @@ class _PatientListTile extends StatelessWidget {
 
 class _PatientGridCard extends StatelessWidget {
   final Patient patient;
+  final bool isSelected;
   final VoidCallback onTap;
+  final ValueChanged<Patient>? onAddToQueue;
 
-  const _PatientGridCard({required this.patient, required this.onTap});
+  const _PatientGridCard({
+    required this.patient,
+    this.isSelected = false,
+    required this.onTap,
+    this.onAddToQueue,
+  });
 
   @override
   Widget build(BuildContext context) {
     final categoryColor = _patientCategoryColor(patient.category);
+    final theme = Theme.of(context);
 
     return Card(
       margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isSelected
+            ? BorderSide(
+                color: theme.colorScheme.primary,
+                width: 2,
+              )
+            : BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+      ),
+      color: isSelected
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
+          : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
@@ -2606,6 +2996,27 @@ class _PatientGridCard extends StatelessWidget {
                 Chip(
                   label: Text(patient.category!.displayName),
                   backgroundColor: categoryColor.withValues(alpha: 0.1),
+                ),
+              ],
+              if (onAddToQueue != null) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () => onAddToQueue!(patient),
+                    icon: const Icon(Icons.queue_outlined, size: 14),
+                    label: const Text(
+                      'Add to Queue',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
                 ),
               ],
             ],
