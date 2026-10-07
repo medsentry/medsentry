@@ -81,9 +81,15 @@ class SyncService extends StateNotifier<SyncServiceState> {
         .read(databaseProvider)
         .changes
         .listen((_) => _schedulePendingSync());
-    _authStateSubscription = _supabase.auth.onAuthStateChange.listen((_) {
-      unawaited(_configureRealtimeSubscription());
-      _schedulePendingSync();
+    _authStateSubscription = _supabase.auth.onAuthStateChange.listen((event) {
+      // Only reconfigure and sync on actual login, not on token refreshes.
+      if (event.event == AuthChangeEvent.signedIn ||
+          event.event == AuthChangeEvent.tokenRefreshed) {
+        unawaited(_configureRealtimeSubscription());
+      }
+      if (event.event == AuthChangeEvent.signedIn) {
+        _schedulePendingSync();
+      }
     });
     unawaited(_configureRealtimeSubscription());
   }
@@ -198,12 +204,15 @@ class SyncService extends StateNotifier<SyncServiceState> {
     }
 
     _realtimeChannel = channel.subscribe();
-    unawaited(startSync());
+    // Do not call startSync() here — _initializeSync() in the constructor
+    // handles the first sync. Token-refresh/re-subscribe events are covered by
+    // the auth listener's _schedulePendingSync().
   }
 
   void _scheduleRealtimeRefresh() {
     _realtimeRefreshTimer?.cancel();
-    _realtimeRefreshTimer = Timer(const Duration(milliseconds: 350), () {
+    // 800ms debounce: allows multi-table writes to complete before re-sync
+    _realtimeRefreshTimer = Timer(const Duration(milliseconds: 800), () {
       unawaited(_refreshAfterRealtimeChange());
     });
   }
@@ -772,11 +781,14 @@ class SyncService extends StateNotifier<SyncServiceState> {
       final target = row['target'] == 'super_admin' ? 'admin' : row['target'];
       final remote = SystemNotification.fromJson({...row, 'target': target});
       final existing = local[remote.id];
-      if (existing == null ||
+      if (existing == null) {
+        // New notification — insert
+        await db.insertNotification(remote);
+      } else if (existing.isRead != remote.isRead ||
           existing.title != remote.title ||
           existing.message != remote.message ||
-          existing.isRead != remote.isRead ||
           existing.priority != remote.priority) {
+        // Changed notification — overwrite with authoritative server copy
         await db.insertNotification(remote);
       }
     }
@@ -808,9 +820,11 @@ class SyncService extends StateNotifier<SyncServiceState> {
         ? DateTime.parse(remote!['updated_at'] as String)
         : null;
 
-    if (remote == null ||
-        (local.updatedAt != null &&
-            _isRemoteVersionNewer(local.updatedAt, remoteUpdatedAt))) {
+    // Push local settings to server when: no remote exists, OR local is newer.
+    final localIsNewer = local.updatedAt != null &&
+        (remoteUpdatedAt == null ||
+            local.updatedAt!.isAfter(remoteUpdatedAt));
+    if (remote == null || localIsNewer) {
       final updatedAt = local.updatedAt ?? DateTime.now();
       final value = local.toJson()
         ..['updated_at'] = updatedAt.toIso8601String();

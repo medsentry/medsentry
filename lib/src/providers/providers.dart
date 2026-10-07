@@ -224,9 +224,25 @@ class QueueRepository {
   Future<void> addToQueue(
     String patientId,
     String patientName,
-    String purpose,
-  ) async {
-    await _db.addToQueue(patientId, patientName, purpose);
+    String purpose, {
+    String? complaint,
+    Priority priority = Priority.normal,
+    bool isSenior = false,
+    bool isPregnant = false,
+    bool isPwd = false,
+    bool isInfant = false,
+  }) async {
+    await _db.addToQueue(
+      patientId,
+      patientName,
+      purpose,
+      complaint: complaint,
+      priority: priority,
+      isSenior: isSenior,
+      isPregnant: isPregnant,
+      isPwd: isPwd,
+      isInfant: isInfant,
+    );
   }
 
   Future<void> updateQueueItem(QueueItem item) async {

@@ -66,38 +66,7 @@ final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
   );
 });
 
-/// Stream provider for real-time dashboard updates
-final dashboardStatsStreamProvider = StreamProvider<DashboardStats>((
-  ref,
-) async* {
-  // Initial fetch
-  final stats = await ref.read(dashboardStatsProvider.future);
-  yield stats;
-
-  // Poll every 30 seconds for updates
-  while (true) {
-    await Future.delayed(const Duration(seconds: 30));
-    final db = ref.read(databaseProvider);
-
-    final results = await Future.wait([
-      db.getPatientCount(),
-      db.getTodayPatientCount(),
-      db.getActiveQueueCount(),
-      db.getTodayConsultationCount(),
-      db.getTodayDocumentCount(),
-      db.getLongWaitQueueCount(60),
-      db.getLongWaitQueueItems(60),
-    ]);
-
-    yield DashboardStats(
-      totalPatients: results[0] as int,
-      newPatientsToday: results[1] as int,
-      activeQueueCount: results[2] as int,
-      consultationsToday: results[3] as int,
-      documentsToday: results[4] as int,
-      longWaitCount: results[5] as int,
-      longWaitItems: results[6] as List<QueueItem>,
-      timestamp: DateTime.now(),
-    );
-  }
-});
+// NOTE: dashboardStatsStreamProvider removed — it contained an infinite polling
+// loop that caused a memory leak. dashboardStatsProvider already reacts to
+// databaseChangesProvider, which emits after every local write and after every
+// successful cloud sync. No separate stream provider is needed.

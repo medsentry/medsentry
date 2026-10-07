@@ -911,8 +911,14 @@ class SimpleDatabase {
   Future<void> addToQueue(
     String patientId,
     String patientName,
-    String purpose,
-  ) async {
+    String purpose, {
+    String? complaint,
+    Priority priority = Priority.normal,
+    bool isSenior = false,
+    bool isPregnant = false,
+    bool isPwd = false,
+    bool isInfant = false,
+  }) async {
     await _ensureLoaded();
     final now = DateTime.now();
     final queueItem = QueueItem(
@@ -920,6 +926,12 @@ class SimpleDatabase {
       patientId: patientId,
       patientName: patientName,
       purpose: purpose,
+      complaint: complaint,
+      priority: priority,
+      isSenior: isSenior,
+      isPregnant: isPregnant,
+      isPwd: isPwd,
+      isInfant: isInfant,
       arrivalTime: now,
       status: QueueStatus.waiting,
       createdAt: now,

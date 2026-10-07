@@ -108,28 +108,6 @@ class DashboardScreen extends ConsumerWidget {
             : null,
       ),
       _StatCardData(
-        icon: Icons.queue_outlined,
-        title: 'In Queue',
-        value: stats.activeQueueCount.toString(),
-        subtitle: stats.longWaitCount > 0
-            ? '${stats.longWaitCount} waiting over 1 hour'
-            : 'Active right now',
-        color: stats.longWaitCount > 0 ? colors.warning : colors.normal,
-        onTap: user?.canViewQueue == true ? () => context.go('/queue') : null,
-      ),
-      _StatCardData(
-        icon: Icons.medical_services_outlined,
-        title: 'Consultations Today',
-        value: stats.consultationsToday.toString(),
-        subtitle: 'Completed and in progress',
-        color: colors.normal,
-        onTap: user?.canConsult == true
-            ? () => context.go('/queue')
-            : user?.canGenerateReports == true
-            ? () => context.go('/reports')
-            : null,
-      ),
-      _StatCardData(
         icon: Icons.folder_outlined,
         title: 'Documents Today',
         value: stats.documentsToday.toString(),
@@ -144,12 +122,13 @@ class DashboardScreen extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        // Mobile (< 480): 1 col, Tablet (480-1024): 2 cols, Desktop (> 1024): 4 cols
+        // Mobile (< 480): 1 col, Tablet & Desktop: up to number of cards
+        final int maxCols = cards.length < 4 ? cards.length : 4;
         final int columns = width < 480
             ? 1
             : width <= 1024
-                ? 2
-                : 4;
+                ? (maxCols > 2 ? 2 : maxCols)
+                : maxCols;
         const spacing = 12.0;
         final cardWidth = (width - (spacing * (columns - 1))) / columns;
 
