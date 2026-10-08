@@ -385,10 +385,7 @@ class AuthRepository {
       unawaited(() async {
         try {
           await _supabase.auth
-              .signInWithPassword(
-                email: normalizedEmail,
-                password: password,
-              )
+              .signInWithPassword(email: normalizedEmail, password: password)
               .timeout(const Duration(seconds: 3));
         } catch (e) {
           debugPrint('Supabase background auth warning: $e');
@@ -406,10 +403,7 @@ class AuthRepository {
       unawaited(() async {
         try {
           await _supabase.auth
-              .signInWithPassword(
-                email: normalizedEmail,
-                password: password,
-              )
+              .signInWithPassword(email: normalizedEmail, password: password)
               .timeout(const Duration(seconds: 3));
         } catch (e) {
           debugPrint('Supabase background auth warning: $e');
@@ -422,10 +416,7 @@ class AuthRepository {
     // 3. Fall back to online Supabase with strict timeout
     try {
       final response = await _supabase.auth
-          .signInWithPassword(
-            email: normalizedEmail,
-            password: password,
-          )
+          .signInWithPassword(email: normalizedEmail, password: password)
           .timeout(const Duration(seconds: 3));
 
       if (response.user == null) {
@@ -457,10 +448,11 @@ class AuthRepository {
       }
 
       unawaited(
-        _supabase.rpc(
-          'medsentry_log_auth_event',
-          params: {'event_action': 'LOGIN'},
-        ).catchError((e) => debugPrint('medsentry_log_auth_event non-fatal: $e')),
+        _supabase
+            .rpc('medsentry_log_auth_event', params: {'event_action': 'LOGIN'})
+            .catchError(
+              (e) => debugPrint('medsentry_log_auth_event non-fatal: $e'),
+            ),
       );
 
       if (cachedUser == null) {
@@ -545,11 +537,36 @@ class AuthRepository {
     final user = await _db.getUserById(userId);
     if (user == null) return false;
 
-    if (!user.pinEnabled || user.pinHash == null) {
-      return false;
+    if (!user.pinEnabled) return false;
+    if (user.pinHash != null) {
+      if (_supabase.auth.currentSession == null) {
+        return _verifyPassword(pin, user.pinHash!);
+      }
+
+      try {
+        final result = await _supabase.rpc(
+          'medsentry_verify_user_pin',
+          params: {'target_user_id': userId, 'requested_pin': pin},
+        );
+        if (result == 'verified') return true;
+        if (result != 'not_configured') return false;
+      } catch (error) {
+        debugPrint(
+          'Online PIN verification unavailable; using local PIN: $error',
+        );
+      }
+      return _verifyPassword(pin, user.pinHash!);
     }
 
-    return _verifyPassword(pin, user.pinHash!);
+    await ensureOnlineSession(userId);
+    if (_supabase.auth.currentSession == null) {
+      throw StateError('Connect to the internet to verify this PIN.');
+    }
+    final result = await _supabase.rpc(
+      'medsentry_verify_user_pin',
+      params: {'target_user_id': userId, 'requested_pin': pin},
+    );
+    return result == 'verified';
   }
 
   // Get user by ID
@@ -694,8 +711,12 @@ class AuthRepository {
     }
 
     if (newPinHash != null) {
+      await _setPinOnline(id, newPin!, enabled: true);
       await _db.updateUser(updated, newPinHash: newPinHash);
     } else {
+      if (pinEnabled == false && existing.pinEnabled) {
+        await _setPinOnline(id, null, enabled: false);
+      }
       await _db.updateUser(updated);
     }
 
@@ -794,6 +815,7 @@ class AuthRepository {
       throw ArgumentError('PIN must be 4 digits');
     }
 
+    await _setPinOnline(userId, pin, enabled: true);
     final pinHash = _hashPassword(pin);
     await _db.updateUserPin(userId, pinHash, true);
 
@@ -808,6 +830,7 @@ class AuthRepository {
 
   // Disable PIN
   Future<void> disablePin(String userId) async {
+    await _setPinOnline(userId, null, enabled: false);
     await _db.updateUserPin(userId, null, false);
 
     await _auditService.logAction(
@@ -816,6 +839,25 @@ class AuthRepository {
       entityType: 'user',
       entityId: userId,
       description: 'PIN disabled for user',
+    );
+  }
+
+  Future<void> _setPinOnline(
+    String userId,
+    String? pin, {
+    required bool enabled,
+  }) async {
+    await ensureOnlineSession(userId);
+    if (_supabase.auth.currentSession == null) {
+      throw StateError('Connect to the internet to save this PIN online.');
+    }
+    await _supabase.rpc(
+      'medsentry_set_user_pin',
+      params: {
+        'target_user_id': userId,
+        'requested_pin': pin,
+        'requested_enabled': enabled,
+      },
     );
   }
 
@@ -934,10 +976,11 @@ class AuthRepository {
     if (userId == null) return false;
 
     final user = await getUserById(userId);
-    return user != null &&
-        user.isActive &&
-        user.pinEnabled &&
-        user.pinHash != null;
+    if (user == null || !user.isActive || !user.pinEnabled) return false;
+    if (user.pinHash != null) return true;
+
+    await ensureOnlineSession(userId);
+    return _supabase.auth.currentSession != null;
   }
 
   // Get last logged in user email for display
@@ -1056,7 +1099,9 @@ class AuthRepository {
             return null;
           }
 
-          final currentUser = remoteUser.copyWith(pinHash: candidateUser?.pinHash);
+          final currentUser = remoteUser.copyWith(
+            pinHash: candidateUser?.pinHash,
+          );
           if (candidateUser == null) {
             await _db.insertUser(currentUser);
           } else {

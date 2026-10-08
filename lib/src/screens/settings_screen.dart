@@ -29,7 +29,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final currentUser = ref.watch(currentUserProvider);
 
     return ResponsiveContentContainer(
-      maxWidth: 1280,
       padding: EdgeInsets.zero,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
@@ -508,9 +507,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               final pinRegex = RegExp(r'^\d{4}$');
 
               if (hasExistingPin) {
-                final isCurrentPinValid = await ref
-                    .read(authRepositoryProvider)
-                    .verifyPin(user.id, currentPin);
+                bool isCurrentPinValid;
+                try {
+                  isCurrentPinValid = await ref
+                      .read(authRepositoryProvider)
+                      .verifyPin(user.id, currentPin);
+                } catch (error) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Could not verify PIN: $error')),
+                    );
+                  }
+                  return;
+                }
                 if (!isCurrentPinValid) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -537,7 +546,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 return;
               }
 
-              await ref.read(authRepositoryProvider).setupPin(user.id, newPin);
+              try {
+                await ref
+                    .read(authRepositoryProvider)
+                    .setupPin(user.id, newPin);
+              } catch (error) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not save PIN online: $error')),
+                  );
+                }
+                return;
+              }
               final refreshedUser = await ref
                   .read(authRepositoryProvider)
                   .getUserById(user.id);

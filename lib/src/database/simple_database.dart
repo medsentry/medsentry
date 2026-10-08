@@ -1063,14 +1063,22 @@ class SimpleDatabase {
         documentPath = _documents.remove(id)?.filePath;
       case 'clinics':
         _clinics.remove(id);
+        for (final entry in _users.entries.toList()) {
+          if (entry.value.clinicId == id) {
+            _users[entry.key] = entry.value.copyWith(clearClinicId: true);
+          }
+        }
       case 'users':
         _users.remove(id);
+        _userPasswordHashes.remove(id);
       case 'audit_logs':
         _auditLogs.remove(id);
       case 'notifications':
         _notifications.remove(id);
       case 'generated_reports':
         _generatedReports.remove(id);
+      case 'medical_snippets':
+        _medicalSnippets.remove(id);
       default:
         return null;
     }
@@ -1081,40 +1089,175 @@ class SimpleDatabase {
 
   Future<void> applyRemoteUpsert(String table, Map<String, dynamic> raw) async {
     await _ensureLoaded();
-    try {
-      switch (table) {
-        case 'patients':
-          final patient = Patient.fromJson(raw);
-          _patients[patient.id] = patient.copyWith(syncStatus: 0);
-        case 'documents':
-          final doc = MedicalDocument.fromJson(raw);
-          _documents[doc.id] = doc.copyWith(syncStatus: 0);
-        case 'users':
-          final user = User.fromJson(raw);
-          _users[user.id] = user.copyWith(syncStatus: 0);
-        case 'clinics':
-          final clinic = Clinic.fromJson(raw);
-          _clinics[clinic.id] = clinic;
-        case 'audit_logs':
-          final log = AuditLog.fromJson(raw);
-          _auditLogs[log.id] = log;
-        case 'notifications':
-          final notif = SystemNotification.fromJson(raw);
-          _notifications[notif.id] = notif;
-        case 'system_settings':
-          _systemSettings = SystemSettings.fromJson(raw);
-        case 'sync_tombstones':
-          final entityType = raw['entity_type'] as String?;
-          final recordId = raw['record_id'] as String?;
-          if (entityType != null && recordId != null) {
-            await applyRemoteDelete(entityType, recordId);
-            return;
-          }
-        default:
+    switch (table) {
+      case 'patients':
+        final patient = Patient.fromJson(raw);
+        final existing = _patients[patient.id];
+        if (existing != null &&
+            _shouldKeepLocalVersion(
+              existing.syncStatus,
+              existing.updatedAt,
+              patient.updatedAt,
+            )) {
           return;
-      }
-      await _saveToDisk();
-    } catch (_) {}
+        }
+        _patients[patient.id] = patient.copyWith(syncStatus: 0);
+      case 'documents':
+        final document = MedicalDocument.fromJson(raw);
+        final existing = _documents[document.id];
+        if (existing != null &&
+            _shouldKeepLocalVersion(
+              existing.syncStatus,
+              existing.updatedAt,
+              document.updatedAt,
+            )) {
+          return;
+        }
+        _documents[document.id] = document.copyWith(
+          filePath: existing?.filePath ?? document.filePath,
+          syncStatus: 0,
+        );
+      case 'users':
+        final user = User.fromJson(raw);
+        final existing = _users[user.id];
+        if (existing != null &&
+            _shouldKeepLocalVersion(
+              existing.syncStatus,
+              existing.updatedAt,
+              user.updatedAt,
+            )) {
+          return;
+        }
+        _users[user.id] = user.copyWith(
+          pinHash: existing?.pinHash,
+          syncStatus: 0,
+        );
+      case 'clinics':
+        final clinic = Clinic.fromJson(raw);
+        final existing = _clinics[clinic.id];
+        if (existing != null && _sameClinic(existing, clinic)) return;
+        _clinics[clinic.id] = clinic;
+      case 'audit_logs':
+        final log = _auditLogFromRemote(raw);
+        if (_auditLogs.containsKey(log.id)) return;
+        _auditLogs[log.id] = log;
+      case 'notifications':
+        final target = raw['target'] == 'super_admin' ? 'admin' : raw['target'];
+        final notification = SystemNotification.fromJson({
+          ...raw,
+          'target': target,
+        });
+        _notifications[notification.id] = notification;
+      case 'generated_reports':
+        final reportId = raw['id'] as String;
+        if (raw['deleted_at'] != null) {
+          _generatedReports.remove(reportId);
+          break;
+        }
+        final report = GeneratedReport.fromJson({
+          ...raw,
+          'file_path': _generatedReports[reportId]?.filePath,
+        });
+        _generatedReports[report.id] = report;
+      case 'system_settings':
+        final value = raw['value'];
+        if (value is! Map) {
+          throw FormatException(
+            'Realtime system_settings row has no JSON value object.',
+          );
+        }
+        _systemSettings = SystemSettings.fromJson({
+          ...Map<String, dynamic>.from(value),
+          'updated_at': raw['updated_at'] ?? value['updated_at'],
+        });
+      case 'sync_tombstones':
+        final entityType = raw['entity_type'] as String?;
+        final recordId = raw['record_id'] as String?;
+        if (entityType != null && recordId != null) {
+          await applyRemoteDelete(entityType, recordId);
+          return;
+        }
+        throw FormatException('Realtime tombstone is missing its entity ID.');
+      default:
+        throw ArgumentError.value(table, 'table', 'Unsupported realtime table');
+    }
+    await _saveToDisk();
+  }
+
+  bool _shouldKeepLocalVersion(
+    int? localSyncStatus,
+    DateTime? localUpdatedAt,
+    DateTime? remoteUpdatedAt,
+  ) {
+    if (localSyncStatus != null && localSyncStatus != 0) return true;
+    if (localUpdatedAt == null) return false;
+    return remoteUpdatedAt == null || !remoteUpdatedAt.isAfter(localUpdatedAt);
+  }
+
+  AuditLog _auditLogFromRemote(Map<String, dynamic> raw) {
+    final userId = raw['user_id'] as String? ?? 'system';
+    final occurredAt = raw['occurred_at'] ?? raw['timestamp'];
+    if (occurredAt is! String || DateTime.tryParse(occurredAt) == null) {
+      throw FormatException('Realtime audit log has an invalid timestamp.');
+    }
+
+    final actionValue = (raw['action']?.toString() ?? '')
+        .toLowerCase()
+        .replaceAll('_', '');
+    final AuditAction action;
+    if (actionValue == 'insert' || actionValue.contains('create')) {
+      action = AuditAction.create;
+    } else if (actionValue.contains('update')) {
+      action = AuditAction.update;
+    } else if (actionValue.contains('delete')) {
+      action = AuditAction.delete;
+    } else if (actionValue.contains('login')) {
+      action = AuditAction.login;
+    } else if (actionValue.contains('logout')) {
+      action = AuditAction.logout;
+    } else if (actionValue.contains('export')) {
+      action = AuditAction.export;
+    } else if (actionValue.contains('print')) {
+      action = AuditAction.print;
+    } else if (actionValue.contains('sync')) {
+      action = AuditAction.sync;
+    } else if (actionValue.contains('backup')) {
+      action = AuditAction.backup;
+    } else if (actionValue.contains('restore')) {
+      action = AuditAction.restore;
+    } else if (actionValue.contains('password')) {
+      action = AuditAction.passwordChange;
+    } else if (actionValue.contains('pin')) {
+      action = AuditAction.pinChange;
+    } else if (actionValue.contains('role')) {
+      action = AuditAction.roleChange;
+    } else if (actionValue.contains('setting')) {
+      action = AuditAction.settingsChange;
+    } else {
+      action = AuditAction.other;
+    }
+    final user = _users[userId];
+
+    return AuditLog(
+      id: raw['id'] as String,
+      userId: userId,
+      userName: user?.fullName,
+      userRole: user?.roleDisplay,
+      action: action,
+      entityType: raw['entity_type'] as String? ?? 'system',
+      entityId: raw['entity_id'] as String?,
+      patientId: raw['patient_id'] as String?,
+      oldValues: _remoteJsonString(raw['old_values']),
+      newValues: _remoteJsonString(raw['new_values']),
+      timestamp: DateTime.parse(occurredAt),
+      isSynced: true,
+      syncStatus: 0,
+    );
+  }
+
+  String? _remoteJsonString(dynamic value) {
+    if (value == null) return null;
+    return value is String ? value : jsonEncode(value);
   }
 
   Future<SystemSettings> getSystemSettings() async {

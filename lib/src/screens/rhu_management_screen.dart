@@ -1190,7 +1190,6 @@ class _ClinicFormModalState extends ConsumerState<_ClinicFormModal> {
                       );
                     },
             ),
-            const Spacer(),
           ],
           AppDialogAction(
             label: 'Cancel',

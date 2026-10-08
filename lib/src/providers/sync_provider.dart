@@ -202,7 +202,6 @@ class SyncService extends StateNotifier<SyncServiceState> {
       'notifications',
       'generated_reports',
       'system_settings',
-      'medical_snippets',
       'sync_tombstones',
     ];
 
@@ -215,14 +214,34 @@ class SyncService extends StateNotifier<SyncServiceState> {
           debugPrint('REALTIME EVENT: ${change.eventType} on table $table');
           try {
             final db = _ref.read(databaseProvider);
-            if (change.eventType == PostgresChangeEvent.delete) {
+            if (table == 'sync_tombstones') {
+              if (change.eventType != PostgresChangeEvent.delete) {
+                await db.applyRemoteUpsert(table, change.newRecord);
+              }
+            } else if (change.eventType == PostgresChangeEvent.delete) {
               final id =
                   change.oldRecord['id'] ?? change.oldRecord['record_id'];
               if (id is String) {
-                await db.applyRemoteDelete(table, id);
+                final deletedDocumentPath = await db.applyRemoteDelete(
+                  table,
+                  id,
+                );
+                if (deletedDocumentPath != null &&
+                    deletedDocumentPath.isNotEmpty) {
+                  await DocumentService.deleteDocument(deletedDocumentPath);
+                }
               }
             } else if (change.newRecord.isNotEmpty) {
               await db.applyRemoteUpsert(table, change.newRecord);
+              if (table == 'users') {
+                final updatedUser = await db.getUserById(
+                  change.newRecord['id'] as String,
+                );
+                if (_ref.read(currentUserProvider)?.id == updatedUser?.id &&
+                    updatedUser != null) {
+                  _ref.read(currentUserProvider.notifier).state = updatedUser;
+                }
+              }
             }
           } catch (e) {
             debugPrint('Error handling realtime change for $table: $e');
