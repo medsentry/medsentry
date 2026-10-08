@@ -46,88 +46,89 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       child: ResponsiveContentContainer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Reports & Analytics',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
+          children: [
+            Text(
+              'Reports & Analytics',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Patient and document statistics for the selected period.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            const SizedBox(height: 6),
+            Text(
+              'Patient and document statistics for the selected period.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          _buildRangeSelector(context),
-          const SizedBox(height: 12),
+            _buildRangeSelector(context),
+            const SizedBox(height: 12),
 
-          reportStatsAsync.when(
-            skipLoadingOnReload: true,
-            data: (stats) => Column(
-              children: [
-                if (stats.newPatients == 0 &&
-                    stats.documentsInRange == 0) ...[
-                  _buildNoReportData(context),
-                  const SizedBox(height: 12),
+            reportStatsAsync.when(
+              skipLoadingOnReload: true,
+              data: (stats) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (stats.newPatients == 0 &&
+                      stats.documentsInRange == 0) ...[
+                    _buildNoReportData(context),
+                    const SizedBox(height: 12),
+                  ],
+                  _buildKpiGrid(context, stats),
+                  const SizedBox(height: 16),
+                  _buildAnalyticsCharts(context, stats),
+                  const SizedBox(height: 16),
+                  _buildDemographicsSection(context, stats),
                 ],
-                _buildKpiGrid(context, stats),
-                const SizedBox(height: 16),
-                _buildAnalyticsCharts(context, stats),
-                const SizedBox(height: 16),
-                _buildDemographicsSection(context, stats),
-              ],
+              ),
+              loading: () => const LoadingState(),
+              error: (error, stack) => _buildReportError(
+                context,
+                onRetry: () => ref.invalidate(reportStatsProvider),
+              ),
             ),
-            loading: () => const LoadingState(),
-            error: (error, stack) => _buildReportError(
-              context,
-              onRetry: () => ref.invalidate(reportStatsProvider),
-            ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          _buildSection(context, 'Patient Reports', [
-            _buildReportCard(
-              context,
-              'Patient Statistics',
-              'Patient demographics and visit statistics',
-              Icons.people_outline,
-              context.semanticColors.normal,
-              () => _showDateRangeDialog(context, 'Patient Statistics'),
-            ),
-          ]),
-          const SizedBox(height: 20),
+            _buildSection(context, 'Patient Reports', [
+              _buildReportCard(
+                context,
+                'Patient Statistics',
+                'Patient demographics and visit statistics',
+                Icons.people_outline,
+                context.semanticColors.normal,
+                () => _showDateRangeDialog(context, 'Patient Statistics'),
+              ),
+            ]),
+            const SizedBox(height: 20),
 
-          generatedReportsAsync.when(
-            data: (generatedReports) => generatedReports.isNotEmpty
-                ? _buildSection(
-                    context,
-                    'Recent Reports',
-                    generatedReports
-                        .map(
-                          (report) => _buildRecentReportTile(
-                            context,
-                            report,
-                            Icons.description_outlined,
-                            () => _viewReport(context, report),
-                          ),
-                        )
-                        .toList(),
-                  )
-                : _buildEmptyReportsSection(context),
-            loading: () => const LoadingState(),
-            error: (error, stack) => _buildReportError(
-              context,
-              onRetry: () => ref.invalidate(generatedReportsProvider),
+            generatedReportsAsync.when(
+              data: (generatedReports) => generatedReports.isNotEmpty
+                  ? _buildSection(
+                      context,
+                      'Recent Reports',
+                      generatedReports
+                          .map(
+                            (report) => _buildRecentReportTile(
+                              context,
+                              report,
+                              Icons.description_outlined,
+                              () => _viewReport(context, report),
+                            ),
+                          )
+                          .toList(),
+                    )
+                  : _buildEmptyReportsSection(context),
+              loading: () => const LoadingState(),
+              error: (error, stack) => _buildReportError(
+                context,
+                onRetry: () => ref.invalidate(generatedReportsProvider),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 
   String _formatDate(DateTime date) => DateFormat('MMM d, yyyy').format(date);
@@ -373,6 +374,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             : 1;
 
         return Wrap(
+          alignment: WrapAlignment.start,
           spacing: 12,
           runSpacing: 12,
           children: kpis.map((kpi) {
@@ -459,25 +461,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final newPatientValues = _valuesFromTrends(newPatientTrends);
     final rangeLabel = 'Grouped by ${stats.grouping.label.toLowerCase()}';
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 900;
-
-        final newPatientsCard = _buildTrendCard(
-          context,
-          title: 'New Patient Registrations',
-          subtitle: rangeLabel,
-          trends: newPatientTrends,
-          values: newPatientValues,
-          grouping: stats.grouping,
-          lineColor: context.semanticColors.normal,
-        );
-
-        return SizedBox(
-          width: isWide ? (constraints.maxWidth - 12) / 2 : double.infinity,
-          child: newPatientsCard,
-        );
-      },
+    return _buildTrendCard(
+      context,
+      title: 'New Patient Registrations',
+      subtitle: rangeLabel,
+      trends: newPatientTrends,
+      values: newPatientValues,
+      grouping: stats.grouping,
+      lineColor: context.semanticColors.normal,
     );
   }
 
@@ -980,7 +971,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Text(
                   'Saved location: ${report.filePath}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -1080,9 +1073,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Unable to open or share report: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to open or share report: $e')),
+        );
       }
     }
   }
