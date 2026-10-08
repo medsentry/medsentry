@@ -53,21 +53,43 @@ class ArchiveScreen extends ConsumerWidget {
                   );
                 }
 
-                return ListView.separated(
+                return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                   itemCount: patients.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final patient = patients[index];
-                    return ListTile(
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.archive_outlined),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
+                        ),
                       ),
-                      title: Text(patient.fullName),
-                      subtitle: Text(
-                        'ID: ${patient.id}'
-                        '${patient.archivedAt != null ? ' • Archived ${_formatDate(patient.archivedAt!)}' : ''}',
-                      ),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: const Icon(Icons.archive_outlined, size: 18),
+                        ),
+                        title: Text(patient.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(
+                          'ID: ${patient.id}'
+                          '${patient.archivedAt != null ? ' • Archived ${_formatDate(patient.archivedAt!)}' : ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
                       trailing: isMobile
                           ? Row(
                               mainAxisSize: MainAxisSize.min,
@@ -148,12 +170,17 @@ class ArchiveScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
+                      ),
                     );
                   },
                 );
               },
               loading: () => const LoadingState(),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (error, _) => AppErrorState(
+                title: 'Archived patients could not be loaded',
+                error: error,
+                onRetry: () => ref.invalidate(archivedPatientsProvider),
+              ),
             ),
           ),
         ],

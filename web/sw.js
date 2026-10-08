@@ -1,6 +1,6 @@
 // MedSentry Offline-First Service Worker
 const CACHE_PREFIX = 'medsentry-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v1.0.6`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.0.10`;
 const APP_SHELL_ASSETS = [
   './',
   'index.html',
@@ -12,8 +12,13 @@ const APP_SHELL_ASSETS = [
   'icons/Icon-512.png',
   'icons/Icon-maskable-192.png',
   'icons/Icon-maskable-512.png',
+  'assets/AssetManifest.bin',
   'assets/AssetManifest.bin.json',
+  'assets/FontManifest.json',
+  'assets/fonts/MaterialIcons-Regular.otf',
   'assets/assets/images/rhu_doctors.png',
+  'canvaskit/canvaskit.js',
+  'canvaskit/canvaskit.wasm',
 ];
 
 async function cachedAppShell(cache) {

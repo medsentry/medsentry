@@ -9,10 +9,7 @@ import 'providers.dart';
 class ExtendedDashboardStats {
   final int totalPatients;
   final int newPatientsToday;
-  final int activeQueueCount;
-  final int consultationsToday;
   final int documentsToday;
-  final int longWaitCount;
   final int pendingDocuments;
   final int pendingSyncCount;
   final int activeStaffCount;
@@ -27,10 +24,7 @@ class ExtendedDashboardStats {
   ExtendedDashboardStats({
     required this.totalPatients,
     required this.newPatientsToday,
-    required this.activeQueueCount,
-    required this.consultationsToday,
     required this.documentsToday,
-    required this.longWaitCount,
     required this.pendingDocuments,
     required this.pendingSyncCount,
     required this.activeStaffCount,
@@ -60,10 +54,7 @@ final extendedDashboardStatsProvider = FutureProvider<ExtendedDashboardStats>((
   final results = await Future.wait([
     db.getPatientCount(),
     db.getTodayPatientCount(),
-    db.getActiveQueueCount(),
-    db.getTodayConsultationCount(),
     db.getTodayDocumentCount(),
-    db.getLongWaitQueueCount(60),
     db.getPendingDocumentCount(),
     db.getPendingSyncCount(),
     db.getActiveStaffCount(),
@@ -78,19 +69,16 @@ final extendedDashboardStatsProvider = FutureProvider<ExtendedDashboardStats>((
   return ExtendedDashboardStats(
     totalPatients: results[0] as int,
     newPatientsToday: results[1] as int,
-    activeQueueCount: results[2] as int,
-    consultationsToday: results[3] as int,
-    documentsToday: results[4] as int,
-    longWaitCount: results[5] as int,
-    pendingDocuments: results[6] as int,
-    pendingSyncCount: results[7] as int,
-    activeStaffCount: results[8] as int,
-    failedLoginCount: results[9] as int,
-    archivedPatientCount: results[10] as int,
-    unreadNotifications: results[11] as int,
-    recentPatients: results[12] as List<Patient>,
-    recentActivity: results[13] as List<AuditLog>,
-    pendingDocumentList: results[14] as List<MedicalDocument>,
+    documentsToday: results[2] as int,
+    pendingDocuments: results[3] as int,
+    pendingSyncCount: results[4] as int,
+    activeStaffCount: results[5] as int,
+    failedLoginCount: results[6] as int,
+    archivedPatientCount: results[7] as int,
+    unreadNotifications: results[8] as int,
+    recentPatients: results[9] as List<Patient>,
+    recentActivity: results[10] as List<AuditLog>,
+    pendingDocumentList: results[11] as List<MedicalDocument>,
     timestamp: DateTime.now(),
   );
 });

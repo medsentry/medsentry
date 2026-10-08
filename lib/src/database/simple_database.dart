@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:uuid/uuid.dart';
-
 import '../models/models.dart';
 import '../models/generated_report.dart';
 import 'storage/database_storage.dart';
@@ -17,7 +15,6 @@ class SimpleDatabase {
   final Map<String, Patient> _patients = {};
   final Map<String, User> _users = {};
   final Map<String, Clinic> _clinics = {};
-  final Map<String, QueueItem> _queueItems = {};
   final Map<String, Consultation> _consultations = {};
   final Map<String, Prescription> _prescriptions = {};
   final Map<String, LabOrder> _labOrders = {};
@@ -32,12 +29,18 @@ class SimpleDatabase {
   String? _lastUserId;
 
   Future<void>? _loadFuture;
+  bool _legacyRetiredClinicalDataPresent = false;
   final StreamController<int> _changes = StreamController<int>.broadcast();
   int _revision = 0;
 
   /// Emits after a durable local write. UI providers use this to refresh every
   /// authorized view from the same local source of truth.
   Stream<int> get changes => _changes.stream;
+  int get revision => _revision;
+
+  void notifyChanges() {
+    _changes.add(++_revision);
+  }
 
   Future<void> useStoreFileForTesting(dynamic file) async {
     _storage.setCustomStoreFile(file);
@@ -45,7 +48,7 @@ class SimpleDatabase {
     _patients.clear();
     _users.clear();
     _clinics.clear();
-    _queueItems.clear();
+    _legacyRetiredClinicalDataPresent = false;
     _consultations.clear();
     _prescriptions.clear();
     _labOrders.clear();
@@ -69,22 +72,25 @@ class SimpleDatabase {
     if (raw == null || raw.trim().isEmpty) return;
 
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    final hasRetiredRecords = [
+      'queue_items',
+      'consultation',
+      'consultations',
+      'prescriptions',
+      'lab_orders',
+    ].any((key) => decoded[key] is List && (decoded[key] as List).isNotEmpty);
+    final documents = decoded['documents'];
+    final hasLegacyDocumentLinks =
+        documents is List &&
+        documents.any(
+          (document) => document is Map && document['consultation_id'] != null,
+        );
+    _legacyRetiredClinicalDataPresent =
+        hasRetiredRecords || hasLegacyDocumentLinks;
     _restoreMap(decoded['patients'], _patients, Patient.fromJson);
     _restoreMap(decoded['users'], _users, User.fromJson);
     _deduplicateUsers();
     _restoreMap(decoded['clinics'], _clinics, Clinic.fromJson);
-    _restoreMap(decoded['queue_items'], _queueItems, QueueItem.fromJson);
-    _restoreMap(
-      decoded['consultations'],
-      _consultations,
-      Consultation.fromJson,
-    );
-    _restoreMap(
-      decoded['prescriptions'],
-      _prescriptions,
-      Prescription.fromJson,
-    );
-    _restoreMap(decoded['lab_orders'], _labOrders, LabOrder.fromJson);
     _restoreMap(decoded['documents'], _documents, MedicalDocument.fromJson);
     _restoreMap(decoded['audit_logs'], _auditLogs, AuditLog.fromJson);
     _restoreMap(
@@ -202,10 +208,6 @@ class SimpleDatabase {
       'patients': _patients.values.map((e) => e.toJson()).toList(),
       'users': _users.values.map((e) => e.toJson()).toList(),
       'clinics': _clinics.values.map((e) => e.toJson()).toList(),
-      'queue_items': _queueItems.values.map((e) => e.toJson()).toList(),
-      'consultations': _consultations.values.map((e) => e.toJson()).toList(),
-      'prescriptions': _prescriptions.values.map((e) => e.toJson()).toList(),
-      'lab_orders': _labOrders.values.map((e) => e.toJson()).toList(),
       'documents': _documents.values.map((e) => e.toJson()).toList(),
       'audit_logs': _auditLogs.values.map((e) => e.toJson()).toList(),
       'generated_reports': _generatedReports.values
@@ -218,8 +220,8 @@ class SimpleDatabase {
       'sync_deletes': _syncDeleteJson(),
     };
 
+    notifyChanges();
     await _storage.writeStore(jsonEncode(data));
-    _changes.add(++_revision);
   }
 
   Future<String> createBackup() async {
@@ -229,10 +231,6 @@ class SimpleDatabase {
       'patients': _patients.values.map((e) => e.toJson()).toList(),
       'users': _users.values.map((e) => e.toJson()).toList(),
       'clinics': _clinics.values.map((e) => e.toJson()).toList(),
-      'queue_items': _queueItems.values.map((e) => e.toJson()).toList(),
-      'consultations': _consultations.values.map((e) => e.toJson()).toList(),
-      'prescriptions': _prescriptions.values.map((e) => e.toJson()).toList(),
-      'lab_orders': _labOrders.values.map((e) => e.toJson()).toList(),
       'documents': _documents.values.map((e) => e.toJson()).toList(),
       'audit_logs': _auditLogs.values.map((e) => e.toJson()).toList(),
       'generated_reports': _generatedReports.values
@@ -257,7 +255,6 @@ class SimpleDatabase {
     _patients.clear();
     _users.clear();
     _clinics.clear();
-    _queueItems.clear();
     _consultations.clear();
     _prescriptions.clear();
     _labOrders.clear();
@@ -272,18 +269,6 @@ class SimpleDatabase {
     _restoreMap(decoded['patients'], _patients, Patient.fromJson);
     _restoreMap(decoded['users'], _users, User.fromJson);
     _restoreMap(decoded['clinics'], _clinics, Clinic.fromJson);
-    _restoreMap(decoded['queue_items'], _queueItems, QueueItem.fromJson);
-    _restoreMap(
-      decoded['consultations'],
-      _consultations,
-      Consultation.fromJson,
-    );
-    _restoreMap(
-      decoded['prescriptions'],
-      _prescriptions,
-      Prescription.fromJson,
-    );
-    _restoreMap(decoded['lab_orders'], _labOrders, LabOrder.fromJson);
     _restoreMap(decoded['documents'], _documents, MedicalDocument.fromJson);
     _restoreMap(decoded['audit_logs'], _auditLogs, AuditLog.fromJson);
     _restoreMap(
@@ -340,10 +325,7 @@ class SimpleDatabase {
     _patients.clear();
     _users.clear();
     _clinics.clear();
-    _queueItems.clear();
-    _consultations.clear();
-    _prescriptions.clear();
-    _labOrders.clear();
+    _legacyRetiredClinicalDataPresent = false;
     _documents.clear();
     _auditLogs.clear();
     _generatedReports.clear();
@@ -630,53 +612,53 @@ class SimpleDatabase {
     }
   }
 
-  Future<void> insertQueueItem(QueueItem item) async {
+  Future<void> purgeRetiredClinicalData() async {
     await _ensureLoaded();
-    _queueItems[item.id] = item;
-    await _saveToDisk();
-  }
+    var changed = _legacyRetiredClinicalDataPresent;
+    _legacyRetiredClinicalDataPresent = false;
 
-  Future<QueueItem?> getQueueItemById(String id) async {
-    await _ensureLoaded();
-    return _queueItems[id];
-  }
+    for (final retiredTable in [
+      'queue_items',
+      'consultation',
+      'consultations',
+      'prescriptions',
+      'lab_orders',
+    ]) {
+      if (_syncDeletes.keys.any((key) => key.startsWith('$retiredTable|'))) {
+        _syncDeletes.removeWhere((key, _) => key.startsWith('$retiredTable|'));
+        changed = true;
+      }
+    }
+    for (final entry in _auditLogs.entries.toList()) {
+      if (const {
+        'queue_items',
+        'consultation',
+        'consultations',
+        'prescriptions',
+        'lab_orders',
+      }.contains(entry.value.entityType)) {
+        _auditLogs.remove(entry.key);
+        changed = true;
+      }
+    }
+    for (final notification
+        in _notifications.values
+            .where((item) => item.type == NotificationType.queueAlert)
+            .toList()) {
+      _notifications.remove(notification.id);
+      changed = true;
+    }
 
-  Future<List<QueueItem>> getQueueItems() async {
-    await _ensureLoaded();
-    return _queueItems.values.toList();
-  }
+    if (_consultations.isNotEmpty ||
+        _prescriptions.isNotEmpty ||
+        _labOrders.isNotEmpty) {
+      changed = true;
+    }
+    _consultations.clear();
+    _prescriptions.clear();
+    _labOrders.clear();
 
-  Future<List<QueueItem>> getActiveQueueItems() async {
-    await _ensureLoaded();
-    return _queueItems.values
-        .where(
-          (q) =>
-              q.status == QueueStatus.waiting ||
-              q.status == QueueStatus.inProgress,
-        )
-        .toList();
-  }
-
-  Future<List<QueueItem>> getQueueItemsForDate(DateTime date) async {
-    await _ensureLoaded();
-    return _queueItems.values.where((q) {
-      return q.arrivalTime.year == date.year &&
-          q.arrivalTime.month == date.month &&
-          q.arrivalTime.day == date.day;
-    }).toList();
-  }
-
-  Future<void> updateQueueItem(QueueItem item) async {
-    await _ensureLoaded();
-    _queueItems[item.id] = item;
-    await _saveToDisk();
-  }
-
-  Future<void> deleteQueueItem(String id) async {
-    await _ensureLoaded();
-    if (_queueItems.containsKey(id)) _recordSyncDelete('queue_items', id);
-    _queueItems.remove(id);
-    await _saveToDisk();
+    if (changed) await _saveToDisk();
   }
 
   Future<void> insertConsultation(Consultation consultation) async {
@@ -688,15 +670,6 @@ class SimpleDatabase {
   Future<Consultation?> getConsultationById(String id) async {
     await _ensureLoaded();
     return _consultations[id];
-  }
-
-  Future<Consultation?> getConsultationByQueueId(String queueId) async {
-    await _ensureLoaded();
-    try {
-      return _consultations.values.firstWhere((c) => c.queueId == queueId);
-    } catch (_) {
-      return null;
-    }
   }
 
   Future<List<Consultation>> getConsultationsForPatient(
@@ -891,7 +864,6 @@ class SimpleDatabase {
     _patients.clear();
     _users.clear();
     _clinics.clear();
-    _queueItems.clear();
     _consultations.clear();
     _prescriptions.clear();
     _labOrders.clear();
@@ -901,44 +873,6 @@ class SimpleDatabase {
     _userPasswordHashes.clear();
     _syncDeletes.clear();
     _medicalSnippets.clear();
-    await _saveToDisk();
-  }
-
-  Future<void> removeFromQueue(String queueItemId) async {
-    await deleteQueueItem(queueItemId);
-  }
-
-  Future<void> addToQueue(
-    String patientId,
-    String patientName,
-    String purpose, {
-    String? complaint,
-    Priority priority = Priority.normal,
-    bool isSenior = false,
-    bool isPregnant = false,
-    bool isPwd = false,
-    bool isInfant = false,
-  }) async {
-    await _ensureLoaded();
-    final now = DateTime.now();
-    final queueItem = QueueItem(
-      id: const Uuid().v4(),
-      patientId: patientId,
-      patientName: patientName,
-      purpose: purpose,
-      complaint: complaint,
-      priority: priority,
-      isSenior: isSenior,
-      isPregnant: isPregnant,
-      isPwd: isPwd,
-      isInfant: isInfant,
-      arrivalTime: now,
-      status: QueueStatus.waiting,
-      createdAt: now,
-      updatedAt: now,
-      syncStatus: 1,
-    );
-    _queueItems[queueItem.id] = queueItem;
     await _saveToDisk();
   }
 
@@ -964,35 +898,6 @@ class SimpleDatabase {
           createdAt.month == now.month &&
           createdAt.day == now.day;
     }).length;
-  }
-
-  Future<int> getActiveQueueCount() async {
-    await _ensureLoaded();
-    return _queueItems.values
-        .where(
-          (q) =>
-              q.status == QueueStatus.waiting ||
-              q.status == QueueStatus.inProgress,
-        )
-        .length;
-  }
-
-  Future<int> getLongWaitQueueCount(int thresholdMinutes) async {
-    await _ensureLoaded();
-    final now = DateTime.now();
-    return _queueItems.values.where((q) {
-      return q.status == QueueStatus.waiting &&
-          now.difference(q.arrivalTime).inMinutes > thresholdMinutes;
-    }).length;
-  }
-
-  Future<List<QueueItem>> getLongWaitQueueItems(int thresholdMinutes) async {
-    await _ensureLoaded();
-    final now = DateTime.now();
-    return _queueItems.values.where((q) {
-      return q.status == QueueStatus.waiting &&
-          now.difference(q.arrivalTime).inMinutes > thresholdMinutes;
-    }).toList();
   }
 
   Future<int> getDocumentCount() async {
@@ -1125,28 +1030,10 @@ class SimpleDatabase {
     final pendingPatients = _patients.values
         .where((p) => (p.syncStatus ?? 0) != 0)
         .length;
-    final pendingConsultations = _consultations.values
-        .where((c) => (c.syncStatus ?? 0) != 0)
-        .length;
     final pendingDocuments = _documents.values
         .where((d) => (d.syncStatus ?? 0) != 0)
         .length;
-    final pendingQueueItems = _queueItems.values
-        .where((q) => (q.syncStatus ?? 0) != 0)
-        .length;
-    final pendingPrescriptions = _prescriptions.values
-        .where((item) => (item.syncStatus ?? 0) != 0)
-        .length;
-    final pendingLabOrders = _labOrders.values
-        .where((item) => (item.syncStatus ?? 0) != 0)
-        .length;
-    return pendingPatients +
-        pendingConsultations +
-        pendingDocuments +
-        pendingQueueItems +
-        pendingPrescriptions +
-        pendingLabOrders +
-        _syncDeletes.length;
+    return pendingPatients + pendingDocuments + _syncDeletes.length;
   }
 
   Future<List<Map<String, String>>> getPendingSyncDeletes() async {
@@ -1172,26 +1059,62 @@ class SimpleDatabase {
             syncStatus: 0,
           );
         }
-      case 'queue_items':
-        _queueItems.remove(id);
-      case 'consultations':
-        _consultations.remove(id);
-        _prescriptions.removeWhere((_, item) => item.consultationId == id);
-        _labOrders.removeWhere((_, item) => item.consultationId == id);
-      case 'prescriptions':
-        _prescriptions.remove(id);
-      case 'lab_orders':
-        _labOrders.remove(id);
       case 'documents':
         documentPath = _documents.remove(id)?.filePath;
+      case 'clinics':
+        _clinics.remove(id);
+      case 'users':
+        _users.remove(id);
+      case 'audit_logs':
+        _auditLogs.remove(id);
+      case 'notifications':
+        _notifications.remove(id);
       case 'generated_reports':
         _generatedReports.remove(id);
       default:
-        throw ArgumentError('Unsupported remote deletion type: $table');
+        return null;
     }
     await markSyncDeleteComplete(table, id);
     await _saveToDisk();
     return documentPath;
+  }
+
+  Future<void> applyRemoteUpsert(String table, Map<String, dynamic> raw) async {
+    await _ensureLoaded();
+    try {
+      switch (table) {
+        case 'patients':
+          final patient = Patient.fromJson(raw);
+          _patients[patient.id] = patient.copyWith(syncStatus: 0);
+        case 'documents':
+          final doc = MedicalDocument.fromJson(raw);
+          _documents[doc.id] = doc.copyWith(syncStatus: 0);
+        case 'users':
+          final user = User.fromJson(raw);
+          _users[user.id] = user.copyWith(syncStatus: 0);
+        case 'clinics':
+          final clinic = Clinic.fromJson(raw);
+          _clinics[clinic.id] = clinic;
+        case 'audit_logs':
+          final log = AuditLog.fromJson(raw);
+          _auditLogs[log.id] = log;
+        case 'notifications':
+          final notif = SystemNotification.fromJson(raw);
+          _notifications[notif.id] = notif;
+        case 'system_settings':
+          _systemSettings = SystemSettings.fromJson(raw);
+        case 'sync_tombstones':
+          final entityType = raw['entity_type'] as String?;
+          final recordId = raw['record_id'] as String?;
+          if (entityType != null && recordId != null) {
+            await applyRemoteDelete(entityType, recordId);
+            return;
+          }
+        default:
+          return;
+      }
+      await _saveToDisk();
+    } catch (_) {}
   }
 
   Future<SystemSettings> getSystemSettings() async {

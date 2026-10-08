@@ -6,15 +6,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
-import '../models/consultation.dart';
 import '../models/audit_log.dart';
 import '../models/document.dart';
 import '../models/generated_report.dart';
 import '../models/patient.dart';
-import '../models/queue.dart';
 import '../models/system_notification.dart';
 import '../models/system_settings.dart';
 import '../models/user.dart';
+import '../models/clinic.dart';
 import '../services/app_notification.dart';
 import '../services/document_service.dart';
 import 'providers.dart';
@@ -24,16 +23,12 @@ enum SyncStatus { synced, syncing, pending, error, offline }
 
 class SyncStats {
   final int totalPatients;
-  final int totalConsultations;
   final int totalDocuments;
-  final int totalQueueItems;
   final int pendingSync;
 
   const SyncStats({
     required this.totalPatients,
-    required this.totalConsultations,
     required this.totalDocuments,
-    required this.totalQueueItems,
     required this.pendingSync,
   });
 }
@@ -69,18 +64,23 @@ class SyncService extends StateNotifier<SyncServiceState> {
   Timer? _realtimeRefreshTimer;
   Timer? _pendingSyncTimer;
   Timer? _retrySyncTimer;
+  Timer? _periodicSyncTimer;
+  Timer? _syncSettingsRefreshTimer;
   int _realtimeSetupGeneration = 0;
   int _retryAttempt = 0;
-  String? _realtimeUserId;
+  int? _configuredSyncIntervalMinutes;
+  bool _autoSyncEnabled = true;
   bool _wasOffline = false;
 
   SyncService(this._ref) : super(const SyncServiceState()) {
     _initConnectivityListener();
     unawaited(_initializeSync());
-    _databaseChangesSubscription = _ref
-        .read(databaseProvider)
-        .changes
-        .listen((_) => _schedulePendingSync());
+    _databaseChangesSubscription = _ref.read(databaseProvider).changes.listen((
+      _,
+    ) {
+      _schedulePendingSync();
+      _scheduleSyncSettingsRefresh();
+    });
     _authStateSubscription = _supabase.auth.onAuthStateChange.listen((event) {
       // Only reconfigure and sync on actual login, not on token refreshes.
       if (event.event == AuthChangeEvent.signedIn ||
@@ -88,6 +88,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
         unawaited(_configureRealtimeSubscription());
       }
       if (event.event == AuthChangeEvent.signedIn) {
+        unawaited(_refreshAutoSyncSettings());
         _schedulePendingSync();
       }
     });
@@ -100,9 +101,13 @@ class SyncService extends StateNotifier<SyncServiceState> {
     ) async {
       final isOnline = results.any((r) => r != ConnectivityResult.none);
       if (isOnline) {
+        await _refreshAutoSyncSettings();
         final wasOffline = _wasOffline || state.status == SyncStatus.offline;
         _wasOffline = false;
-        if (_supabase.auth.currentSession != null &&
+        if (_supabase.auth.currentSession == null) {
+          await _ref.read(authRepositoryProvider).ensureOnlineSession();
+        }
+        if (_autoSyncEnabled &&
             (wasOffline ||
                 state.status == SyncStatus.pending ||
                 state.status == SyncStatus.error)) {
@@ -122,6 +127,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
         } else {
           await _refreshDerivedStatus();
         }
+        unawaited(_configureRealtimeSubscription());
       } else {
         if (!_wasOffline) {
           _wasOffline = true;
@@ -137,11 +143,18 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   Future<void> _initializeSync() async {
+    await _ref.read(databaseProvider).purgeRetiredClinicalData();
+    await _refreshAutoSyncSettings();
     final online = await _hasNetworkConnection();
     _wasOffline = !online;
     await _refreshDerivedStatus();
-    if (online && _supabase.auth.currentSession != null) {
-      await startSync();
+    if (online && _autoSyncEnabled) {
+      if (_supabase.auth.currentSession == null) {
+        await _ref.read(authRepositoryProvider).ensureOnlineSession();
+      }
+      if (_supabase.auth.currentSession != null) {
+        await startSync();
+      }
     }
   }
 
@@ -153,6 +166,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
     _realtimeRefreshTimer?.cancel();
     _pendingSyncTimer?.cancel();
     _retrySyncTimer?.cancel();
+    _periodicSyncTimer?.cancel();
+    _syncSettingsRefreshTimer?.cancel();
     _realtimeSetupGeneration++;
     final channel = _realtimeChannel;
     if (channel != null) unawaited(_supabase.removeChannel(channel));
@@ -161,31 +176,28 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
   Future<void> _configureRealtimeSubscription() async {
     final generation = ++_realtimeSetupGeneration;
-    final session = _supabase.auth.currentSession;
-    final userId = session?.user.id;
-    if (userId == _realtimeUserId) return;
-    _realtimeUserId = userId;
+
+    if (_supabase.auth.currentSession == null) {
+      await _ref.read(authRepositoryProvider).ensureOnlineSession();
+    }
 
     final previous = _realtimeChannel;
     _realtimeChannel = null;
-    if (previous != null) await _supabase.removeChannel(previous);
-    final activeSession = _supabase.auth.currentSession;
-    if (generation != _realtimeSetupGeneration ||
-        activeSession == null ||
-        activeSession.user.id != userId) {
-      return;
+    if (previous != null) {
+      try {
+        await _supabase.removeChannel(previous);
+      } catch (_) {}
     }
 
-    final channelName = 'medsentry-data-${activeSession.user.id}';
+    if (generation != _realtimeSetupGeneration) return;
+
+    final channelName = 'medsentry-realtime-channel';
     var channel = _supabase.channel(channelName);
     const tables = [
       'patients',
-      'queue_items',
-      'consultations',
-      'prescriptions',
-      'lab_orders',
       'documents',
       'users',
+      'clinics',
       'audit_logs',
       'notifications',
       'generated_reports',
@@ -199,51 +211,122 @@ class SyncService extends StateNotifier<SyncServiceState> {
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: table,
-        callback: (_) => _scheduleRealtimeRefresh(),
+        callback: (change) async {
+          debugPrint('REALTIME EVENT: ${change.eventType} on table $table');
+          try {
+            final db = _ref.read(databaseProvider);
+            if (change.eventType == PostgresChangeEvent.delete) {
+              final id =
+                  change.oldRecord['id'] ?? change.oldRecord['record_id'];
+              if (id is String) {
+                await db.applyRemoteDelete(table, id);
+              }
+            } else if (change.newRecord.isNotEmpty) {
+              await db.applyRemoteUpsert(table, change.newRecord);
+            }
+          } catch (e) {
+            debugPrint('Error handling realtime change for $table: $e');
+          }
+          _scheduleRealtimeRefresh();
+        },
       );
     }
 
-    _realtimeChannel = channel.subscribe();
-    // Do not call startSync() here — _initializeSync() in the constructor
-    // handles the first sync. Token-refresh/re-subscribe events are covered by
-    // the auth listener's _schedulePendingSync().
+    _realtimeChannel = channel.subscribe((status, error) {
+      debugPrint('Realtime channel status: $status, error: $error');
+    });
   }
 
   void _scheduleRealtimeRefresh() {
     _realtimeRefreshTimer?.cancel();
-    // 800ms debounce: allows multi-table writes to complete before re-sync
-    _realtimeRefreshTimer = Timer(const Duration(milliseconds: 800), () {
+    // 400ms debounce: allows multi-table transactions to settle before secondary consistency sync
+    _realtimeRefreshTimer = Timer(const Duration(milliseconds: 400), () {
       unawaited(_refreshAfterRealtimeChange());
     });
   }
 
   Future<void> _refreshAfterRealtimeChange() async {
-    if (_supabase.auth.currentSession == null) return;
     if (state.status == SyncStatus.syncing) {
       _scheduleRealtimeRefresh();
       return;
     }
-    await startSync();
+    await _refreshAutoSyncSettings();
+    if (!_autoSyncEnabled) return;
+    if (_supabase.auth.currentSession == null) {
+      await _ref.read(authRepositoryProvider).ensureOnlineSession();
+    }
+    if (_supabase.auth.currentSession != null) {
+      await startSync();
+    }
   }
 
   void _schedulePendingSync({
-    Duration delay = const Duration(milliseconds: 500),
+    Duration delay = const Duration(milliseconds: 300),
   }) {
-    if (_supabase.auth.currentSession == null) return;
+    if (!_autoSyncEnabled) return;
     _pendingSyncTimer?.cancel();
     _pendingSyncTimer = Timer(delay, () async {
-      if (_supabase.auth.currentSession == null) return;
+      await _refreshAutoSyncSettings();
+      if (!_autoSyncEnabled) return;
+      if (_supabase.auth.currentSession == null) {
+        await _ref.read(authRepositoryProvider).ensureOnlineSession();
+      }
       if (state.status == SyncStatus.syncing) {
         _schedulePendingSync(delay: const Duration(seconds: 1));
         return;
       }
-      if (state.status == SyncStatus.offline ||
-          state.status == SyncStatus.error) {
-        return;
-      }
+      if (state.status == SyncStatus.offline) return;
       final pending = await _ref.read(databaseProvider).getPendingSyncCount();
-      if (pending > 0) await startSync();
+      if (pending > 0 && _supabase.auth.currentSession != null) {
+        await startSync();
+      }
     });
+  }
+
+  void _scheduleSyncSettingsRefresh() {
+    _syncSettingsRefreshTimer?.cancel();
+    _syncSettingsRefreshTimer = Timer(
+      const Duration(milliseconds: 400),
+      () => unawaited(_refreshAutoSyncSettings()),
+    );
+  }
+
+  Future<void> _refreshAutoSyncSettings() async {
+    final settings = await _ref.read(databaseProvider).getSystemSettings();
+    final enabled = settings.autoSyncEnabled;
+    final interval = settings.autoSyncIntervalMinutes.clamp(1, 1440);
+    final wasEnabled = _autoSyncEnabled;
+    if (_autoSyncEnabled == enabled &&
+        _configuredSyncIntervalMinutes == interval &&
+        (_periodicSyncTimer?.isActive ?? false) == enabled) {
+      return;
+    }
+
+    _autoSyncEnabled = enabled;
+    _configuredSyncIntervalMinutes = interval;
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = null;
+    if (!enabled) {
+      _pendingSyncTimer?.cancel();
+      _retrySyncTimer?.cancel();
+      return;
+    }
+
+    _periodicSyncTimer = Timer.periodic(
+      Duration(minutes: interval),
+      (_) => unawaited(_runAutomaticSync()),
+    );
+    if (!wasEnabled) _schedulePendingSync();
+  }
+
+  Future<void> _runAutomaticSync() async {
+    if (!_autoSyncEnabled || state.status == SyncStatus.syncing) return;
+    if (_supabase.auth.currentSession == null) {
+      await _ref.read(authRepositoryProvider).ensureOnlineSession();
+    }
+    if (_supabase.auth.currentSession != null) {
+      await startSync();
+    }
   }
 
   static const int _synced = 0;
@@ -275,6 +358,9 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   Future<bool> _canSyncToCloud() async {
+    if (_supabase.auth.currentSession == null) {
+      await _ref.read(authRepositoryProvider).ensureOnlineSession();
+    }
     if (_supabase.auth.currentSession == null) return false;
     try {
       await _supabase.from('patients').select('id').limit(1);
@@ -288,16 +374,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
   Future<SyncStats> getSyncStats() async {
     final db = _ref.read(databaseProvider);
     final patients = await db.getAllPatients();
-    final consultations = await db.getAllConsultations();
     final documents = await db.getDocuments();
-    final queueItems = await db.getQueueItems();
     final pending = await db.getPendingSyncCount();
 
     return SyncStats(
       totalPatients: patients.length,
-      totalConsultations: consultations.length,
       totalDocuments: documents.length,
-      totalQueueItems: queueItems.length,
       pendingSync: pending,
     );
   }
@@ -310,6 +392,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
       );
     }
 
+    await _ref.read(databaseProvider).purgeRetiredClinicalData();
     _retrySyncTimer?.cancel();
     state = state.copyWith(status: SyncStatus.syncing);
 
@@ -382,10 +465,13 @@ class SyncService extends StateNotifier<SyncServiceState> {
       int failed = 0;
 
       final profile = await _currentCloudProfile();
-      if (profile != null) {
-        await _syncSystemSettings(db, profile);
-        await _syncGeneratedReports(db, profile);
+      if (profile == null) {
+        throw StateError(
+          'The signed-in account has no active MedSentry profile.',
+        );
       }
+      await _syncSystemSettings(db, profile);
+      await _syncGeneratedReports(db, profile);
 
       // Include archived patients so an archive action is synchronized rather
       // than leaving the remote copy active.
@@ -398,88 +484,19 @@ class SyncService extends StateNotifier<SyncServiceState> {
             ..remove('sync_error')
             ..['created_at'] ??= now
             ..['updated_at'] = now;
+          payload['clinic_id'] = await _clinicIdForUpload(
+            'patients',
+            patient.id,
+            profile,
+          );
           await _supabase.from('patients').upsert(payload);
           await db.updatePatient(patient.copyWith(syncStatus: _synced));
           synced++;
-        } catch (_) {
-          failed++;
-        }
-      }
-
-      // Queue/vitals are clinical records and must participate in the same
-      // sync lifecycle as patients, consultations, and documents.
-      for (final queueItem in await db.getQueueItems()) {
-        if (queueItem.syncStatus == _synced) continue;
-        try {
-          final now = DateTime.now().toIso8601String();
-          final payload = queueItem.toJson()
-            ..remove('sync_status')
-            ..remove('patient_name')
-            ..['created_at'] ??= now
-            ..['updated_at'] = now;
-          await _supabase.from('queue_items').upsert(payload);
-          await db.updateQueueItem(queueItem.copyWith(syncStatus: _synced));
-          synced++;
-        } catch (_) {
-          failed++;
-        }
-      }
-
-      for (final consultation in await db.getAllConsultations()) {
-        if (consultation.syncStatus == _synced) continue;
-        try {
-          final now = DateTime.now().toIso8601String();
-          final payload = consultation.toJson()
-            ..remove('sync_status')
-            ..['created_at'] ??= now
-            ..['updated_at'] = now;
-          await _supabase.from('consultations').upsert(payload);
-          await db.updateConsultation(
-            consultation.copyWith(syncStatus: _synced),
+        } catch (error, stackTrace) {
+          debugPrint(
+            'Patient sync failed (${patient.id}): $error\n$stackTrace',
           );
-          synced++;
-        } catch (_) {
           failed++;
-        }
-      }
-
-      for (final consultation in await db.getAllConsultations()) {
-        for (final prescription in await db.getPrescriptionsForConsultation(
-          consultation.id,
-        )) {
-          if (prescription.syncStatus == _synced) continue;
-          try {
-            final now = DateTime.now().toIso8601String();
-            final payload = prescription.toJson()
-              ..remove('sync_status')
-              ..['created_at'] ??= now
-              ..['updated_at'] = now;
-            await _supabase.from('prescriptions').upsert(payload);
-            await db.insertPrescription(
-              prescription.copyWith(syncStatus: _synced),
-            );
-            synced++;
-          } catch (_) {
-            failed++;
-          }
-        }
-
-        for (final labOrder in await db.getLabOrdersForConsultation(
-          consultation.id,
-        )) {
-          if (labOrder.syncStatus == _synced) continue;
-          try {
-            final now = DateTime.now().toIso8601String();
-            final payload = labOrder.toJson()
-              ..remove('sync_status')
-              ..['created_at'] ??= now
-              ..['updated_at'] = now;
-            await _supabase.from('lab_orders').upsert(payload);
-            await db.insertLabOrder(labOrder.copyWith(syncStatus: _synced));
-            synced++;
-          } catch (_) {
-            failed++;
-          }
         }
       }
 
@@ -493,10 +510,18 @@ class SyncService extends StateNotifier<SyncServiceState> {
             ..remove('file_url')
             ..['created_at'] ??= now
             ..['updated_at'] = now;
+          payload['clinic_id'] = await _clinicIdForUpload(
+            'documents',
+            document.id,
+            profile,
+          );
           await _supabase.from('documents').upsert(payload);
           await db.updateDocument(document.copyWith(syncStatus: _synced));
           synced++;
-        } catch (_) {
+        } catch (error, stackTrace) {
+          debugPrint(
+            'Document sync failed (${document.id}): $error\n$stackTrace',
+          );
           failed++;
         }
       }
@@ -515,18 +540,20 @@ class SyncService extends StateNotifier<SyncServiceState> {
             deletion['record_id']!,
           );
           synced++;
-        } catch (_) {
+        } catch (error, stackTrace) {
+          debugPrint(
+            'Sync deletion failed (${deletion['table']}/${deletion['record_id']}): '
+            '$error\n$stackTrace',
+          );
           failed++;
         }
       }
 
       await _pullRemoteDeletions(db);
       await _pullRemotePatients(db);
-      await _pullRemoteQueueItems(db);
-      await _pullRemoteConsultations(db);
-      await _pullRemotePrescriptionsAndLabs(db);
       await _pullRemoteDocuments(db);
       await _pullRemoteUsers(db);
+      await _pullRemoteClinics(db);
       await _pullRemoteAuditLogs(db);
       await _pullRemoteNotifications(db);
 
@@ -575,77 +602,6 @@ class SyncService extends StateNotifier<SyncServiceState> {
       remoteUpdatedAt != null &&
       (localUpdatedAt == null || remoteUpdatedAt.isAfter(localUpdatedAt));
 
-  Future<void> _pullRemoteQueueItems(dynamic db) async {
-    final localItems = {
-      for (final item in await db.getQueueItems()) item.id: item,
-    };
-    final rows = await _selectAllRows('queue_items');
-    for (final raw in rows) {
-      final remote = QueueItem.fromJson(Map<String, dynamic>.from(raw));
-      final local = localItems[remote.id];
-      if (local == null ||
-          (local.syncStatus == _synced &&
-              _isRemoteVersionNewer(remote.updatedAt, local.updatedAt))) {
-        await db.updateQueueItem(remote.copyWith(syncStatus: _synced));
-      }
-    }
-  }
-
-  Future<void> _pullRemoteConsultations(dynamic db) async {
-    final localItems = {
-      for (final item in await db.getAllConsultations()) item.id: item,
-    };
-    final rows = await _selectAllRows('consultations');
-    for (final raw in rows) {
-      final remote = Consultation.fromJson(Map<String, dynamic>.from(raw));
-      final local = localItems[remote.id];
-      if (local == null ||
-          (local.syncStatus == _synced &&
-              _isRemoteVersionNewer(remote.updatedAt, local.updatedAt))) {
-        await db.updateConsultation(remote.copyWith(syncStatus: _synced));
-      }
-    }
-  }
-
-  Future<void> _pullRemotePrescriptionsAndLabs(dynamic db) async {
-    final prescriptions = <String, dynamic>{};
-    final labOrders = <String, dynamic>{};
-    for (final consultation in await db.getAllConsultations()) {
-      for (final item in await db.getPrescriptionsForConsultation(
-        consultation.id,
-      )) {
-        prescriptions[item.id] = item;
-      }
-      for (final item in await db.getLabOrdersForConsultation(
-        consultation.id,
-      )) {
-        labOrders[item.id] = item;
-      }
-    }
-
-    final remotePrescriptions = await _selectAllRows('prescriptions');
-    for (final raw in remotePrescriptions) {
-      final remote = Prescription.fromJson(Map<String, dynamic>.from(raw));
-      final local = prescriptions[remote.id];
-      if (local == null ||
-          (local.syncStatus == _synced &&
-              _isRemoteVersionNewer(remote.updatedAt, local.updatedAt))) {
-        await db.insertPrescription(remote.copyWith(syncStatus: _synced));
-      }
-    }
-
-    final remoteLabOrders = await _selectAllRows('lab_orders');
-    for (final raw in remoteLabOrders) {
-      final remote = LabOrder.fromJson(Map<String, dynamic>.from(raw));
-      final local = labOrders[remote.id];
-      if (local == null ||
-          (local.syncStatus == _synced &&
-              _isRemoteVersionNewer(remote.updatedAt, local.updatedAt))) {
-        await db.insertLabOrder(remote.copyWith(syncStatus: _synced));
-      }
-    }
-  }
-
   Future<void> _pullRemoteDocuments(dynamic db) async {
     final localItems = {
       for (final item in await db.getDocuments()) item.id: item,
@@ -689,6 +645,14 @@ class SyncService extends StateNotifier<SyncServiceState> {
           _ref.read(currentUserProvider.notifier).state = updated;
         }
       }
+    }
+  }
+
+  Future<void> _pullRemoteClinics(dynamic db) async {
+    final rows = await _selectAllRows('clinics');
+    for (final raw in rows) {
+      final remote = Clinic.fromJson(Map<String, dynamic>.from(raw));
+      await db.insertClinic(remote);
     }
   }
 
@@ -799,36 +763,72 @@ class SyncService extends StateNotifier<SyncServiceState> {
     if (authId == null) return null;
     final row = await _supabase
         .from('users')
-        .select('id,role')
+        .select('id,role,clinic_id')
         .eq('auth_user_id', authId)
         .maybeSingle();
     return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
+  Future<String> _clinicIdForUpload(
+    String table,
+    String recordId,
+    Map<String, dynamic> profile,
+  ) async {
+    final clinicId = profile['clinic_id'];
+    if (clinicId is String && clinicId.isNotEmpty) return clinicId;
+
+    if (profile['role'] == 'super_admin') {
+      final existing = await _supabase
+          .from(table)
+          .select('clinic_id')
+          .eq('id', recordId)
+          .maybeSingle();
+      final existingClinicId = existing?['clinic_id'];
+      if (existingClinicId is String && existingClinicId.isNotEmpty) {
+        return existingClinicId;
+      }
+    }
+
+    throw StateError(
+      'Cannot sync $table/$recordId because its clinic is not known.',
+    );
   }
 
   Future<void> _syncSystemSettings(
     dynamic db,
     Map<String, dynamic> profile,
   ) async {
-    if (profile['role'] != 'admin') return;
+    if (profile['role'] != 'admin' && profile['role'] != 'super_admin') return;
+    final clinicId = profile['role'] == 'super_admin'
+        ? null
+        : profile['clinic_id'] as String?;
+    if (profile['role'] == 'admin' && clinicId == null) {
+      throw StateError('The clinic administrator profile has no clinic.');
+    }
+
     final local = await db.getSystemSettings() as SystemSettings;
-    final remote = await _supabase
+    var settingsQuery = _supabase
         .from('system_settings')
         .select('value,updated_at')
-        .eq('key', 'clinic')
-        .maybeSingle();
+        .eq('key', 'clinic');
+    settingsQuery = clinicId == null
+        ? settingsQuery.isFilter('clinic_id', null)
+        : settingsQuery.eq('clinic_id', clinicId);
+    final remote = await settingsQuery.maybeSingle();
     final remoteUpdatedAt = remote?['updated_at'] != null
         ? DateTime.parse(remote!['updated_at'] as String)
         : null;
 
     // Push local settings to server when: no remote exists, OR local is newer.
-    final localIsNewer = local.updatedAt != null &&
-        (remoteUpdatedAt == null ||
-            local.updatedAt!.isAfter(remoteUpdatedAt));
+    final localIsNewer =
+        local.updatedAt != null &&
+        (remoteUpdatedAt == null || local.updatedAt!.isAfter(remoteUpdatedAt));
     if (remote == null || localIsNewer) {
       final updatedAt = local.updatedAt ?? DateTime.now();
       final value = local.toJson()
         ..['updated_at'] = updatedAt.toIso8601String();
       await _supabase.from('system_settings').upsert({
+        'clinic_id': clinicId,
         'key': 'clinic',
         'value': value,
         'updated_by': profile['id'],
@@ -848,12 +848,21 @@ class SyncService extends StateNotifier<SyncServiceState> {
   ) async {
     final localReports =
         await db.getGeneratedReports() as List<GeneratedReport>;
+    final clinicId = profile['clinic_id'];
     final remoteIds = await _selectAllRows('generated_reports', columns: 'id');
     final remoteReportIds = remoteIds.map((row) => row['id'] as String).toSet();
     for (final report in localReports) {
       if (remoteReportIds.contains(report.id)) continue;
+      if (clinicId is! String || clinicId.isEmpty) {
+        debugPrint(
+          'Generated report sync skipped (${report.id}): '
+          'the signed-in profile has no clinic.',
+        );
+        continue;
+      }
       await _supabase.from('generated_reports').insert({
         'id': report.id,
+        'clinic_id': clinicId,
         'title': report.title,
         'type': report.type,
         'generated_at': report.generatedAt.toIso8601String(),

@@ -12,18 +12,11 @@ external JSBoolean? get _jsPwaCanInstall;
 @JS('isPwaInstalled')
 external JSBoolean? _jsIsPwaInstalled();
 
-@JS('hideMedSentryLoader')
-external void _jsHideMedSentryLoader();
-
 class WebPwaInstaller implements PwaInstaller {
   final _controller = StreamController<bool>.broadcast();
   bool _lastCanInstall = false;
 
   WebPwaInstaller() {
-    try {
-      _jsHideMedSentryLoader();
-    } catch (_) {}
-
     Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_controller.isClosed) {
         timer.cancel();

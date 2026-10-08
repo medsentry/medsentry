@@ -22,7 +22,7 @@ class SystemSettings {
   final String appTagline;
   final String organizationName;
   final String logoAssetPath;
-  final bool queueModuleEnabled;
+  final String logoDataUri;
   final bool certificatesModuleEnabled;
   final bool syncModuleEnabled;
   final DateTime? updatedAt;
@@ -64,7 +64,7 @@ class SystemSettings {
     this.appTagline = 'Rural Health Unit Information System',
     this.organizationName = 'RHU Madrid, Surigao del Sur',
     this.logoAssetPath = 'assets/images/rhu_doctors.png',
-    this.queueModuleEnabled = false,
+    this.logoDataUri = '',
     this.certificatesModuleEnabled = true,
     this.syncModuleEnabled = true,
     this.updatedAt,
@@ -93,7 +93,7 @@ class SystemSettings {
     String? appTagline,
     String? organizationName,
     String? logoAssetPath,
-    bool? queueModuleEnabled,
+    String? logoDataUri,
     bool? certificatesModuleEnabled,
     bool? syncModuleEnabled,
     DateTime? updatedAt,
@@ -124,7 +124,7 @@ class SystemSettings {
       appTagline: appTagline ?? this.appTagline,
       organizationName: organizationName ?? this.organizationName,
       logoAssetPath: logoAssetPath ?? this.logoAssetPath,
-      queueModuleEnabled: queueModuleEnabled ?? this.queueModuleEnabled,
+      logoDataUri: logoDataUri ?? this.logoDataUri,
       certificatesModuleEnabled:
           certificatesModuleEnabled ?? this.certificatesModuleEnabled,
       syncModuleEnabled: syncModuleEnabled ?? this.syncModuleEnabled,
@@ -160,7 +160,7 @@ class SystemSettings {
     'app_tagline': appTagline,
     'organization_name': organizationName,
     'logo_asset_path': logoAssetPath,
-    'queue_module_enabled': queueModuleEnabled,
+    'logo_data_uri': logoDataUri,
     'certificates_module_enabled': certificatesModuleEnabled,
     'sync_module_enabled': syncModuleEnabled,
     'updated_at': updatedAt?.toIso8601String(),
@@ -210,7 +210,7 @@ class SystemSettings {
           'RHU Madrid, Surigao del Sur',
       logoAssetPath: json['logo_asset_path'] as String? ??
           'assets/images/rhu_doctors.png',
-      queueModuleEnabled: json['queue_module_enabled'] as bool? ?? false,
+      logoDataUri: json['logo_data_uri'] as String? ?? '',
       certificatesModuleEnabled:
           json['certificates_module_enabled'] as bool? ?? true,
       syncModuleEnabled: json['sync_module_enabled'] as bool? ?? true,

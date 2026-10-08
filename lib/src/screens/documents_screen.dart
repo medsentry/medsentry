@@ -189,7 +189,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               );
             },
             loading: () => const LoadingState(),
-            error: (error, stack) => Center(child: Text('Error: $error')),
+            error: (error, _) => AppErrorState(
+              title: 'Documents could not be loaded',
+              error: error,
+              onRetry: () => ref.invalidate(documentsProvider),
+            ),
           ),
         ),
       ],
@@ -343,37 +347,41 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.62),
-                ),
-              ),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                ),
-              ),
-            ],
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Text(
+            '$label: ',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            value,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -644,9 +652,16 @@ class _DocumentCard extends ConsumerWidget {
     final typeColor = _typeColor(document.type);
     final date = document.scanDate ?? document.createdAt;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
       child: InkWell(
+        borderRadius: BorderRadius.circular(8),
         onTap: () => _openDocument(context),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -657,15 +672,17 @@ class _DocumentCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: typeColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+                      color: typeColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: typeColor.withValues(alpha: 0.2)),
                     ),
                     child: Icon(
                       _fileIcon(document.mimeType ?? 'unknown'),
                       color: typeColor,
+                      size: 20,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1136,7 +1153,11 @@ class _DocumentUploadDialogState extends ConsumerState<_DocumentUploadDialog> {
             ),
           ),
           loading: () => const SizedBox(height: 160, child: LoadingState()),
-          error: (error, stack) => Text('Unable to load patients: $error'),
+          error: (error, _) => AppErrorState(
+            title: 'Patient list could not be loaded',
+            error: error,
+            onRetry: () => ref.invalidate(patientsProvider),
+          ),
         ),
       ),
       actions: [
@@ -1633,7 +1654,6 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
     final updated = MedicalDocument(
       id: existing.id,
       patientId: existing.patientId,
-      consultationId: existing.consultationId,
       type: _type,
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty

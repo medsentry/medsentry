@@ -96,22 +96,7 @@ final consultationRepositoryProvider =
 );
 
 typedef ConsultationRepositoryRef = ProviderRef<ConsultationRepository>;
-String _$queueRepositoryHash() => r'969f5eccb3dcece0045bdd4453ca00350b059594';
-
-/// See also [queueRepository].
-@ProviderFor(queueRepository)
-final queueRepositoryProvider = Provider<QueueRepository>.internal(
-  queueRepository,
-  name: r'queueRepositoryProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$queueRepositoryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef QueueRepositoryRef = ProviderRef<QueueRepository>;
-String _$usersHash() => r'a721c94ff33b1f6e556e6c68c13e68474cd3e11d';
+String _$usersHash() => r'7c6344a1dd886560c59c83915e4edf0fd31fbcd4';
 
 /// See also [users].
 @ProviderFor(users)
@@ -125,7 +110,7 @@ final usersProvider = FutureProvider<List<User>>.internal(
 );
 
 typedef UsersRef = FutureProviderRef<List<User>>;
-String _$patientsHash() => r'a8d1ca48c08b2ce424b35d89ce2ac8f008a3806d';
+String _$patientsHash() => r'17082d2fcaa569352ceee7a3f06e2ff74d525779';
 
 /// See also [patients].
 @ProviderFor(patients)
@@ -139,7 +124,7 @@ final patientsProvider = FutureProvider<List<Patient>>.internal(
 );
 
 typedef PatientsRef = FutureProviderRef<List<Patient>>;
-String _$patientHash() => r'9df53fe4ca0c94c87d4cf02e2e185446f6a3058d';
+String _$patientHash() => r'f4e07392f6769dda0fbd26adeab98418e70cb221';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -287,148 +272,7 @@ class _PatientProviderElement extends FutureProviderElement<Patient?>
   String get patientId => (origin as PatientProvider).patientId;
 }
 
-String _$queueHash() => r'1678b9e564926ebcac1bd899c5604d78d1560363';
-
-/// See also [queue].
-@ProviderFor(queue)
-final queueProvider = FutureProvider<List<QueueItem>>.internal(
-  queue,
-  name: r'queueProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$queueHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef QueueRef = FutureProviderRef<List<QueueItem>>;
-String _$queueItemHash() => r'b8f2ccf819c16ed91744a3da4634d3331103df95';
-
-/// See also [queueItem].
-@ProviderFor(queueItem)
-const queueItemProvider = QueueItemFamily();
-
-/// See also [queueItem].
-class QueueItemFamily extends Family<AsyncValue<QueueItem?>> {
-  /// See also [queueItem].
-  const QueueItemFamily();
-
-  /// See also [queueItem].
-  QueueItemProvider call(
-    String queueItemId,
-  ) {
-    return QueueItemProvider(
-      queueItemId,
-    );
-  }
-
-  @override
-  QueueItemProvider getProviderOverride(
-    covariant QueueItemProvider provider,
-  ) {
-    return call(
-      provider.queueItemId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'queueItemProvider';
-}
-
-/// See also [queueItem].
-class QueueItemProvider extends FutureProvider<QueueItem?> {
-  /// See also [queueItem].
-  QueueItemProvider(
-    String queueItemId,
-  ) : this._internal(
-          (ref) => queueItem(
-            ref as QueueItemRef,
-            queueItemId,
-          ),
-          from: queueItemProvider,
-          name: r'queueItemProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$queueItemHash,
-          dependencies: QueueItemFamily._dependencies,
-          allTransitiveDependencies: QueueItemFamily._allTransitiveDependencies,
-          queueItemId: queueItemId,
-        );
-
-  QueueItemProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.queueItemId,
-  }) : super.internal();
-
-  final String queueItemId;
-
-  @override
-  Override overrideWith(
-    FutureOr<QueueItem?> Function(QueueItemRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: QueueItemProvider._internal(
-        (ref) => create(ref as QueueItemRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        queueItemId: queueItemId,
-      ),
-    );
-  }
-
-  @override
-  FutureProviderElement<QueueItem?> createElement() {
-    return _QueueItemProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is QueueItemProvider && other.queueItemId == queueItemId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, queueItemId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
-}
-
-mixin QueueItemRef on FutureProviderRef<QueueItem?> {
-  /// The parameter `queueItemId` of this provider.
-  String get queueItemId;
-}
-
-class _QueueItemProviderElement extends FutureProviderElement<QueueItem?>
-    with QueueItemRef {
-  _QueueItemProviderElement(super.provider);
-
-  @override
-  String get queueItemId => (origin as QueueItemProvider).queueItemId;
-}
-
-String _$documentsHash() => r'6fa6f899a7da51eb79119f234ef856c5fec9ef24';
+String _$documentsHash() => r'720ba45f958bf1ae780ef66503a25a26c11a5f45';
 
 /// See also [documents].
 @ProviderFor(documents)
@@ -443,7 +287,7 @@ final documentsProvider = FutureProvider<List<MedicalDocument>>.internal(
 
 typedef DocumentsRef = FutureProviderRef<List<MedicalDocument>>;
 String _$patientConsultationsHash() =>
-    r'9215ec05df6046e8b24034cc906ae53e10ce2ead';
+    r'71c60d0488e628c53107454d222e7df572739a8f';
 
 /// See also [patientConsultations].
 @ProviderFor(patientConsultations)
@@ -575,7 +419,7 @@ class _PatientConsultationsProviderElement
   String get patientId => (origin as PatientConsultationsProvider).patientId;
 }
 
-String _$patientDocumentsHash() => r'595c1cc1c693dcd7c14fd16632a3dca77b5c0788';
+String _$patientDocumentsHash() => r'e14acccd03ba8be9dd3258f9ab48afdda82f4657';
 
 /// See also [patientDocuments].
 @ProviderFor(patientDocuments)
@@ -705,136 +549,7 @@ class _PatientDocumentsProviderElement
   String get patientId => (origin as PatientDocumentsProvider).patientId;
 }
 
-String _$patientQueueHistoryHash() =>
-    r'c8b043b2eff026ee8e1c5594d03d89746ae25a05';
-
-/// See also [patientQueueHistory].
-@ProviderFor(patientQueueHistory)
-const patientQueueHistoryProvider = PatientQueueHistoryFamily();
-
-/// See also [patientQueueHistory].
-class PatientQueueHistoryFamily extends Family<AsyncValue<List<QueueItem>>> {
-  /// See also [patientQueueHistory].
-  const PatientQueueHistoryFamily();
-
-  /// See also [patientQueueHistory].
-  PatientQueueHistoryProvider call(
-    String patientId,
-  ) {
-    return PatientQueueHistoryProvider(
-      patientId,
-    );
-  }
-
-  @override
-  PatientQueueHistoryProvider getProviderOverride(
-    covariant PatientQueueHistoryProvider provider,
-  ) {
-    return call(
-      provider.patientId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'patientQueueHistoryProvider';
-}
-
-/// See also [patientQueueHistory].
-class PatientQueueHistoryProvider extends FutureProvider<List<QueueItem>> {
-  /// See also [patientQueueHistory].
-  PatientQueueHistoryProvider(
-    String patientId,
-  ) : this._internal(
-          (ref) => patientQueueHistory(
-            ref as PatientQueueHistoryRef,
-            patientId,
-          ),
-          from: patientQueueHistoryProvider,
-          name: r'patientQueueHistoryProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$patientQueueHistoryHash,
-          dependencies: PatientQueueHistoryFamily._dependencies,
-          allTransitiveDependencies:
-              PatientQueueHistoryFamily._allTransitiveDependencies,
-          patientId: patientId,
-        );
-
-  PatientQueueHistoryProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.patientId,
-  }) : super.internal();
-
-  final String patientId;
-
-  @override
-  Override overrideWith(
-    FutureOr<List<QueueItem>> Function(PatientQueueHistoryRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: PatientQueueHistoryProvider._internal(
-        (ref) => create(ref as PatientQueueHistoryRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        patientId: patientId,
-      ),
-    );
-  }
-
-  @override
-  FutureProviderElement<List<QueueItem>> createElement() {
-    return _PatientQueueHistoryProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is PatientQueueHistoryProvider && other.patientId == patientId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, patientId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
-}
-
-mixin PatientQueueHistoryRef on FutureProviderRef<List<QueueItem>> {
-  /// The parameter `patientId` of this provider.
-  String get patientId;
-}
-
-class _PatientQueueHistoryProviderElement
-    extends FutureProviderElement<List<QueueItem>> with PatientQueueHistoryRef {
-  _PatientQueueHistoryProviderElement(super.provider);
-
-  @override
-  String get patientId => (origin as PatientQueueHistoryProvider).patientId;
-}
-
-String _$patientAuditLogsHash() => r'aac5182b26117f15f1f911c699ddc6e9360f3f90';
+String _$patientAuditLogsHash() => r'012989cdd9030ba281c3dd4a874ba717199b8037';
 
 /// See also [patientAuditLogs].
 @ProviderFor(patientAuditLogs)

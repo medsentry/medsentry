@@ -33,23 +33,6 @@ class EmptyState extends StatelessWidget {
     );
   }
 
-  /// Factory for empty queue
-  factory EmptyState.queue({VoidCallback? onAddToQueue}) {
-    return EmptyState(
-      icon: Icons.queue_outlined,
-      title: 'Queue is currently empty',
-      message:
-          'No patients are currently waiting in triage or consultation for today.',
-      action: onAddToQueue != null
-          ? FilledButton.icon(
-              onPressed: onAddToQueue,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add Patient to Queue'),
-            )
-          : null,
-    );
-  }
-
   /// Factory for search with zero matches
   factory EmptyState.search({String? query, VoidCallback? onClear}) {
     return EmptyState(
@@ -83,16 +66,6 @@ class EmptyState extends StatelessWidget {
               label: const Text('Upload Document'),
             )
           : null,
-    );
-  }
-
-  /// Factory for empty consultations
-  factory EmptyState.consultations() {
-    return const EmptyState(
-      icon: Icons.medical_information_outlined,
-      title: 'No consultations recorded',
-      message:
-          'Completed and draft clinical SOAP encounters will appear here once saved.',
     );
   }
 

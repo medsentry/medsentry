@@ -145,6 +145,7 @@
     var bootTimeout;
     function showLoaderError(message) {
       if (loaderHidden) return;
+      window.clearTimeout(bootTimeout);
       var loader = document.getElementById('loading-container');
       var errBox = document.getElementById('ms-error-display');
       var errText = document.getElementById('ms-error-text');
@@ -153,6 +154,9 @@
       if (errText) errText.textContent = message;
       if (errBox) errBox.style.display = 'block';
     }
+    window.showMedSentryBootstrapError = function() {
+      showLoaderError('MedSentry could not download its startup files. Check your connection and reload.');
+    };
 
     function hideMedSentryLoader() {
       if (loaderHidden) return;
@@ -239,7 +243,35 @@
           return;
         }
 
-        navigator.serviceWorker.register(new URL('sw.js', document.baseURI), { scope: './' })
+        var controller = navigator.serviceWorker.controller;
+        var hasMedSentryController = controller &&
+          new URL(controller.scriptURL).pathname.endsWith('/sw.js');
+        var initialControlReloadKey = 'medsentry-initial-service-worker-control';
+        if (hasMedSentryController) {
+          try {
+            sessionStorage.removeItem(initialControlReloadKey);
+          } catch (e) {
+            console.warn('[MedSentry PWA] Could not read session storage:', e);
+          }
+        }
+        navigator.serviceWorker.addEventListener('controllerchange', function() {
+          if (hasMedSentryController) {
+            window.location.reload();
+            return;
+          }
+          try {
+            if (sessionStorage.getItem(initialControlReloadKey)) return;
+            sessionStorage.setItem(initialControlReloadKey, '1');
+            window.location.reload();
+          } catch (e) {
+            console.warn('[MedSentry PWA] Could not reload after first service worker control:', e);
+          }
+        });
+
+        navigator.serviceWorker.register(new URL('sw.js', document.baseURI), {
+          scope: './',
+          updateViaCache: 'none'
+        })
           .then(function(registration) {
             console.log('[MedSentry PWA] Offline Service Worker registered:', registration.scope);
 
@@ -261,11 +293,6 @@
       });
     }
   </script>
-  <script src="flutter_bootstrap.js?v=1.0.5" async onerror="showMedSentryBootstrapError()"></script>
-  <script>
-    window.showMedSentryBootstrapError = function() {
-      showLoaderError('MedSentry could not download its startup files. Check your connection and reload.');
-    };
-  </script>
+  <script src="flutter_bootstrap.js?v=1.0.7" async onerror="showMedSentryBootstrapError()"></script>
 </body>
 </html>

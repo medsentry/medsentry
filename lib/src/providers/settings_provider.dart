@@ -33,14 +33,12 @@ class SettingsData {
 /// Database statistics
 class DatabaseStats {
   final int patientCount;
-  final int consultationCount;
   final int documentCount;
   final String databaseSize;
   final DateTime? lastBackup;
 
   DatabaseStats({
     required this.patientCount,
-    required this.consultationCount,
     required this.documentCount,
     required this.databaseSize,
     this.lastBackup,
@@ -49,7 +47,6 @@ class DatabaseStats {
   /// Empty stats for initial state
   factory DatabaseStats.empty() => DatabaseStats(
     patientCount: 0,
-    consultationCount: 0,
     documentCount: 0,
     databaseSize: '0 MB',
     lastBackup: null,
@@ -81,9 +78,6 @@ final settingsDataProvider = FutureProvider<SettingsData>((ref) async {
 
   // Fetch database stats
   final patientCount = await db.getPatientCount();
-  final consultationCount = await db.getAllConsultations().then(
-    (c) => c.length,
-  );
   final documentCount = await db.getDocumentCount();
 
   // Get recent audit logs
@@ -102,7 +96,7 @@ final settingsDataProvider = FutureProvider<SettingsData>((ref) async {
 
   // Calculate database size (simplified estimation)
   final estimatedSize =
-      (patientCount * 2 + consultationCount * 3 + documentCount * 5);
+      (patientCount * 2 + documentCount * 5);
   final databaseSize = estimatedSize > 0 ? 'Stored on this device' : 'Empty';
 
   return SettingsData(
@@ -111,7 +105,6 @@ final settingsDataProvider = FutureProvider<SettingsData>((ref) async {
     lastSync: lastSync,
     databaseStats: DatabaseStats(
       patientCount: patientCount,
-      consultationCount: consultationCount,
       documentCount: documentCount,
       databaseSize: databaseSize,
       lastBackup: null,

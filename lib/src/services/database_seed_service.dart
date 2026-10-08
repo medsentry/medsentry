@@ -8,7 +8,7 @@ import 'seed/seed_exporter.dart';
 
 /// Seeds the initial super administrator account for MedSentry.
 /// Passwords are stored as PBKDF2 hashes only — never plaintext.
-/// All clinical records (patients, queue, consultations, etc.) start empty.
+/// All clinical records start empty.
 class DatabaseSeedService {
   static const bool _allowSeed = bool.fromEnvironment(
     'MEDSENTRY_SEED_DATABASE',
@@ -76,8 +76,6 @@ class DatabaseSeedService {
       'version': 1,
       'patients': <Map<String, dynamic>>[],
       'users': users.map((e) => e.toJson()).toList(),
-      'queue_items': <Map<String, dynamic>>[],
-      'consultations': <Map<String, dynamic>>[],
       'prescriptions': <Map<String, dynamic>>[],
       'lab_orders': <Map<String, dynamic>>[],
       'documents': <Map<String, dynamic>>[],

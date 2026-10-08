@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/clinic.dart';
-import '../models/queue.dart';
 import '../models/patient.dart';
 import '../models/audit_log.dart';
 import '../models/user.dart';
@@ -29,7 +28,6 @@ class DashboardScreen extends ConsumerWidget {
     final syncStatus = ref.watch(syncStatusProvider);
     final dashboardStats = ref.watch(dashboardStatsProvider);
     final extendedStats = ref.watch(extendedDashboardStatsProvider);
-    final queueAsync = ref.watch(queueProvider);
     final reportStats = ref.watch(reportStatsProvider);
 
     return SingleChildScrollView(
@@ -40,8 +38,6 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildWelcomeHero(context, currentUser?.name ?? 'User'),
-            const SizedBox(height: 16),
-            _buildQuickActionBar(context, currentUser),
             const SizedBox(height: 20),
             Text(
               'Today\'s Overview',
@@ -54,7 +50,11 @@ class DashboardScreen extends ConsumerWidget {
               skipLoadingOnReload: true,
               data: (stats) => _buildKpiRow(context, stats, currentUser),
               loading: () => const LoadingState(),
-              error: (error, _) => Text('Error loading stats: $error'),
+              error: (error, _) => AppErrorState(
+                title: 'Dashboard summary could not be loaded',
+                error: error,
+                onRetry: () => ref.invalidate(dashboardStatsProvider),
+              ),
             ),
             if (currentUser?.canGenerateReports == true) ...[
               const SizedBox(height: 20),
@@ -62,28 +62,26 @@ class DashboardScreen extends ConsumerWidget {
                 skipLoadingOnReload: true,
                 data: (stats) => _buildAnalyticsPreview(context, stats),
                 loading: () => const SizedBox.shrink(),
-                error: (_, _) => const SizedBox.shrink(),
+                error: (error, _) => AppErrorState(
+                  title: 'Analytics could not be loaded',
+                  error: error,
+                  onRetry: () => ref.invalidate(reportStatsProvider),
+                ),
               ),
-            ],
-            if (currentUser?.canViewQueue == true) ...[
-              const SizedBox(height: 20),
-              _buildLiveQueueStrip(context, queueAsync, currentUser),
             ],
             const SizedBox(height: 24),
             _buildWorkflowSection(context, currentUser),
             const SizedBox(height: 24),
-            _buildAlertsColumn(
-              context,
-              dashboardStats,
-              syncStatus,
-              extendedStats,
-              currentUser,
-            ),
+            _buildAlertsColumn(context, syncStatus, extendedStats, currentUser),
             const SizedBox(height: 24),
             extendedStats.when(
               data: (stats) => _buildBottomPanels(context, currentUser, stats),
               loading: () => const SizedBox.shrink(),
-              error: (_, _) => const SizedBox.shrink(),
+              error: (error, _) => AppErrorState(
+                title: 'Dashboard details could not be loaded',
+                error: error,
+                onRetry: () => ref.invalidate(extendedDashboardStatsProvider),
+              ),
             ),
           ],
         ),
@@ -127,8 +125,8 @@ class DashboardScreen extends ConsumerWidget {
         final int columns = width < 480
             ? 1
             : width <= 1024
-                ? (maxCols > 2 ? 2 : maxCols)
-                : maxCols;
+            ? (maxCols > 2 ? 2 : maxCols)
+            : maxCols;
         const spacing = 12.0;
         final cardWidth = (width - (spacing * (columns - 1))) / columns;
 
@@ -148,94 +146,8 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLiveQueueStrip(
-    BuildContext context,
-    AsyncValue<List<QueueItem>> queueAsync,
-    User? user,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Live Queue',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            TextButton.icon(
-              onPressed: () => context.go('/queue'),
-              icon: const Icon(Icons.open_in_new, size: 16),
-              label: const Text('Open Queue'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        queueAsync.when(
-          data: (items) {
-            final active =
-                items
-                    .where(
-                      (item) =>
-                          item.status == QueueStatus.waiting ||
-                          item.status == QueueStatus.inProgress,
-                    )
-                    .toList()
-                  ..sort(
-                    (a, b) => b.priority.index.compareTo(a.priority.index),
-                  );
-
-            if (active.isEmpty) {
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        color: context.semanticColors.normal,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'No patients waiting — queue is clear.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            return SizedBox(
-              height: 96,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: active.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final item = active[index];
-                  return _QueueStripCard(
-                    item: item,
-                    onTap: user?.canViewQueue == true
-                        ? () => context.go('/queue')
-                        : null,
-                  );
-                },
-              ),
-            );
-          },
-          loading: () => const SizedBox(height: 96, child: LoadingState()),
-          error: (_, _) => const SizedBox.shrink(),
-        ),
-      ],
-    );
-  }
-
   Widget _buildAlertsColumn(
     BuildContext context,
-    AsyncValue<DashboardStats> dashboardStats,
     SyncStatus syncStatus,
     AsyncValue<ExtendedDashboardStats> extendedStats,
     User? user,
@@ -253,29 +165,6 @@ class DashboardScreen extends ConsumerWidget {
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
-        dashboardStats.when(
-          data: (stats) {
-            if (stats.longWaitCount > 0) {
-              return Column(
-                children: [
-                  _buildAlertCard(
-                    context,
-                    icon: Icons.warning_amber_rounded,
-                    title:
-                        '${stats.longWaitCount} patient${stats.longWaitCount == 1 ? '' : 's'} waiting > 1 hour',
-                    description:
-                        'Consider reassigning staff to triage station.',
-                    color: colors.critical,
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              );
-            }
-            return const SizedBox.shrink();
-          },
-          loading: () => const SizedBox.shrink(),
-          error: (_, _) => const SizedBox.shrink(),
-        ),
         _buildAlertCard(
           context,
           icon: Icons.cloud_sync_outlined,
@@ -509,37 +398,35 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildWelcomeHero(BuildContext context, String name) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.82),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(
+            alpha: isDark ? 0.35 : 0.65,
           ),
-        ],
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 52,
-            height: 52,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.waving_hand_rounded, color: Colors.white),
+            child: Icon(
+              Icons.health_and_safety_outlined,
+              color: theme.colorScheme.primary,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -548,88 +435,22 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 Text(
                   'Welcome back, $name',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
+                  style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'RHU Clinical Command Center • MedSentry',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9)),
+                  'RHU Clinical Command Center • MedSentry Workspace Active',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionBar(BuildContext context, User? user) {
-    final canRegister = user?.canRegisterPatients == true;
-    final canQueue = user?.canManageQueue == true;
-    final canVitals = user?.canRecordVitals == true;
-    final canConsult = user?.canConsult == true;
-    final canReports = user?.canGenerateReports == true;
-    final canDocs = user?.canManageDocuments == true;
-    final canStaff = user?.canManageStaffAccounts == true || user?.isSuperAdmin == true;
-
-    final actions = <Widget>[
-      if (canRegister)
-        _QuickActionButton(
-          icon: Icons.person_add_alt_1_outlined,
-          label: 'Register Patient',
-          onTap: () => context.go('/patients?add=true'),
-          isPrimary: true,
-        ),
-      if (canQueue)
-        _QuickActionButton(
-          icon: Icons.queue_outlined,
-          label: 'Manage Queue',
-          onTap: () => context.go('/queue'),
-        ),
-      if (canVitals && !canQueue)
-        _QuickActionButton(
-          icon: Icons.monitor_heart_outlined,
-          label: 'Record Vitals',
-          onTap: () => context.go('/queue'),
-        ),
-      if (canConsult)
-        _QuickActionButton(
-          icon: Icons.medical_services_outlined,
-          label: 'Consultation Station',
-          onTap: () => context.go('/queue'),
-        ),
-      if (canDocs)
-        _QuickActionButton(
-          icon: Icons.document_scanner_outlined,
-          label: 'Document Hub',
-          onTap: () => context.go('/documents'),
-        ),
-      if (canReports)
-        _QuickActionButton(
-          icon: Icons.insights_outlined,
-          label: 'Reports & Analytics',
-          onTap: () => context.go('/reports'),
-        ),
-      if (canStaff)
-        _QuickActionButton(
-          icon: Icons.manage_accounts_outlined,
-          label: 'Staff Directory',
-          onTap: () => context.go('/staff'),
-        ),
-    ];
-
-    if (actions.isEmpty) return const SizedBox.shrink();
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: actions
-            .map((w) => Padding(padding: const EdgeInsets.only(right: 10), child: w))
-            .toList(),
       ),
     );
   }
@@ -640,7 +461,7 @@ class DashboardScreen extends ConsumerWidget {
         : 'Staff Flow';
     final subtitle = user?.canManageSystemData == true
         ? 'Oversight, reporting, compliance, audit, and system control.'
-        : 'Patient registration, triage, queue work, consultation support, and documents.';
+        : 'Patient registration, records, reports, and documents.';
     final actions = user?.canManageSystemData == true
         ? _adminWorkflowActions(context)
         : _staffWorkflowActions(context, user);
@@ -694,8 +515,7 @@ class DashboardScreen extends ConsumerWidget {
       _WorkflowAction(
         icon: Icons.monitor_heart_outlined,
         title: 'Monitor Clinic Activity',
-        description:
-            'Track total patients, active queue, consultations, and long-wait alerts.',
+        description: 'Review patient records and clinic activity.',
         color: colors.info,
         onTap: () => context.go('/patients'),
       ),
@@ -740,24 +560,6 @@ class DashboardScreen extends ConsumerWidget {
         onTap: user?.canAccessPatientRecords == true
             ? () => context.go('/patients')
             : null,
-      ),
-      _WorkflowAction(
-        icon: Icons.vaccines_outlined,
-        title: 'Intake and Triage',
-        description:
-            'Capture vitals, pain scale, red flags, and calculated priority.',
-        color: colors.warning,
-        onTap: user?.canRecordVitals == true
-            ? () => context.go('/queue')
-            : null,
-      ),
-      _WorkflowAction(
-        icon: Icons.queue_outlined,
-        title: 'Manage Waiting Patients',
-        description:
-            'Monitor queue status, update stations, and prioritize urgent cases.',
-        color: colors.critical,
-        onTap: user?.canManageQueue == true ? () => context.go('/queue') : null,
       ),
       _WorkflowAction(
         icon: Icons.folder_outlined,
@@ -869,28 +671,10 @@ class DashboardScreen extends ConsumerWidget {
               runSpacing: 12,
               children: [
                 _AnalyticsChip(
-                  label: 'Consultations',
-                  value: stats.totalConsultations.toString(),
-                  delta: stats.consultationsDelta,
-                ),
-                _AnalyticsChip(
                   label: 'New patients',
                   value: stats.newPatients.toString(),
                   delta: stats.newPatientsDelta,
                 ),
-                _AnalyticsChip(
-                  label: 'Avg wait',
-                  value: stats.avgWaitMinutes > 0
-                      ? '${stats.avgWaitMinutes}m'
-                      : 'N/A',
-                  delta: stats.avgWaitDelta,
-                ),
-                if (stats.peakConsultationLabel != null)
-                  _AnalyticsChip(
-                    label: 'Peak day',
-                    value: stats.peakConsultationLabel!,
-                    delta: null,
-                  ),
               ],
             ),
           ],
@@ -984,8 +768,8 @@ class DashboardScreen extends ConsumerWidget {
                 final int columns = width < 480
                     ? 1
                     : width <= 1024
-                        ? 2
-                        : 4;
+                    ? 2
+                    : 4;
                 const spacing = 12.0;
                 final cardWidth = (width - (spacing * (columns - 1))) / columns;
 
@@ -1139,16 +923,23 @@ class DashboardScreen extends ConsumerWidget {
                       data: (clinics) =>
                           _buildSuperAdminClinicsPanel(context, clinics),
                       loading: () => const AppSkeletonLoader(height: 140),
-                      error: (_, _) => const SizedBox.shrink(),
+                      error: (error, _) => AppErrorState(
+                        title: 'Facilities could not be loaded',
+                        error: error,
+                        onRetry: () => ref.invalidate(clinicsProvider),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
                     child: auditLogsAsync.when(
-                      data: (logs) =>
-                          _buildSuperAdminAuditPanel(context, logs),
+                      data: (logs) => _buildSuperAdminAuditPanel(context, logs),
                       loading: () => const AppSkeletonLoader(height: 140),
-                      error: (_, _) => const SizedBox.shrink(),
+                      error: (error, _) => AppErrorState(
+                        title: 'Audit activity could not be loaded',
+                        error: error,
+                        onRetry: () => ref.invalidate(auditLogsProvider),
+                      ),
                     ),
                   ),
                 ],
@@ -1158,14 +949,21 @@ class DashboardScreen extends ConsumerWidget {
                 data: (clinics) =>
                     _buildSuperAdminClinicsPanel(context, clinics),
                 loading: () => const AppSkeletonLoader(height: 140),
-                error: (_, _) => const SizedBox.shrink(),
+                error: (error, _) => AppErrorState(
+                  title: 'Facilities could not be loaded',
+                  error: error,
+                  onRetry: () => ref.invalidate(clinicsProvider),
+                ),
               ),
               const SizedBox(height: 20),
               auditLogsAsync.when(
-                data: (logs) =>
-                    _buildSuperAdminAuditPanel(context, logs),
+                data: (logs) => _buildSuperAdminAuditPanel(context, logs),
                 loading: () => const AppSkeletonLoader(height: 140),
-                error: (_, _) => const SizedBox.shrink(),
+                error: (error, _) => AppErrorState(
+                  title: 'Audit activity could not be loaded',
+                  error: error,
+                  onRetry: () => ref.invalidate(auditLogsProvider),
+                ),
               ),
             ],
           ],
@@ -1175,45 +973,37 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildSuperAdminHero(BuildContext context, String name) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.85),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppRadius.roundedLg,
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(
-              context,
-            ).colorScheme.primary.withValues(alpha: 0.22),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(
+            alpha: isDark ? 0.35 : 0.65,
           ),
-        ],
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: AppRadius.roundedMd,
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.shield_outlined,
-              color: Colors.white,
-              size: 32,
+              color: theme.colorScheme.primary,
+              size: 24,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1225,39 +1015,42 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'Welcome back, $name',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
                       ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 3,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.24),
-                        borderRadius: AppRadius.roundedPill,
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: AppRadius.roundedSm,
+                        border: Border.all(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.3,
+                          ),
+                        ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'SUPER ADMIN',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
+                          color: theme.colorScheme.primary,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   'Provincial Health Command Center • MedSentry Platform Oversight',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    fontSize: 13,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                   ),
                 ),
               ],
@@ -1377,77 +1170,6 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _QueueStripCard extends StatelessWidget {
-  final QueueItem item;
-  final VoidCallback? onTap;
-
-  const _QueueStripCard({required this.item, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.semanticColors;
-    final statusColor = switch (item.status) {
-      QueueStatus.waiting => colors.warning,
-      QueueStatus.inProgress => colors.normal,
-      _ => colors.neutral,
-    };
-
-    return SizedBox(
-      width: 200,
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        item.patientName ?? 'Patient',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item.purpose ?? item.complaint ?? 'General visit',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const Spacer(),
-                Text(
-                  item.status.name.toUpperCase(),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: statusColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _StatCardData {
   final IconData icon;
   final String title;
@@ -1542,32 +1264,26 @@ class _InteractiveStatCardState extends State<_InteractiveStatCard> {
     final data = widget.data;
     final isClickable = data.onTap != null;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: _isHovered && isClickable
-              ? data.color.withValues(alpha: 0.5)
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-          width: _isHovered && isClickable ? 1.5 : 1.0,
+              ? theme.colorScheme.primary.withValues(alpha: 0.5)
+              : theme.colorScheme.outlineVariant.withValues(
+                  alpha: isDark ? 0.35 : 0.65,
+                ),
+          width: 1.0,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: _isHovered && isClickable
-                ? data.color.withValues(alpha: 0.15)
-                : Colors.black.withValues(alpha: 0.04),
-            blurRadius: _isHovered && isClickable ? 14 : 8,
-            offset: Offset(0, _isHovered && isClickable ? 6 : 2),
-          ),
-        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           mouseCursor: isClickable
               ? SystemMouseCursors.click
               : SystemMouseCursors.basic,
@@ -1577,80 +1293,61 @@ class _InteractiveStatCardState extends State<_InteractiveStatCard> {
             }
           },
           onTap: data.onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 120),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: data.color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(data.icon, color: data.color, size: 24),
-                      ),
-                      if (isClickable)
-                        Tooltip(
-                          message: 'View ${data.title}',
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: _isHovered
-                                  ? data.color.withValues(alpha: 0.15)
-                                  : theme.colorScheme.surfaceContainerHighest
-                                      .withValues(alpha: 0.4),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.arrow_forward_rounded,
-                              size: 16,
-                              color: _isHovered
-                                  ? data.color
-                                  : theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.5),
-                            ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        data.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.75,
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    data.value,
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                      color: data.color,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    data.title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
-                    ),
-                  ),
-                  if (data.subtitle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      data.subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
                       ),
                     ),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: data.color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(data.icon, color: data.color, size: 18),
+                    ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  data.value,
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.6,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                if (data.subtitle != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    data.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),
@@ -1658,43 +1355,3 @@ class _InteractiveStatCardState extends State<_InteractiveStatCard> {
     );
   }
 }
-
-class _QuickActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool isPrimary;
-
-  const _QuickActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.isPrimary = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (isPrimary) {
-      return FilledButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        label: Text(label),
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-    }
-
-    return FilledButton.tonalIcon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: FilledButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-}
-

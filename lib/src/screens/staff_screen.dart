@@ -34,11 +34,15 @@ class StaffScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: Card(
-              margin: EdgeInsets.zero,
-              clipBehavior: Clip.antiAlias,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
+                ),
+              ),
+              padding: const EdgeInsets.all(16),
                 child: StaffManagementPanel(
                   embedded: true,
                   onAddUser: () => _showStaffFormDialog(context, ref),
@@ -49,7 +53,6 @@ class StaffScreen extends ConsumerWidget {
                 ),
               ),
             ),
-          ),
         ],
       ),
     ),

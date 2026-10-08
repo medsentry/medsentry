@@ -86,8 +86,6 @@ class User {
   bool get isStaff => role == UserRole.staff;
 
   bool get canRegisterPatients => isStaff;
-  bool get canManageQueue => isStaff;
-  bool get canViewQueue => isStaff;
   bool get canRecordVitals => isStaff;
   bool get canConsult => isStaff;
   bool get canManageDocuments => isAdmin || isStaff;
@@ -97,7 +95,7 @@ class User {
   bool get canManageStaffAccounts => isSuperAdmin || isAdmin;
   bool get canManageSecurity => isSuperAdmin || isAdmin;
   bool get canManageBackupSync => isAdmin;
-  bool get canSyncRecords => isAdmin || isStaff;
+  bool get canSyncRecords => isSuperAdmin || isAdmin || isStaff;
   bool get canGenerateCertificates => isStaff;
   bool get canAccessPatientRecords => isSuperAdmin || isAdmin || isStaff;
   bool get canGenerateReports => isSuperAdmin || isAdmin || isStaff;

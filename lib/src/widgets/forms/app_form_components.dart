@@ -202,6 +202,28 @@ bool isValidPhilippinePhone(String? input) {
   return digits.length == 11 && digits.startsWith('09');
 }
 
+bool isValidEmailAddress(String? input) {
+  final value = input?.trim() ?? '';
+  return RegExp(
+    r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$",
+  ).hasMatch(value);
+}
+
+bool isValidPostalAddress(String? input) {
+  final value = input?.trim() ?? '';
+  return value.length >= 3 &&
+      value.length <= 200 &&
+      RegExp(r'[A-Za-z0-9À-ÖØ-öø-ÿ]').hasMatch(value);
+}
+
+bool isValidPersonName(String? input) {
+  final value = input?.trim() ?? '';
+  return value.length >= 2 &&
+      value.length <= 50 &&
+      RegExp(r"^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ' -]*$")
+          .hasMatch(value);
+}
+
 /// Formats a Philippine mobile number into standard 09XX-XXX-XXXX presentation
 String formatPhilippinePhone(String? input) {
   final digits = normalizePhilippinePhone(input);

@@ -8,7 +8,6 @@ import '../models/models.dart';
 
 enum CertificateType {
   medicalCertificate,
-  consultationSlip,
   patientSummary,
 }
 
@@ -17,8 +16,6 @@ extension CertificateTypeExtension on CertificateType {
     switch (this) {
       case CertificateType.medicalCertificate:
         return 'Medical Certificate';
-      case CertificateType.consultationSlip:
-        return 'Consultation Slip';
       case CertificateType.patientSummary:
         return 'Patient Record Summary';
     }
@@ -30,7 +27,6 @@ class CertificateService {
     required CertificateType type,
     required Patient patient,
     required SystemSettings settings,
-    Consultation? consultation,
     String? purpose,
     String? findings,
     String? recommendations,
@@ -50,25 +46,15 @@ class CertificateService {
                 patient: patient,
                 settings: settings,
                 purpose: purpose ?? 'Medical clearance',
-                findings: findings ?? consultation?.assessment ?? 'N/A',
-                recommendations:
-                    recommendations ?? consultation?.plan ?? 'Follow-up as needed',
+                findings: findings ?? 'N/A',
+                recommendations: recommendations ?? 'Follow-up as needed',
                 restDays: restDays,
                 issuedBy: issuedBy ?? 'RHU Medical Officer',
-                consultation: consultation,
-              );
-            case CertificateType.consultationSlip:
-              return _buildConsultationSlip(
-                patient: patient,
-                settings: settings,
-                consultation: consultation,
-                issuedBy: issuedBy ?? 'RHU Staff',
               );
             case CertificateType.patientSummary:
               return _buildPatientSummary(
                 patient: patient,
                 settings: settings,
-                consultation: consultation,
               );
           }
         },
@@ -121,7 +107,6 @@ class CertificateService {
     required String recommendations,
     required String issuedBy,
     int? restDays,
-    Consultation? consultation,
   }) {
     final dateStr = _formatDate(DateTime.now());
     return pw.Column(
@@ -140,10 +125,6 @@ class CertificateService {
         pw.Text('Purpose: $purpose'),
         pw.SizedBox(height: 8),
         pw.Text('Clinical Findings: $findings'),
-        if (consultation?.assessment != null) ...[
-          pw.SizedBox(height: 8),
-          pw.Text('Assessment: ${consultation!.assessment}'),
-        ],
         if (restDays != null) ...[
           pw.SizedBox(height: 8),
           pw.Text('Recommended rest: $restDays day(s)'),
@@ -166,39 +147,9 @@ class CertificateService {
     );
   }
 
-  pw.Widget _buildConsultationSlip({
-    required Patient patient,
-    required SystemSettings settings,
-    Consultation? consultation,
-    required String issuedBy,
-  }) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        _buildHeader(settings, 'CONSULTATION SLIP'),
-        _buildPatientInfo(patient),
-        pw.SizedBox(height: 16),
-        if (consultation != null) ...[
-          pw.Text('Chief Complaint: ${consultation.subjective ?? "N/A"}'),
-          pw.SizedBox(height: 6),
-          pw.Text('Assessment: ${consultation.assessment ?? "N/A"}'),
-          pw.SizedBox(height: 6),
-          pw.Text('Plan: ${consultation.plan ?? "N/A"}'),
-          if (consultation.icd10Code != null)
-            pw.Text('ICD-10: ${consultation.icd10Code}'),
-        ] else
-          pw.Text('No consultation record attached.'),
-        pw.Spacer(),
-        pw.Text('Issued by: $issuedBy'),
-        pw.Text('Date: ${_formatDate(DateTime.now())}'),
-      ],
-    );
-  }
-
   pw.Widget _buildPatientSummary({
     required Patient patient,
     required SystemSettings settings,
-    Consultation? consultation,
   }) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -212,17 +163,6 @@ class CertificateService {
             patient.medicalHistory!.isNotEmpty) ...[
           pw.SizedBox(height: 6),
           pw.Text('Medical History: ${patient.medicalHistory}'),
-        ],
-        if (consultation != null) ...[
-          pw.SizedBox(height: 16),
-          pw.Text(
-            'Latest Consultation',
-            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 6),
-          pw.Text('Date: ${_formatDate(consultation.createdAt ?? DateTime.now())}'),
-          pw.Text('Assessment: ${consultation.assessment ?? "N/A"}'),
-          pw.Text('Plan: ${consultation.plan ?? "N/A"}'),
         ],
         pw.Spacer(),
         pw.Text(

@@ -69,12 +69,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
   Uint8List? _cachedPdfBytes;
 
   static const List<String> _availableReportTypes = [
-    'Daily Consultation Report',
-    'Disease Surveillance',
-    'Medication Prescriptions',
     'Patient Statistics',
-    'DOH Report',
-    'FHSIS Export',
   ];
 
   @override

@@ -246,10 +246,6 @@ class ClinicRepository {
 
         // 2. Cascade delete dependent clinic operational records
         try {
-          await client.from('queue_items').delete().eq('clinic_id', id);
-          await client.from('prescriptions').delete().eq('clinic_id', id);
-          await client.from('lab_orders').delete().eq('clinic_id', id);
-          await client.from('consultations').delete().eq('clinic_id', id);
           await client.from('documents').delete().eq('clinic_id', id);
           await client.from('generated_reports').delete().eq('clinic_id', id);
           await client.from('patients').delete().eq('clinic_id', id);

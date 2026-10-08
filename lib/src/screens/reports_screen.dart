@@ -30,7 +30,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     _draftFilters = ref.read(reportFiltersProvider);
   }
 
-  List<double> _valuesFromTrends(List<ConsultationTrend> trends) {
+  List<double> _valuesFromTrends(List<ReportTrend> trends) {
     return trends.map((t) => t.count.toDouble()).toList();
   }
 
@@ -55,7 +55,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Advanced RHU operational, clinical, and compliance insights.',
+            'Patient and document statistics for the selected period.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -69,15 +69,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             skipLoadingOnReload: true,
             data: (stats) => Column(
               children: [
-                if (stats.totalConsultations == 0 &&
-                    stats.newPatients == 0 &&
-                    stats.completedQueueVisits == 0 &&
+                if (stats.newPatients == 0 &&
                     stats.documentsInRange == 0) ...[
                   _buildNoReportData(context),
                   const SizedBox(height: 12),
                 ],
-                _buildInsightsStrip(context, stats),
-                const SizedBox(height: 12),
                 _buildKpiGrid(context, stats),
                 const SizedBox(height: 16),
                 _buildAnalyticsCharts(context, stats),
@@ -93,27 +89,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
           const SizedBox(height: 20),
 
-          _buildSection(context, 'Daily Operations', [
-            _buildReportCard(
-              context,
-              'Daily Consultation Report',
-              'Summary of all consultations for a specific day',
-              Icons.calendar_today_outlined,
-              context.semanticColors.info,
-              () => _showDateRangeDialog(context, 'Daily Consultation Report'),
-            ),
-            _buildReportCard(
-              context,
-              'Medication Prescriptions',
-              'Prescriptions and quantities recorded for consultations',
-              Icons.medication_outlined,
-              context.semanticColors.neutral,
-              () => _showDateRangeDialog(context, 'Medication Prescriptions'),
-            ),
-          ]),
-          const SizedBox(height: 16),
-
-          _buildSection(context, 'Patient & Clinical', [
+          _buildSection(context, 'Patient Reports', [
             _buildReportCard(
               context,
               'Patient Statistics',
@@ -121,34 +97,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               Icons.people_outline,
               context.semanticColors.normal,
               () => _showDateRangeDialog(context, 'Patient Statistics'),
-            ),
-            _buildReportCard(
-              context,
-              'Disease Surveillance',
-              'Disease patterns and ICD-10 code analysis',
-              Icons.health_and_safety_outlined,
-              context.semanticColors.warning,
-              () => _showDateRangeDialog(context, 'Disease Surveillance'),
-            ),
-          ]),
-          const SizedBox(height: 16),
-
-          _buildSection(context, 'Compliance & DOH', [
-            _buildReportCard(
-              context,
-              'DOH Report',
-              'Department of Health required format',
-              Icons.assignment_outlined,
-              context.semanticColors.critical,
-              () => _showDateRangeDialog(context, 'DOH Report'),
-            ),
-            _buildReportCard(
-              context,
-              'FHSIS Export',
-              'Field Health Service Information System summary',
-              Icons.fact_check_outlined,
-              context.semanticColors.info,
-              () => _showDateRangeDialog(context, 'FHSIS Export'),
             ),
           ]),
           const SizedBox(height: 20),
@@ -185,11 +133,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _formatDate(DateTime date) => DateFormat('MMM d, yyyy').format(date);
 
   Widget _buildRangeSelector(BuildContext context) {
+    final theme = Theme.of(context);
     final canApply =
         !_draftFilters.endDate.isBefore(_draftFilters.startDate) &&
         !_draftFilters.endDate.isAfter(DateTime.now());
 
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Wrap(
@@ -271,7 +227,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             FilledButton.icon(
               onPressed: () => ReportExportDialog.show(
                 context,
-                reportType: 'Daily Consultation Report',
+                reportType: 'Patient Statistics',
                 startDate: _draftFilters.startDate,
                 endDate: _draftFilters.endDate,
               ),
@@ -396,89 +352,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _buildInsightsStrip(BuildContext context, ReportStats stats) {
-    final theme = Theme.of(context);
-    final items = <({IconData icon, String label, String value, Color color})>[
-      (
-        icon: Icons.calendar_month_outlined,
-        label: 'Peak day',
-        value: stats.peakConsultationLabel != null
-            ? '${stats.peakConsultationLabel} (${stats.peakConsultationCount})'
-            : 'No data',
-        color: context.semanticColors.info,
-      ),
-      (
-        icon: Icons.groups_outlined,
-        label: 'Queue completed',
-        value: stats.completedQueueVisits.toString(),
-        color: context.semanticColors.normal,
-      ),
-      (
-        icon: Icons.folder_open_outlined,
-        label: 'Documents',
-        value: stats.documentsInRange.toString(),
-        color: context.semanticColors.neutral,
-      ),
-      if (stats.patientsByBarangay.isNotEmpty)
-        (
-          icon: Icons.location_on_outlined,
-          label: 'Top barangay',
-          value:
-              '${stats.patientsByBarangay.first.label} (${stats.patientsByBarangay.first.value})',
-          color: context.semanticColors.warning,
-        ),
-    ];
-
-    return Card(
-      color: theme.colorScheme.primary.withValues(alpha: 0.04),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Wrap(
-          spacing: 20,
-          runSpacing: 10,
-          children: items.map((item) {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(item.icon, size: 18, color: item.color),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.label,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.65,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      item.value,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
   Widget _buildKpiGrid(BuildContext context, ReportStats stats) {
     final kpis = [
-      _KpiMetric(
-        title: 'Consultations',
-        subtitle: 'In selected period',
-        value: stats.totalConsultations.toString(),
-        delta: stats.consultationsDelta,
-        icon: Icons.medical_services_outlined,
-        color: context.semanticColors.info,
-      ),
       _KpiMetric(
         title: 'New Patients',
         subtitle: 'Registered in period',
@@ -487,28 +362,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         icon: Icons.person_add_alt_1,
         color: context.semanticColors.normal,
       ),
-      _KpiMetric(
-        title: 'Follow-ups',
-        subtitle: 'Return visits',
-        value: stats.followUps.toString(),
-        delta: stats.followUpsDelta,
-        icon: Icons.assignment_return,
-        color: context.semanticColors.warning,
-      ),
-      _KpiMetric(
-        title: 'Avg Wait Time',
-        subtitle: 'Queue to service start',
-        value: stats.avgWaitMinutes > 0 ? '${stats.avgWaitMinutes} min' : 'N/A',
-        delta: stats.avgWaitDelta,
-        icon: Icons.timer_outlined,
-        color: context.semanticColors.neutral,
-      ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth > 1050
-            ? 4
+            ? 3
             : constraints.maxWidth > 700
             ? 2
             : 1;
@@ -596,25 +455,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildAnalyticsCharts(BuildContext context, ReportStats stats) {
-    final consultationTrends = stats.consultationTrends;
     final newPatientTrends = stats.newPatientTrends;
-    final consultationValues = _valuesFromTrends(consultationTrends);
     final newPatientValues = _valuesFromTrends(newPatientTrends);
     final rangeLabel = 'Grouped by ${stats.grouping.label.toLowerCase()}';
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 900;
-
-        final consultationCard = _buildTrendCard(
-          context,
-          title: 'Consultation Volume',
-          subtitle: rangeLabel,
-          trends: consultationTrends,
-          values: consultationValues,
-          grouping: stats.grouping,
-          lineColor: Theme.of(context).colorScheme.primary,
-        );
 
         final newPatientsCard = _buildTrendCard(
           context,
@@ -626,45 +473,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           lineColor: context.semanticColors.normal,
         );
 
-        final distributionCard = _buildDistributionCard(
-          context,
-          title: 'Top Diagnoses (ICD-10)',
-          metrics: stats.topDiagnoses,
-          emptyMessage: 'No diagnosis data in this period',
-        );
-
-        if (isWide) {
-          return Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: consultationCard),
-                  const SizedBox(width: 12),
-                  Expanded(child: newPatientsCard),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: distributionCard),
-                  const SizedBox(width: 12),
-                  const Expanded(child: SizedBox.shrink()),
-                ],
-              ),
-            ],
-          );
-        }
-
-        return Column(
-          children: [
-            consultationCard,
-            const SizedBox(height: 12),
-            newPatientsCard,
-            const SizedBox(height: 12),
-            distributionCard,
-          ],
+        return SizedBox(
+          width: isWide ? (constraints.maxWidth - 12) / 2 : double.infinity,
+          child: newPatientsCard,
         );
       },
     );
@@ -709,7 +520,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     BuildContext context, {
     required String title,
     required String subtitle,
-    required List<ConsultationTrend> trends,
+    required List<ReportTrend> trends,
     required List<double> values,
     required ReportGrouping grouping,
     required Color lineColor,
@@ -975,16 +786,46 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     Color color,
     VoidCallback onTap,
   ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.1),
-          child: Icon(icon, color: color),
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
         ),
-        title: Text(title),
-        subtitle: Text(description),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        leading: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        title: Text(
+          title,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.1,
+          ),
+        ),
+        subtitle: Text(
+          description,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 13,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+        ),
         onTap: onTap,
       ),
     );
@@ -996,11 +837,20 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     IconData icon,
     VoidCallback onTap,
   ) {
+    final theme = Theme.of(context);
     final isMobile = context.isMobile;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
       child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         leading: Icon(icon, color: context.semanticColors.neutral),
         title: Text(report.title),
         subtitle: Text(

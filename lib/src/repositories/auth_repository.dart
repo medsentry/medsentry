@@ -100,6 +100,7 @@ class AuthRepository {
     for (final account in SeedCredentials.accounts) {
       await _ensureSeedAccount(account);
     }
+    unawaited(ensureOnlineSession());
   }
 
   String? _cachedSeedPasswordHash;
@@ -161,7 +162,7 @@ class AuthRepository {
     return null;
   }
 
-  Future<void> _ensureOnlineSession([String? actorUserId]) async {
+  Future<void> ensureOnlineSession([String? actorUserId]) async {
     if (_supabase.auth.currentSession != null) return;
 
     try {
@@ -258,7 +259,7 @@ class AuthRepository {
     }
 
     // Try to ensure an active Supabase online session if possible
-    await _ensureOnlineSession(createdByUserId);
+    await ensureOnlineSession(createdByUserId);
 
     String? remoteUserId;
     bool provisionedOnline = false;
@@ -381,19 +382,19 @@ class AuthRepository {
       await unlockSession();
 
       // Sign in to Supabase in background without blocking UI
-      unawaited(
-        _supabase.auth
-            .signInWithPassword(
-              email: normalizedEmail,
-              password: password,
-            )
-            .timeout(const Duration(seconds: 3))
-            .then((_) => null)
-            .catchError((e) {
-              debugPrint('Supabase background auth warning: $e');
-              return null;
-            }),
-      );
+      unawaited(() async {
+        try {
+          await _supabase.auth
+              .signInWithPassword(
+                email: normalizedEmail,
+                password: password,
+              )
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('Supabase background auth warning: $e');
+          await ensureOnlineSession(user.id);
+        }
+      }());
 
       return user;
     }
@@ -402,19 +403,19 @@ class AuthRepository {
     final localUser = await _authenticateLocal(normalizedEmail, password);
     if (localUser != null) {
       // Authenticated locally! Sync session with Supabase in background
-      unawaited(
-        _supabase.auth
-            .signInWithPassword(
-              email: normalizedEmail,
-              password: password,
-            )
-            .timeout(const Duration(seconds: 3))
-            .then((_) => null)
-            .catchError((e) {
-              debugPrint('Supabase background auth warning: $e');
-              return null;
-            }),
-      );
+      unawaited(() async {
+        try {
+          await _supabase.auth
+              .signInWithPassword(
+                email: normalizedEmail,
+                password: password,
+              )
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('Supabase background auth warning: $e');
+          await ensureOnlineSession(localUser.id);
+        }
+      }());
       return localUser;
     }
 
@@ -608,7 +609,7 @@ class AuthRepository {
 
     if (newPassword != null && newPassword.isNotEmpty) {
       await _validatePassword(newPassword);
-      await _ensureOnlineSession(updatedByUserId);
+      await ensureOnlineSession(updatedByUserId);
       if (_supabase.auth.currentSession != null) {
         try {
           await _supabase.functions.invoke(
@@ -670,7 +671,7 @@ class AuthRepository {
         updated.isActive != existing.isActive;
 
     if (accountChanged) {
-      await _ensureOnlineSession(updatedByUserId);
+      await ensureOnlineSession(updatedByUserId);
       if (_supabase.auth.currentSession != null) {
         try {
           await _supabase.rpc(
@@ -717,7 +718,7 @@ class AuthRepository {
       throw ArgumentError('User not found');
     }
 
-    await _ensureOnlineSession(deactivatedByUserId);
+    await ensureOnlineSession(deactivatedByUserId);
     if (_supabase.auth.currentSession != null) {
       try {
         await _supabase.rpc(
@@ -820,7 +821,11 @@ class AuthRepository {
 
   // Alias for authenticate - used by auth provider
   Future<User?> login(String email, String password) async {
-    return await authenticate(email, password);
+    final user = await authenticate(email, password);
+    if (user != null) {
+      unawaited(ensureOnlineSession(user.id));
+    }
+    return user;
   }
 
   // Login with PIN - used by auth provider
@@ -876,6 +881,7 @@ class AuthRepository {
       _failedPinAttempts = 0;
       _pinLockedUntil = null;
       await unlockSession();
+      unawaited(ensureOnlineSession(userId));
 
       await _auditService.logAction(
         userId: userId,
@@ -906,6 +912,7 @@ class AuthRepository {
       _failedPinAttempts = 0;
       _pinLockedUntil = null;
       await unlockSession();
+      unawaited(ensureOnlineSession(userId));
 
       await _auditService.logAction(
         userId: userId,

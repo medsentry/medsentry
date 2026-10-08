@@ -49,18 +49,6 @@
     ],
     "shortcuts": [
         {
-            "name": "Queue Management",
-            "short_name": "Queue",
-            "description": "View and manage active patient triage queue",
-            "url": "/queue",
-            "icons": [
-                {
-                    "src": "icons/Icon-192.png",
-                    "sizes": "192x192"
-                }
-            ]
-        },
-        {
             "name": "Patient Records",
             "short_name": "Patients",
             "description": "Access clinical records and patient list",

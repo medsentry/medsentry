@@ -20,7 +20,9 @@ class WebFileExporter implements FileExporter {
     final body = web.document.body;
     if (body == null) {
       web.URL.revokeObjectURL(objectUrl);
-      throw StateError('Cannot download a file because the document is unavailable.');
+      throw StateError(
+        'Cannot download a file because the document is unavailable.',
+      );
     }
 
     body.append(link);
@@ -45,10 +47,7 @@ class WebFileExporter implements FileExporter {
         : 'application/json';
     return _download(
       filename: filename,
-      blob: web.Blob(
-        [content.toJS].toJS,
-        web.BlobPropertyBag(type: mimeType),
-      ),
+      blob: web.Blob([content.toJS].toJS, web.BlobPropertyBag(type: mimeType)),
       revokeAfter: const Duration(seconds: 1),
     );
   }
@@ -62,10 +61,7 @@ class WebFileExporter implements FileExporter {
   }) async {
     return _download(
       filename: filename,
-      blob: web.Blob(
-        [bytes.toJS].toJS,
-        web.BlobPropertyBag(type: mimeType),
-      ),
+      blob: web.Blob([bytes.toJS].toJS, web.BlobPropertyBag(type: mimeType)),
       revokeAfter: const Duration(seconds: 2),
     );
   }

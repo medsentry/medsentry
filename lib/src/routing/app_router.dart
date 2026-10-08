@@ -4,10 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../screens/login_screen.dart';
 import '../screens/patient_detail_screen.dart';
-import '../screens/consultation_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/patients_screen.dart';
-import '../screens/queue_screen.dart';
 import '../screens/documents_screen.dart';
 import '../screens/reports_screen.dart';
 import '../screens/staff_screen.dart';
@@ -35,12 +33,6 @@ bool _canAccessRoute(User user, String path) {
   if (path.startsWith('/reports')) return user.canGenerateReports;
   if (path.startsWith('/documents')) return user.canManageDocuments;
   if (path.startsWith('/patients')) return user.canAccessPatientRecords;
-  if (path.startsWith('/queue')) {
-    if (path.startsWith('/queue/') && path.endsWith('/soap')) {
-      return user.canConsult;
-    }
-    return user.canViewQueue;
-  }
   return true;
 }
 
@@ -61,7 +53,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final isLoginRoute = state.uri.path == '/login';
 
         if (currentUser == null) {
-          currentUser = await ref.read(authRepositoryProvider).getCurrentUser();
+          currentUser = await ref
+              .read(authRepositoryProvider)
+              .getCurrentUser()
+              .timeout(const Duration(seconds: 8));
           if (currentUser != null) {
             ref.read(currentUserProvider.notifier).state = currentUser;
           }
@@ -76,16 +71,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         }
 
         if (currentUser != null && !isLoginRoute) {
-          final settings = await ref.read(systemSettingsProvider.future);
           final targetPath = state.uri.path;
+          final requiresModuleSettings =
+              targetPath.startsWith('/certificates') ||
+              targetPath.startsWith('/sync');
+          var moduleAccessAllowed = true;
+          if (requiresModuleSettings) {
+            final settings = await ref
+                .read(systemSettingsProvider.future)
+                .timeout(const Duration(seconds: 5));
+            moduleAccessAllowed =
+                !((targetPath.startsWith('/certificates') &&
+                        !settings.certificatesModuleEnabled) ||
+                    (targetPath.startsWith('/sync') &&
+                        !settings.syncModuleEnabled));
+          }
 
-          final moduleAccessAllowed = !((targetPath.startsWith('/queue') &&
-                  !settings.queueModuleEnabled) ||
-              (targetPath.startsWith('/certificates') &&
-                  !settings.certificatesModuleEnabled) ||
-              (targetPath.startsWith('/sync') && !settings.syncModuleEnabled));
-
-          if (!moduleAccessAllowed || !_canAccessRoute(currentUser, targetPath)) {
+          if (!moduleAccessAllowed ||
+              !_canAccessRoute(currentUser, targetPath)) {
             return currentUser.homePath;
           }
         }
@@ -93,10 +96,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return null;
       } catch (e, st) {
         debugPrint('AppRouter redirect error: $e\n$st');
-        return '/login';
+        final currentUser = ref.read(currentUserProvider);
+        if (currentUser != null && state.uri.path == currentUser.homePath) {
+          return null;
+        }
+        if (currentUser != null) return currentUser.homePath;
+        return state.uri.path == '/login' ? null : '/login';
       }
     },
     routes: [
+      GoRoute(path: '/queue', redirect: (context, state) => '/patients'),
+      GoRoute(
+        path: '/queue/:id/soap',
+        redirect: (context, state) => '/patients/${state.pathParameters['id']}',
+      ),
       GoRoute(
         path: '/login',
         name: 'login',
@@ -147,26 +160,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) {
                       final patientId = state.pathParameters['id']!;
                       return PatientDetailScreen(patientId: patientId);
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/queue',
-                name: 'queue',
-                pageBuilder: (context, state) =>
-                    _noTransitionPage(state: state, child: const QueueScreen()),
-                routes: [
-                  GoRoute(
-                    path: ':id/soap',
-                    name: 'consultation',
-                    builder: (context, state) {
-                      final queueId = state.pathParameters['id']!;
-                      return ConsultationScreen(queueId: queueId);
                     },
                   ),
                 ],

@@ -7,7 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
 import 'src/config/supabase_config.dart';
-import 'src/services/supabase_service.dart';
 
 Future<void>? _supabaseInitialization;
 
@@ -34,7 +33,6 @@ Future<void> _initializeSupabase() async {
 
   try {
     await initialization.timeout(const Duration(seconds: 20));
-    await SupabaseService.testConnection();
   } catch (error, stackTrace) {
     if (error is! TimeoutException && identical(_supabaseInitialization, initialization)) {
       _supabaseInitialization = null;

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import '../database/drift_database.dart';
 import '../database/simple_database.dart';
@@ -14,7 +13,6 @@ import '../repositories/patient_repository.dart';
 import '../repositories/clinic_repository.dart';
 import '../models/user.dart';
 import '../models/patient.dart';
-import '../models/queue.dart';
 import '../models/document.dart';
 import '../models/consultation.dart';
 import '../models/audit_log.dart';
@@ -46,8 +44,10 @@ SimpleDatabase database(Ref ref) {
 
 /// A durable-write revision for refreshing cached role views. This prevents
 /// staff/admin screens from continuing to show a stale FutureProvider result.
-final databaseChangesProvider = StreamProvider<int>((ref) {
-  return ref.watch(databaseProvider).changes;
+final databaseChangesProvider = StreamProvider<int>((ref) async* {
+  final db = ref.watch(databaseProvider);
+  yield db.revision;
+  yield* db.changes;
 });
 
 @Riverpod(keepAlive: true)
@@ -84,12 +84,6 @@ ConsultationRepository consultationRepository(Ref ref) {
   return ConsultationRepository(db, audit);
 }
 
-@Riverpod(keepAlive: true)
-QueueRepository queueRepository(Ref ref) {
-  final db = ref.watch(databaseProvider);
-  return QueueRepository(db);
-}
-
 final clinicRepositoryProvider = Provider<ClinicRepository>((ref) {
   final db = ref.watch(databaseProvider);
   final audit = ref.watch(auditServiceProvider);
@@ -98,32 +92,6 @@ final clinicRepositoryProvider = Provider<ClinicRepository>((ref) {
 
 final clinicsProvider = FutureProvider<List<Clinic>>((ref) async {
   ref.watch(databaseChangesProvider);
-  final currentUser = ref.watch(currentUserProvider);
-  final client = Supabase.instance.client;
-
-  // Local writes refresh this provider through databaseChangesProvider. This
-  // channel refreshes the RHU list when another signed-in device changes it.
-  if (currentUser != null && client.auth.currentSession != null) {
-    final channel = client
-        .channel('medsentry-clinics-${currentUser.id}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'clinics',
-          callback: (change) {
-            if (change.eventType == PostgresChangeEvent.delete) {
-              final id = change.oldRecord['id'];
-              if (id is String) {
-                unawaited(ref.read(databaseProvider).deleteClinic(id));
-              }
-            }
-            ref.invalidateSelf();
-          },
-        )
-        .subscribe();
-    ref.onDispose(() => client.removeChannel(channel));
-  }
-
   return ref.watch(clinicRepositoryProvider).getClinics();
 });
 
@@ -170,18 +138,6 @@ Future<Patient?> patient(Ref ref, String patientId) {
 }
 
 @Riverpod(keepAlive: true)
-Future<List<QueueItem>> queue(Ref ref) {
-  ref.watch(databaseChangesProvider);
-  return ref.watch(databaseProvider).getQueueItems();
-}
-
-@Riverpod(keepAlive: true)
-Future<QueueItem?> queueItem(Ref ref, String queueItemId) {
-  ref.watch(databaseChangesProvider);
-  return ref.watch(databaseProvider).getQueueItemById(queueItemId);
-}
-
-@Riverpod(keepAlive: true)
 Future<List<MedicalDocument>> documents(Ref ref) {
   ref.watch(databaseChangesProvider);
   return ref.watch(databaseProvider).getDocuments();
@@ -200,54 +156,9 @@ Future<List<MedicalDocument>> patientDocuments(Ref ref, String patientId) {
 }
 
 @Riverpod(keepAlive: true)
-Future<List<QueueItem>> patientQueueHistory(Ref ref, String patientId) async {
-  ref.watch(databaseChangesProvider);
-  final items = await ref.watch(databaseProvider).getQueueItems();
-  return items.where((item) => item.patientId == patientId).toList();
-}
-
-@Riverpod(keepAlive: true)
 Future<List<AuditLog>> patientAuditLogs(Ref ref, String patientId) {
   ref.watch(databaseChangesProvider);
   return ref.watch(databaseProvider).getAuditLogsForPatient(patientId);
-}
-
-// Dummy queue repository class until fully migrated
-class QueueRepository {
-  final SimpleDatabase _db;
-  QueueRepository(this._db);
-
-  Future<void> removeFromQueue(String queueItemId) async {
-    await _db.removeFromQueue(queueItemId);
-  }
-
-  Future<void> addToQueue(
-    String patientId,
-    String patientName,
-    String purpose, {
-    String? complaint,
-    Priority priority = Priority.normal,
-    bool isSenior = false,
-    bool isPregnant = false,
-    bool isPwd = false,
-    bool isInfant = false,
-  }) async {
-    await _db.addToQueue(
-      patientId,
-      patientName,
-      purpose,
-      complaint: complaint,
-      priority: priority,
-      isSenior: isSenior,
-      isPregnant: isPregnant,
-      isPwd: isPwd,
-      isInfant: isInfant,
-    );
-  }
-
-  Future<void> updateQueueItem(QueueItem item) async {
-    await _db.updateQueueItem(item);
-  }
 }
 
 final pwaInstallerProvider = Provider<PwaInstaller>((ref) {

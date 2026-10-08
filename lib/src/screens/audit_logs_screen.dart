@@ -110,70 +110,97 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
               ],
             ),
           ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: logsAsync.when(
-            data: (logs) {
-              final filtered = logs.where((log) {
-                if (_filterAction != null && log.action != _filterAction) {
-                  return false;
+          const SizedBox(height: 12),
+          Expanded(
+            child: logsAsync.when(
+              data: (logs) {
+                final filtered = logs.where((log) {
+                  if (_filterAction != null && log.action != _filterAction) {
+                    return false;
+                  }
+                  if (_searchQuery.isEmpty) return true;
+                  final q = _searchQuery.toLowerCase();
+                  return (log.userName?.toLowerCase().contains(q) ?? false) ||
+                      (log.patientName?.toLowerCase().contains(q) ?? false) ||
+                      (log.description?.toLowerCase().contains(q) ?? false) ||
+                      log.entityType.toLowerCase().contains(q);
+                }).toList();
+
+                if (filtered.isEmpty) {
+                  return const Center(
+                    child: Text('No audit log entries found.'),
+                  );
                 }
-                if (_searchQuery.isEmpty) return true;
-                final q = _searchQuery.toLowerCase();
-                return (log.userName?.toLowerCase().contains(q) ?? false) ||
-                    (log.patientName?.toLowerCase().contains(q) ?? false) ||
-                    (log.description?.toLowerCase().contains(q) ?? false) ||
-                    log.entityType.toLowerCase().contains(q);
-              }).toList();
 
-              if (filtered.isEmpty) {
-                return const Center(child: Text('No audit log entries found.'));
-              }
-
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                itemCount: filtered.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final log = filtered[index];
-                  final color = _actionColor(context, log.action);
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: color.withValues(alpha: 0.15),
-                      child: Icon(
-                        _actionIcon(log.action),
-                        color: color,
-                        size: 20,
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final log = filtered[index];
+                    final color = _actionColor(context, log.action);
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
+                        ),
                       ),
-                    ),
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${log.actionDisplay} — ${log.entityType}',
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: color.withValues(alpha: 0.2)),
+                          ),
+                          child: Icon(
+                            _actionIcon(log.action),
+                            color: color,
+                            size: 18,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        StatusBadge.info(text: log.action.name.toUpperCase()),
-                      ],
-                    ),
-                    subtitle: Text(
-                      '${log.userName ?? log.userId} • ${_formatDateTime(log.timestamp)}'
-                      '${log.patientName != null ? ' • ${log.patientName}' : ''}'
-                      '${log.description != null ? '\n${log.description}' : ''}',
-                    ),
-                    isThreeLine: log.description != null,
-                  );
-                },
-              );
-            },
-            loading: () => const LoadingState(),
-            error: (e, _) => Center(child: Text('Error: $e')),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${log.actionDisplay} — ${log.entityType}',
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            StatusBadge.info(text: log.action.name.toUpperCase(), showDot: true),
+                          ],
+                        ),
+                        subtitle: Text(
+                          '${log.userName ?? log.userId} • ${_formatDateTime(log.timestamp)}'
+                          '${log.patientName != null ? ' • ${log.patientName}' : ''}'
+                          '${log.description != null ? '\n${log.description}' : ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                          ),
+                        ),
+                        isThreeLine: log.description != null,
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => const LoadingState(),
+              error: (error, _) => AppErrorState(
+                title: 'Audit logs could not be loaded',
+                error: error,
+                onRetry: () => ref.invalidate(auditLogsProvider),
+              ),
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
   }
 
   String _actionLabel(AuditAction action) {

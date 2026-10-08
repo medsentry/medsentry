@@ -13,7 +13,6 @@ import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/patient_preview_panel.dart';
-import '../utils/context_extensions.dart';
 
 class PatientsScreen extends ConsumerStatefulWidget {
   final bool openAddPatient;
@@ -104,105 +103,105 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     return ResponsiveContentContainer(
       child: Column(
         children: [
-        Expanded(
-          child: patientsAsync.when(
-            skipLoadingOnReload: true,
-            data: (patients) {
-              final barangays = _uniqueSorted(
-                patients.map((patient) => patient.barangay),
-              );
-              final puroks = _uniqueSorted(
-                patients
-                    .where(
-                      (patient) =>
-                          _barangayFilter == null ||
-                          patient.barangay == _barangayFilter,
-                    )
-                    .map((patient) => patient.purokSitio),
-              );
-              final filteredPatients = _filterPatients(patients);
+          Expanded(
+            child: patientsAsync.when(
+              skipLoadingOnReload: true,
+              data: (patients) {
+                final barangays = _uniqueSorted(
+                  patients.map((patient) => patient.barangay),
+                );
+                final puroks = _uniqueSorted(
+                  patients
+                      .where(
+                        (patient) =>
+                            _barangayFilter == null ||
+                            patient.barangay == _barangayFilter,
+                      )
+                      .map((patient) => patient.purokSitio),
+                );
+                final filteredPatients = _filterPatients(patients);
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _PatientsPageHeader(
-                    totalCount: patients.length,
-                    filteredCount: filteredPatients.length,
-                    barangayCount: barangays.length,
-                    onAddPatient: canRegisterPatients
-                        ? () => _showAddPatientDialog(context)
-                        : null,
-                  ),
-                  _PatientsToolbar(
-                    searchController: _searchController,
-                    searchQuery: _searchQuery,
-                    barangayFilter: _barangayFilter,
-                    purokFilter: _purokFilter,
-                    categoryFilter: _categoryFilter,
-                    viewMode: _viewMode,
-                    sortMode: _sortMode,
-                    barangays: barangays,
-                    puroks: puroks,
-                    onSearchChanged: _onSearchChanged,
-                    onClearSearch: () {
-                      _searchDebounce?.cancel();
-                      _searchController.clear();
-                      setState(() => _searchQuery = '');
-                    },
-                    onBarangayChanged: (value) => setState(() {
-                      _barangayFilter = value;
-                      _purokFilter = null;
-                    }),
-                    onPurokChanged: (value) =>
-                        setState(() => _purokFilter = value),
-                    onCategoryChanged: (value) =>
-                        setState(() => _categoryFilter = value),
-                    onViewModeChanged: (value) =>
-                        setState(() => _viewMode = value),
-                    onSortModeChanged: (value) =>
-                        setState(() => _sortMode = value),
-                    onClearFilters: _clearFilters,
-                  ),
-                  Expanded(
-                    child: filteredPatients.isEmpty
-                        ? _EmptyPatientsState(
-                            hasFilters: _hasActiveFilters,
-                            onClearFilters: _clearFilters,
-                            onAddPatient: canRegisterPatients
-                                ? () => _showAddPatientDialog(context)
-                                : null,
-                          )
-                        : _buildMainContent(context, filteredPatients),
-                  ),
-                ],
-              );
-            },
-            loading: () => const LoadingState(),
-            error: (error, stack) => Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Unable to load patients.'),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: () {
-                      if (query.isEmpty) {
-                        ref.invalidate(patientsProvider);
-                      } else {
-                        ref.invalidate(patientSearchProvider(query));
-                      }
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Try Again'),
-                  ),
-                ],
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _PatientsPageHeader(
+                      totalCount: patients.length,
+                      filteredCount: filteredPatients.length,
+                      barangayCount: barangays.length,
+                      onAddPatient: canRegisterPatients
+                          ? () => _showAddPatientDialog(context)
+                          : null,
+                    ),
+                    _PatientsToolbar(
+                      searchController: _searchController,
+                      searchQuery: _searchQuery,
+                      barangayFilter: _barangayFilter,
+                      purokFilter: _purokFilter,
+                      categoryFilter: _categoryFilter,
+                      viewMode: _viewMode,
+                      sortMode: _sortMode,
+                      barangays: barangays,
+                      puroks: puroks,
+                      onSearchChanged: _onSearchChanged,
+                      onClearSearch: () {
+                        _searchDebounce?.cancel();
+                        _searchController.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                      onBarangayChanged: (value) => setState(() {
+                        _barangayFilter = value;
+                        _purokFilter = null;
+                      }),
+                      onPurokChanged: (value) =>
+                          setState(() => _purokFilter = value),
+                      onCategoryChanged: (value) =>
+                          setState(() => _categoryFilter = value),
+                      onViewModeChanged: (value) =>
+                          setState(() => _viewMode = value),
+                      onSortModeChanged: (value) =>
+                          setState(() => _sortMode = value),
+                      onClearFilters: _clearFilters,
+                    ),
+                    Expanded(
+                      child: filteredPatients.isEmpty
+                          ? _EmptyPatientsState(
+                              hasFilters: _hasActiveFilters,
+                              onClearFilters: _clearFilters,
+                              onAddPatient: canRegisterPatients
+                                  ? () => _showAddPatientDialog(context)
+                                  : null,
+                            )
+                          : _buildMainContent(context, filteredPatients),
+                    ),
+                  ],
+                );
+              },
+              loading: () => const LoadingState(),
+              error: (error, stack) => Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Unable to load patients.'),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () {
+                        if (query.isEmpty) {
+                          ref.invalidate(patientsProvider);
+                        } else {
+                          ref.invalidate(patientSearchProvider(query));
+                        }
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try Again'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
   }
 
   bool get _hasActiveFilters =>
@@ -317,8 +316,6 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     BuildContext context,
     List<Patient> filteredPatients,
   ) {
-    final canManageQueue =
-        ref.watch(currentUserProvider)?.canManageQueue ?? false;
     final isWide = MediaQuery.sizeOf(context).width >= 1100;
 
     final contentView = _PatientsContentView(
@@ -328,9 +325,6 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       sortMode: _sortMode,
       selectedPatientId: _selectedPatient?.id,
       onPatientTap: _handlePatientTap,
-      onAddToQueue: canManageQueue
-          ? (patient) => _showQuickAddToQueue(context, patient)
-          : null,
     );
 
     if (!isWide || _selectedPatient == null) {
@@ -350,19 +344,15 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outlineVariant
-                    .withValues(alpha: 0.6),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.6),
               ),
             ),
             child: Stack(
               children: [
                 PatientPreviewPanel(
                   patient: _selectedPatient!,
-                  onAddToQueue: canManageQueue
-                      ? () => _showQuickAddToQueue(context, _selectedPatient!)
-                      : null,
                   onOpenRecord: () =>
                       context.push('/patients/${_selectedPatient!.id}'),
                 ),
@@ -387,36 +377,13 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     final isWide = MediaQuery.sizeOf(context).width >= 1100;
     if (isWide) {
       setState(() {
-        _selectedPatient =
-            (_selectedPatient?.id == patient.id) ? null : patient;
+        _selectedPatient = (_selectedPatient?.id == patient.id)
+            ? null
+            : patient;
       });
     } else {
       context.push('/patients/${patient.id}');
     }
-  }
-
-  void _showQuickAddToQueue(BuildContext context, Patient patient) {
-    final canManageQueue =
-        ref.read(currentUserProvider)?.canManageQueue ?? false;
-    if (!canManageQueue) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Only staff can add patients to the queue.'),
-        ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => _QuickAddToQueueDialog(
-        patient: patient,
-        onAdded: () {
-          ref.invalidate(queueProvider);
-          ref.invalidate(dashboardStatsProvider);
-        },
-      ),
-    );
   }
 }
 
@@ -435,7 +402,7 @@ class _PatientsPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -443,21 +410,13 @@ class _PatientsPageHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [primary, primary.withValues(alpha: 0.82)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: primary.withValues(alpha: 0.18),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -465,35 +424,42 @@ class _PatientsPageHeader extends StatelessWidget {
                 final titleSection = Row(
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(12),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.2,
+                          ),
+                        ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.people_alt_outlined,
-                        color: Colors.white,
+                        color: theme.colorScheme.primary,
+                        size: 20,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Patient Registry',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
                             ),
                           ),
+                          const SizedBox(height: 1),
                           Text(
-                            'Search, filter, and open patient records',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 13,
+                            'Search, filter, and open patient records across RHU barangays',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.65,
+                              ),
                             ),
                           ),
                         ],
@@ -505,12 +471,8 @@ class _PatientsPageHeader extends StatelessWidget {
                 final registerButton = onAddPatient != null
                     ? FilledButton.icon(
                         onPressed: onAddPatient,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: primary,
-                        ),
-                        icon: const Icon(Icons.person_add_alt_1, size: 18),
-                        label: const Text('Register'),
+                        icon: const Icon(Icons.person_add_alt_1, size: 16),
+                        label: const Text('Register Patient'),
                       )
                     : null;
 
@@ -539,10 +501,10 @@ class _PatientsPageHeader extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: [
               _StatChip(
                 icon: Icons.groups_outlined,
@@ -580,35 +542,34 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(20),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.25),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 6),
           Text(
             '$label: ',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.65),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              fontSize: 12,
             ),
           ),
           Text(
             value,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -823,7 +784,6 @@ class _PatientsContentView extends StatelessWidget {
   final _PatientSortMode sortMode;
   final String? selectedPatientId;
   final ValueChanged<Patient> onPatientTap;
-  final ValueChanged<Patient>? onAddToQueue;
 
   const _PatientsContentView({
     required this.patients,
@@ -832,7 +792,6 @@ class _PatientsContentView extends StatelessWidget {
     required this.sortMode,
     this.selectedPatientId,
     required this.onPatientTap,
-    this.onAddToQueue,
   });
 
   @override
@@ -844,7 +803,6 @@ class _PatientsContentView extends StatelessWidget {
         patients: sorted,
         selectedPatientId: selectedPatientId,
         onPatientTap: onPatientTap,
-        onAddToQueue: onAddToQueue,
       );
     }
 
@@ -860,7 +818,6 @@ class _PatientsContentView extends StatelessWidget {
             showLocation: true,
             isSelected: selectedPatientId == patient.id,
             onTap: () => onPatientTap(patient),
-            onAddToQueue: onAddToQueue,
           );
         },
       );
@@ -898,7 +855,6 @@ class _PatientsContentView extends StatelessWidget {
                     showLocation: true,
                     isSelected: selectedPatientId == patient.id,
                     onTap: () => onPatientTap(patient),
-                    onAddToQueue: onAddToQueue,
                   ),
                 ),
               ),
@@ -971,13 +927,11 @@ class _PatientsGridView extends StatelessWidget {
   final List<Patient> patients;
   final String? selectedPatientId;
   final ValueChanged<Patient> onPatientTap;
-  final ValueChanged<Patient>? onAddToQueue;
 
   const _PatientsGridView({
     required this.patients,
     this.selectedPatientId,
     required this.onPatientTap,
-    this.onAddToQueue,
   });
 
   @override
@@ -1007,7 +961,6 @@ class _PatientsGridView extends StatelessWidget {
                         patient: patient,
                         isSelected: selectedPatientId == patient.id,
                         onTap: () => onPatientTap(patient),
-                        onAddToQueue: onAddToQueue,
                       ),
                     ),
                   )
@@ -1138,7 +1091,6 @@ class _PatientRegistrationWizardState
   String? _gender;
   String? _civilStatus;
   int? _calculatedAge;
-  final _religionController = TextEditingController();
 
   // Step 2: Contact Information
   final _streetController = TextEditingController();
@@ -1154,8 +1106,8 @@ class _PatientRegistrationWizardState
   );
 
   // Address dropdowns
-  String? _selectedRegion;
-  String? _selectedProvince;
+  final String _selectedRegion = 'Caraga (Region XIII)';
+  final String _selectedProvince = 'Surigao del Sur';
   String? _selectedCity;
   String? _selectedBarangay;
   String? _selectedPurok;
@@ -1194,7 +1146,6 @@ class _PatientRegistrationWizardState
     _firstNameController.dispose();
     _lastNameController.dispose();
     _middleNameController.dispose();
-    _religionController.dispose();
     _streetController.dispose();
     _purokController.dispose();
     _zipCodeController.dispose();
@@ -1231,22 +1182,22 @@ class _PatientRegistrationWizardState
   bool _isStepValid() {
     switch (_currentStep) {
       case 0:
-        return _firstNameController.text.trim().isNotEmpty &&
-            _lastNameController.text.trim().isNotEmpty &&
+        return isValidPersonName(_firstNameController.text) &&
+            isValidPersonName(_lastNameController.text) &&
             _dateOfBirth != null &&
             _gender != null &&
             _civilStatus != null;
       case 1:
-        return _streetController.text.trim().isNotEmpty &&
+        return (_streetController.text.trim().isEmpty ||
+                isValidPostalAddress(_streetController.text)) &&
             _selectedBarangay != null &&
             _selectedPurok != null &&
             _selectedCity != null &&
-            _selectedProvince != null &&
             _zipCodeController.text.trim().isNotEmpty &&
-            _isValidMobile(_contactNumberController.text) &&
+            _isValidOptionalMobile(_contactNumberController.text) &&
             _isValidOptionalEmail(_emailController.text);
       case 2:
-        return _emergencyNameController.text.trim().isNotEmpty &&
+        return isValidPersonName(_emergencyNameController.text) &&
             _emergencyRelationController.text.trim().isNotEmpty &&
             _isValidMobile(_emergencyContactController.text);
       case 3:
@@ -1315,9 +1266,9 @@ class _PatientRegistrationWizardState
         dateOfBirth: _dateOfBirth,
         gender: _gender,
         civilStatus: _civilStatus,
-        contactNumber: formatPhilippinePhone(
-          _contactNumberController.text.trim(),
-        ),
+        contactNumber: _contactNumberController.text.trim().isEmpty
+            ? null
+            : formatPhilippinePhone(_contactNumberController.text.trim()),
         email: _emailController.text.trim().isNotEmpty
             ? _emailController.text.trim()
             : null,
@@ -1346,9 +1297,6 @@ class _PatientRegistrationWizardState
             : null,
         occupation: _occupationController.text.trim().isNotEmpty
             ? _occupationController.text.trim()
-            : null,
-        religion: _religionController.text.trim().isNotEmpty
-            ? _religionController.text.trim()
             : null,
         isPwd: _isPwd,
         medicalHistory: _medicalHistoryController.text.trim().isNotEmpty
@@ -1477,13 +1425,24 @@ class _PatientRegistrationWizardState
   }
 
   String? _validateBeforeSubmit() {
+    if (!isValidPersonName(_firstNameController.text) ||
+        !isValidPersonName(_lastNameController.text)) {
+      return 'Enter valid first and last names (2-50 letters).';
+    }
+    if (_streetController.text.trim().isNotEmpty &&
+        !isValidPostalAddress(_streetController.text)) {
+      return 'Enter a valid street address (3-200 characters).';
+    }
+    if (!isValidPersonName(_emergencyNameController.text)) {
+      return 'Enter a valid emergency contact name (2-50 letters).';
+    }
     if (_gender == null) {
       return 'Please select gender.';
     }
     if (_civilStatus == null) {
       return 'Please select civil status.';
     }
-    if (!_isValidMobile(_contactNumberController.text)) {
+    if (!_isValidOptionalMobile(_contactNumberController.text)) {
       return 'Patient mobile number must be 11 digits and start with 09.';
     }
     if (!_isValidMobile(_emergencyContactController.text)) {
@@ -1508,10 +1467,14 @@ class _PatientRegistrationWizardState
     return isValidPhilippinePhone(value);
   }
 
+  bool _isValidOptionalMobile(String value) {
+    return value.trim().isEmpty || _isValidMobile(value);
+  }
+
   bool _isValidOptionalEmail(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return true;
-    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(trimmed);
+    return isValidEmailAddress(trimmed);
   }
 
   bool _isValidOptionalPhilHealth(String value) {
@@ -1520,8 +1483,28 @@ class _PatientRegistrationWizardState
   }
 
   String? _requiredTextError(TextEditingController controller, String label) {
-    if (!_showValidationErrors || controller.text.trim().isNotEmpty) {
+    if (!_showValidationErrors) {
       return null;
+    }
+    if (label == 'Street address' && controller.text.trim().isEmpty) {
+      return null;
+    }
+    if (label == 'Street address' && isValidPostalAddress(controller.text)) {
+      return null;
+    }
+    if (label == 'First name' ||
+        label == 'Last name' ||
+        label == 'Emergency contact name') {
+      if (isValidPersonName(controller.text)) return null;
+      return controller.text.trim().isEmpty
+          ? '$label is required.'
+          : 'Enter a valid name (2-50 letters).';
+    }
+    if (label != 'Street address' && controller.text.trim().isNotEmpty) {
+      return null;
+    }
+    if (label == 'Street address' && controller.text.trim().isNotEmpty) {
+      return 'Enter a valid address (3-200 characters).';
     }
     return '$label is required.';
   }
@@ -1531,10 +1514,14 @@ class _PatientRegistrationWizardState
     return '$label is required.';
   }
 
-  String? _mobileError(TextEditingController controller, String label) {
+  String? _mobileError(
+    TextEditingController controller,
+    String label, {
+    bool required = true,
+  }) {
     if (!_showValidationErrors) return null;
     final value = controller.text.trim();
-    if (value.isEmpty) return '$label is required.';
+    if (value.isEmpty) return required ? '$label is required.' : null;
     if (!_isValidMobile(value)) {
       return 'Use an 11-digit number starting with 09.';
     }
@@ -1693,578 +1680,523 @@ class _PatientRegistrationWizardState
 
   Widget _buildStep1PersonalInfo() {
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader('Full Name', Icons.badge_outlined),
-          _buildFormRow([
-            _buildFormField(
-              label: 'First Name',
-              hint: 'Given name',
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Full Name', Icons.badge_outlined),
+        _buildFormRow([
+          _buildFormField(
+            label: 'First Name',
+            hint: 'Given name',
+            required: true,
+            controller: _firstNameController,
+            onChanged: (_) => setState(() {}),
+            errorText: _requiredTextError(_firstNameController, 'First name'),
+            icon: Icons.person_outline,
+          ),
+          _buildFormField(
+            label: 'Middle Initial',
+            hint: 'Middle initial',
+            controller: _middleNameController,
+            maxLength: 2,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+            ],
+            onChanged: (value) {
+              final formatted = formatMiddleInitial(value);
+              if (formatted != null &&
+                  _middleNameController.text != formatted) {
+                _middleNameController.value = TextEditingValue(
+                  text: formatted,
+                  selection: TextSelection.collapsed(offset: formatted.length),
+                );
+              }
+              setState(() {});
+            },
+            width: 150,
+          ),
+          _buildFormField(
+            label: 'Last Name',
+            hint: 'Family name',
+            required: true,
+            controller: _lastNameController,
+            onChanged: (_) => setState(() {}),
+            errorText: _requiredTextError(_lastNameController, 'Last name'),
+            icon: Icons.person_outline,
+          ),
+          _buildDropdownField(
+            label: 'Suffix',
+            hint: 'Select suffix',
+            value: _suffix,
+            items: suffixOptions
+                .map(
+                  (suffix) =>
+                      DropdownMenuItem(value: suffix, child: Text(suffix)),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _suffix = value ?? 'None'),
+            icon: Icons.arrow_drop_down_circle_outlined,
+          ),
+        ]),
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 24),
+        _buildSectionHeader('Demographics', Icons.cake_outlined),
+        _buildFormRow([
+          Expanded(
+            child: AppFormField(
+              label: 'Date of Birth',
+              hint: 'Select birth date',
               required: true,
-              controller: _firstNameController,
-              onChanged: (_) => setState(() {}),
-              errorText: _requiredTextError(_firstNameController, 'First name'),
-              icon: Icons.person_outline,
-            ),
-            _buildFormField(
-              label: 'Middle Initial',
-              hint: 'Middle initial',
-              controller: _middleNameController,
-              maxLength: 2,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
-              ],
-              onChanged: (value) {
-                final formatted = formatMiddleInitial(value);
-                if (formatted != null &&
-                    _middleNameController.text != formatted) {
-                  _middleNameController.value = TextEditingValue(
-                    text: formatted,
-                    selection: TextSelection.collapsed(
-                      offset: formatted.length,
+              field: OutlinedButton.icon(
+                onPressed: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now().subtract(
+                      const Duration(days: 365 * 30),
                     ),
+                    firstDate: DateTime(1900),
+                    lastDate: DateTime.now(),
                   );
-                }
-                setState(() {});
-              },
-              width: 150,
-            ),
-            _buildFormField(
-              label: 'Last Name',
-              hint: 'Family name',
-              required: true,
-              controller: _lastNameController,
-              onChanged: (_) => setState(() {}),
-              errorText: _requiredTextError(_lastNameController, 'Last name'),
-              icon: Icons.person_outline,
-            ),
-            _buildDropdownField(
-              label: 'Suffix',
-              hint: 'Select suffix',
-              value: _suffix,
-              items: suffixOptions
-                  .map(
-                    (suffix) =>
-                        DropdownMenuItem(value: suffix, child: Text(suffix)),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() => _suffix = value ?? 'None'),
-              icon: Icons.arrow_drop_down_circle_outlined,
-            ),
-          ]),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
-          _buildSectionHeader('Demographics', Icons.cake_outlined),
-          _buildFormRow([
-            Expanded(
-              child: AppFormField(
-                label: 'Date of Birth',
-                hint: 'Select birth date',
-                required: true,
-                field: OutlinedButton.icon(
-                  onPressed: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now().subtract(
-                        const Duration(days: 365 * 30),
-                      ),
-                      firstDate: DateTime(1900),
-                      lastDate: DateTime.now(),
-                    );
-                    if (date != null) {
-                      setState(() => _dateOfBirth = date);
-                      _calculateAgeAndCategory();
-                    }
-                  },
-                  icon: const Icon(Icons.calendar_today),
-                  label: Text(
-                    _dateOfBirth != null
-                        ? '${_dateOfBirth!.day.toString().padLeft(2, '0')}/${_dateOfBirth!.month.toString().padLeft(2, '0')}/${_dateOfBirth!.year}'
-                        : 'Select date *',
-                    style: TextStyle(
-                      color: _dateOfBirth != null
-                          ? null
-                          : Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor:
-                        _requiredValueError(_dateOfBirth, 'Date of birth') !=
-                            null
-                        ? Theme.of(context).colorScheme.error
-                        : null,
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                  ),
-                ),
-                errorText: _requiredValueError(_dateOfBirth, 'Date of birth'),
-              ),
-            ),
-            if (_calculatedAge != null)
-              Container(
-                margin: const EdgeInsets.only(left: 12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Age: $_calculatedAge yrs',
+                  if (date != null) {
+                    setState(() => _dateOfBirth = date);
+                    _calculateAgeAndCategory();
+                  }
+                },
+                icon: const Icon(Icons.calendar_today),
+                label: Text(
+                  _dateOfBirth != null
+                      ? '${_dateOfBirth!.day.toString().padLeft(2, '0')}/${_dateOfBirth!.month.toString().padLeft(2, '0')}/${_dateOfBirth!.year}'
+                      : 'Select date *',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    color: _dateOfBirth != null
+                        ? null
+                        : Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor:
+                      _requiredValueError(_dateOfBirth, 'Date of birth') != null
+                      ? Theme.of(context).colorScheme.error
+                      : null,
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
                   ),
                 ),
               ),
-          ]),
-          const SizedBox(height: 16),
-          _buildFormRow([
-            _buildDropdownField(
-              label: 'Gender',
-              hint: 'Select gender',
-              required: true,
-              value: _gender,
-              items: const [
-                DropdownMenuItem(value: 'male', child: Text('Male')),
-                DropdownMenuItem(value: 'female', child: Text('Female')),
-                DropdownMenuItem(value: 'other', child: Text('Other')),
-              ],
-              onChanged: (value) => setState(() => _gender = value),
-              errorText: _requiredValueError(_gender, 'Gender'),
-              icon: Icons.wc_outlined,
+              errorText: _requiredValueError(_dateOfBirth, 'Date of birth'),
             ),
-            _buildDropdownField(
-              label: 'Civil Status',
-              hint: 'Select status',
-              required: true,
-              value: _civilStatus,
-              items: const [
-                DropdownMenuItem(value: 'single', child: Text('Single')),
-                DropdownMenuItem(value: 'married', child: Text('Married')),
-                DropdownMenuItem(value: 'widowed', child: Text('Widowed')),
-                DropdownMenuItem(value: 'separated', child: Text('Separated')),
-                DropdownMenuItem(value: 'live-in', child: Text('Live-in')),
-              ],
-              onChanged: (value) => setState(() => _civilStatus = value),
-              errorText: _requiredValueError(_civilStatus, 'Civil Status'),
-              icon: Icons.favorite_outline,
+          ),
+          if (_calculatedAge != null)
+            Container(
+              margin: const EdgeInsets.only(left: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Age: $_calculatedAge yrs',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+              ),
             ),
-          ]),
-          const SizedBox(height: 16),
-          _buildFormRow([
-            _buildFormField(
-              label: 'Religion',
-              hint: 'e.g., Catholic, INC, Islam',
-              controller: _religionController,
-              onChanged: (_) => setState(() {}),
-              icon: Icons.church_outlined,
-            ),
-            _buildFormField(
-              label: 'Occupation',
-              hint: 'e.g., Farmer, Teacher, Student',
-              controller: _occupationController,
-              onChanged: (_) => setState(() {}),
-              icon: Icons.work_outline,
-            ),
-          ]),
-        ],
-      );
+        ]),
+        const SizedBox(height: 16),
+        _buildFormRow([
+          _buildDropdownField(
+            label: 'Gender',
+            hint: 'Select gender',
+            required: true,
+            value: _gender,
+            items: const [
+              DropdownMenuItem(value: 'male', child: Text('Male')),
+              DropdownMenuItem(value: 'female', child: Text('Female')),
+              DropdownMenuItem(value: 'other', child: Text('Other')),
+            ],
+            onChanged: (value) => setState(() => _gender = value),
+            errorText: _requiredValueError(_gender, 'Gender'),
+            icon: Icons.wc_outlined,
+          ),
+          _buildDropdownField(
+            label: 'Civil Status',
+            hint: 'Select status',
+            required: true,
+            value: _civilStatus,
+            items: const [
+              DropdownMenuItem(value: 'single', child: Text('Single')),
+              DropdownMenuItem(value: 'married', child: Text('Married')),
+              DropdownMenuItem(value: 'widowed', child: Text('Widowed')),
+              DropdownMenuItem(value: 'separated', child: Text('Separated')),
+              DropdownMenuItem(value: 'live-in', child: Text('Live-in')),
+            ],
+            onChanged: (value) => setState(() => _civilStatus = value),
+            errorText: _requiredValueError(_civilStatus, 'Civil Status'),
+            icon: Icons.favorite_outline,
+          ),
+        ]),
+        const SizedBox(height: 16),
+        _buildFormField(
+          label: 'Occupation',
+          hint: 'e.g., Farmer, Teacher, Student',
+          controller: _occupationController,
+          onChanged: (_) => setState(() {}),
+          icon: Icons.work_outline,
+        ),
+      ],
+    );
   }
 
   Widget _buildStep2ContactInfo() {
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader('Philippine Address', Icons.home_outlined),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Philippine Address', Icons.home_outlined),
 
-          _buildFormRow([
-            _buildDropdownField(
-              label: 'Region',
-              hint: 'Caraga (Region XIII)',
-              required: true,
-              value: _selectedRegion,
-              items: const [
-                DropdownMenuItem(
-                  value: 'Caraga (Region XIII)',
-                  child: Text('Caraga (Region XIII)'),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedRegion = value;
-                  _selectedProvince = 'Surigao del Sur';
-                });
-              },
-              errorText: _requiredValueError(_selectedRegion, 'Region'),
-              icon: Icons.map_outlined,
-            ),
-            _buildDropdownField(
-              label: 'Province',
-              hint: 'Surigao del Sur',
-              required: true,
-              value: _selectedProvince,
-              enabled: _selectedRegion != null,
-              items: const [
-                DropdownMenuItem(
-                  value: 'Surigao del Sur',
-                  child: Text('Surigao del Sur'),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedProvince = value;
-                  _selectedCity = null;
-                  _selectedBarangay = null;
-                  _selectedPurok = null;
-                  _purokController.clear();
-                  _zipCodeController.clear();
-                });
-              },
-              errorText: _requiredValueError(_selectedProvince, 'Province'),
-              icon: Icons.location_city_outlined,
-            ),
-          ]),
-          const SizedBox(height: 12),
-
-          _buildDropdownField(
-            label: 'Municipality',
-            hint: _selectedProvince == null
-                ? 'Select province first'
-                : 'Select municipality',
-            required: true,
-            value: _selectedCity,
-            enabled: _selectedProvince != null,
-            items: _municipalities
-                .map((city) => DropdownMenuItem(value: city, child: Text(city)))
-                .toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedCity = value;
-                _selectedBarangay = null;
-                _selectedPurok = null;
-                _purokController.clear();
-                _zipCodeController.text =
-                    municipalityAddressData[value]?.zipCode ?? '';
-              });
-            },
-            errorText: _requiredValueError(_selectedCity, 'Municipality'),
-            icon: Icons.apartment_outlined,
+        _buildFormRow([
+          _buildReadOnlyField(
+            label: 'Region',
+            value: _selectedRegion,
+            icon: Icons.map_outlined,
           ),
-          const SizedBox(height: 12),
+          _buildReadOnlyField(
+            label: 'Province',
+            value: _selectedProvince,
+            icon: Icons.location_city_outlined,
+          ),
+        ]),
+        const SizedBox(height: 12),
 
-          _buildDropdownField(
-            label: 'Barangay',
-            hint: _selectedCity == null
-                ? 'Select municipality first'
-                : 'Select barangay',
-            required: true,
-            value: _selectedBarangay,
-            enabled: _selectedCity != null,
-            items: _barangays
-                .map((brgy) => DropdownMenuItem(value: brgy, child: Text(brgy)))
-                .toList(),
-            onChanged: (value) => setState(() {
-              _selectedBarangay = value;
+        _buildDropdownField(
+          label: 'Municipality',
+          hint: 'Select municipality',
+          required: true,
+          value: _selectedCity,
+          items: _municipalities
+              .map((city) => DropdownMenuItem(value: city, child: Text(city)))
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedCity = value;
+              _selectedBarangay = null;
               _selectedPurok = null;
               _purokController.clear();
-            }),
-            errorText: _requiredValueError(_selectedBarangay, 'Barangay'),
-            icon: Icons.holiday_village_outlined,
-          ),
-          const SizedBox(height: 12),
+              _zipCodeController.text =
+                  municipalityAddressData[value]?.zipCode ?? '';
+            });
+          },
+          errorText: _requiredValueError(_selectedCity, 'Municipality'),
+          icon: Icons.apartment_outlined,
+        ),
+        const SizedBox(height: 12),
 
-          _buildFormField(
-            label: 'Purok / Sitio',
-            hint: 'Enter purok or sitio (e.g., Purok 1)',
-            required: true,
-            controller: _purokController,
-            onChanged: (value) => setState(() {
-              final trimmed = value.trim();
-              _selectedPurok = trimmed.isEmpty ? null : trimmed;
-            }),
-            suffixIcon: SizedBox(
-              width: 96,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    tooltip: 'Decrease Purok number',
-                    onPressed: _canDecreasePurokNumber
-                        ? () => _adjustPurokNumber(-1)
-                        : null,
-                    icon: const Icon(Icons.remove),
-                  ),
-                  IconButton(
-                    tooltip: 'Increase Purok number',
-                    onPressed: () => _adjustPurokNumber(1),
-                    icon: const Icon(Icons.add),
-                  ),
-                ],
-              ),
-            ),
-            errorText: _requiredValueError(_selectedPurok, 'Purok / Sitio'),
-            icon: Icons.location_on_outlined,
-          ),
-          const SizedBox(height: 12),
+        _buildDropdownField(
+          label: 'Barangay',
+          hint: _selectedCity == null
+              ? 'Select municipality first'
+              : 'Select barangay',
+          required: true,
+          value: _selectedBarangay,
+          enabled: _selectedCity != null,
+          items: _barangays
+              .map((brgy) => DropdownMenuItem(value: brgy, child: Text(brgy)))
+              .toList(),
+          onChanged: (value) => setState(() {
+            _selectedBarangay = value;
+            _selectedPurok = null;
+            _purokController.clear();
+          }),
+          errorText: _requiredValueError(_selectedBarangay, 'Barangay'),
+          icon: Icons.holiday_village_outlined,
+        ),
+        const SizedBox(height: 12),
 
-          // Street Address
-          _buildFormField(
-            label: 'Street / House No.',
-            hint: 'House #, Street name, Subdivision',
-            required: true,
-            controller: _streetController,
-            onChanged: (_) => setState(() {}),
-            errorText: _requiredTextError(_streetController, 'Street address'),
-            icon: Icons.home_outlined,
-          ),
-          const SizedBox(height: 12),
-
-          // ZIP Code
-          _buildFormField(
-            label: 'ZIP Code',
-            hint: 'Auto-filled by municipality',
-            controller: _zipCodeController,
-            keyboardType: TextInputType.number,
-            maxLength: 4,
-            readOnly: true,
-            width: 120,
-          ),
-
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
-
-          _buildSectionHeader('Contact Details', Icons.contact_phone_outlined),
-          _buildFormRow([
-            _buildFormField(
-              label: 'Mobile Number',
-              hint: '09XXXXXXXXX',
-              required: true,
-              controller: _contactNumberController,
-              onChanged: (_) => setState(() {}),
-              keyboardType: TextInputType.phone,
-              maxLength: 13,
-              inputFormatters: [_mobileFormatter],
-              errorText: _mobileError(
-                _contactNumberController,
-                'Mobile number',
-              ),
-              icon: Icons.phone_outlined,
-            ),
-            _buildFormField(
-              label: 'Email Address',
-              hint: 'patient@email.com',
-              controller: _emailController,
-              onChanged: (_) => setState(() {}),
-              keyboardType: TextInputType.emailAddress,
-              errorText: _optionalEmailError(),
-              icon: Icons.email_outlined,
-            ),
-          ]),
-        ],
-      );
-  }
-
-  Widget _buildStep3EmergencyContact() {
-    return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.errorContainer.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(
-                  context,
-                ).colorScheme.error.withValues(alpha: 0.3),
-              ),
-            ),
+        _buildFormField(
+          label: 'Purok / Sitio',
+          hint: 'Enter purok or sitio (e.g., Purok 1)',
+          required: true,
+          controller: _purokController,
+          onChanged: (value) => setState(() {
+            final trimmed = value.trim();
+            _selectedPurok = trimmed.isEmpty ? null : trimmed;
+          }),
+          suffixIcon: SizedBox(
+            width: 96,
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.warning_amber_rounded,
-                  color: Theme.of(context).colorScheme.error,
+                IconButton(
+                  tooltip: 'Decrease Purok number',
+                  onPressed: _canDecreasePurokNumber
+                      ? () => _adjustPurokNumber(-1)
+                      : null,
+                  icon: const Icon(Icons.remove),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Emergency contact is required for patient safety and regulatory compliance.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onErrorContainer,
-                    ),
-                  ),
+                IconButton(
+                  tooltip: 'Increase Purok number',
+                  onPressed: () => _adjustPurokNumber(1),
+                  icon: const Icon(Icons.add),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          _buildSectionHeader(
-            'Emergency Contact Person',
-            Icons.emergency_outlined,
-          ),
-          _buildFormRow([
-            _buildFormField(
-              label: 'Full Name',
-              hint: 'Contact person name',
-              required: true,
-              controller: _emergencyNameController,
-              onChanged: (_) => setState(() {}),
-              errorText: _requiredTextError(
-                _emergencyNameController,
-                'Emergency contact name',
-              ),
-              icon: Icons.person_outline,
-            ),
-            _buildDropdownField(
-              label: 'Relationship',
-              hint: 'Select relationship',
-              required: true,
-              value: _emergencyRelationController.text.isNotEmpty
-                  ? _emergencyRelationController.text
-                  : null,
-              items: const [
-                DropdownMenuItem(value: 'Spouse', child: Text('Spouse')),
-                DropdownMenuItem(value: 'Parent', child: Text('Parent')),
-                DropdownMenuItem(value: 'Child', child: Text('Child')),
-                DropdownMenuItem(value: 'Sibling', child: Text('Sibling')),
-                DropdownMenuItem(value: 'Relative', child: Text('Relative')),
-                DropdownMenuItem(value: 'Friend', child: Text('Friend')),
-                DropdownMenuItem(value: 'Guardian', child: Text('Guardian')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _emergencyRelationController.text = value ?? '';
-                });
-              },
-              errorText: _requiredTextError(
-                _emergencyRelationController,
-                'Relationship',
-              ),
-              icon: Icons.people_outline,
-            ),
-          ]),
-          const SizedBox(height: 16),
+          errorText: _requiredValueError(_selectedPurok, 'Purok / Sitio'),
+          icon: Icons.location_on_outlined,
+        ),
+        const SizedBox(height: 12),
+
+        // Street Address
+        _buildFormField(
+          label: 'Street / House No.',
+          hint: 'House #, Street name, Subdivision',
+          controller: _streetController,
+          onChanged: (_) => setState(() {}),
+          errorText: _requiredTextError(_streetController, 'Street address'),
+          icon: Icons.home_outlined,
+        ),
+        const SizedBox(height: 12),
+
+        // ZIP Code
+        _buildFormField(
+          label: 'ZIP Code',
+          hint: 'Auto-filled by municipality',
+          controller: _zipCodeController,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          readOnly: true,
+          width: 120,
+        ),
+
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 24),
+
+        _buildSectionHeader('Contact Details', Icons.contact_phone_outlined),
+        _buildFormRow([
           _buildFormField(
-            label: 'Emergency Contact Number',
+            label: 'Mobile Number',
             hint: '09XXXXXXXXX',
-            required: true,
-            controller: _emergencyContactController,
+            required: false,
+            controller: _contactNumberController,
             onChanged: (_) => setState(() {}),
             keyboardType: TextInputType.phone,
             maxLength: 13,
             inputFormatters: [_mobileFormatter],
             errorText: _mobileError(
-              _emergencyContactController,
-              'Emergency contact number',
+              _contactNumberController,
+              'Mobile number',
+              required: false,
             ),
             icon: Icons.phone_outlined,
           ),
-        ],
-      );
+          _buildFormField(
+            label: 'Email Address',
+            hint: 'patient@email.com',
+            controller: _emailController,
+            onChanged: (_) => setState(() {}),
+            keyboardType: TextInputType.emailAddress,
+            errorText: _optionalEmailError(),
+            icon: Icons.email_outlined,
+          ),
+        ]),
+      ],
+    );
+  }
+
+  Widget _buildStep3EmergencyContact() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(
+              context,
+            ).colorScheme.errorContainer.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Emergency contact is required for patient safety and regulatory compliance.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildSectionHeader(
+          'Emergency Contact Person',
+          Icons.emergency_outlined,
+        ),
+        _buildFormRow([
+          _buildFormField(
+            label: 'Full Name',
+            hint: 'Contact person name',
+            required: true,
+            controller: _emergencyNameController,
+            onChanged: (_) => setState(() {}),
+            errorText: _requiredTextError(
+              _emergencyNameController,
+              'Emergency contact name',
+            ),
+            icon: Icons.person_outline,
+          ),
+          _buildDropdownField(
+            label: 'Relationship',
+            hint: 'Select relationship',
+            required: true,
+            value: _emergencyRelationController.text.isNotEmpty
+                ? _emergencyRelationController.text
+                : null,
+            items: const [
+              DropdownMenuItem(value: 'Spouse', child: Text('Spouse')),
+              DropdownMenuItem(value: 'Parent', child: Text('Parent')),
+              DropdownMenuItem(value: 'Child', child: Text('Child')),
+              DropdownMenuItem(value: 'Sibling', child: Text('Sibling')),
+              DropdownMenuItem(value: 'Relative', child: Text('Relative')),
+              DropdownMenuItem(value: 'Friend', child: Text('Friend')),
+              DropdownMenuItem(value: 'Guardian', child: Text('Guardian')),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _emergencyRelationController.text = value ?? '';
+              });
+            },
+            errorText: _requiredTextError(
+              _emergencyRelationController,
+              'Relationship',
+            ),
+            icon: Icons.people_outline,
+          ),
+        ]),
+        const SizedBox(height: 16),
+        _buildFormField(
+          label: 'Emergency Contact Number',
+          hint: '09XXXXXXXXX',
+          required: true,
+          controller: _emergencyContactController,
+          onChanged: (_) => setState(() {}),
+          keyboardType: TextInputType.phone,
+          maxLength: 13,
+          inputFormatters: [_mobileFormatter],
+          errorText: _mobileError(
+            _emergencyContactController,
+            'Emergency contact number',
+          ),
+          icon: Icons.phone_outlined,
+        ),
+      ],
+    );
   }
 
   Widget _buildStep4MedicalInfo() {
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionHeader(
-            'Government ID & Insurance',
-            Icons.credit_card_outlined,
-          ),
-          _buildFormField(
-            label: 'PhilHealth Number',
-            hint: 'XX-XXXXXXXXX-X',
-            controller: _philHealthController,
-            onChanged: (_) => setState(() {}),
-            maxLength: 14,
-            inputFormatters: [_philHealthFormatter],
-            errorText: _optionalPhilHealthError(),
-            icon: Icons.health_and_safety_outlined,
-          ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Government ID & Insurance',
+          Icons.credit_card_outlined,
+        ),
+        _buildFormField(
+          label: 'PhilHealth Number',
+          hint: 'XX-XXXXXXXXX-X',
+          controller: _philHealthController,
+          onChanged: (_) => setState(() {}),
+          maxLength: 14,
+          inputFormatters: [_philHealthFormatter],
+          errorText: _optionalPhilHealthError(),
+          icon: Icons.health_and_safety_outlined,
+        ),
 
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 24),
 
-          _buildSectionHeader(
-            'Medical Information',
-            Icons.medical_information_outlined,
+        _buildSectionHeader(
+          'Medical Information',
+          Icons.medical_information_outlined,
+        ),
+        _buildFormRow([
+          _buildDropdownField(
+            label: 'Blood Type',
+            hint: 'Select blood type',
+            value: _bloodType,
+            items: const [
+              DropdownMenuItem(value: 'A+', child: Text('A+')),
+              DropdownMenuItem(value: 'A-', child: Text('A-')),
+              DropdownMenuItem(value: 'B+', child: Text('B+')),
+              DropdownMenuItem(value: 'B-', child: Text('B-')),
+              DropdownMenuItem(value: 'AB+', child: Text('AB+')),
+              DropdownMenuItem(value: 'AB-', child: Text('AB-')),
+              DropdownMenuItem(value: 'O+', child: Text('O+')),
+              DropdownMenuItem(value: 'O-', child: Text('O-')),
+            ],
+            onChanged: (value) => setState(() => _bloodType = value),
+            icon: Icons.bloodtype_outlined,
           ),
-          _buildFormRow([
-            _buildDropdownField(
-              label: 'Blood Type',
-              hint: 'Select blood type',
-              value: _bloodType,
-              items: const [
-                DropdownMenuItem(value: 'A+', child: Text('A+')),
-                DropdownMenuItem(value: 'A-', child: Text('A-')),
-                DropdownMenuItem(value: 'B+', child: Text('B+')),
-                DropdownMenuItem(value: 'B-', child: Text('B-')),
-                DropdownMenuItem(value: 'AB+', child: Text('AB+')),
-                DropdownMenuItem(value: 'AB-', child: Text('AB-')),
-                DropdownMenuItem(value: 'O+', child: Text('O+')),
-                DropdownMenuItem(value: 'O-', child: Text('O-')),
-              ],
-              onChanged: (value) => setState(() => _bloodType = value),
-              icon: Icons.bloodtype_outlined,
-            ),
-            _buildReadOnlyField(
-              label: 'Patient Category',
-              value: _patientCategory != null
-                  ? PatientCategory.values.byName(_patientCategory!).displayName
-                  : 'Select date of birth first',
-              icon: Icons.category_outlined,
-            ),
-          ]),
+          _buildReadOnlyField(
+            label: 'Patient Category',
+            value: _patientCategory != null
+                ? PatientCategory.values.byName(_patientCategory!).displayName
+                : 'Select date of birth first',
+            icon: Icons.category_outlined,
+          ),
+        ]),
 
-          const SizedBox(height: 16),
-          SwitchListTile(
-            title: const Text('Person with Disability (PWD)'),
-            subtitle: const Text('Check if the patient is a registered PWD'),
-            value: _isPwd,
-            onChanged: (value) => setState(() => _isPwd = value),
-            contentPadding: EdgeInsets.zero,
-            secondary: Icon(
-              Icons.accessible_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+        const SizedBox(height: 16),
+        SwitchListTile(
+          title: const Text('Person with Disability (PWD)'),
+          subtitle: const Text('Check if the patient is a registered PWD'),
+          value: _isPwd,
+          onChanged: (value) => setState(() => _isPwd = value),
+          contentPadding: EdgeInsets.zero,
+          secondary: Icon(
+            Icons.accessible_outlined,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 24),
+        ),
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 24),
 
-          _buildSectionHeader('Medical History', Icons.history_outlined),
-          _buildFormField(
-            label: 'Known Allergies',
-            hint: 'e.g., Penicillin, Shellfish, Latex, etc.',
-            controller: _allergiesController,
-            maxLines: 2,
-            icon: Icons.warning_outlined,
-          ),
-          const SizedBox(height: 12),
-          _buildFormField(
-            label: 'Previous Medical Conditions',
-            hint: 'e.g., Hypertension, Diabetes, Asthma, etc.',
-            controller: _medicalHistoryController,
-            maxLines: 2,
-            icon: Icons.medical_services_outlined,
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
-          _buildRegistrationSummary(),
-        ],
-      );
+        _buildSectionHeader('Medical History', Icons.history_outlined),
+        _buildFormField(
+          label: 'Known Allergies',
+          hint: 'e.g., Penicillin, Shellfish, Latex, etc.',
+          controller: _allergiesController,
+          maxLines: 2,
+          icon: Icons.warning_outlined,
+        ),
+        const SizedBox(height: 12),
+        _buildFormField(
+          label: 'Previous Medical Conditions',
+          hint: 'e.g., Hypertension, Diabetes, Asthma, etc.',
+          controller: _medicalHistoryController,
+          maxLines: 2,
+          icon: Icons.medical_services_outlined,
+        ),
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 24),
+        _buildRegistrationSummary(),
+      ],
+    );
   }
 
   Widget _buildRegistrationSummary() {
@@ -2547,228 +2479,17 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-class _QuickAddToQueueDialog extends ConsumerStatefulWidget {
-  final Patient patient;
-  final VoidCallback onAdded;
-
-  const _QuickAddToQueueDialog({
-    required this.patient,
-    required this.onAdded,
-  });
-
-  @override
-  ConsumerState<_QuickAddToQueueDialog> createState() =>
-      _QuickAddToQueueDialogState();
-}
-
-class _QuickAddToQueueDialogState
-    extends ConsumerState<_QuickAddToQueueDialog> {
-  final _purposeController =
-      TextEditingController(text: 'General Consultation');
-  final _complaintController = TextEditingController();
-  bool _isSaving = false;
-
-  final _commonPurposes = const [
-    'General Consultation',
-    'Follow-up Visit',
-    'Prenatal Checkup',
-    'Immunization',
-    'Dental Care',
-    'Urgent / Triage',
-  ];
-
-  @override
-  void dispose() {
-    _purposeController.dispose();
-    _complaintController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    setState(() => _isSaving = true);
-    try {
-      final purpose = _purposeController.text.trim().isEmpty
-          ? 'General Consultation'
-          : _purposeController.text.trim();
-      final complaint = _complaintController.text.trim();
-
-      await ref
-          .read(queueRepositoryProvider)
-          .addToQueue(widget.patient.id, widget.patient.fullName, purpose);
-
-      if (complaint.isNotEmpty) {
-        final currentQueue = await ref.read(queueProvider.future);
-        final created = currentQueue.firstWhere(
-          (item) => item.patientId == widget.patient.id,
-          orElse: () => currentQueue.first,
-        );
-        if (created.patientId == widget.patient.id) {
-          await ref.read(queueRepositoryProvider).updateQueueItem(
-                created.copyWith(complaint: complaint),
-              );
-        }
-      }
-
-      widget.onAdded();
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(
-                  Icons.check_circle_outline,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${widget.patient.fullName} added to triage queue.',
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: context.semanticColors.normal,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to add to queue: $e'),
-            backgroundColor: context.semanticColors.critical,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppFormDialog(
-      icon: Icons.person_add_outlined,
-      title: 'Add to Triage Queue',
-      subtitle: widget.patient.fullName,
-      maxWidth: 480,
-      isLoading: _isSaving,
-      loadingText: 'Adding patient to queue...',
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context)
-                  .colorScheme
-                  .primaryContainer
-                  .withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  child: Text(
-                    _patientInitials(widget.patient),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.patient.fullName,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      Text(
-                        'Age: ${widget.patient.age ?? "N/A"} • Brgy. ${widget.patient.barangay ?? "N/A"}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Select Purpose of Visit',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _commonPurposes.map((p) {
-              final isSelected = _purposeController.text == p;
-              return ChoiceChip(
-                label: Text(p),
-                selected: isSelected,
-                onSelected: (selected) {
-                  if (selected) {
-                    setState(() => _purposeController.text = p);
-                  }
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          AppTextField(
-            controller: _purposeController,
-            label: 'Purpose of Visit',
-            required: true,
-            icon: Icons.medical_services_outlined,
-            hint: 'e.g. Consultation, Triage',
-          ),
-          const SizedBox(height: 12),
-          AppTextField(
-            controller: _complaintController,
-            label: 'Chief Complaint (Optional)',
-            icon: Icons.chat_bubble_outline,
-            hint: 'Primary reported symptom (e.g. fever for 3 days)',
-            maxLines: 2,
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: _isSaving ? null : _submit,
-          icon: const Icon(Icons.check, size: 18),
-          label: const Text('Add to Queue'),
-        ),
-      ],
-    );
-  }
-}
-
 class _PatientListTile extends StatelessWidget {
   final Patient patient;
   final bool showLocation;
   final bool isSelected;
   final VoidCallback onTap;
-  final ValueChanged<Patient>? onAddToQueue;
 
   const _PatientListTile({
     required this.patient,
     this.showLocation = false,
     this.isSelected = false,
     required this.onTap,
-    this.onAddToQueue,
   });
 
   @override
@@ -2777,37 +2498,43 @@ class _PatientListTile extends StatelessWidget {
     final initials = _patientInitials(patient);
     final theme = Theme.of(context);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isSelected
-            ? BorderSide(
-                color: theme.colorScheme.primary,
-                width: 2,
-              )
-            : BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
+            : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+          width: isSelected ? 1.5 : 1.0,
+        ),
       ),
-      color: isSelected
-          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
-          : null,
       child: InkWell(
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: categoryColor,
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: categoryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: categoryColor.withValues(alpha: 0.25),
+                  ),
+                ),
+                alignment: Alignment.center,
                 child: Text(
                   initials,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                  style: TextStyle(
+                    color: categoryColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -2818,56 +2545,72 @@ class _PatientListTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Expanded(
+                        Flexible(
                           child: Text(
                             patient.fullName,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w800),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.1,
+                            ),
                           ),
                         ),
-                        if (patient.category != null)
+                        if (patient.category != null) ...[
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
+                              horizontal: 6,
+                              vertical: 1.5,
                             ),
                             decoration: BoxDecoration(
-                              color: categoryColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(12),
+                              color: categoryColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: categoryColor.withValues(alpha: 0.2),
+                              ),
                             ),
                             child: Text(
                               patient.category!.displayName,
-                              style: theme.textTheme.labelSmall?.copyWith(
+                              style: TextStyle(
                                 color: categoryColor,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
                               ),
                             ),
                           ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       '${patient.age ?? 'N/A'} yrs • ${patient.gender?.toUpperCase() ?? 'N/A'} • PHN: ${patient.philHealthNumber ?? 'N/A'}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                        fontSize: 12,
                       ),
                     ),
                     if (showLocation) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Row(
                         children: [
                           Icon(
                             Icons.location_on_outlined,
-                            size: 14,
-                            color: theme.colorScheme.primary,
+                            size: 13,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               '${_locationLabel(patient.barangay, 'No barangay')} • ${_locationLabel(patient.purokSitio, 'No purok')}',
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ],
@@ -2876,27 +2619,10 @@ class _PatientListTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (onAddToQueue != null) ...[
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () => onAddToQueue!(patient),
-                  icon: const Icon(Icons.queue_outlined, size: 14),
-                  label: const Text('Queue', style: TextStyle(fontSize: 12)),
-                ),
-              ],
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Icon(
                 Icons.chevron_right,
+                size: 18,
                 color: isSelected
                     ? theme.colorScheme.primary
                     : theme.colorScheme.onSurface.withValues(alpha: 0.35),
@@ -2913,13 +2639,11 @@ class _PatientGridCard extends StatelessWidget {
   final Patient patient;
   final bool isSelected;
   final VoidCallback onTap;
-  final ValueChanged<Patient>? onAddToQueue;
 
   const _PatientGridCard({
     required this.patient,
     this.isSelected = false,
     required this.onTap,
-    this.onAddToQueue,
   });
 
   @override
@@ -2927,24 +2651,21 @@ class _PatientGridCard extends StatelessWidget {
     final categoryColor = _patientCategoryColor(patient.category);
     final theme = Theme.of(context);
 
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isSelected
-            ? BorderSide(
-                color: theme.colorScheme.primary,
-                width: 2,
-              )
-            : BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
+            : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+          width: isSelected ? 1.5 : 1.0,
+        ),
       ),
-      color: isSelected
-          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
-          : null,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -2953,11 +2674,24 @@ class _PatientGridCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: categoryColor,
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: categoryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: categoryColor.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    alignment: Alignment.center,
                     child: Text(
                       _patientInitials(patient),
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color: categoryColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -2966,55 +2700,51 @@ class _PatientGridCard extends StatelessWidget {
                       patient.fullName,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.1,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               _PatientMetaLine(
                 icon: Icons.credit_card,
                 text: 'PHN: ${patient.philHealthNumber ?? 'N/A'}',
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               _PatientMetaLine(
                 icon: Icons.cake_outlined,
                 text:
-                    '${patient.age ?? 'N/A'} years old - ${patient.gender?.toUpperCase() ?? 'N/A'}',
+                    '${patient.age ?? 'N/A'} yrs • ${patient.gender?.toUpperCase() ?? 'N/A'}',
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               _PatientMetaLine(
                 icon: Icons.location_on_outlined,
                 text:
                     '${_locationLabel(patient.barangay, 'No barangay')} / ${_locationLabel(patient.purokSitio, 'No purok')}',
               ),
               if (patient.category != null) ...[
-                const SizedBox(height: 10),
-                Chip(
-                  label: Text(patient.category!.displayName),
-                  backgroundColor: categoryColor.withValues(alpha: 0.1),
-                ),
-              ],
-              if (onAddToQueue != null) ...[
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: categoryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: categoryColor.withValues(alpha: 0.2),
                     ),
-                    onPressed: () => onAddToQueue!(patient),
-                    icon: const Icon(Icons.queue_outlined, size: 14),
-                    label: const Text(
-                      'Add to Queue',
-                      style: TextStyle(fontSize: 12),
+                  ),
+                  child: Text(
+                    patient.category!.displayName,
+                    style: TextStyle(
+                      color: categoryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
                     ),
                   ),
                 ),

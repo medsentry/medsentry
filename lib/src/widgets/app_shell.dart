@@ -30,13 +30,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     selectedIcon: Icons.people,
   );
 
-  static const _queueNavigationItem = AppNavigationItem(
-    label: 'Queue',
-    path: '/queue',
-    icon: Icons.queue_outlined,
-    selectedIcon: Icons.queue,
-  );
-
   static const _documentsNavigationItem = AppNavigationItem(
     label: 'Documents',
     path: '/documents',
@@ -70,13 +63,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     path: '/archive',
     icon: Icons.archive_outlined,
     selectedIcon: Icons.archive,
-  );
-
-  static const _syncNavigationItem = AppNavigationItem(
-    label: 'Sync',
-    path: '/sync',
-    icon: Icons.cloud_sync_outlined,
-    selectedIcon: Icons.cloud_sync,
   );
 
   static const _staffNavigationItem = AppNavigationItem(
@@ -124,15 +110,13 @@ class _AppShellState extends ConsumerState<AppShell> {
     _settingsNavigationItem,
   ];
 
-  /// Staff: Dashboard, Patients, Queue, Documents, Certificates, Reports, Sync
+  /// Staff: Dashboard, Patients, Documents, Certificates, Reports
   static const _staffNavigationItems = [
     _dashboardNavigationItem,
     _patientsNavigationItem,
-    _queueNavigationItem,
     _documentsNavigationItem,
     _certificatesNavigationItem,
     _reportsNavigationItem,
-    _syncNavigationItem,
   ];
 
   List<AppNavigationItem> _navigationItems(User? user) {
@@ -150,14 +134,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   ) {
     if (settings == null) return items;
     return items.where((item) {
-      if (item.path == '/queue') {
-        return settings.queueModuleEnabled;
-      }
       if (item.path == '/certificates') {
         return settings.certificatesModuleEnabled;
-      }
-      if (item.path == '/sync') {
-        return settings.syncModuleEnabled;
       }
       return true;
     }).toList();
@@ -170,18 +148,17 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   /// Maps sidebar destinations to [StatefulShellRoute] branch indices.
   int _branchIndexForPath(String path) {
-    if (path.startsWith('/rhus')) return 12;
+    if (path.startsWith('/rhus')) return 11;
     if (path.startsWith('/patients')) return 1;
-    if (path.startsWith('/queue')) return 2;
-    if (path.startsWith('/documents')) return 3;
-    if (path.startsWith('/certificates')) return 4;
-    if (path.startsWith('/reports')) return 5;
-    if (path.startsWith('/audit-logs')) return 6;
-    if (path.startsWith('/archive')) return 7;
-    if (path.startsWith('/sync')) return 8;
-    if (path.startsWith('/staff')) return 9;
-    if (path.startsWith('/settings')) return 10;
-    if (path.startsWith('/profile')) return 11;
+    if (path.startsWith('/documents')) return 2;
+    if (path.startsWith('/certificates')) return 3;
+    if (path.startsWith('/reports')) return 4;
+    if (path.startsWith('/audit-logs')) return 5;
+    if (path.startsWith('/archive')) return 6;
+    if (path.startsWith('/sync')) return 7;
+    if (path.startsWith('/staff')) return 8;
+    if (path.startsWith('/settings')) return 9;
+    if (path.startsWith('/profile')) return 10;
     return 0;
   }
 

@@ -185,7 +185,11 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                 );
               },
               loading: () => const SizedBox.shrink(),
-              error: (_, _) => const SizedBox.shrink(),
+              error: (error, _) => AppErrorState(
+                title: 'Facility metrics could not be loaded',
+                error: error,
+                onRetry: () => ref.invalidate(clinicsProvider),
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -345,11 +349,10 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                 );
               },
               loading: () => const LoadingState(),
-              error: (err, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Text('Unable to load RHUs: $err'),
-                ),
+              error: (error, _) => AppErrorState(
+                title: 'Rural health units could not be loaded',
+                error: error,
+                onRetry: () => ref.invalidate(clinicsProvider),
               ),
             ),
           ],
@@ -479,9 +482,9 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                   ),
                 ),
                 if (isActive)
-                  StatusBadge.active(text: 'Active')
+                  StatusBadge.active(text: 'Active', showDot: true)
                 else
-                  StatusBadge.inactive(text: 'Inactive'),
+                  StatusBadge.inactive(text: 'Inactive', showDot: true),
               ],
             ),
             const Divider(height: 24),
@@ -1097,6 +1100,9 @@ class _ClinicFormModalState extends ConsumerState<_ClinicFormModal> {
                         if (trimmed.isEmpty) {
                           return 'Facility address is required.';
                         }
+                        if (!isValidPostalAddress(trimmed)) {
+                          return 'Enter a valid address (3-200 characters).';
+                        }
                         return null;
                       },
                     ),
@@ -1120,8 +1126,13 @@ class _ClinicFormModalState extends ConsumerState<_ClinicFormModal> {
                                 RegExp(r'\D'),
                                 '',
                               );
-                              if (digits.length < 7 || digits.length > 12) {
-                                return 'Enter a valid telephone or mobile number.';
+                              final nationalDigits = digits.startsWith('63')
+                                  ? '0${digits.substring(2)}'
+                                  : digits;
+                              if (!RegExp(
+                                r'^0[2-9]\d{8,9}$',
+                              ).hasMatch(nationalDigits)) {
+                                return 'Enter a valid Philippine mobile or landline number.';
                               }
                               return null;
                             },
@@ -1141,9 +1152,7 @@ class _ClinicFormModalState extends ConsumerState<_ClinicFormModal> {
                             validator: (v) {
                               final trimmed = v?.trim() ?? '';
                               if (trimmed.isEmpty) return null;
-                              if (!RegExp(
-                                r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                              ).hasMatch(trimmed)) {
+                              if (!isValidEmailAddress(trimmed)) {
                                 return 'Enter a valid email address.';
                               }
                               return null;

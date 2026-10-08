@@ -7,13 +7,11 @@ import '../providers/theme_provider.dart';
 class PatientPreviewPanel extends StatelessWidget {
   final Patient patient;
   final VoidCallback? onOpenRecord;
-  final VoidCallback? onAddToQueue;
 
   const PatientPreviewPanel({
     super.key,
     required this.patient,
     this.onOpenRecord,
-    this.onAddToQueue,
   });
 
   @override
@@ -104,26 +102,15 @@ class PatientPreviewPanel extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onAddToQueue,
-                    icon: const Icon(Icons.queue_outlined),
-                    label: const Text('Add to Queue'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed:
-                        onOpenRecord ??
-                        () => context.push('/patients/${patient.id}'),
-                    icon: const Icon(Icons.open_in_new),
-                    label: const Text('Open Record'),
-                  ),
-                ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed:
+                    onOpenRecord ??
+                    () => context.push('/patients/${patient.id}'),
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Open Record'),
+              ),
             ),
           ],
         ),
@@ -165,49 +152,59 @@ class _PreviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(
+            alpha: isDark ? 0.35 : 0.65,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
             ),
-            const SizedBox(height: 10),
-            ...rows.map(
-              (row) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 100,
-                      child: Text(
-                        row.label,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
+          ),
+          const SizedBox(height: 10),
+          ...rows.map(
+            (row) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: Text(
+                      row.label,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        row.value,
-                        style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  Expanded(
+                    child: Text(
+                      row.value,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

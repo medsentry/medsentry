@@ -121,25 +121,32 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            Card(
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
+                ),
+              ),
               child: Column(
                 children: [
                   ListTile(
                     leading: const Icon(Icons.people_outlined),
                     title: const Text('Patients'),
-                    trailing: Text('${_stats!.totalPatients}'),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.medical_services_outlined),
-                    title: const Text('Consultations'),
-                    trailing: Text('${_stats!.totalConsultations}'),
+                    trailing: Text(
+                      '${_stats!.totalPatients}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.folder_outlined),
                     title: const Text('Documents'),
-                    trailing: Text('${_stats!.totalDocuments}'),
+                    trailing: Text(
+                      '${_stats!.totalDocuments}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
@@ -225,26 +232,49 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return SizedBox(
       width: 220,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-              Text(title, style: Theme.of(context).textTheme.bodySmall),
-            ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
           ),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: color.withValues(alpha: 0.2)),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
         ),
       ),
     );

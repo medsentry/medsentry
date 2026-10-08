@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,7 @@ import '../providers/providers.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/system_logo.dart';
 import '../widgets/status_badge.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
@@ -31,196 +34,142 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
         children: [
-        Text(
-          'Settings & Administration',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Manage account security, backups, compliance, and system configuration.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(
+          Text(
+            'Settings & Administration',
+            style: Theme.of(
               context,
-            ).colorScheme.onSurface.withValues(alpha: 0.72),
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
-        ),
-        const SizedBox(height: 14),
-        _buildAppearanceSection(context, ref),
-        const Divider(),
-        _buildSection(context, 'Account', [
-          _buildListTile(
-            context,
-            'Logout',
-            'Sign out of your account',
-            Icons.logout,
-            () => _showLogoutDialog(context, ref),
+          const SizedBox(height: 6),
+          Text(
+            'Manage account security, backups, compliance, and system configuration.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.72),
+            ),
           ),
-        ]),
-        const Divider(),
-        _buildSection(context, 'Security', [
-          _buildSwitchTile(
-            context,
-            'PIN Login',
-            'Allow this account to unlock MedSentry with a 4-digit PIN',
-            currentUser?.pinEnabled ?? false,
-            currentUser == null
-                ? null
-                : (value) => _togglePinLogin(context, ref, value),
-          ),
-          _buildListTile(
-            context,
-            (currentUser?.pinEnabled == true &&
-                    currentUser?.pinHash != null &&
-                    currentUser!.pinHash!.isNotEmpty)
-                ? 'Change PIN'
-                : 'Setup PIN',
-            (currentUser?.pinEnabled == true &&
-                    currentUser?.pinHash != null &&
-                    currentUser!.pinHash!.isNotEmpty)
-                ? 'Update your 4-digit access PIN'
-                : 'Setup a 4-digit access PIN for quick login',
-            Icons.pin,
-            () => _showChangePinDialog(context, ref),
-          ),
-          if (currentUser?.canManageSecurity == true)
+          const SizedBox(height: 14),
+          _buildAppearanceSection(context, ref),
+          const Divider(),
+          _buildSection(context, 'Security', [
             _buildListTile(
               context,
-              'Password Policy',
-              'Configure minimum password length and strength requirements',
-              Icons.security_outlined,
-              () => _showSecuritySettingsDialog(context, ref),
+              (currentUser?.pinEnabled == true &&
+                      currentUser?.pinHash != null &&
+                      currentUser!.pinHash!.isNotEmpty)
+                  ? 'Change PIN'
+                  : 'Setup PIN',
+              (currentUser?.pinEnabled == true &&
+                      currentUser?.pinHash != null &&
+                      currentUser!.pinHash!.isNotEmpty)
+                  ? 'Update your 4-digit access PIN'
+                  : 'Setup a 4-digit access PIN for quick login',
+              Icons.pin,
+              () => _showChangePinDialog(context, ref),
             ),
-        ]),
-        if (currentUser?.canManageSystemData == true) ...[
-          const Divider(),
-          _buildSection(context, 'System Settings', [
-            if (currentUser?.isSuperAdmin == true)
+          ]),
+          if (currentUser?.canManageSystemData == true) ...[
+            const Divider(),
+            _buildSection(context, 'System Settings', [
               _buildListTile(
                 context,
-                'Rural Health Units (RHU)',
-                'Manage municipality health facilities and operational scopes',
-                Icons.domain_outlined,
-                () => context.go('/rhus'),
+                'Clinic / RHU Information',
+                'Manage clinic name, address, contact, and patient ID format',
+                Icons.local_hospital_outlined,
+                () => _showSystemSettingsDialog(context, ref),
               ),
-            _buildListTile(
-              context,
-              'Clinic / RHU Information',
-              'Manage clinic name, address, contact, and patient ID format',
-              Icons.local_hospital_outlined,
-              () => _showSystemSettingsDialog(context, ref),
-            ),
-            _buildListTile(
-              context,
-              'Service Types & Categories',
-              'Configure service types and patient categories',
-              Icons.category_outlined,
-              () => _showSystemSettingsDialog(context, ref),
-            ),
-          ]),
-        ],
-        if (currentUser?.isSuperAdmin != true) ...[
+            ]),
+          ],
+          if (currentUser?.isSuperAdmin != true) ...[
+            const Divider(),
+            _buildSection(context, 'Backup & Synchronization', [
+              _buildListTile(
+                context,
+                'Sync Management',
+                'Monitor cloud sync status and trigger manual synchronization',
+                Icons.cloud_sync_outlined,
+                currentUser?.canManageBackupSync == true
+                    ? () => context.go('/sync')
+                    : currentUser?.canSyncRecords == true
+                    ? () => context.go('/sync')
+                    : null,
+              ),
+            ]),
+          ],
           const Divider(),
-          _buildSection(context, 'Backup & Synchronization', [
+          _buildSection(context, 'Database', [
             _buildListTile(
               context,
-              'Sync Management',
-              'Monitor cloud sync status and trigger manual synchronization',
-              Icons.cloud_sync_outlined,
-              currentUser?.canManageBackupSync == true
-                  ? () => context.go('/sync')
-                  : currentUser?.canSyncRecords == true
-                  ? () => context.go('/sync')
+              'Backup Database',
+              'Create a manual backup of all data',
+              Icons.backup,
+              currentUser?.canManageSystemData == true
+                  ? () => _showBackupDialog(context, ref)
                   : null,
             ),
-          ]),
-        ],
-        const Divider(),
-        _buildSection(context, 'Audit & Compliance', [
-          _buildListTile(
-            context,
-            'View Audit Log',
-            'Review login history and unauthorized access attempts',
-            Icons.history,
-            currentUser?.canViewAuditLogs == true
-                ? () => context.go('/audit-logs')
-                : () => _showAuditLogDialog(context, ref),
-          ),
-          _buildListTile(
-            context,
-            'Data Privacy Settings',
-            'Configure data retention and privacy',
-            Icons.privacy_tip,
-            () => _showPrivacySettingsDialog(context),
-          ),
-        ]),
-        const Divider(),
-        _buildSection(context, 'Database', [
-          _buildListTile(
-            context,
-            'Backup Database',
-            'Create a manual backup of all data',
-            Icons.backup,
-            currentUser?.canManageSystemData == true
-                ? () => _showBackupDialog(context, ref)
-                : null,
-          ),
-          _buildListTile(
-            context,
-            'Restore Database',
-            'Restore from a previous backup',
-            Icons.restore,
-            currentUser?.canManageSystemData == true
-                ? () => _showRestoreDialog(context, ref)
-                : null,
-          ),
-          _buildListTile(
-            context,
-            'Database Statistics',
-            'View database size and record counts',
-            Icons.storage,
-            () => _showStatisticsDialog(context, ref),
-          ),
-        ]),
-        const Divider(),
-        settingsAsync.when(
-          data: (settings) => _buildSection(context, 'System Information', [
-            _buildInfoTile(context, 'App Version', settings.appVersion),
-            _buildInfoTile(
+            _buildListTile(
               context,
-              'Database Version',
-              settings.databaseVersion,
+              'Restore Database',
+              'Restore from a previous backup',
+              Icons.restore,
+              currentUser?.canManageSystemData == true
+                  ? () => _showRestoreDialog(context, ref)
+                  : null,
             ),
-            _buildInfoTile(
+            _buildListTile(
               context,
-              'Last Sync',
-              settings.lastSync != null
-                  ? _formatDateTime(settings.lastSync!)
-                  : 'Never',
+              'Database Statistics',
+              'View database size and record counts',
+              Icons.storage,
+              () => _showStatisticsDialog(context, ref),
             ),
           ]),
-          loading: () => const LoadingState(),
-          error: (_, _) => _buildSection(context, 'System Information', [
-            _buildInfoTile(context, 'App Version', '1.0.0+1'),
-            _buildInfoTile(context, 'Database Version', 'SQLite 3.0'),
-            _buildInfoTile(context, 'Last Sync', 'Unknown'),
-          ]),
-        ),
-        if (currentUser?.canManageSystemData == true) ...[
-          const SizedBox(height: 32),
-          Card(
-            color: context.semanticColors.criticalBg,
-            child: Padding(
+          const Divider(),
+          settingsAsync.when(
+            data: (settings) => _buildSection(context, 'System Information', [
+              _buildInfoTile(context, 'App Version', settings.appVersion),
+              _buildInfoTile(
+                context,
+                'Database Version',
+                settings.databaseVersion,
+              ),
+              _buildInfoTile(
+                context,
+                'Last Sync',
+                settings.lastSync != null
+                    ? _formatDateTime(settings.lastSync!)
+                    : 'Never',
+              ),
+            ]),
+            loading: () => const LoadingState(),
+            error: (error, _) => AppErrorState(
+              title: 'System information could not be loaded',
+              error: error,
+              onRetry: () => ref.invalidate(settingsDataProvider),
+            ),
+          ),
+          if (currentUser?.canManageSystemData == true) ...[
+            const SizedBox(height: 32),
+            Container(
+              decoration: BoxDecoration(
+                color: context.semanticColors.criticalBg.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: context.semanticColors.critical.withValues(
+                    alpha: 0.35,
+                  ),
+                ),
+              ),
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Danger Zone',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: context.semanticColors.critical,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -231,7 +180,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     title: Text(
                       'Clear All Data',
-                      style: TextStyle(color: context.semanticColors.critical),
+                      style: TextStyle(
+                        color: context.semanticColors.critical,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: const Text(
                       'This will permanently delete all local data',
@@ -241,9 +193,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-          ),
+          ],
         ],
-      ],
       ),
     );
   }
@@ -437,21 +388,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSwitchTile(
-    BuildContext context,
-    String title,
-    String subtitle,
-    bool value,
-    ValueChanged<bool>? onChanged,
-  ) {
-    return SwitchListTile(
-      title: Text(title),
-      subtitle: Text(subtitle),
-      value: value,
-      onChanged: onChanged,
-    );
-  }
-
   Widget _buildListTile(
     BuildContext context,
     String title,
@@ -481,33 +417,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _togglePinLogin(
-    BuildContext context,
-    WidgetRef ref,
-    bool enabled,
-  ) async {
-    final user = ref.read(currentUserProvider);
-    if (user == null) return;
-
-    if (enabled) {
-      _showChangePinDialog(context, ref);
-      return;
-    }
-
-    await ref.read(authRepositoryProvider).disablePin(user.id);
-    ref.read(currentUserProvider.notifier).state = user.copyWith(
-      pinEnabled: false,
-    );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PIN login disabled for this account')),
-      );
-    }
-  }
-
   void _showChangePinDialog(BuildContext context, WidgetRef ref) {
     final user = ref.read(currentUserProvider);
-    final hasExistingPin = (user?.pinEnabled == true) &&
+    final hasExistingPin =
+        (user?.pinEnabled == true) &&
         (user?.pinHash != null && user!.pinHash!.isNotEmpty);
     final isPinSetup = !hasExistingPin;
     final currentPinController = TextEditingController();
@@ -680,7 +593,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               icon: Icons.dataset_outlined,
               label: 'Backup Contents',
               value:
-                  'Patients, users, queue, consultations, documents metadata, audit logs, and generated reports.',
+                  'Patients, users, documents metadata, audit logs, and generated reports.',
             ),
           ],
         ),
@@ -809,7 +722,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.invalidate(settingsDataProvider);
     ref.invalidate(usersProvider);
     ref.invalidate(patientsProvider);
-    ref.invalidate(queueProvider);
     ref.invalidate(documentsProvider);
     ref.invalidate(reportStatsProvider);
     ref.invalidate(generatedReportsProvider);
@@ -848,13 +760,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 12),
                 AppInfoCard(
-                  icon: Icons.medical_services_outlined,
-                  label: 'Total Consultations',
-                  value: settings.databaseStats.consultationCount.toString(),
-                  iconColor: context.semanticColors.normal,
-                ),
-                const SizedBox(height: 12),
-                AppInfoCard(
                   icon: Icons.folder_outlined,
                   label: 'Total Documents',
                   value: settings.databaseStats.documentCount.toString(),
@@ -889,325 +794,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         );
       },
-      loading: () {},
-      error: (_, _) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load statistics')),
+      loading: () => _showSettingsLoadFeedback(
+        context,
+        message: 'System statistics are still loading. Try again shortly.',
+      ),
+      error: (error, _) {
+        debugPrint('Failed to load system statistics: $error');
+        _showSettingsLoadFeedback(
+          context,
+          message: 'System statistics could not be loaded.',
+          onRetry: () => _showStatisticsDialog(context, ref),
         );
       },
     );
   }
 
-  void _showAuditLogDialog(BuildContext context, WidgetRef ref) {
-    final settingsAsync = ref.read(settingsDataProvider);
-
-    settingsAsync.when(
-      data: (settings) {
-        showDialog(
-          context: context,
-          builder: (context) => AppFormDialog(
-            icon: Icons.history_outlined,
-            title: 'Audit Log',
-            subtitle: 'System activities and changes',
-            maxWidth: 700,
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Audit log shows recent system activities including logins, data modifications, and access attempts.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Recent Activity',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (settings.recentAuditLogs.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: 0.3),
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: context.semanticColors.neutral,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'No audit log entries yet. Activities will be logged as you use the system.',
-                            style: TextStyle(
-                              color: context.semanticColors.neutral,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ...settings.recentAuditLogs.map(
-                    (log) => _buildAuditEntry(
-                      context,
-                      log.action,
-                      log.user,
-                      _formatDateTime(log.timestamp),
-                      _getIconForAction(log.action),
-                      log.details,
-                    ),
-                  ),
-              ],
-            ),
-            actions: [
-              AppDialogAction(
-                label: 'Close',
-                onPressed: () => Navigator.pop(context),
-              ),
-              AppDialogAction(
-                label: 'Export Log',
-                isPrimary: true,
-                icon: Icons.download,
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Audit log export coming soon'),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
-      loading: () {},
-      error: (_, _) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load audit log')),
-        );
-      },
-    );
-  }
-
-  IconData _getIconForAction(String action) {
-    switch (action.toLowerCase()) {
-      case 'login':
-        return Icons.login;
-      case 'logout':
-        return Icons.logout;
-      case 'create':
-        return Icons.add;
-      case 'update':
-        return Icons.edit;
-      case 'delete':
-        return Icons.delete;
-      case 'backup':
-        return Icons.backup;
-      case 'restore':
-        return Icons.restore;
-      case 'sync':
-        return Icons.sync;
-      default:
-        return Icons.info;
-    }
-  }
-
-  Widget _buildAuditEntry(
-    BuildContext context,
-    String action,
-    String user,
-    String time,
-    IconData icon, [
-    String? details,
-  ]) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.3),
+  void _showSettingsLoadFeedback(
+    BuildContext context, {
+    required String message,
+    VoidCallback? onRetry,
+  }) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: onRetry == null
+              ? null
+              : SnackBarAction(label: 'Retry', onPressed: onRetry),
         ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  action,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '$user${details != null ? ' - $details' : ''}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          Text(
-            time,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPrivacySettingsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AppFormDialog(
-        icon: Icons.privacy_tip_outlined,
-        title: 'Data Privacy Settings',
-        subtitle: 'Configure data retention and privacy policies',
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppFormField(
-              label: 'Data Retention Period',
-              hint: 'How long to keep patient records',
-              field: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).dividerColor),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_outlined,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        '7 years (DOH Standard)',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        // TODO: Change retention period
-                      },
-                      child: const Text('Change'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.auto_delete_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Auto-delete Old Records',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      Switch(
-                        value: false,
-                        onChanged: (value) {
-                          // TODO: Toggle auto-delete
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Automatically delete records that exceed the retention period. Disabled by default for safety.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            const AppWarningCard(
-              title: 'Privacy Compliance',
-              message:
-                  'MedSentry is designed to comply with Philippine Data Privacy Act (RA 10173) and DOH regulations. All patient data is encrypted and access is logged.',
-              icon: Icons.verified_user_outlined,
-            ),
-          ],
-        ),
-        actions: [
-          AppDialogAction(
-            label: 'Close',
-            isPrimary: true,
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
+      );
   }
 
   void _showSystemSettingsDialog(BuildContext context, WidgetRef ref) {
@@ -1248,9 +864,54 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         final categoriesController = TextEditingController(
           text: settings.patientCategories.join(', '),
         );
-        var queueEnabled = settings.queueModuleEnabled;
         var certificatesEnabled = settings.certificatesModuleEnabled;
         var syncEnabled = settings.syncModuleEnabled;
+        var logoDataUri = settings.logoDataUri;
+
+        Future<void> chooseLogo(
+          BuildContext dialogContext,
+          void Function(void Function()) updateDialog,
+        ) async {
+          try {
+            final result = await FilePicker.platform.pickFiles(
+              type: FileType.custom,
+              allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
+              withData: true,
+            );
+            if (result == null || result.files.isEmpty) return;
+
+            final file = result.files.single;
+            if (file.size > 1024 * 1024) {
+              throw const FormatException('Choose an image smaller than 1 MB.');
+            }
+            final bytes = file.bytes;
+            if (bytes == null || bytes.isEmpty) {
+              throw const FormatException(
+                'The selected image could not be read.',
+              );
+            }
+
+            final extension = file.extension?.toLowerCase();
+            final mimeType = switch (extension) {
+              'png' => 'image/png',
+              'jpg' || 'jpeg' => 'image/jpeg',
+              'webp' => 'image/webp',
+              _ => throw const FormatException(
+                'Choose a PNG, JPG, or WebP image.',
+              ),
+            };
+            updateDialog(() {
+              logoDataUri = 'data:$mimeType;base64,${base64Encode(bytes)}';
+            });
+          } catch (error, stackTrace) {
+            debugPrint('Could not select clinic logo: $error\n$stackTrace');
+            if (dialogContext.mounted) {
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                SnackBar(content: Text('Could not select logo: $error')),
+              );
+            }
+          }
+        }
 
         showDialog(
           context: context,
@@ -1309,6 +970,61 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   border: OutlineInputBorder(),
                                 ),
                               ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'System Logo',
+                          style: Theme.of(ctx).textTheme.titleSmall,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          SystemLogo(
+                            dataUri: logoDataUri,
+                            size: 72,
+                            backgroundColor: Theme.of(
+                              ctx,
+                            ).colorScheme.surfaceContainerHighest,
+                            iconColor: Theme.of(ctx).colorScheme.primary,
+                            iconSize: 36,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Shown in the app header and login'),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: () =>
+                                          chooseLogo(ctx, setDialogState),
+                                      icon: const Icon(Icons.upload_outlined),
+                                      label: const Text('Choose Logo'),
+                                    ),
+                                    if (logoDataUri.isNotEmpty)
+                                      TextButton(
+                                        onPressed: () => setDialogState(
+                                          () => logoDataUri = '',
+                                        ),
+                                        child: const Text('Remove'),
+                                      ),
+                                  ],
+                                ),
+                                Text(
+                                  'PNG, JPG, or WebP; maximum 1 MB.',
+                                  style: Theme.of(ctx).textTheme.bodySmall,
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -1413,13 +1129,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Queue Management'),
-                        value: queueEnabled,
-                        onChanged: (value) =>
-                            setDialogState(() => queueEnabled = value),
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
                         title: const Text('Certificate Generation'),
                         value: certificatesEnabled,
                         onChanged: (value) =>
@@ -1477,9 +1186,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             patientCategories: _commaSeparatedValues(
                               categoriesController.text,
                             ),
-                            queueModuleEnabled: queueEnabled,
                             certificatesModuleEnabled: certificatesEnabled,
                             syncModuleEnabled: syncEnabled,
+                            logoDataUri: logoDataUri,
                           ),
                         );
                     ref.invalidate(systemSettingsProvider);
@@ -1508,8 +1217,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           categoriesController.dispose();
         });
       },
-      loading: () {},
-      error: (_, _) {},
+      loading: () => _showSettingsLoadFeedback(
+        context,
+        message: 'System settings are still loading. Try again shortly.',
+      ),
+      error: (error, _) {
+        debugPrint('Failed to load clinic details: $error');
+        _showSettingsLoadFeedback(
+          context,
+          message: 'Clinic details could not be loaded.',
+          onRetry: () => _showSystemSettingsDialog(context, ref),
+        );
+      },
     );
   }
 
@@ -1518,106 +1237,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       .map((item) => item.trim())
       .where((item) => item.isNotEmpty)
       .toList();
-
-  void _showSecuritySettingsDialog(BuildContext context, WidgetRef ref) {
-    final settingsAsync = ref.read(systemSettingsProvider);
-
-    settingsAsync.when(
-      data: (settings) {
-        var minLength = settings.passwordMinLength;
-        var requireStrong = settings.requireStrongPassword;
-        var sessionTimeout = settings.sessionTimeoutMinutes;
-
-        showDialog(
-          context: context,
-          builder: (ctx) => StatefulBuilder(
-            builder: (ctx, setDialogState) => AppFormDialog(
-              icon: Icons.security_outlined,
-              title: 'Security Management',
-              subtitle: 'Password policies and session controls',
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    title: const Text('Minimum Password Length'),
-                    subtitle: Text('$minLength characters'),
-                    trailing: SizedBox(
-                      width: 120,
-                      child: Slider(
-                        value: minLength.toDouble(),
-                        min: 6,
-                        max: 16,
-                        divisions: 10,
-                        label: '$minLength',
-                        onChanged: (v) =>
-                            setDialogState(() => minLength = v.round()),
-                      ),
-                    ),
-                  ),
-                  SwitchListTile(
-                    title: const Text('Require Strong Password'),
-                    subtitle: const Text(
-                      'Uppercase, lowercase, number, and symbol',
-                    ),
-                    value: requireStrong,
-                    onChanged: (v) => setDialogState(() => requireStrong = v),
-                  ),
-                  ListTile(
-                    title: const Text('Session Timeout'),
-                    subtitle: Text('$sessionTimeout minutes'),
-                    trailing: SizedBox(
-                      width: 120,
-                      child: Slider(
-                        value: sessionTimeout.toDouble(),
-                        min: 30,
-                        max: 720,
-                        divisions: 23,
-                        label: '$sessionTimeout',
-                        onChanged: (v) =>
-                            setDialogState(() => sessionTimeout = v.round()),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                AppDialogAction(
-                  label: 'Cancel',
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-                AppDialogAction(
-                  label: 'Save',
-                  isPrimary: true,
-                  onPressed: () async {
-                    await ref
-                        .read(databaseProvider)
-                        .updateSystemSettings(
-                          settings.copyWith(
-                            passwordMinLength: minLength,
-                            requireStrongPassword: requireStrong,
-                            sessionTimeoutMinutes: sessionTimeout,
-                          ),
-                        );
-                    ref.invalidate(systemSettingsProvider);
-                    if (ctx.mounted) {
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Security settings saved'),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      loading: () {},
-      error: (_, _) {},
-    );
-  }
 
   void _showClearDataDialog(BuildContext context, WidgetRef ref) {
     final confirmationController = TextEditingController();
@@ -1635,7 +1254,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const AppWarningCard(
               title: 'This Action Cannot Be Undone',
               message:
-                  'This will permanently delete ALL data from the application including patient records, consultations, documents, and settings. Make sure you have created a backup before proceeding.',
+                  'This will permanently delete ALL data from the application including patient records, documents, and settings. Make sure you have created a backup before proceeding.',
             ),
             const SizedBox(height: 20),
             AppFormField(
@@ -1696,7 +1315,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     Future<void>(() async {
       await ref.read(databaseProvider).clearAll();
       ref.invalidate(patientsProvider);
-      ref.invalidate(queueProvider);
       ref.invalidate(documentsProvider);
       ref.read(currentUserProvider.notifier).state = null;
 
@@ -1711,96 +1329,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         context.go('/login');
       }
     });
-  }
-
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AppFormDialog(
-        icon: Icons.logout_outlined,
-        title: 'Logout',
-        subtitle: 'Sign out of your account',
-        headerColor: context.semanticColors.warning,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'You will need to login again with your email/password or PIN to access the application.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Current Session',
-              style: Theme.of(
-                context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            AppInfoCard(
-              icon: Icons.person_outline,
-              label: 'Logged in as',
-              value: 'admin@rhu.gov.ph',
-              iconColor: Theme.of(context).colorScheme.primary,
-            ),
-          ],
-        ),
-        actions: [
-          AppDialogAction(
-            label: 'Cancel',
-            onPressed: () => Navigator.pop(context),
-          ),
-          AppDialogAction(
-            label: 'Logout',
-            isPrimary: true,
-            isDestructive: true,
-            icon: Icons.logout,
-            onPressed: () async {
-              Navigator.pop(context);
-
-              try {
-                final authRepo = ref.read(authRepositoryProvider);
-                await authRepo.logout();
-                ref.read(currentUserProvider.notifier).state = null;
-
-                AppNotification.success(
-                  title: 'Logout Successful',
-                  message: 'You have safely closed your session.',
-                );
-
-                if (context.mounted) {
-                  context.go('/login');
-                }
-              } catch (e) {
-                AppNotification.error(
-                  title: 'Logout Failed',
-                  message: 'An error occurred while logging out: $e',
-                );
-              }
-            },
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -1852,15 +1380,15 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
         final phoneQuery = query.replaceAll(RegExp(r'\D'), '');
         final scopedUsers = users.where((u) {
           if (currentUser == null) return false;
-          // Super Admin can view all users
-          if (currentUser.isSuperAdmin) return true;
 
-          // Administrators only manage accounts within their assigned RHU clinic.
-          // Super administrators must NEVER be displayed or managed in clinic staff views.
-          if (u.role == UserRole.superAdmin) return false;
-          if (currentUser.clinicId != null &&
-              u.clinicId != currentUser.clinicId) {
-            return false;
+          if (!currentUser.isSuperAdmin) {
+            // Administrators only manage accounts within their assigned RHU clinic.
+            // Super administrators must NEVER be displayed or managed in clinic staff views.
+            if (u.role == UserRole.superAdmin) return false;
+            if (currentUser.clinicId != null &&
+                u.clinicId != currentUser.clinicId) {
+              return false;
+            }
           }
           if (query.isEmpty) return true;
           return u.fullName.toLowerCase().contains(query) ||
@@ -2057,9 +1585,6 @@ class _RolesPermissionsTab extends StatelessWidget {
     _PermissionRow('Backup & synchronization', admin: true),
     _PermissionRow('Access patient records', admin: true, staff: true),
     _PermissionRow('Register patients', staff: true),
-    _PermissionRow('Manage queue', staff: true),
-    _PermissionRow('Record vitals / triage', staff: true),
-    _PermissionRow('SOAP consultation', staff: true),
     _PermissionRow('Manage documents', admin: true, staff: true),
     _PermissionRow('Generate certificates', staff: true),
     _PermissionRow('Generate reports', admin: true, staff: true),
@@ -2312,9 +1837,8 @@ class StaffFormDialog extends ConsumerStatefulWidget {
   ConsumerState<StaffFormDialog> createState() => _StaffFormDialogState();
 }
 
-class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
-    with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
+class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
+  final _stepFormKeys = List.generate(3, (_) => GlobalKey<FormState>());
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -2327,7 +1851,8 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
   bool _isActive = true;
   bool _isSaving = false;
   bool _isDirty = false;
-  late final TabController _tabController;
+  bool _isPasswordVisible = false;
+  int _currentStep = 0;
 
   bool get _isEdit => widget.existingUser != null;
 
@@ -2340,7 +1865,6 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     final user = widget.existingUser;
     if (user != null) {
       _emailController.text = user.email;
@@ -2370,7 +1894,6 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
 
   @override
   void dispose() {
-    _tabController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _firstNameController.dispose();
@@ -2414,32 +1937,25 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
         subtitle: _isEdit
             ? 'Update profile, role, facility assignment, or password'
             : 'Register an administrator or staff user with role-scoped access',
-        maxWidth: 620,
+        maxWidth: 680,
         onClose: _isSaving ? null : _handleCancel,
         isLoading: _isSaving,
         loadingText: _isEdit
             ? 'Saving user account...'
             : 'Creating user account...',
-        content: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Profile'),
-                  Tab(text: 'Role & Access'),
-                  Tab(text: 'Security'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 340,
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    SingleChildScrollView(
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildRegistrationStepper(),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 360,
+              child: IndexedStack(
+                index: _currentStep,
+                children: [
+                  Form(
+                    key: _stepFormKeys[0],
+                    child: SingleChildScrollView(
                       child: Column(
                         children: [
                           _field(
@@ -2478,6 +1994,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
                             label: 'Contact Number',
                             icon: Icons.phone_outlined,
                             keyboardType: TextInputType.phone,
+                            required: false,
                           ),
                           const SizedBox(height: 12),
                           _field(
@@ -2495,7 +2012,10 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
                         ],
                       ),
                     ),
-                    SingleChildScrollView(
+                  ),
+                  Form(
+                    key: _stepFormKeys[1],
+                    child: SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2516,6 +2036,8 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
                                   ),
                                 )
                                 .toList(),
+                            validator: (value) =>
+                                value == null ? 'Select a system role.' : null,
                             onChanged: (value) {
                               if (value != null && value != _role) {
                                 setState(() {
@@ -2562,7 +2084,11 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
                                     },
                                   ),
                               loading: () => const LinearProgressIndicator(),
-                              error: (_, _) => const SizedBox.shrink(),
+                              error: (error, _) => AppErrorState(
+                                title: 'Facility list could not be loaded',
+                                error: error,
+                                onRetry: () => ref.invalidate(clinicsProvider),
+                              ),
                             ),
                           ] else if (!isSuperAdmin) ...[
                             const SizedBox(height: 16),
@@ -2602,7 +2128,10 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
                         ],
                       ),
                     ),
-                    SingleChildScrollView(
+                  ),
+                  Form(
+                    key: _stepFormKeys[2],
+                    child: SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2614,6 +2143,19 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
                             icon: Icons.lock_outline,
                             required: !_isEdit,
                             obscureText: true,
+                            suffixIcon: IconButton(
+                              tooltip: _isPasswordVisible
+                                  ? 'Hide password'
+                                  : 'Show password',
+                              onPressed: () => setState(
+                                () => _isPasswordVisible = !_isPasswordVisible,
+                              ),
+                              icon: Icon(
+                                _isPasswordVisible
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 12),
                           AppInfoCard(
@@ -2638,34 +2180,109 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         actions: [
-          AppDialogAction(
-            label: 'Cancel',
-            onPressed: _isSaving ? null : _handleCancel,
-          ),
-          AppDialogAction(
-            label: _isSaving
-                ? (_isEdit ? 'Saving...' : 'Creating...')
-                : (_isEdit
-                      ? 'Save Changes'
-                      : (_role == UserRole.admin
-                            ? 'Create Admin'
-                            : (_role == UserRole.superAdmin
-                                  ? 'Create Super Admin'
-                                  : 'Create User'))),
-            isPrimary: true,
-            icon: Icons.save_outlined,
-            onPressed: _isSaving ? null : _save,
-          ),
+          if (_currentStep > 0)
+            AppDialogAction(
+              label: 'Back',
+              onPressed: _isSaving ? null : _previousStep,
+            )
+          else
+            AppDialogAction(
+              label: 'Cancel',
+              onPressed: _isSaving ? null : _handleCancel,
+            ),
+          if (_currentStep < 2)
+            AppDialogAction(
+              label: 'Next',
+              isPrimary: true,
+              icon: Icons.arrow_forward,
+              onPressed: _isSaving ? null : _nextStep,
+            )
+          else
+            AppDialogAction(
+              label: _isSaving
+                  ? (_isEdit ? 'Saving...' : 'Creating...')
+                  : (_isEdit
+                        ? 'Save Changes'
+                        : (_role == UserRole.admin
+                              ? 'Create Admin'
+                              : (_role == UserRole.superAdmin
+                                    ? 'Create Super Admin'
+                                    : 'Create User'))),
+              isPrimary: true,
+              icon: Icons.save_outlined,
+              onPressed: _isSaving ? null : _save,
+            ),
         ],
       ),
     );
+  }
+
+  Widget _buildRegistrationStepper() {
+    const titles = ['Profile', 'Role & Access', 'Security'];
+    return Row(
+      children: [
+        for (var index = 0; index < titles.length; index++) ...[
+          Expanded(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: index <= _currentStep
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  foregroundColor: index <= _currentStep
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                  child: index < _currentStep
+                      ? const Icon(Icons.check, size: 18)
+                      : Text('${index + 1}'),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  titles[index],
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: index == _currentStep
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          if (index < titles.length - 1)
+            Expanded(
+              child: Divider(
+                color: index < _currentStep
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).dividerColor,
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  void _nextStep() {
+    if (!(_stepFormKeys[_currentStep].currentState?.validate() ?? false)) {
+      return;
+    }
+    if (_currentStep < 2) {
+      setState(() => _currentStep++);
+    }
+  }
+
+  void _previousStep() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
+    }
   }
 
   Widget _field({
@@ -2676,22 +2293,29 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
     bool enabled = true,
     bool obscureText = false,
     TextInputType? keyboardType,
+    Widget? suffixIcon,
   }) {
     return TextFormField(
       controller: controller,
       enabled: enabled,
-      obscureText: obscureText,
+      obscureText: obscureText && !_isPasswordVisible,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
         border: const OutlineInputBorder(),
         prefixIcon: Icon(icon),
+        suffixIcon: suffixIcon,
       ),
       validator: (value) {
         final trimmed = value?.trim() ?? '';
         if (required && trimmed.isEmpty) return '$label is required.';
+        if ((label == 'First Name' || label == 'Last Name') &&
+            trimmed.isNotEmpty &&
+            !isValidPersonName(trimmed)) {
+          return 'Enter a valid name (2-50 letters).';
+        }
         if (label == 'Email Address' && trimmed.isNotEmpty) {
-          if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(trimmed)) {
+          if (!isValidEmailAddress(trimmed)) {
             return 'Enter a valid email address (e.g. user@rhu.gov.ph).';
           }
         }
@@ -2715,7 +2339,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!(_stepFormKeys[2].currentState?.validate() ?? false)) return;
 
     final curUser = ref.read(currentUserProvider);
     final isSuperAdmin = curUser?.isSuperAdmin == true;
@@ -2725,7 +2349,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog>
 
     if (_role != UserRole.superAdmin &&
         (targetClinicId == null || targetClinicId.trim().isEmpty)) {
-      _tabController.animateTo(1);
+      setState(() => _currentStep = 1);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -2841,7 +2465,7 @@ class _RoleSummaryCard extends StatelessWidget {
       UserRole.admin =>
         'Full system control: user accounts, audit logs, settings, backup, and oversight.',
       UserRole.staff =>
-        'Daily RHU operations: patient registration, queue, vitals, consultations, documents, certificates, and reports.',
+        'Daily RHU operations: patient registration, documents, certificates, and reports.',
     };
 
     return AppInfoCard(

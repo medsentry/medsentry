@@ -300,8 +300,7 @@ class PatientRepository {
       throw ArgumentError('Patient not found');
     }
 
-    // Healthcare records must remain recoverable and keep their child
-    // consultations/documents intact. Archive instead of physically deleting.
+    // Patient documents remain recoverable. Archive instead of physically deleting.
     await _db.archivePatient(id);
 
     await _auditService.logAction(

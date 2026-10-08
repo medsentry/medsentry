@@ -12,7 +12,6 @@ enum DocumentStatus { pending, verified, archived }
 class MedicalDocument {
   final String id;
   final String patientId;
-  final String? consultationId;
   final DocumentType type;
   final String title;
   final String? description;
@@ -33,7 +32,6 @@ class MedicalDocument {
   MedicalDocument({
     required this.id,
     required this.patientId,
-    this.consultationId,
     required this.type,
     required this.title,
     this.description,
@@ -87,7 +85,6 @@ class MedicalDocument {
   MedicalDocument copyWith({
     String? id,
     String? patientId,
-    String? consultationId,
     DocumentType? type,
     String? title,
     String? description,
@@ -108,7 +105,6 @@ class MedicalDocument {
     return MedicalDocument(
       id: id ?? this.id,
       patientId: patientId ?? this.patientId,
-      consultationId: consultationId ?? this.consultationId,
       type: type ?? this.type,
       title: title ?? this.title,
       description: description ?? this.description,
@@ -132,7 +128,6 @@ class MedicalDocument {
     return {
       'id': id,
       'patient_id': patientId,
-      'consultation_id': consultationId,
       'type': type.name,
       'title': title,
       'description': description,
@@ -156,7 +151,6 @@ class MedicalDocument {
     return MedicalDocument(
       id: json['id'] as String,
       patientId: json['patient_id'] as String,
-      consultationId: json['consultation_id'] as String?,
       type: DocumentType.values.byName(json['type'] as String),
       title: json['title'] as String,
       description: json['description'] as String?,

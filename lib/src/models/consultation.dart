@@ -1,7 +1,6 @@
 class Consultation {
   final String id;
   final String patientId;
-  final String? queueId;
   final String? doctorId;
   final DateTime? consultationDate;
   final String? subjective;
@@ -21,7 +20,6 @@ class Consultation {
   Consultation({
     required this.id,
     required this.patientId,
-    this.queueId,
     this.doctorId,
     this.consultationDate,
     this.subjective,
@@ -39,13 +37,9 @@ class Consultation {
     this.syncStatus,
   });
 
-  // Alias for compatibility with UI code
-  String? get queueItemId => queueId;
-
   Consultation copyWith({
     String? id,
     String? patientId,
-    String? queueId,
     String? doctorId,
     DateTime? consultationDate,
     String? subjective,
@@ -64,7 +58,6 @@ class Consultation {
     return Consultation(
       id: id ?? this.id,
       patientId: patientId ?? this.patientId,
-      queueId: queueId ?? this.queueId,
       doctorId: doctorId ?? this.doctorId,
       consultationDate: consultationDate ?? this.consultationDate,
       subjective: subjective ?? this.subjective,
@@ -86,7 +79,6 @@ class Consultation {
     return {
       'id': id,
       'patient_id': patientId,
-      'queue_id': queueId,
       'doctor_id': doctorId,
       'consultation_date': consultationDate?.toIso8601String(),
       'subjective': subjective,
@@ -109,7 +101,6 @@ class Consultation {
     return Consultation(
       id: json['id'] as String,
       patientId: json['patient_id'] as String,
-      queueId: json['queue_id'] as String?,
       doctorId: json['doctor_id'] as String?,
       consultationDate: json['consultation_date'] != null
           ? DateTime.parse(json['consultation_date'] as String)

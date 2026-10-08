@@ -14,7 +14,6 @@ class NotificationService {
     final failedLogins = await _db.getFailedLoginCount(
       within: const Duration(days: 1),
     );
-    final longWait = await _db.getLongWaitQueueCount(60);
 
     if (pendingDocs > 0) {
       await _upsertNotification(
@@ -55,18 +54,6 @@ class NotificationService {
       );
     }
 
-    if (longWait > 0) {
-      await _upsertNotification(
-        id: 'queue_alert',
-        type: NotificationType.queueAlert,
-        target: NotificationTarget.staff,
-        priority: NotificationPriority.high,
-        title: 'Long Queue Wait Times',
-        message:
-            '$longWait patient${longWait == 1 ? '' : 's'} waiting more than 1 hour.',
-        actionRoute: '/queue',
-      );
-    }
   }
 
   Future<void> notifyIncompleteRecord(

@@ -3,12 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../models/consultation.dart';
-import '../models/document.dart';
 import '../models/patient.dart';
-import '../models/queue.dart';
 import '../providers/providers.dart';
-import '../utils/date_time_format.dart';
 import '../utils/patient_address_data.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
@@ -30,159 +26,28 @@ class PatientDetailScreen extends ConsumerWidget {
         }
 
         final currentUser = ref.watch(currentUserProvider);
-        final consultationsAsync = ref.watch(
-          patientConsultationsProvider(patient.id),
-        );
-        final documentsAsync = ref.watch(patientDocumentsProvider(patient.id));
-        final queueAsync = ref.watch(patientQueueHistoryProvider(patient.id));
-
         return ResponsiveContentContainer(
-          child: DefaultTabController(
-            length: 4,
-            child: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  SliverToBoxAdapter(
-                    child: _PatientIdentityHeader(
-                      patient: patient,
-                      onAddToQueue: currentUser?.canManageQueue == true
-                          ? () => _showAddToQueueDialog(
-                              context: context,
-                              ref: ref,
-                              patient: patient,
-                            )
-                          : null,
-                      onNewConsultation: currentUser?.canConsult == true
-                          ? () => context.push('/queue/${patient.id}/soap')
-                          : null,
-                      onDocuments: currentUser?.canManageDocuments == true
-                          ? () => context.push('/documents')
-                          : null,
-                      onArchive:
-                          currentUser?.canManageArchive == true &&
-                              !patient.isArchived
-                          ? () => _archivePatient(context, ref, patient)
-                          : null,
-                    ),
-                  ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 14.0),
-                    child: _PatientMetrics(
-                      consultationsCount:
-                          consultationsAsync.valueOrNull?.length,
-                      documentsCount: documentsAsync.valueOrNull?.length,
-                      queueCount: queueAsync.valueOrNull?.length,
-                      lastVisitDate: patient.lastVisitDate,
-                    ),
-                  ),
-                ),
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _TabBarDelegate(
-                    const TabBar(
-                      isScrollable: true,
-                      tabs: [
-                        Tab(icon: Icon(Icons.badge_outlined), text: 'Overview'),
-                        Tab(
-                          icon: Icon(Icons.medical_services_outlined),
-                          text: 'Consultations',
-                        ),
-                        Tab(
-                          icon: Icon(Icons.folder_outlined),
-                          text: 'Documents',
-                        ),
-                        Tab(icon: Icon(Icons.queue_outlined), text: 'Queue'),
-                      ],
-                    ),
-                  ),
-                ),
-              ];
-            },
-            body: TabBarView(
-              children: [
-                _KeepAliveTab(child: _OverviewTab(patient: patient)),
-                _KeepAliveTab(
-                  child: _ConsultationsTab(
-                    consultationsAsync: consultationsAsync,
-                  ),
-                ),
-                _KeepAliveTab(
-                  child: _DocumentsTab(documentsAsync: documentsAsync),
-                ),
-                _KeepAliveTab(child: _QueueHistoryTab(queueAsync: queueAsync)),
-              ],
-            ),
-          ),
-        ),
-      );
-    },
-      loading: () => const LoadingState(),
-      error: (error, stack) => Center(child: Text('Error: $error')),
-    );
-  }
-
-  Future<void> _showAddToQueueDialog({
-    required BuildContext context,
-    required WidgetRef ref,
-    required Patient patient,
-  }) async {
-    final purposeController = TextEditingController(
-      text: 'General Consultation',
-    );
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add to Queue'),
-          content: SizedBox(
-            width: 420,
-            child: TextField(
-              controller: purposeController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Purpose of visit',
-                border: OutlineInputBorder(),
+          child: Column(
+            children: [
+              _PatientIdentityHeader(
+                patient: patient,
+                onArchive:
+                    currentUser?.canManageArchive == true && !patient.isArchived
+                    ? () => _archivePatient(context, ref, patient)
+                    : null,
               ),
-            ),
+              Expanded(child: _OverviewTab(patient: patient)),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () async {
-                final purpose = purposeController.text.trim().isEmpty
-                    ? 'General Consultation'
-                    : purposeController.text.trim();
-                await ref
-                    .read(queueRepositoryProvider)
-                    .addToQueue(patient.id, patient.fullName, purpose);
-                ref.invalidate(queueProvider);
-                ref.invalidate(patientQueueHistoryProvider(patient.id));
-                ref.invalidate(patientAuditLogsProvider(patient.id));
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                }
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${patient.fullName} added to queue'),
-                    ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.queue),
-              label: const Text('Add'),
-            ),
-          ],
         );
       },
+      loading: () => const LoadingState(),
+      error: (error, _) => AppErrorState(
+        title: 'Patient record could not be loaded',
+        error: error,
+        onRetry: () => ref.invalidate(patientProvider(patientId)),
+      ),
     );
-
-    purposeController.dispose();
   }
 
   Future<void> _archivePatient(
@@ -226,91 +91,53 @@ class PatientDetailScreen extends ConsumerWidget {
   }
 }
 
-class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-
-  const _TabBarDelegate(this.tabBar);
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      elevation: overlapsContent || shrinkOffset > 0 ? 2 : 0,
-      child: tabBar,
-    );
-  }
-
-  @override
-  double get maxExtent => tabBar.preferredSize.height;
-
-  @override
-  double get minExtent => tabBar.preferredSize.height;
-
-  @override
-  bool shouldRebuild(covariant _TabBarDelegate oldDelegate) {
-    return tabBar != oldDelegate.tabBar;
-  }
-}
-
 class _PatientIdentityHeader extends StatelessWidget {
   final Patient patient;
-  final VoidCallback? onAddToQueue;
-  final VoidCallback? onNewConsultation;
-  final VoidCallback? onDocuments;
   final VoidCallback? onArchive;
 
-  const _PatientIdentityHeader({
-    required this.patient,
-    required this.onAddToQueue,
-    required this.onNewConsultation,
-    required this.onDocuments,
-    this.onArchive,
-  });
+  const _PatientIdentityHeader({required this.patient, this.onArchive});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 900;
-            final actions = _HeaderActions(
-              onDocuments: onDocuments,
-              onAddToQueue: onAddToQueue,
-              onNewConsultation: onNewConsultation,
-              onArchive: onArchive,
-            );
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 900;
+          final actions = _HeaderActions(onArchive: onArchive);
 
-            if (isNarrow) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _PatientIdentity(patient: patient),
-                  const SizedBox(height: 14),
-                  actions,
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (isNarrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: _PatientIdentity(patient: patient)),
-                const SizedBox(width: 12),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 540),
-                  child: actions,
-                ),
+                _PatientIdentity(patient: patient),
+                const SizedBox(height: 14),
+                actions,
               ],
             );
-          },
-        ),
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _PatientIdentity(patient: patient)),
+              const SizedBox(width: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: actions,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -323,17 +150,28 @@ class _PatientIdentity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        CircleAvatar(
-          radius: 34,
-          backgroundColor: Theme.of(context).colorScheme.primary,
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.25),
+            ),
+          ),
+          alignment: Alignment.center,
           child: Text(
-            patient.firstName.isNotEmpty ? patient.firstName[0] : '?',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
+            patient.firstName.isNotEmpty
+                ? patient.firstName[0].toUpperCase()
+                : '?',
+            style: TextStyle(
+              color: theme.colorScheme.primary,
+              fontSize: 24,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -343,18 +181,52 @@ class _PatientIdentity extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                patient.fullName,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      patient.fullName,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                  if (patient.bloodType != null &&
+                      patient.bloodType!.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: theme.colorScheme.error.withValues(
+                            alpha: 0.25,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        patient.bloodType!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 6,
+                runSpacing: 6,
                 children: [
                   _InfoChip(
                     icon: Icons.credit_card,
@@ -362,7 +234,7 @@ class _PatientIdentity extends StatelessWidget {
                   ),
                   _InfoChip(
                     icon: Icons.cake_outlined,
-                    label: '${patient.age ?? 'N/A'} years old',
+                    label: '${patient.age ?? 'N/A'} yrs',
                   ),
                   _InfoChip(
                     icon: Icons.wc_outlined,
@@ -372,6 +244,40 @@ class _PatientIdentity extends StatelessWidget {
                     _InfoChip(
                       icon: Icons.location_on_outlined,
                       label: patient.barangay!,
+                    ),
+                  if (patient.allergies != null &&
+                      patient.allergies!.trim().isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: theme.colorScheme.error.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            size: 13,
+                            color: theme.colorScheme.error,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Allergy: ${patient.allergies!}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                 ],
               ),
@@ -384,192 +290,26 @@ class _PatientIdentity extends StatelessWidget {
 }
 
 class _HeaderActions extends StatelessWidget {
-  final VoidCallback? onAddToQueue;
-  final VoidCallback? onNewConsultation;
-  final VoidCallback? onDocuments;
   final VoidCallback? onArchive;
 
-  const _HeaderActions({
-    required this.onAddToQueue,
-    required this.onNewConsultation,
-    required this.onDocuments,
-    this.onArchive,
-  });
+  const _HeaderActions({this.onArchive});
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isMobile = constraints.maxWidth < 520;
-
-        if (isMobile) {
-          return Row(
-            children: [
-              if (onNewConsultation != null)
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: onNewConsultation,
-                    icon: const Icon(Icons.medical_services_outlined, size: 18),
-                    label: const Text('Consultation'),
-                  ),
-                )
-              else if (onAddToQueue != null)
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onAddToQueue,
-                    icon: const Icon(Icons.queue, size: 18),
-                    label: const Text('Add Queue'),
-                  ),
-                ),
-              const SizedBox(width: 8),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                tooltip: 'More Actions',
-                onSelected: (action) {
-                  switch (action) {
-                    case 'queue':
-                      onAddToQueue?.call();
-                      break;
-                    case 'docs':
-                      onDocuments?.call();
-                      break;
-                    case 'archive':
-                      onArchive?.call();
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  if (onAddToQueue != null && onNewConsultation != null)
-                    const PopupMenuItem(
-                      value: 'queue',
-                      child: ListTile(
-                        leading: Icon(Icons.queue),
-                        title: Text('Add to Queue'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  if (onDocuments != null)
-                    const PopupMenuItem(
-                      value: 'docs',
-                      child: ListTile(
-                        leading: Icon(Icons.folder_outlined),
-                        title: Text('Documents'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  if (onArchive != null)
-                    const PopupMenuItem(
-                      value: 'archive',
-                      child: ListTile(
-                        leading: Icon(Icons.archive_outlined),
-                        title: Text('Archive Patient'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          );
-        }
-
+        if (onArchive == null) return const SizedBox.shrink();
         return Wrap(
           spacing: 8,
           runSpacing: 8,
           alignment: WrapAlignment.end,
           children: [
-            if (onArchive != null)
-              OutlinedButton.icon(
-                onPressed: onArchive,
-                icon: const Icon(Icons.archive_outlined),
-                label: const Text('Archive'),
-              ),
-            if (onDocuments != null)
-              OutlinedButton.icon(
-                onPressed: onDocuments,
-                icon: const Icon(Icons.folder_outlined),
-                label: const Text('Documents'),
-              ),
-            if (onAddToQueue != null)
-              OutlinedButton.icon(
-                onPressed: onAddToQueue,
-                icon: const Icon(Icons.queue),
-                label: const Text('Add Queue'),
-              ),
-            if (onNewConsultation != null)
-              ElevatedButton.icon(
-                onPressed: onNewConsultation,
-                icon: const Icon(Icons.medical_services_outlined),
-                label: const Text('New Consultation'),
-              ),
+            OutlinedButton.icon(
+              onPressed: onArchive,
+              icon: const Icon(Icons.archive_outlined),
+              label: const Text('Archive'),
+            ),
           ],
-        );
-      },
-    );
-  }
-}
-
-class _PatientMetrics extends StatelessWidget {
-  final int? consultationsCount;
-  final int? documentsCount;
-  final int? queueCount;
-  final DateTime? lastVisitDate;
-
-  const _PatientMetrics({
-    required this.consultationsCount,
-    required this.documentsCount,
-    required this.queueCount,
-    required this.lastVisitDate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tiles = [
-      _MetricTile(
-        label: 'Consultations',
-        value: (consultationsCount ?? 0).toString(),
-        icon: Icons.medical_services_outlined,
-        color: MedSentryColors.green700,
-      ),
-      _MetricTile(
-        label: 'Documents',
-        value: (documentsCount ?? 0).toString(),
-        icon: Icons.folder_outlined,
-        color: const Color(0xFF16A34A),
-      ),
-      _MetricTile(
-        label: 'Queue Visits',
-        value: (queueCount ?? 0).toString(),
-        icon: Icons.queue_outlined,
-        color: const Color(0xFFF59E0B),
-      ),
-      _MetricTile(
-        label: 'Last Visit',
-        value: _shortDate(lastVisitDate),
-        icon: Icons.event_available_outlined,
-        color: MedSentryColors.green800,
-      ),
-    ];
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 760
-            ? 4
-            : constraints.maxWidth >= 420
-            ? 2
-            : 1;
-        final width = (constraints.maxWidth - (10 * (columns - 1))) / columns;
-
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: tiles
-              .map(
-                (tile) => SizedBox(
-                  width: width.isFinite ? width : constraints.maxWidth,
-                  child: tile,
-                ),
-              )
-              .toList(),
         );
       },
     );
@@ -1152,6 +892,9 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
                           controller: _firstNameController,
                           label: 'First Name',
                           required: true,
+                          validator: (value) => isValidPersonName(value)
+                              ? null
+                              : 'Enter a valid first name (2-50 letters).',
                           onChanged: (_) => _markDirty(),
                         ),
                         AppTextField(
@@ -1172,6 +915,9 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
                           controller: _lastNameController,
                           label: 'Last Name',
                           required: true,
+                          validator: (value) => isValidPersonName(value)
+                              ? null
+                              : 'Enter a valid last name (2-50 letters).',
                           onChanged: (_) => _markDirty(),
                         ),
                         AppDropdownField<String>(
@@ -1331,6 +1077,9 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
                         label: 'Street / House No. / Landmark',
                         required: true,
                         icon: Icons.home_outlined,
+                        validator: (value) => isValidPostalAddress(value)
+                            ? null
+                            : 'Enter a valid address (3-200 characters).',
                         onChanged: (_) => _markDirty(),
                       ),
                     ],
@@ -1345,7 +1094,7 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
                     AppPhoneField(
                       controller: _contactController,
                       label: 'Primary Mobile Number',
-                      required: true,
+                      required: false,
                       onChanged: (_) => _markDirty(),
                     ),
                     AppTextField(
@@ -1355,10 +1104,7 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
                         final t = v?.trim() ?? '';
-                        if (t.isNotEmpty &&
-                            !RegExp(
-                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                            ).hasMatch(t)) {
+                        if (t.isNotEmpty && !isValidEmailAddress(t)) {
                           return 'Enter a valid email address.';
                         }
                         return null;
@@ -1552,7 +1298,9 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
     final contactNormalized = normalizePhilippinePhone(rawContact);
     final emergencyNormalized = normalizePhilippinePhone(rawEmergency);
 
-    if (contactNormalized.length != 11 || !contactNormalized.startsWith('09')) {
+    if (rawContact.isNotEmpty &&
+        (contactNormalized.length != 11 ||
+            !contactNormalized.startsWith('09'))) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -1576,8 +1324,7 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
     }
 
     final email = _emailController.text.trim();
-    if (email.isNotEmpty &&
-        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+    if (email.isNotEmpty && !isValidEmailAddress(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Enter a valid email address or leave it blank.'),
@@ -1594,6 +1341,7 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
         if (_middleInitialController.text.trim().isEmpty) 'middleName',
         if (_suffix == 'None') 'suffix',
         if (email.isEmpty) 'email',
+        if (rawContact.isEmpty) 'contactNumber',
         if (_philHealthController.text.trim().isEmpty) 'philHealthNumber',
         if (_bloodType == null) 'bloodType',
         if (_allergiesController.text.trim().isEmpty) 'allergies',
@@ -1611,7 +1359,9 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
             dateOfBirth: _dateOfBirth ?? widget.patient.dateOfBirth,
             gender: _gender,
             civilStatus: _civilStatus,
-            contactNumber: formatPhilippinePhone(contactNormalized),
+            contactNumber: rawContact.isEmpty
+                ? null
+                : formatPhilippinePhone(contactNormalized),
             email: email.isEmpty ? null : email,
             address: _streetController.text.trim(),
             barangay: _barangay,
@@ -1648,522 +1398,6 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
   }
 }
 
-class _ConsultationsTab extends ConsumerWidget {
-  final AsyncValue<List<Consultation>> consultationsAsync;
-
-  const _ConsultationsTab({required this.consultationsAsync});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return consultationsAsync.when(
-      skipLoadingOnReload: true,
-      data: (consultations) {
-        if (consultations.isEmpty) {
-          return _EmptyState(
-            icon: Icons.medical_services_outlined,
-            title: 'No consultations yet',
-            message: 'Saved SOAP notes for this patient will appear here.',
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: consultations.length,
-          separatorBuilder: (_, index) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final item = consultations[index];
-            return _ConsultationCard(
-              consultation: item,
-              icon: Icons.medical_services_outlined,
-              iconColor: const Color(0xFF16A34A),
-              title: item.icd10Code?.isNotEmpty == true
-                  ? 'Diagnosis: ${item.icd10Code}'
-                  : 'SOAP Consultation',
-              subtitle: _shortDate(item.consultationDate ?? item.createdAt),
-              details: _firstFilled([
-                item.assessment,
-                item.subjective,
-                item.plan,
-                'No clinical summary recorded.',
-              ]),
-              onEdit: () => _editConsultation(context, ref, item),
-              onDelete: () => _deleteConsultation(context, ref, item),
-            );
-          },
-        );
-      },
-      loading: () => const LoadingState(),
-      error: (error, stack) => Center(child: Text('Error: $error')),
-    );
-  }
-
-  Future<void> _editConsultation(
-    BuildContext context,
-    WidgetRef ref,
-    Consultation consultation,
-  ) async {
-    final updated = await showDialog<bool>(
-      context: context,
-      builder: (_) => _ConsultationEditDialog(consultation: consultation),
-    );
-
-    if (updated == true) {
-      ref.invalidate(patientConsultationsProvider(consultation.patientId));
-      ref.invalidate(patientAuditLogsProvider(consultation.patientId));
-    }
-  }
-
-  Future<void> _deleteConsultation(
-    BuildContext context,
-    WidgetRef ref,
-    Consultation consultation,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Consultation'),
-        content: const Text(
-          'Are you sure you want to delete this information?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonalIcon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) return;
-
-    final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    await ref
-        .read(consultationRepositoryProvider)
-        .deleteConsultation(id: consultation.id, deletedBy: userId);
-    ref.invalidate(patientConsultationsProvider(consultation.patientId));
-    ref.invalidate(patientAuditLogsProvider(consultation.patientId));
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Consultation deleted')));
-    }
-  }
-}
-
-class _ConsultationEditDialog extends ConsumerStatefulWidget {
-  final Consultation consultation;
-
-  const _ConsultationEditDialog({required this.consultation});
-
-  @override
-  ConsumerState<_ConsultationEditDialog> createState() =>
-      _ConsultationEditDialogState();
-}
-
-class _ConsultationEditDialogState
-    extends ConsumerState<_ConsultationEditDialog> {
-  final _subjectiveController = TextEditingController();
-  final _objectiveController = TextEditingController();
-  final _assessmentController = TextEditingController();
-  final _planController = TextEditingController();
-  final _icd10Controller = TextEditingController();
-  bool _isSaving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final consultation = widget.consultation;
-    _subjectiveController.text = consultation.subjective ?? '';
-    _objectiveController.text = consultation.objective ?? '';
-    _assessmentController.text = consultation.assessment ?? '';
-    _planController.text = consultation.plan ?? '';
-    _icd10Controller.text = consultation.icd10Code ?? '';
-    for (final controller in [
-      _subjectiveController,
-      _objectiveController,
-      _assessmentController,
-      _planController,
-    ]) {
-      controller.addListener(_refresh);
-    }
-  }
-
-  @override
-  void dispose() {
-    for (final controller in [
-      _subjectiveController,
-      _objectiveController,
-      _assessmentController,
-      _planController,
-    ]) {
-      controller.removeListener(_refresh);
-    }
-    _subjectiveController.dispose();
-    _objectiveController.dispose();
-    _assessmentController.dispose();
-    _planController.dispose();
-    _icd10Controller.dispose();
-    super.dispose();
-  }
-
-  void _refresh() {
-    if (mounted) setState(() {});
-  }
-
-  bool get _hasSoapContent =>
-      _subjectiveController.text.trim().isNotEmpty ||
-      _objectiveController.text.trim().isNotEmpty ||
-      _assessmentController.text.trim().isNotEmpty ||
-      _planController.text.trim().isNotEmpty;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit Consultation'),
-      content: SizedBox(
-        width: 680,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _soapField('Subjective', _subjectiveController),
-              const SizedBox(height: 12),
-              _soapField('Objective', _objectiveController),
-              const SizedBox(height: 12),
-              _soapField('Assessment', _assessmentController),
-              const SizedBox(height: 12),
-              _soapField('Plan', _planController),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _icd10Controller,
-                decoration: const InputDecoration(
-                  labelText: 'ICD-10 Code',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton.icon(
-          onPressed: !_isSaving && _hasSoapContent ? _save : null,
-          icon: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.save_outlined),
-          label: const Text('Save'),
-        ),
-      ],
-    );
-  }
-
-  Widget _soapField(String label, TextEditingController controller) {
-    return TextField(
-      controller: controller,
-      maxLines: 3,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-      ),
-    );
-  }
-
-  Future<void> _save() async {
-    if (!_hasSoapContent) return;
-
-    setState(() => _isSaving = true);
-    final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    final clearFields = <String>{
-      if (_subjectiveController.text.trim().isEmpty) 'subjective',
-      if (_objectiveController.text.trim().isEmpty) 'objective',
-      if (_assessmentController.text.trim().isEmpty) 'assessment',
-      if (_planController.text.trim().isEmpty) 'plan',
-      if (_icd10Controller.text.trim().isEmpty) 'icd10Code',
-    };
-
-    try {
-      await ref
-          .read(consultationRepositoryProvider)
-          .updateConsultation(
-            id: widget.consultation.id,
-            subjective: _subjectiveController.text.trim(),
-            objective: _objectiveController.text.trim(),
-            assessment: _assessmentController.text.trim(),
-            plan: _planController.text.trim(),
-            icd10Code: _icd10Controller.text.trim(),
-            clearFields: clearFields,
-            updatedBy: userId,
-          );
-
-      if (mounted) {
-        Navigator.pop(context, true);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Consultation saved')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to save consultation: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-}
-
-class _DocumentsTab extends StatelessWidget {
-  final AsyncValue<List<MedicalDocument>> documentsAsync;
-
-  const _DocumentsTab({required this.documentsAsync});
-
-  @override
-  Widget build(BuildContext context) {
-    return documentsAsync.when(
-      skipLoadingOnReload: true,
-      data: (documents) {
-        if (documents.isEmpty) {
-          return _EmptyState(
-            icon: Icons.folder_outlined,
-            title: 'No patient documents',
-            message:
-                'Scanned lab results, referrals, and certificates will appear here.',
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: documents.length,
-          separatorBuilder: (_, index) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final item = documents[index];
-            return _RecordCard(
-              icon: Icons.insert_drive_file_outlined,
-              iconColor: MedSentryColors.green800,
-              title: item.title,
-              subtitle:
-                  '${item.typeDisplay} - ${_shortDate(item.scanDate ?? item.createdAt)}',
-              details: item.description?.isNotEmpty == true
-                  ? item.description!
-                  : item.statusDisplay,
-            );
-          },
-        );
-      },
-      loading: () => const LoadingState(),
-      error: (error, stack) => Center(child: Text('Error: $error')),
-    );
-  }
-}
-
-class _QueueHistoryTab extends StatelessWidget {
-  final AsyncValue<List<QueueItem>> queueAsync;
-
-  const _QueueHistoryTab({required this.queueAsync});
-
-  @override
-  Widget build(BuildContext context) {
-    return queueAsync.when(
-      skipLoadingOnReload: true,
-      data: (items) {
-        if (items.isEmpty) {
-          return _EmptyState(
-            icon: Icons.queue_outlined,
-            title: 'No queue history',
-            message: 'Queue visits and triage priority will appear here.',
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: items.length,
-          separatorBuilder: (_, index) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return _RecordCard(
-              icon: Icons.queue_outlined,
-              iconColor: item.priorityColor,
-              title: item.purpose ?? 'General Consultation',
-              subtitle:
-                  '${item.statusDisplay} - ${item.priorityDisplay} - ${_shortDate(item.arrivalTime)}',
-              details: item.vitalsTaken
-                  ? 'Vitals recorded. Wait time: ${item.waitTimeDisplay}'
-                  : 'Vitals pending. Wait time: ${item.waitTimeDisplay}',
-            );
-          },
-        );
-      },
-      loading: () => const LoadingState(),
-      error: (error, stack) => Center(child: Text('Error: $error')),
-    );
-  }
-}
-
-class _RecordCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final String details;
-
-  const _RecordCard({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.details,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              backgroundColor: iconColor.withValues(alpha: 0.12),
-              child: Icon(icon, color: iconColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(details),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ConsultationCard extends StatelessWidget {
-  final Consultation consultation;
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final String details;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _ConsultationCard({
-    required this.consultation,
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.details,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              backgroundColor: iconColor.withValues(alpha: 0.12),
-              child: Icon(icon, color: iconColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(details),
-                  if (consultation.updatedAt != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Updated: ${_formatDateTime(consultation.updatedAt!)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.58),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              children: [
-                IconButton(
-                  tooltip: 'Edit',
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_outlined),
-                ),
-                IconButton(
-                  tooltip: 'Delete',
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionPanel extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -2177,28 +1411,35 @@ class _SectionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 22),
-            ...children,
-          ],
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
         ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.1,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          ...children,
+        ],
       ),
     );
   }
@@ -2228,7 +1469,8 @@ class _InfoRow extends StatelessWidget {
                     color: Theme.of(
                       context,
                     ).colorScheme.onSurface.withValues(alpha: 0.62),
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
                   ),
                 ),
               ),
@@ -2237,65 +1479,13 @@ class _InfoRow extends StatelessWidget {
                 child: Text(
                   value?.isNotEmpty == true ? value! : 'N/A',
                   softWrap: true,
+                  style: const TextStyle(fontSize: 13),
                 ),
               ),
             ],
           ),
         );
       },
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _MetricTile({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -2308,111 +1498,38 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.35,
+        ),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.16),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontSize: 12)),
+          Icon(icon, size: 13, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 56,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.38),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.65),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-String _firstFilled(List<String?> values) {
-  for (final value in values) {
-    if (value != null && value.trim().isNotEmpty) {
-      return value.trim();
-    }
-  }
-  return 'N/A';
-}
-
 String _shortDate(DateTime? date) {
   if (date == null) return 'N/A';
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-}
-
-String _formatDateTime(DateTime date) {
-  return formatDateTime12h(date);
-}
-
-class _KeepAliveTab extends StatefulWidget {
-  final Widget child;
-
-  const _KeepAliveTab({required this.child});
-
-  @override
-  State<_KeepAliveTab> createState() => _KeepAliveTabState();
-}
-
-class _KeepAliveTabState extends State<_KeepAliveTab>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
 }

@@ -23,6 +23,10 @@ class ReportPdfService {
     required String approvedByName,
     String approvedByRole = 'Municipal Health Officer (MHO) / Medical Officer IV',
   }) async {
+    if (reportType != 'Patient Statistics') {
+      throw ArgumentError.value(reportType, 'reportType', 'Unsupported report');
+    }
+
     final pdf = pw.Document(
       title: 'MedSentry - $reportType',
       author: 'MedSentry RHU Healthcare System',
@@ -32,14 +36,6 @@ class ReportPdfService {
 
     final generatedAt = DateTime.now();
     final summary = (reportData['summary'] as Map<String, dynamic>?) ?? {};
-    final consultations =
-        (reportData['consultation_records'] as List<dynamic>?) ?? [];
-    final topDiagnoses =
-        (reportData['top_diagnoses'] as List<dynamic>?) ?? [];
-    final notifiableDiseases =
-        (reportData['notifiable_diseases'] as List<dynamic>?) ?? [];
-    final prescriptions =
-        (reportData['prescriptions'] as List<dynamic>?) ?? [];
     final patientRecords =
         (reportData['patient_records'] as List<dynamic>?) ?? [];
     final patientsByGender =
@@ -79,20 +75,14 @@ class ReportPdfService {
             pw.SizedBox(height: 14),
 
             // Summary Callout Cards
-            _buildSummaryCalloutCards(summary, reportType),
+            _buildSummaryCalloutCards(summary),
             pw.SizedBox(height: 16),
 
             // Report Body Content Based on Type
             ..._buildReportBody(
-              reportType: reportType,
-              consultations: consultations,
-              topDiagnoses: topDiagnoses,
-              notifiableDiseases: notifiableDiseases,
-              prescriptions: prescriptions,
               patientRecords: patientRecords,
               patientsByGender: patientsByGender,
               patientsByCategory: patientsByCategory,
-              summary: summary,
             ),
 
             pw.SizedBox(height: 24),
@@ -472,41 +462,31 @@ class ReportPdfService {
 
   pw.Widget _buildSummaryCalloutCards(
     Map<String, dynamic> summary,
-    String reportType,
   ) {
-    final consultations = summary['consultations'] ?? 0;
-    final totalPatients = summary['patients_with_consultations'] ?? 0;
+    final totalPatients = summary['total_patients'] ?? 0;
     final newPatients = summary['new_patients'] ?? 0;
-    final completedVisits = summary['completed_visits'] ?? 0;
-
+    final documents = summary['documents'] ?? 0;
     return pw.Row(
       children: [
         _buildKpiCard(
-          title: 'TOTAL CONSULTATIONS',
-          value: '$consultations',
-          subtitle: 'Conducted in period',
-          accentColor: PdfColors.teal800,
-        ),
-        pw.SizedBox(width: 8),
-        _buildKpiCard(
-          title: 'PATIENTS SERVED',
+          title: 'REGISTERED PATIENTS',
           value: '$totalPatients',
-          subtitle: 'Active clinical encounters',
-          accentColor: PdfColors.blue800,
+          subtitle: 'Active patient records',
+          accentColor: PdfColors.teal800,
         ),
         pw.SizedBox(width: 8),
         _buildKpiCard(
           title: 'NEW REGISTRATIONS',
           value: '$newPatients',
           subtitle: 'Newly enrolled records',
-          accentColor: PdfColors.indigo800,
+          accentColor: PdfColors.blue800,
         ),
         pw.SizedBox(width: 8),
         _buildKpiCard(
-          title: 'COMPLETED VISITS',
-          value: '$completedVisits',
-          subtitle: 'Triage & queue completed',
-          accentColor: PdfColors.blueGrey800,
+          title: 'DOCUMENTS',
+          value: '$documents',
+          subtitle: 'Added in selected period',
+          accentColor: PdfColors.indigo800,
         ),
       ],
     );
@@ -582,238 +562,15 @@ class ReportPdfService {
   // ==========================================
 
   List<pw.Widget> _buildReportBody({
-    required String reportType,
-    required List<dynamic> consultations,
-    required List<dynamic> topDiagnoses,
-    required List<dynamic> notifiableDiseases,
-    required List<dynamic> prescriptions,
     required List<dynamic> patientRecords,
     required Map<String, dynamic> patientsByGender,
     required Map<String, dynamic> patientsByCategory,
-    required Map<String, dynamic> summary,
   }) {
-    switch (reportType) {
-      case 'Disease Surveillance':
-        return _buildDiseaseSurveillanceBody(
-          topDiagnoses: topDiagnoses,
-          notifiableDiseases: notifiableDiseases,
-        );
-      case 'Medication Prescriptions':
-        return _buildMedicationPrescriptionsBody(prescriptions: prescriptions);
-      case 'Patient Statistics':
-        return _buildPatientStatisticsBody(
-          patientRecords: patientRecords,
-          patientsByGender: patientsByGender,
-          patientsByCategory: patientsByCategory,
-        );
-      case 'FHSIS Export':
-      case 'DOH Report':
-        return _buildFhsisDohBody(
-          summary: summary,
-          topDiagnoses: topDiagnoses,
-          consultations: consultations,
-        );
-      case 'Daily Consultation Report':
-      default:
-        return _buildDailyConsultationsBody(
-          consultations: consultations,
-          topDiagnoses: topDiagnoses,
-        );
-    }
-  }
-
-  // 1. Daily Consultations Body
-  List<pw.Widget> _buildDailyConsultationsBody({
-    required List<dynamic> consultations,
-    required List<dynamic> topDiagnoses,
-  }) {
-    return [
-      _buildSectionTitle('CLINICAL CONSULTATIONS REGISTER'),
-      pw.SizedBox(height: 6),
-      if (consultations.isEmpty)
-        _buildEmptyState('No consultation records found for the selected reporting period.')
-      else
-        pw.TableHelper.fromTextArray(
-          border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-          headerStyle: pw.TextStyle(
-            fontSize: 7.5,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.white,
-          ),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.teal900),
-          headerHeight: 22,
-          cellHeight: 18,
-          cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
-          cellAlignment: pw.Alignment.centerLeft,
-          oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-          headers: [
-            '#',
-            'Date/Time',
-            'Patient ID',
-            'Patient Name',
-            'Age/Sex',
-            'Barangay',
-            'Assessment / ICD-10 Diagnosis',
-            'Staff',
-          ],
-          columnWidths: {
-            0: const pw.FixedColumnWidth(20),
-            1: const pw.FixedColumnWidth(60),
-            2: const pw.FixedColumnWidth(55),
-            3: const pw.FlexColumnWidth(2.2),
-            4: const pw.FixedColumnWidth(40),
-            5: const pw.FlexColumnWidth(1.6),
-            6: const pw.FlexColumnWidth(3.0),
-            7: const pw.FlexColumnWidth(1.5),
-          },
-          data: consultations.asMap().entries.map((entry) {
-            final index = entry.key + 1;
-            final item = entry.value as Map<String, dynamic>;
-            final dateStr = item['date'] != null
-                ? DateFormat('MM/dd/yy HH:mm').format(DateTime.parse(item['date']))
-                : 'N/A';
-            final age = item['patient_age'] != null ? '${item['patient_age']}y' : '-';
-            final sex = (item['patient_gender'] as String?)?.isNotEmpty == true
-                ? (item['patient_gender'] as String).substring(0, 1).toUpperCase()
-                : '-';
-            final diagnosis = item['diagnosis'] ?? item['diagnosis_code'] ?? 'General Consultation';
-
-            return [
-              '$index',
-              dateStr,
-              item['patient_id'] ?? '-',
-              item['patient_name'] ?? 'Unknown',
-              '$age / $sex',
-              item['patient_barangay'] ?? '-',
-              diagnosis,
-              item['created_by'] ?? 'Staff',
-            ];
-          }).toList(),
-        ),
-      if (topDiagnoses.isNotEmpty) ...[
-        pw.SizedBox(height: 14),
-        _buildSectionTitle('TOP LEADING DIAGNOSES / MORBIDITY SUMMARY'),
-        pw.SizedBox(height: 6),
-        _buildTopDiagnosesTable(topDiagnoses),
-      ],
-    ];
-  }
-
-  // 2. Disease Surveillance Body
-  List<pw.Widget> _buildDiseaseSurveillanceBody({
-    required List<dynamic> topDiagnoses,
-    required List<dynamic> notifiableDiseases,
-  }) {
-    return [
-      _buildSectionTitle('DOH NOTIFIABLE DISEASES & IMMEDIATE SURVEILLANCE ALERTS'),
-      pw.SizedBox(height: 6),
-      if (notifiableDiseases.isEmpty)
-        pw.Container(
-          padding: const pw.EdgeInsets.all(8),
-          decoration: pw.BoxDecoration(
-            color: PdfColors.green50,
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-            border: pw.Border.all(color: PdfColors.green300, width: 0.6),
-          ),
-          child: pw.Row(
-            children: [
-              pw.Text(
-                'STATUS: ZERO NOTIFIABLE / EPIDEMIC-PRONE CONDITIONS DETECTED IN THIS PERIOD.',
-                style: pw.TextStyle(
-                  fontSize: 7.5,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.green900,
-                ),
-              ),
-            ],
-          ),
-        )
-      else
-        pw.TableHelper.fromTextArray(
-          border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-          headerStyle: pw.TextStyle(
-            fontSize: 7.5,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.white,
-          ),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.red800),
-          headerHeight: 22,
-          cellHeight: 18,
-          cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
-          oddRowDecoration: const pw.BoxDecoration(color: PdfColors.red50),
-          headers: ['Case #', 'Date Detected', 'Patient ID', 'ICD-10 Code', 'Surveillance Category'],
-          data: notifiableDiseases.asMap().entries.map((entry) {
-            final item = entry.value as Map<String, dynamic>;
-            final dateStr = item['date'] != null
-                ? DateFormat('yyyy-MM-dd').format(DateTime.parse(item['date']))
-                : 'N/A';
-            return [
-              '${entry.key + 1}',
-              dateStr,
-              item['patient_id'] ?? '-',
-              item['icd10_code'] ?? '-',
-              'Category I / II Notifiable Disease (DOH)',
-            ];
-          }).toList(),
-        ),
-      pw.SizedBox(height: 14),
-      _buildSectionTitle('MORBIDITY BREAKDOWN & ICD-10 DIAGNOSES FREQUENCY'),
-      pw.SizedBox(height: 6),
-      _buildTopDiagnosesTable(topDiagnoses),
-    ];
-  }
-
-  // 3. Medication Prescriptions Body
-  List<pw.Widget> _buildMedicationPrescriptionsBody({
-    required List<dynamic> prescriptions,
-  }) {
-    return [
-      _buildSectionTitle('PHARMACY & MEDICATION DISPENSING LOG'),
-      pw.SizedBox(height: 6),
-      if (prescriptions.isEmpty)
-        _buildEmptyState('No medication dispensing records recorded for this reporting period.')
-      else
-        pw.TableHelper.fromTextArray(
-          border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-          headerStyle: pw.TextStyle(
-            fontSize: 7.5,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.white,
-          ),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-          headerHeight: 22,
-          cellHeight: 18,
-          cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
-          oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-          headers: [
-            '#',
-            'Brand / Medication Name',
-            'Generic Name',
-            'Dosage',
-            'Frequency / Regimen',
-            'Qty Dispensed',
-          ],
-          columnWidths: {
-            0: const pw.FixedColumnWidth(20),
-            1: const pw.FlexColumnWidth(2.5),
-            2: const pw.FlexColumnWidth(2.5),
-            3: const pw.FlexColumnWidth(1.8),
-            4: const pw.FlexColumnWidth(2.2),
-            5: const pw.FixedColumnWidth(60),
-          },
-          data: prescriptions.asMap().entries.map((entry) {
-            final item = entry.value as Map<String, dynamic>;
-            return [
-              '${entry.key + 1}',
-              item['medication'] ?? '-',
-              item['generic_name'] ?? '-',
-              item['dosage'] ?? '-',
-              item['frequency'] ?? '-',
-              '${item['quantity'] ?? 0} units',
-            ];
-          }).toList(),
-        ),
-    ];
+    return _buildPatientStatisticsBody(
+      patientRecords: patientRecords,
+      patientsByGender: patientsByGender,
+      patientsByCategory: patientsByCategory,
+    );
   }
 
   // 4. Patient Statistics Body
@@ -908,83 +665,6 @@ class ReportPdfService {
     ];
   }
 
-  // 5. FHSIS & DOH Programmatic Body
-  List<pw.Widget> _buildFhsisDohBody({
-    required Map<String, dynamic> summary,
-    required List<dynamic> topDiagnoses,
-    required List<dynamic> consultations,
-  }) {
-    final consultationsCount = summary['consultations'] ?? 0;
-    final totalPatients = summary['patients_with_consultations'] ?? 0;
-
-    return [
-      _buildSectionTitle('FIELD HEALTH SERVICE INFORMATION SYSTEM (FHSIS) INDICATORS'),
-      pw.SizedBox(height: 6),
-      pw.TableHelper.fromTextArray(
-        border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-        headerStyle: pw.TextStyle(
-          fontSize: 7.5,
-          fontWeight: pw.FontWeight.bold,
-          color: PdfColors.white,
-        ),
-        headerDecoration: const pw.BoxDecoration(color: PdfColors.teal900),
-        headerHeight: 22,
-        cellHeight: 18,
-        cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
-        oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-        headers: [
-          'Program / Indicator Code',
-          'DOH Healthcare Program Area',
-          'Eligible Population',
-          'Accomplishment',
-          'Compliance Status',
-        ],
-        data: [
-          [
-            'MCH-01',
-            'Maternal Health Care (Prenatal & Postnatal Care)',
-            'Catchment Population',
-            '$totalPatients Encounters',
-            '100% Documented',
-          ],
-          [
-            'EPI-01',
-            'Expanded Program on Immunization (Child Health)',
-            'Infants 0-11 Months',
-            'Routine RHU Service',
-            'Active Surveillance',
-          ],
-          [
-            'FP-01',
-            'Family Planning Services & Responsible Parenthood',
-            'WRA (15-49 Years)',
-            'Clinical Counseling',
-            'RHU Maintained',
-          ],
-          [
-            'NCD-01',
-            'Non-Communicable Diseases (Hypertension / DM Screening)',
-            'Adults 20+ Years',
-            '$consultationsCount Evaluated',
-            'Standard DOH Care',
-          ],
-          [
-            'ENV-01',
-            'Environmental Sanitation & Communicable Disease Control',
-            'Barangay Households',
-            'Community Monitored',
-            'Adequate Control',
-          ],
-        ],
-      ),
-      pw.SizedBox(height: 14),
-      _buildSectionTitle('TOP 10 LEADING CAUSES OF MORBIDITY'),
-      pw.SizedBox(height: 6),
-      _buildTopDiagnosesTable(topDiagnoses),
-    ];
-  }
-
-  // ==========================================
   // SHARED TABLE & UI WIDGETS
   // ==========================================
 
@@ -1007,56 +687,6 @@ class ReportPdfService {
           ),
         ),
       ],
-    );
-  }
-
-  pw.Widget _buildTopDiagnosesTable(List<dynamic> topDiagnoses) {
-    if (topDiagnoses.isEmpty) {
-      return _buildEmptyState('No clinical diagnoses recorded for this reporting period.');
-    }
-
-    final totalCases = topDiagnoses.fold<int>(
-      0,
-      (sum, item) => sum + ((item['count'] as int?) ?? 0),
-    );
-
-    return pw.TableHelper.fromTextArray(
-      border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-      headerStyle: pw.TextStyle(
-        fontSize: 7.5,
-        fontWeight: pw.FontWeight.bold,
-        color: PdfColors.white,
-      ),
-      headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
-      headerHeight: 22,
-      cellHeight: 18,
-      cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
-      oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-      headers: ['Rank', 'ICD-10 Code / Description', 'Total Cases', 'Percentage', 'Classification'],
-      columnWidths: {
-        0: const pw.FixedColumnWidth(25),
-        1: const pw.FlexColumnWidth(4),
-        2: const pw.FixedColumnWidth(60),
-        3: const pw.FixedColumnWidth(55),
-        4: const pw.FlexColumnWidth(2),
-      },
-      data: topDiagnoses.asMap().entries.map((entry) {
-        final index = entry.key + 1;
-        final item = entry.value as Map<String, dynamic>;
-        final count = (item['count'] as int?) ?? 0;
-        final pct = totalCases > 0
-            ? '${((count / totalCases) * 100).toStringAsFixed(1)}%'
-            : '0.0%';
-        final diagName = item['diagnosis'] as String? ?? 'Unspecified';
-
-        return [
-          '$index',
-          diagName,
-          '$count',
-          pct,
-          'RHU Morbidity',
-        ];
-      }).toList(),
     );
   }
 

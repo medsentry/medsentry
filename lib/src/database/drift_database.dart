@@ -84,7 +84,6 @@ extension ConsultationEntityMapper on ConsultationEntity {
     return Consultation(
       id: id,
       patientId: patientId,
-      queueId: queueId,
       doctorId: createdBy,
       consultationDate: createdAt,
       subjective: subjective,

@@ -33,6 +33,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.11.3"
+  animation_kit:
+    dependency: transitive
+    description:
+      name: animation_kit
+      sha256: d9b0944b3ee02fae3fedbc6cb04d9a9ea26ad1d29f3261e0b55443b1e0bfba63
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.2"
   app_links:
     dependency: transitive
     description:
@@ -345,6 +353,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.6"
+  data_widget:
+    dependency: transitive
+    description:
+      name: data_widget
+      sha256: "4947aae3c50635496d56f94ad18de98e19015c5ebf01abee0f39a2c098c7021a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.3"
   dbus:
     dependency: transitive
     description:
@@ -648,6 +664,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.6.4"
+  gap:
+    dependency: transitive
+    description:
+      name: gap
+      sha256: f19387d4e32f849394758b91377f9153a1b41d79513ef7668c088c77dbc6955d
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.1"
   glob:
     dependency: transitive
     description:
@@ -1248,6 +1272,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.1.9"
+  shadcn_flutter:
+    dependency: "direct main"
+    description:
+      name: shadcn_flutter
+      sha256: da1cb2f93176f62f1e869e38f2ff944d1af0a24ddf7fc8f02f7ef3066f397886
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.55"
   share_plus:
     dependency: "direct main"
     description:
@@ -1679,4 +1711,4 @@ packages:
     version: "2.1.1"
 sdks:
   dart: ">=3.13.0 <4.0.0"
-  flutter: ">=3.44.0"
+  flutter: ">=3.47.0"

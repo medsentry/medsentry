@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../models/system_settings.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/date_time_format.dart';
 import 'layout/responsive_layout.dart';
+import 'medsentry_command_dialog.dart';
+import 'system_logo.dart';
 
 class AppNavigationItem {
   final String label;
@@ -48,8 +51,6 @@ class AppScaffold extends ConsumerStatefulWidget {
 }
 
 class _AppScaffoldState extends ConsumerState<AppScaffold> {
-  final _searchFocusNode = FocusNode();
-  final _searchController = TextEditingController();
   bool _sidebarExpanded = true;
 
   static const _sidebarExpandedWidth = 228.0;
@@ -65,36 +66,20 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   @override
   void dispose() {
     ServicesBinding.instance.keyboard.removeHandler(_handleKeyEvent);
-    _searchFocusNode.dispose();
-    _searchController.dispose();
     super.dispose();
   }
 
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent) {
-      // Ctrl+K or Ctrl+F to focus search
+      // Ctrl+K or Ctrl+F to open Command Palette
       if ((event.logicalKey == LogicalKeyboardKey.keyK ||
               event.logicalKey == LogicalKeyboardKey.keyF) &&
           HardwareKeyboard.instance.isControlPressed) {
-        if (ref.read(currentUserProvider)?.canAccessPatientRecords != true) {
-          return false;
-        }
-        _searchFocusNode.requestFocus();
+        showMedsentryCommandPalette(context, ref);
         return true;
       }
     }
     return false;
-  }
-
-  void _onSearch(String query) {
-    final trimmed = query.trim();
-    final user = ref.read(currentUserProvider);
-    if (trimmed.isNotEmpty && user?.canAccessPatientRecords == true) {
-      final encoded = Uri.encodeQueryComponent(trimmed);
-      context.push('/patients?search=$encoded');
-      _searchController.clear();
-      _searchFocusNode.unfocus();
-    }
   }
 
   @override
@@ -190,6 +175,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     SyncStatus syncStatus,
   ) {
     final isCompact = ResponsiveLayout.isCompactHeight(context);
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
     return AppBar(
       toolbarHeight: isCompact ? 48 : 56,
       backgroundColor:
@@ -205,18 +192,13 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Icon(
-              Icons.local_hospital,
-              color: Colors.white,
-              size: 20,
-            ),
+          SystemLogo(
+            dataUri: settings.logoDataUri,
+            size: 32,
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            iconColor: Colors.white,
+            iconSize: 20,
+            borderRadius: 6,
           ),
           const SizedBox(width: 8),
           const Text(
@@ -310,10 +292,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
               context.go('/login');
             }
           } catch (e) {
-            AppNotification.error(
-              title: 'Logout Failed',
-              message: '$e',
-            );
+            AppNotification.error(title: 'Logout Failed', message: '$e');
           }
         }
       },
@@ -360,13 +339,11 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  Widget _buildDrawer(
-    BuildContext context,
-    User? user,
-    SyncStatus syncStatus,
-  ) {
+  Widget _buildDrawer(BuildContext context, User? user, SyncStatus syncStatus) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
 
     return Drawer(
       child: SafeArea(
@@ -381,18 +358,13 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.local_hospital,
-                          color: Colors.white,
-                          size: 26,
-                        ),
+                      SystemLogo(
+                        dataUri: settings.logoDataUri,
+                        size: 44,
+                        backgroundColor: Colors.white.withValues(alpha: 0.2),
+                        iconColor: Colors.white,
+                        iconSize: 26,
+                        borderRadius: 10,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -442,7 +414,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
             Expanded(
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 itemCount: widget.navigationItems.length,
                 itemBuilder: (context, index) {
                   final item = widget.navigationItems[index];
@@ -480,10 +455,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                     context.go('/login');
                   }
                 } catch (e) {
-                  AppNotification.error(
-                    title: 'Logout Failed',
-                    message: '$e',
-                  );
+                  AppNotification.error(title: 'Logout Failed', message: '$e');
                 }
               },
             ),
@@ -494,41 +466,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   }
 
   void _showMobileSearchDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Search Patients'),
-        content: TextField(
-          controller: _searchController,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Enter patient name or ID...',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () => _searchController.clear(),
-            ),
-          ),
-          onSubmitted: (query) {
-            Navigator.of(dialogCtx).pop();
-            _onSearch(query);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              _onSearch(_searchController.text);
-            },
-            child: const Text('Search'),
-          ),
-        ],
-      ),
-    );
+    showMedsentryCommandPalette(context, ref);
   }
 
   void _onNavigationSelected(int index, BuildContext context) {
@@ -544,9 +482,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   Widget _buildSidebar(BuildContext context, {bool forceCollapsed = false}) {
     final theme = Theme.of(context);
     final isExpanded = !forceCollapsed && _sidebarExpanded;
-    final width = isExpanded
-        ? _sidebarExpandedWidth
-        : _sidebarCollapsedWidth;
+    final width = isExpanded ? _sidebarExpandedWidth : _sidebarCollapsedWidth;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
@@ -627,22 +563,18 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
   /// LEFT ZONE: Identity & Context
   Widget _buildIdentityZone(BuildContext context) {
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         // Logo Icon
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            Icons.local_hospital,
-            color: Colors.white,
-            size: 24,
-          ),
+        SystemLogo(
+          dataUri: settings.logoDataUri,
+          size: 40,
+          backgroundColor: Colors.white.withValues(alpha: 0.2),
+          iconColor: Colors.white,
+          iconSize: 24,
         ),
         const SizedBox(width: 12),
         // App Name & Facility
@@ -683,64 +615,55 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  /// CENTER ZONE: Global Action (Search)
+  /// CENTER ZONE: Global Action (Search Command Palette)
   Widget _buildSearchZone(BuildContext context, {required bool enabled}) {
-    return Container(
-      height: 40,
-      constraints: const BoxConstraints(maxWidth: 600),
-      child: TextField(
-        enabled: enabled,
-        controller: _searchController,
-        focusNode: _searchFocusNode,
-        onSubmitted: _onSearch,
-        onChanged: (_) => setState(() {}),
-        decoration: InputDecoration(
-          hintText: 'Search patients by name, ID, or phone...',
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
-          prefixIcon: Icon(
-            Icons.search,
-            color: Colors.white.withValues(alpha: 0.7),
-          ),
-          suffixIcon: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_searchController.text.isNotEmpty)
-                IconButton(
-                  tooltip: 'Clear search',
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {});
-                  },
-                  icon: const Icon(Icons.clear),
-                  color: Colors.white70,
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: enabled ? () => showMedsentryCommandPalette(context, ref) : null,
+      child: Container(
+        height: 38,
+        constraints: const BoxConstraints(maxWidth: 540),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.search,
+              size: 18,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Search patients, records, or jump to page...',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 13,
                 ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'Ctrl+K',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 12,
-                  ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Ctrl + K',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.95),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
-          ),
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.15),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+          ],
         ),
-        style: const TextStyle(color: Colors.white),
-        cursorColor: Colors.white,
       ),
     );
   }

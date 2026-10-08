@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medsentry/src/models/document.dart';
-import 'package:medsentry/src/models/queue.dart';
 import 'package:medsentry/src/providers/theme_provider.dart';
 import 'package:medsentry/src/widgets/status_badge.dart';
 
@@ -27,16 +26,6 @@ void main() {
       await tester.pumpWidget(createTestWidget(StatusBadge.pending(text: 'In Review')));
       expect(find.text('In Review'), findsOneWidget);
       expect(find.byIcon(Icons.schedule_outlined), findsOneWidget);
-    });
-
-    testWidgets('renders fromQueueStatus correctly', (tester) async {
-      await tester.pumpWidget(createTestWidget(StatusBadge.fromQueueStatus(QueueStatus.waiting)));
-      expect(find.text('Waiting'), findsOneWidget);
-    });
-
-    testWidgets('renders fromPriority correctly', (tester) async {
-      await tester.pumpWidget(createTestWidget(StatusBadge.fromPriority(Priority.emergency)));
-      expect(find.text('Emergency'), findsOneWidget);
     });
 
     testWidgets('renders fromDocumentStatus correctly', (tester) async {

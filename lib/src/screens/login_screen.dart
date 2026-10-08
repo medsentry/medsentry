@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/biometric_auth/biometric_auth.dart';
+import '../widgets/system_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final bool locked;
@@ -392,18 +393,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            width: isTall ? 36 : 30,
-            height: isTall ? 36 : 30,
-            decoration: BoxDecoration(
-              color: primary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.local_hospital,
-              color: Colors.white,
-              size: isTall ? 22 : 18,
-            ),
+          SystemLogo(
+            dataUri: settings.logoDataUri,
+            size: isTall ? 36 : 30,
+            backgroundColor: primary,
+            iconColor: Colors.white,
+            iconSize: isTall ? 22 : 18,
           ),
           const SizedBox(width: 10),
           Text(
@@ -495,18 +490,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: isTall ? 40 : 34,
-              height: isTall ? 40 : 34,
-              decoration: BoxDecoration(
-                color: primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.local_hospital,
-                color: Colors.white,
-                size: isTall ? 24 : 20,
-              ),
+            SystemLogo(
+              dataUri: settings.logoDataUri,
+              size: isTall ? 40 : 34,
+              backgroundColor: primary,
+              iconColor: Colors.white,
+              iconSize: isTall ? 24 : 20,
             ),
             const SizedBox(width: 12),
             Column(

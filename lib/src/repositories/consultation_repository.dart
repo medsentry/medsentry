@@ -15,7 +15,6 @@ class ConsultationRepository {
   /// Create a new consultation (SOAP note)
   Future<Consultation> createConsultation({
     required String patientId,
-    String? queueId,
     required String subjective,
     required String objective,
     required String assessment,
@@ -29,7 +28,6 @@ class ConsultationRepository {
     final consultation = Consultation(
       id: id,
       patientId: patientId,
-      queueId: queueId,
       subjective: subjective,
       objective: objective,
       assessment: assessment,
@@ -70,11 +68,6 @@ class ConsultationRepository {
     return await _db.getConsultationsForPatient(patientId);
   }
 
-  /// Get consultation by queue ID
-  Future<Consultation?> getConsultationByQueueId(String queueId) async {
-    return await _db.getConsultationByQueueId(queueId);
-  }
-
   /// Update an existing consultation
   Future<Consultation> updateConsultation({
     required String id,
@@ -99,7 +92,6 @@ class ConsultationRepository {
     final updated = Consultation(
       id: existing.id,
       patientId: existing.patientId,
-      queueId: existing.queueId,
       doctorId: existing.doctorId,
       consultationDate: existing.consultationDate,
       subjective: nullable('subjective', subjective, existing.subjective),

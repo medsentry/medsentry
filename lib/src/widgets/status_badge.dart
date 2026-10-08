@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/app_design_tokens.dart';
 import '../models/document.dart';
-import '../models/queue.dart';
 import '../utils/context_extensions.dart';
 
 enum BadgeStatus {
@@ -14,12 +13,13 @@ enum BadgeStatus {
 
 /// Standardized Healthcare Status Badge for MedSentry EMR.
 /// Guarantees consistent semantic color, legible typography, and icon indicators
-/// across queue, patients, staff, clinics, and documents.
+/// across patients, staff, clinics, and documents.
 class StatusBadge extends StatelessWidget {
   final String text;
   final BadgeStatus status;
   final IconData? icon;
   final bool isPill;
+  final bool showDot;
 
   const StatusBadge({
     super.key,
@@ -27,127 +27,111 @@ class StatusBadge extends StatelessWidget {
     this.status = BadgeStatus.neutral,
     this.icon,
     this.isPill = true,
+    this.showDot = false,
   });
 
+  /// 🟢 Dot status badge (shadcn style micro status indicator)
+  factory StatusBadge.dot({
+    required String text,
+    BadgeStatus status = BadgeStatus.normal,
+    bool isPill = true,
+  }) {
+    return StatusBadge(
+      text: text,
+      status: status,
+      showDot: true,
+      isPill: isPill,
+    );
+  }
+
   /// 🟢 Active state
-  factory StatusBadge.active({String text = 'Active', IconData? icon}) {
+  factory StatusBadge.active({String text = 'Active', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.normal,
       icon: icon ?? Icons.check_circle_outline,
+      showDot: showDot,
     );
   }
 
   /// ⚪ Inactive / Disabled state
-  factory StatusBadge.inactive({String text = 'Inactive', IconData? icon}) {
+  factory StatusBadge.inactive({String text = 'Inactive', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.neutral,
       icon: icon ?? Icons.remove_circle_outline,
+      showDot: showDot,
     );
   }
 
   /// 🟡 Pending state
-  factory StatusBadge.pending({String text = 'Pending', IconData? icon}) {
+  factory StatusBadge.pending({String text = 'Pending', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.warning,
       icon: icon ?? Icons.schedule_outlined,
+      showDot: showDot,
     );
   }
 
   /// 🟢 Completed state
-  factory StatusBadge.completed({String text = 'Completed', IconData? icon}) {
+  factory StatusBadge.completed({String text = 'Completed', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.normal,
       icon: icon ?? Icons.task_alt,
+      showDot: showDot,
     );
   }
 
   /// 🔴 Cancelled state
-  factory StatusBadge.cancelled({String text = 'Cancelled', IconData? icon}) {
+  factory StatusBadge.cancelled({String text = 'Cancelled', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.critical,
       icon: icon ?? Icons.highlight_off,
+      showDot: showDot,
     );
   }
 
   /// 🔵 In Progress state
-  factory StatusBadge.inProgress({String text = 'In Progress', IconData? icon}) {
+  factory StatusBadge.inProgress({String text = 'In Progress', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.info,
       icon: icon ?? Icons.play_circle_outline,
+      showDot: showDot,
     );
   }
 
   /// 🔵 Info state
-  factory StatusBadge.info({required String text, IconData? icon}) {
+  factory StatusBadge.info({required String text, IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.info,
       icon: icon ?? Icons.info_outline,
+      showDot: showDot,
     );
   }
 
   /// 🟡 Waiting state
-  factory StatusBadge.waiting({String text = 'Waiting', IconData? icon}) {
+  factory StatusBadge.waiting({String text = 'Waiting', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.warning,
       icon: icon ?? Icons.hourglass_empty_outlined,
+      showDot: showDot,
     );
   }
 
   /// 🔴 Urgent / Critical state
-  factory StatusBadge.urgent({String text = 'Urgent', IconData? icon}) {
+  factory StatusBadge.urgent({String text = 'Urgent', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.critical,
       icon: icon ?? Icons.warning_amber_rounded,
+      showDot: showDot,
     );
-  }
-
-  /// Factory for QueueStatus
-  factory StatusBadge.fromQueueStatus(QueueStatus status) {
-    switch (status) {
-      case QueueStatus.waiting:
-        return StatusBadge.waiting(text: 'Waiting');
-      case QueueStatus.inProgress:
-        return StatusBadge.inProgress(text: 'In Progress');
-      case QueueStatus.completed:
-        return StatusBadge.completed(text: 'Completed');
-      case QueueStatus.cancelled:
-        return StatusBadge.cancelled(text: 'Cancelled');
-    }
-  }
-
-  /// Factory for Queue Priority
-  factory StatusBadge.fromPriority(Priority priority) {
-    switch (priority) {
-      case Priority.emergency:
-        return StatusBadge.urgent(text: 'Emergency');
-      case Priority.high:
-        return StatusBadge(
-          text: 'High Priority',
-          status: BadgeStatus.warning,
-          icon: Icons.priority_high,
-        );
-      case Priority.normal:
-        return StatusBadge(
-          text: 'Normal',
-          status: BadgeStatus.info,
-          icon: Icons.person_outline,
-        );
-      case Priority.low:
-        return StatusBadge(
-          text: 'Low',
-          status: BadgeStatus.neutral,
-          icon: Icons.arrow_downward,
-        );
-    }
   }
 
   /// Factory for DocumentStatus
@@ -211,6 +195,16 @@ class StatusBadge extends StatelessWidget {
           if (icon != null) ...[
             Icon(icon, size: AppIconSize.xs, color: textColor),
             const SizedBox(width: 4),
+          ] else if (showDot) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: textColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
           ],
           Text(
             text,
