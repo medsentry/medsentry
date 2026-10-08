@@ -69,6 +69,7 @@ dependencies:
   # Storage & Notifications
   shared_preferences: ^2.5.5
   toastification: ^3.2.0
+  web: ^0.5.1
 
 dev_dependencies:
   flutter_test:

@@ -18,6 +18,10 @@ class SystemSettings {
   final int dataRetentionDays;
   final List<String> serviceTypes;
   final List<String> patientCategories;
+  final String appName;
+  final String appTagline;
+  final String organizationName;
+  final String logoAssetPath;
   final bool queueModuleEnabled;
   final bool certificatesModuleEnabled;
   final bool syncModuleEnabled;
@@ -56,7 +60,11 @@ class SystemSettings {
       'PWD',
       'Pregnant',
     ],
-    this.queueModuleEnabled = true,
+    this.appName = 'MedSentry',
+    this.appTagline = 'Rural Health Unit Information System',
+    this.organizationName = 'RHU Madrid, Surigao del Sur',
+    this.logoAssetPath = 'assets/images/rhu_doctors.png',
+    this.queueModuleEnabled = false,
     this.certificatesModuleEnabled = true,
     this.syncModuleEnabled = true,
     this.updatedAt,
@@ -81,6 +89,10 @@ class SystemSettings {
     int? dataRetentionDays,
     List<String>? serviceTypes,
     List<String>? patientCategories,
+    String? appName,
+    String? appTagline,
+    String? organizationName,
+    String? logoAssetPath,
     bool? queueModuleEnabled,
     bool? certificatesModuleEnabled,
     bool? syncModuleEnabled,
@@ -108,6 +120,10 @@ class SystemSettings {
       dataRetentionDays: dataRetentionDays ?? this.dataRetentionDays,
       serviceTypes: serviceTypes ?? this.serviceTypes,
       patientCategories: patientCategories ?? this.patientCategories,
+      appName: appName ?? this.appName,
+      appTagline: appTagline ?? this.appTagline,
+      organizationName: organizationName ?? this.organizationName,
+      logoAssetPath: logoAssetPath ?? this.logoAssetPath,
       queueModuleEnabled: queueModuleEnabled ?? this.queueModuleEnabled,
       certificatesModuleEnabled:
           certificatesModuleEnabled ?? this.certificatesModuleEnabled,
@@ -140,6 +156,10 @@ class SystemSettings {
     'data_retention_days': dataRetentionDays,
     'service_types': serviceTypes,
     'patient_categories': patientCategories,
+    'app_name': appName,
+    'app_tagline': appTagline,
+    'organization_name': organizationName,
+    'logo_asset_path': logoAssetPath,
     'queue_module_enabled': queueModuleEnabled,
     'certificates_module_enabled': certificatesModuleEnabled,
     'sync_module_enabled': syncModuleEnabled,
@@ -183,7 +203,14 @@ class SystemSettings {
               ?.map((e) => e as String)
               .toList() ??
           const ['Infant', 'Pediatric', 'Adult', 'Senior', 'PWD', 'Pregnant'],
-      queueModuleEnabled: json['queue_module_enabled'] as bool? ?? true,
+      appName: json['app_name'] as String? ?? 'MedSentry',
+      appTagline: json['app_tagline'] as String? ??
+          'Rural Health Unit Information System',
+      organizationName: json['organization_name'] as String? ??
+          'RHU Madrid, Surigao del Sur',
+      logoAssetPath: json['logo_asset_path'] as String? ??
+          'assets/images/rhu_doctors.png',
+      queueModuleEnabled: json['queue_module_enabled'] as bool? ?? false,
       certificatesModuleEnabled:
           json['certificates_module_enabled'] as bool? ?? true,
       syncModuleEnabled: json['sync_module_enabled'] as bool? ?? true,

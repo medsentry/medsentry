@@ -1,12 +1,40 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:typed_data';
 import 'package:share_plus/share_plus.dart';
+import 'package:web/web.dart' as web;
 
 import 'file_exporter_interface.dart';
 
 class WebFileExporter implements FileExporter {
+  String _download({
+    required String filename,
+    required web.Blob blob,
+    required Duration revokeAfter,
+  }) {
+    final objectUrl = web.URL.createObjectURL(blob);
+    final link = web.HTMLAnchorElement()
+      ..href = objectUrl
+      ..download = filename
+      ..style.display = 'none';
+    final body = web.document.body;
+    if (body == null) {
+      web.URL.revokeObjectURL(objectUrl);
+      throw StateError('Cannot download a file because the document is unavailable.');
+    }
+
+    body.append(link);
+    link.click();
+    link.remove();
+    unawaited(
+      Future<void>.delayed(
+        revokeAfter,
+        () => web.URL.revokeObjectURL(objectUrl),
+      ),
+    );
+    return filename;
+  }
+
   @override
   Future<String> exportTextFile({
     required String filename,
@@ -15,21 +43,14 @@ class WebFileExporter implements FileExporter {
     final mimeType = filename.endsWith('.csv')
         ? 'text/csv'
         : 'application/json';
-    final blob = html.Blob([utf8.encode(content)], mimeType);
-    final objectUrl = html.Url.createObjectUrlFromBlob(blob);
-    final downloadLink = html.AnchorElement(href: objectUrl)
-      ..download = filename
-      ..style.display = 'none';
-    html.document.body?.children.add(downloadLink);
-    downloadLink.click();
-    downloadLink.remove();
-    unawaited(
-      Future<void>.delayed(
-        const Duration(seconds: 1),
-        () => html.Url.revokeObjectUrl(objectUrl),
+    return _download(
+      filename: filename,
+      blob: web.Blob(
+        [content.toJS].toJS,
+        web.BlobPropertyBag(type: mimeType),
       ),
+      revokeAfter: const Duration(seconds: 1),
     );
-    return filename;
   }
 
   @override
@@ -39,21 +60,14 @@ class WebFileExporter implements FileExporter {
     String? dialogTitle,
     String mimeType = 'application/pdf',
   }) async {
-    final blob = html.Blob([bytes], mimeType);
-    final objectUrl = html.Url.createObjectUrlFromBlob(blob);
-    final downloadLink = html.AnchorElement(href: objectUrl)
-      ..download = filename
-      ..style.display = 'none';
-    html.document.body?.children.add(downloadLink);
-    downloadLink.click();
-    downloadLink.remove();
-    unawaited(
-      Future<void>.delayed(
-        const Duration(seconds: 2),
-        () => html.Url.revokeObjectUrl(objectUrl),
+    return _download(
+      filename: filename,
+      blob: web.Blob(
+        [bytes.toJS].toJS,
+        web.BlobPropertyBag(type: mimeType),
       ),
+      revokeAfter: const Duration(seconds: 2),
     );
-    return filename;
   }
 
   @override

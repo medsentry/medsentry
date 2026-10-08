@@ -103,7 +103,7 @@
     <div class="loading-title">MedSentry</div>
     <div class="loading-subtitle">Rural Health Management System</div>
     <div class="loading-spinner"></div>
-    <div id="ms-error-display" style="display: none; margin-top: 20px; text-align: center; max-width: 340px;">
+    <div id="ms-error-display" role="alert" aria-live="assertive" style="display: none; margin-top: 20px; text-align: center; max-width: 340px;">
       <p id="ms-error-text" style="color: #DC2626; font-size: 13px; font-weight: 600; margin-bottom: 10px;">Failed to initialize application.</p>
       <button onclick="clearCacheAndReload()" style="padding: 8px 18px; background: #0D9488; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);">Reload MedSentry</button>
     </div>
@@ -113,31 +113,53 @@
     async function clearCacheAndReload() {
       try {
         if ('serviceWorker' in navigator) {
-          var registrations = await navigator.serviceWorker.getRegistrations();
-          for (var i = 0; i < registrations.length; i++) {
-            await registrations[i].unregister();
+          var registration = await navigator.serviceWorker.getRegistration(
+            new URL('./', document.baseURI).href
+          );
+          var workers = registration
+            ? [registration.active, registration.waiting, registration.installing]
+            : [];
+          if (workers.some(function(worker) {
+            return worker && new URL(worker.scriptURL).pathname.endsWith('/sw.js');
+          })) {
+            await registration.unregister();
           }
         }
         if ('caches' in window) {
           var keys = await caches.keys();
           for (var j = 0; j < keys.length; j++) {
-            await caches.delete(keys[j]);
+            if (keys[j].startsWith('medsentry-cache-')) {
+              await caches.delete(keys[j]);
+            }
           }
         }
       } catch (e) {
         console.warn('Cache clearing error:', e);
       }
-      window.location.href = window.location.origin + window.location.pathname + '?v=' + Date.now();
+      window.location.reload();
     }
     window.clearCacheAndReload = clearCacheAndReload;
 
-    // 1. Bulletproof Loader Dismissal System
+    // Keep the shell visible until Flutter confirms that its first frame rendered.
     var loaderHidden = false;
+    var bootTimeout;
+    function showLoaderError(message) {
+      if (loaderHidden) return;
+      var loader = document.getElementById('loading-container');
+      var errBox = document.getElementById('ms-error-display');
+      var errText = document.getElementById('ms-error-text');
+      var spinner = loader && loader.querySelector('.loading-spinner');
+      if (spinner) spinner.style.display = 'none';
+      if (errText) errText.textContent = message;
+      if (errBox) errBox.style.display = 'block';
+    }
+
     function hideMedSentryLoader() {
       if (loaderHidden) return;
       var loader = document.getElementById('loading-container');
       if (loader) {
         loaderHidden = true;
+        window.clearTimeout(bootTimeout);
         loader.style.opacity = '0';
         loader.style.pointerEvents = 'none';
         setTimeout(function() {
@@ -150,73 +172,21 @@
 
     window.hideMedSentryLoader = hideMedSentryLoader;
     window.addEventListener('flutter-first-frame', hideMedSentryLoader);
+    bootTimeout = window.setTimeout(function() {
+      showLoaderError('MedSentry is taking longer than expected to start. Check your connection and reload.');
+    }, 45000);
 
-    // Watch for Flutter engine creating the view in the DOM
-    var domObserver = new MutationObserver(function(mutations) {
-      for (var i = 0; i < mutations.length; i++) {
-        for (var j = 0; j < mutations[i].addedNodes.length; j++) {
-          var node = mutations[i].addedNodes[j];
-          if (node.nodeType === 1) {
-            var tag = (node.tagName || '').toLowerCase();
-            if (tag === 'flutter-view' || tag === 'flt-glass-pane' || (node.querySelector && node.querySelector('flutter-view, flt-glass-pane'))) {
-              domObserver.disconnect();
-              requestAnimationFrame(function() {
-                setTimeout(hideMedSentryLoader, 80);
-              });
-              return;
-            }
-          }
-        }
-      }
-    });
-    domObserver.observe(document.body, { childList: true, subtree: true });
-
-    // Pre-bootstrap Error Boundary: Prevent silent white screen on fatal module or network errors
+    // Report startup failures without deleting unrelated origin caches or workers.
     window.addEventListener('error', function(e) {
       if (loaderHidden) return;
-      var isSyntaxErr = e.message && (e.message.includes('Unexpected token') || e.message.includes('SyntaxError'));
-      if (isSyntaxErr) {
-        console.warn('[MedSentry] Stale cache corruption detected. Purging service worker and caches...');
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(regs) {
-            for (var r of regs) r.unregister();
-          });
-        }
-        if ('caches' in window) {
-          caches.keys().then(function(names) {
-            for (var name of names) caches.delete(name);
-          });
-        }
-      }
-      var loader = document.getElementById('loading-container');
-      if (loader) {
-        var errBox = document.getElementById('ms-error-display');
-        var errText = document.getElementById('ms-error-text');
-        var spinner = loader.querySelector('.loading-spinner');
-        if (errBox && errText) {
-          if (spinner) spinner.style.display = 'none';
-          errText.textContent = isSyntaxErr
-            ? 'Stale browser cache detected. Click below to clear cache and reload.'
-            : (e.message ? ('Error: ' + e.message) : 'Failed to initialize application modules. Please reload.');
-          errBox.style.display = 'block';
-        }
-      }
+      console.error('[MedSentry] Startup error:', e.error || e.message);
+      showLoaderError('MedSentry could not start. Reload the app; if the problem continues, clear its cached app files.');
     });
 
     window.addEventListener('unhandledrejection', function(e) {
       if (loaderHidden) return;
-      var loader = document.getElementById('loading-container');
-      if (loader) {
-        var errBox = document.getElementById('ms-error-display');
-        var errText = document.getElementById('ms-error-text');
-        var spinner = loader.querySelector('.loading-spinner');
-        if (errBox && errText) {
-          if (spinner) spinner.style.display = 'none';
-          var reason = e.reason ? (e.reason.message || e.reason.toString()) : '';
-          errText.textContent = reason ? ('Initialization error: ' + reason) : 'Failed to load application modules. Please reload.';
-          errBox.style.display = 'block';
-        }
-      }
+      console.error('[MedSentry] Startup promise rejected:', e.reason);
+      showLoaderError('MedSentry could not finish starting. Check your connection and reload.');
     });
 
     // 2. PWA Install Prompt Bridge
@@ -269,7 +239,7 @@
           return;
         }
 
-        navigator.serviceWorker.register('sw.js', { scope: './' })
+        navigator.serviceWorker.register(new URL('sw.js', document.baseURI), { scope: './' })
           .then(function(registration) {
             console.log('[MedSentry PWA] Offline Service Worker registered:', registration.scope);
 
@@ -288,14 +258,14 @@
           .catch(function(err) {
             console.warn('[MedSentry PWA] Service Worker registration skipped/failed:', err);
           });
-
-        navigator.serviceWorker.addEventListener('controllerchange', function() {
-          console.log('[MedSentry PWA] Controller updated. Auto-reloading with latest version.');
-          window.location.reload();
-        });
       });
     }
   </script>
-  <script src="flutter_bootstrap.js?v=1.0.5" async></script>
+  <script src="flutter_bootstrap.js?v=1.0.5" async onerror="showMedSentryBootstrapError()"></script>
+  <script>
+    window.showMedSentryBootstrapError = function() {
+      showLoaderError('MedSentry could not download its startup files. Check your connection and reload.');
+    };
+  </script>
 </body>
 </html>

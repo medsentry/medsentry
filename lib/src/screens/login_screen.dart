@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/models.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/biometric_auth/biometric_auth.dart';
@@ -381,6 +382,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primary;
+    final settings = ref.watch(systemSettingsProvider).valueOrNull ??
+        const SystemSettings();
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -404,7 +407,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           const SizedBox(width: 10),
           Text(
-            'MedSentry',
+            settings.appName,
             style: TextStyle(
               fontSize: isTall ? 20 : 17,
               fontWeight: FontWeight.w800,
@@ -450,13 +453,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildIllustrationPanel(BuildContext context) {
+    final settings = ref.watch(systemSettingsProvider).valueOrNull ??
+        const SystemSettings();
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Image.asset(
-              'assets/images/rhu_doctors.png',
+              settings.logoAssetPath,
               fit: BoxFit.contain,
               width: constraints.maxWidth,
               height: constraints.maxHeight,
@@ -478,6 +484,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final primary = theme.colorScheme.primary;
     final fieldBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final settings = ref.watch(systemSettingsProvider).valueOrNull ??
+        const SystemSettings();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -505,7 +513,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'MedSentry',
+                  settings.appName,
                   style:
                       (isTall
                               ? theme.textTheme.headlineSmall
@@ -517,7 +525,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                 ),
                 Text(
-                  'RHU Madrid, Surigao del Sur',
+                  settings.organizationName,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                     fontWeight: FontWeight.w600,
@@ -941,6 +949,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }) {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+    final settings = ref.watch(systemSettingsProvider).valueOrNull ??
+        const SystemSettings();
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -952,7 +962,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         children: [
           Flexible(
             child: Text(
-              '(C) 2026 RHU Madrid, Surigao del Sur. All Rights are Reserved',
+              '(C) 2026 ${settings.organizationName}. All Rights are Reserved',
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: mutedColor,
@@ -973,7 +983,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    'Protected access • Activity is audited • MedSentry v1.0.0',
+                    'Protected access • Activity is audited • ${settings.appName} v1.0.0',
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: mutedColor,

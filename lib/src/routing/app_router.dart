@@ -35,10 +35,12 @@ bool _canAccessRoute(User user, String path) {
   if (path.startsWith('/reports')) return user.canGenerateReports;
   if (path.startsWith('/documents')) return user.canManageDocuments;
   if (path.startsWith('/patients')) return user.canAccessPatientRecords;
-  if (path.startsWith('/queue/') && path.endsWith('/soap')) {
-    return user.canConsult;
+  if (path.startsWith('/queue')) {
+    if (path.startsWith('/queue/') && path.endsWith('/soap')) {
+      return user.canConsult;
+    }
+    return user.canViewQueue;
   }
-  if (path.startsWith('/queue')) return user.canViewQueue;
   return true;
 }
 
@@ -73,10 +75,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return currentUser.homePath;
         }
 
-        if (currentUser != null &&
-            !isLoginRoute &&
-            !_canAccessRoute(currentUser, state.uri.path)) {
-          return currentUser.homePath;
+        if (currentUser != null && !isLoginRoute) {
+          final settings = await ref.read(systemSettingsProvider.future);
+          final targetPath = state.uri.path;
+
+          final moduleAccessAllowed = !((targetPath.startsWith('/queue') &&
+                  !settings.queueModuleEnabled) ||
+              (targetPath.startsWith('/certificates') &&
+                  !settings.certificatesModuleEnabled) ||
+              (targetPath.startsWith('/sync') && !settings.syncModuleEnabled));
+
+          if (!moduleAccessAllowed || !_canAccessRoute(currentUser, targetPath)) {
+            return currentUser.homePath;
+          }
         }
 
         return null;
