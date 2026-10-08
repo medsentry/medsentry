@@ -29,7 +29,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final currentUser = ref.watch(currentUserProvider);
 
     return ResponsiveContentContainer(
-      maxWidth: 880,
+      maxWidth: 1280,
       padding: EdgeInsets.zero,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
