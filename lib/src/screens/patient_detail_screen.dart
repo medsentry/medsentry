@@ -701,7 +701,7 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
       text: patient.emergencyContactNumber ?? '',
     );
     _philHealthController = TextEditingController(
-      text: patient.philHealthNumber ?? '',
+      text: (patient.philHealthNumber ?? '').replaceAll(RegExp(r'[^0-9]'), ''),
     );
     _allergiesController = TextEditingController(text: patient.allergies ?? '');
     _medicalHistoryController = TextEditingController(
@@ -1333,6 +1333,11 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
       return;
     }
 
+    final philHealthNumber = _philHealthController.text.replaceAll(
+      RegExp(r'[^0-9]'),
+      '',
+    );
+
     setState(() => _isSaving = true);
 
     try {
@@ -1342,7 +1347,7 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
         if (_suffix == 'None') 'suffix',
         if (email.isEmpty) 'email',
         if (rawContact.isEmpty) 'contactNumber',
-        if (_philHealthController.text.trim().isEmpty) 'philHealthNumber',
+        if (philHealthNumber.isEmpty) 'philHealthNumber',
         if (_bloodType == null) 'bloodType',
         if (_allergiesController.text.trim().isEmpty) 'allergies',
         if (_medicalHistoryController.text.trim().isEmpty) 'medicalHistory',
@@ -1369,9 +1374,9 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
             city: _municipality,
             province: widget.patient.province ?? 'Surigao del Sur',
             zipCode: _zipCodeController.text.trim(),
-            philHealthNumber: _philHealthController.text.trim().isEmpty
+            philHealthNumber: philHealthNumber.isEmpty
                 ? null
-                : _philHealthController.text.trim(),
+                : philHealthNumber,
             bloodType: _bloodType,
             emergencyContactName: _emergencyNameController.text.trim(),
             emergencyContactNumber: formatPhilippinePhone(emergencyNormalized),
