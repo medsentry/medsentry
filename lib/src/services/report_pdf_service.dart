@@ -651,9 +651,11 @@ class ReportPdfService {
           },
           data: patientRecords.asMap().entries.map((entry) {
             final item = entry.value as Map<String, dynamic>;
-            final regDate = item['registered_at'] != null
-                ? DateFormat('MMMM dd, yyyy').format(DateTime.parse(item['registered_at']))
-                : '-';
+            final rawDate = item['registered_at'];
+            final parsedDate = rawDate != null ? DateTime.tryParse(rawDate.toString()) : null;
+            final regDate = parsedDate != null
+                ? DateFormat('MMMM dd, yyyy').format(parsedDate)
+                : (rawDate?.toString() ?? '-');
             return [
               '${entry.key + 1}',
               item['id'] ?? '-',

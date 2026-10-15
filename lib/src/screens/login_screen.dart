@@ -150,10 +150,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             title: 'Authentication Failed',
             message: 'Invalid PIN. Please try again.',
           );
-          setState(() {
-            _error = 'Invalid PIN. Please try again.';
-            _isLoading = false;
-          });
+          if (mounted) {
+            setState(() {
+              _error = 'Invalid PIN. Please try again.';
+              _isLoading = false;
+            });
+          }
         }
       } else {
         final user = await authRepo.login(
@@ -174,18 +176,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             title: 'Authentication Failed',
             message: 'Invalid email or password.',
           );
-          setState(() {
-            _error = 'Invalid email or password.';
-            _isLoading = false;
-          });
+          if (mounted) {
+            setState(() {
+              _error = 'Invalid email or password.';
+              _isLoading = false;
+            });
+          }
         }
       }
     } catch (e) {
       AppNotification.error(title: 'Login Error', message: 'Login failed: $e');
-      setState(() {
-        _error = 'Login failed: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Login failed: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -232,19 +238,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           });
         }
       } else {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       AppNotification.error(
         title: 'Authentication Error',
         message: 'Biometric authentication error: $e',
       );
-      setState(() {
-        _error = 'Biometric authentication error: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Biometric authentication error: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 

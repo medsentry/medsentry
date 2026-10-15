@@ -745,7 +745,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return AppCard(
       variant: AppCardVariant.elevated,
-      borderColor: color.withValues(alpha: 0.3),
+      borderSide: BorderSide(color: color.withValues(alpha: 0.3)),
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [

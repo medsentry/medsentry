@@ -181,13 +181,13 @@ class User {
       pinEnabled: json['pin_enabled'] as bool? ?? false,
       pinHash: json['pin_hash'] as String?,
       lastLoginAt: json['last_login_at'] != null
-          ? DateTime.parse(json['last_login_at'] as String)
+          ? DateTime.tryParse(json['last_login_at'] as String)
           : null,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       syncStatus: json['sync_status'] as int?,
     );
@@ -229,7 +229,8 @@ class AuthSession {
       userId: json['user_id'] as String,
       accessToken: json['access_token'] as String,
       refreshToken: json['refresh_token'] as String,
-      expiresAt: DateTime.parse(json['expires_at'] as String),
+      expiresAt: DateTime.tryParse(json['expires_at']?.toString() ?? '') ??
+          DateTime.now().add(const Duration(hours: 1)),
     );
   }
 }

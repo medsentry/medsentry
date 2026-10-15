@@ -34,12 +34,13 @@ class GeneratedReport {
       id: json['id'] as String,
       title: json['title'] as String,
       type: json['type'] as String,
-      generatedAt: DateTime.parse(json['generated_at'] as String),
+      generatedAt: DateTime.tryParse(json['generated_at']?.toString() ?? '') ??
+          DateTime.now(),
       startDate: json['start_date'] != null
-          ? DateTime.parse(json['start_date'] as String)
+          ? DateTime.tryParse(json['start_date'] as String)
           : null,
       endDate: json['end_date'] != null
-          ? DateTime.parse(json['end_date'] as String)
+          ? DateTime.tryParse(json['end_date'] as String)
           : null,
       filePath: json['file_path'] as String?,
     );

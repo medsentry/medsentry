@@ -279,7 +279,74 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
     ],
-    errorBuilder: (context, state) =>
-        Scaffold(body: Center(child: Text('Error: ${state.error}'))),
+    errorBuilder: (context, state) => Scaffold(
+      backgroundColor: const Color(0xFF080909),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF87171).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  size: 36,
+                  color: Color(0xFFF87171),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Page Not Found or Navigation Error',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFF3F4F6),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.error?.toString() ??
+                    'The requested page could not be located.',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF9CA3AF),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () {
+                  final user = ref.read(currentUserProvider);
+                  context.go(user?.homePath ?? '/login');
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF34D399),
+                  foregroundColor: const Color(0xFF080909),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.home_outlined, size: 18),
+                label: const Text(
+                  'Return to Application',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 });

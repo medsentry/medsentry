@@ -1122,6 +1122,7 @@ class _PatientRegistrationWizardState
   int _currentStep = 0;
   final int _totalSteps = 4;
   bool _showValidationErrors = false;
+  bool _isSubmitting = false;
 
   // Step 1: Personal Information
   final _firstNameController = TextEditingController();
@@ -1272,11 +1273,14 @@ class _PatientRegistrationWizardState
   }
 
   Future<void> _submit() async {
+    if (_isSubmitting) return;
     try {
       if (!_isStepValid()) {
         setState(() => _showValidationErrors = true);
         return;
       }
+
+      setState(() => _isSubmitting = true);
 
       final repository = ref.read(patientRepositoryProvider);
       final currentUser = ref.read(currentUserProvider);
@@ -1362,6 +1366,10 @@ class _PatientRegistrationWizardState
         title: 'Registration Error',
         message: 'Failed to save patient: $e',
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -1617,10 +1625,10 @@ class _PatientRegistrationWizardState
           )
         else
           AppDialogAction(
-            label: 'Register Patient',
+            label: _isSubmitting ? 'Registering...' : 'Register Patient',
             isPrimary: true,
-            icon: Icons.check,
-            onPressed: _submit,
+            icon: _isSubmitting ? null : Icons.check,
+            onPressed: _isSubmitting ? null : _submit,
           ),
       ],
     );
@@ -2194,7 +2202,11 @@ class _PatientRegistrationWizardState
           _buildReadOnlyField(
             label: 'Patient Category',
             value: _patientCategory != null
-                ? PatientCategory.values.byName(_patientCategory!).displayName
+                ? (PatientCategory.values
+                        .where((e) => e.name == _patientCategory)
+                        .firstOrNull
+                        ?.displayName ??
+                    _patientCategory!)
                 : 'Select date of birth first',
             icon: Icons.category_outlined,
           ),

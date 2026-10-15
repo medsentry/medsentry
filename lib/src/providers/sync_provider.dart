@@ -688,6 +688,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
       final user = users[userId];
       final timestamp = row['occurred_at'] ?? row['timestamp'];
       if (timestamp is! String) continue;
+      final parsedTimestamp = DateTime.tryParse(timestamp);
+      if (parsedTimestamp == null) continue;
       await db.insertAuditLog(
         AuditLog(
           id: id,
@@ -700,7 +702,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
           patientId: row['patient_id'] as String?,
           oldValues: _auditJsonValue(row['old_values']),
           newValues: _auditJsonValue(row['new_values']),
-          timestamp: DateTime.parse(timestamp),
+          timestamp: parsedTimestamp,
           isSynced: true,
           syncStatus: _synced,
         ),
@@ -835,7 +837,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
         : settingsQuery.eq('clinic_id', clinicId);
     final remote = await settingsQuery.maybeSingle();
     final remoteUpdatedAt = remote?['updated_at'] != null
-        ? DateTime.parse(remote!['updated_at'] as String)
+        ? DateTime.tryParse(remote!['updated_at'] as String)
         : null;
 
     // Push local settings to server when: no remote exists, OR local is newer.

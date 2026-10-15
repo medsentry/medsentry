@@ -215,7 +215,7 @@ class SystemSettings {
           json['certificates_module_enabled'] as bool? ?? true,
       syncModuleEnabled: json['sync_module_enabled'] as bool? ?? true,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
     );
   }

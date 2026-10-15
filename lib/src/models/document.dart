@@ -148,11 +148,17 @@ class MedicalDocument {
   }
 
   factory MedicalDocument.fromJson(Map<String, dynamic> json) {
+    final rawType = json['type'] as String?;
+    final rawStatus = json['status'] as String?;
+
     return MedicalDocument(
       id: json['id'] as String,
       patientId: json['patient_id'] as String,
-      type: DocumentType.values.byName(json['type'] as String),
-      title: json['title'] as String,
+      type: DocumentType.values.firstWhere(
+        (e) => e.name.toLowerCase() == (rawType ?? '').trim().toLowerCase(),
+        orElse: () => DocumentType.other,
+      ),
+      title: json['title'] as String? ?? 'Untitled Document',
       description: json['description'] as String?,
       filePath: json['file_path'] as String? ?? '',
       fileUrl: json['file_url'] as String?,
@@ -160,19 +166,22 @@ class MedicalDocument {
       mimeType: json['mime_type'] as String?,
       scannedBy: json['scanned_by'] as String?,
       scanDate: json['scan_date'] != null
-          ? DateTime.parse(json['scan_date'] as String)
+          ? DateTime.tryParse(json['scan_date'] as String)
           : null,
       verifiedBy: json['verified_by'] as String?,
       verifiedDate: json['verified_date'] != null
-          ? DateTime.parse(json['verified_date'] as String)
+          ? DateTime.tryParse(json['verified_date'] as String)
           : null,
-      status: DocumentStatus.values.byName(json['status'] as String),
+      status: DocumentStatus.values.firstWhere(
+        (e) => e.name.toLowerCase() == (rawStatus ?? '').trim().toLowerCase(),
+        orElse: () => DocumentStatus.pending,
+      ),
       notes: json['notes'] as String?,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       syncStatus: json['sync_status'] as int?,
     );

@@ -103,7 +103,7 @@ class Consultation {
       patientId: json['patient_id'] as String,
       doctorId: json['doctor_id'] as String?,
       consultationDate: json['consultation_date'] != null
-          ? DateTime.parse(json['consultation_date'] as String)
+          ? DateTime.tryParse(json['consultation_date'] as String)
           : null,
       subjective: json['subjective'] as String?,
       objective: json['objective'] as String?,
@@ -116,10 +116,10 @@ class Consultation {
       notes: json['notes'] as String?,
       createdBy: json['created_by'] as String?,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       syncStatus: json['sync_status'] as int?,
     );
@@ -227,13 +227,13 @@ class Prescription {
       frequency: json['frequency'] as String,
       duration: json['duration'] as String,
       instructions: json['instructions'] as String?,
-      quantity: json['quantity'] as int,
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       notes: json['notes'] as String?,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       syncStatus: json['sync_status'] as int?,
     );
@@ -340,18 +340,18 @@ class LabOrder {
       instructions: json['instructions'] as String?,
       status: json['status'] as String? ?? 'pending',
       requestedDate: json['requested_date'] != null
-          ? DateTime.parse(json['requested_date'] as String)
+          ? DateTime.tryParse(json['requested_date'] as String)
           : null,
       completedDate: json['completed_date'] != null
-          ? DateTime.parse(json['completed_date'] as String)
+          ? DateTime.tryParse(json['completed_date'] as String)
           : null,
       results: json['results'] as String?,
       notes: json['notes'] as String?,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       syncStatus: json['sync_status'] as int?,
     );

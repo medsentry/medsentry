@@ -32,27 +32,45 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
   }
 
   Future<void> _startSync() async {
+    if (_isSyncing) return;
     setState(() {
       _isSyncing = true;
       _lastMessage = null;
     });
 
-    final result = await ref.read(syncServiceProvider).startSync();
-    await _loadStats();
-    ref.invalidate(extendedDashboardStatsProvider);
+    try {
+      final result = await ref.read(syncServiceProvider).startSync();
+      await _loadStats();
+      ref.invalidate(extendedDashboardStatsProvider);
 
-    if (mounted) {
-      setState(() {
-        _isSyncing = false;
-        _lastMessage = result.message;
-      });
-      if (result.success) {
-        AppNotification.success(
-          title: 'Sync Complete',
-          message: result.message,
+      if (mounted) {
+        setState(() {
+          _lastMessage = result.message;
+        });
+        if (result.success) {
+          AppNotification.success(
+            title: 'Sync Complete',
+            message: result.message,
+          );
+        } else {
+          AppNotification.error(title: 'Sync Failed', message: result.message);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _lastMessage = 'Sync error: $e';
+        });
+        AppNotification.error(
+          title: 'Sync Failed',
+          message: 'An unexpected error occurred during sync: $e',
         );
-      } else {
-        AppNotification.error(title: 'Sync Failed', message: result.message);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
       }
     }
   }

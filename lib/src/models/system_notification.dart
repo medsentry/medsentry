@@ -71,17 +71,27 @@ class SystemNotification {
         'created_at': createdAt.toIso8601String(),
       };
 
+  static T _safeEnumValue<T extends Enum>(List<T> values, dynamic value, T fallback) {
+    if (value is String) {
+      final needle = value.trim().toLowerCase();
+      for (final e in values) {
+        if (e.name.toLowerCase() == needle) return e;
+      }
+    }
+    return fallback;
+  }
+
   factory SystemNotification.fromJson(Map<String, dynamic> json) {
     return SystemNotification(
       id: json['id'] as String,
-      type: NotificationType.values.byName(json['type'] as String),
-      target: NotificationTarget.values.byName(json['target'] as String),
-      priority: NotificationPriority.values.byName(json['priority'] as String),
+      type: _safeEnumValue(NotificationType.values, json['type'], NotificationType.general),
+      target: _safeEnumValue(NotificationTarget.values, json['target'], NotificationTarget.all),
+      priority: _safeEnumValue(NotificationPriority.values, json['priority'], NotificationPriority.normal),
       title: json['title'] as String,
       message: json['message'] as String,
       actionRoute: json['action_route'] as String?,
       isRead: json['is_read'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 }

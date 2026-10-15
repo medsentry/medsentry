@@ -328,6 +328,20 @@ class QueueItem {
     };
   }
 
+  static T _safeEnumValue<T extends Enum?>(
+    List<T> values,
+    dynamic value,
+    T fallback,
+  ) {
+  if (value is String) {
+    final needle = value.trim().toLowerCase();
+    for (final e in values) {
+      if (e != null && e.name.toLowerCase() == needle) return e;
+    }
+  }
+  return fallback;
+}
+
   factory QueueItem.fromJson(Map<String, dynamic> json) {
     return QueueItem(
       id: json['id'] as String,
@@ -337,14 +351,15 @@ class QueueItem {
       isPregnant: json['is_pregnant'] as bool? ?? false,
       isPwd: json['is_pwd'] as bool? ?? false,
       isInfant: json['is_infant'] as bool? ?? false,
-      arrivalTime: DateTime.parse(json['arrival_time'] as String),
+      arrivalTime: DateTime.tryParse(json['arrival_time']?.toString() ?? '') ??
+          DateTime.now(),
       startTime: json['start_time'] != null
-          ? DateTime.parse(json['start_time'] as String)
+          ? DateTime.tryParse(json['start_time'] as String)
           : null,
       endTime: json['end_time'] != null
-          ? DateTime.parse(json['end_time'] as String)
+          ? DateTime.tryParse(json['end_time'] as String)
           : null,
-      status: QueueStatus.values.byName(json['status'] as String),
+      status: _safeEnumValue(QueueStatus.values, json['status'], QueueStatus.waiting),
       nurseId: json['nurse_id'] as String?,
       doctorId: json['doctor_id'] as String?,
       complaint: json['complaint'] as String?,
@@ -376,19 +391,20 @@ class QueueItem {
           : null,
       redFlags: json['red_flags'] != null
           ? (json['red_flags'] as List<dynamic>)
-                .map((f) => RedFlag.values.byName(f as String))
+                .map((f) => _safeEnumValue<RedFlag?>(RedFlag.values, f, null))
+                .whereType<RedFlag>()
                 .toList()
           : [],
-      painScale: json['pain_scale'] as int?,
+      painScale: (json['pain_scale'] as num?)?.toInt(),
       isEssentiallyNormal: json['is_essentially_normal'] as bool? ?? false,
-      priority: Priority.values.byName(json['priority'] as String),
+      priority: _safeEnumValue(Priority.values, json['priority'], Priority.normal),
       roomNumber: json['room_number'] as String?,
       bmi: json['bmi'] != null ? (json['bmi'] as num).toDouble() : null,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       syncStatus: json['sync_status'] as int?,
     );

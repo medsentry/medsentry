@@ -1073,7 +1073,7 @@ class ClinicalRanges {
   static double? calculateBMI(double? weightKg, double? heightCm) {
     if (weightKg == null || heightCm == null || heightCm <= 0) return null;
     final heightM = heightCm / 100.0;
-    return double.parse((weightKg / (heightM * heightM)).toStringAsFixed(1));
+    return double.tryParse((weightKg / (heightM * heightM)).toStringAsFixed(1));
   }
 
   static String? classifyBMI(double? bmi) {

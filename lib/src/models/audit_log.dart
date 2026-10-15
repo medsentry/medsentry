@@ -161,12 +161,17 @@ class AuditLog {
   }
 
   factory AuditLog.fromJson(Map<String, dynamic> json) {
+    final rawAction = json['action'] as String?;
+
     return AuditLog(
       id: json['id'] as String,
       userId: json['user_id'] as String,
       userName: json['user_name'] as String?,
       userRole: json['user_role'] as String?,
-      action: AuditAction.values.byName(json['action'] as String),
+      action: AuditAction.values.firstWhere(
+        (e) => e.name.toLowerCase() == (rawAction ?? '').trim().toLowerCase(),
+        orElse: () => AuditAction.read,
+      ),
       entityType: json['entity_type'] as String,
       entityId: json['entity_id'] as String?,
       patientId: json['patient_id'] as String?,
@@ -176,10 +181,12 @@ class AuditLog {
       newValues: json['new_values'] as String?,
       ipAddress: json['ip_address'] as String?,
       deviceInfo: json['device_info'] as String?,
-      timestamp: DateTime.parse(json['timestamp'] as String),
+      timestamp: json['timestamp'] != null
+          ? (DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now())
+          : DateTime.now(),
       isSynced: json['is_synced'] as bool? ?? false,
       syncedAt: json['synced_at'] != null
-          ? DateTime.parse(json['synced_at'] as String)
+          ? DateTime.tryParse(json['synced_at'] as String)
           : null,
       syncStatus: json['sync_status'] as int?,
     );

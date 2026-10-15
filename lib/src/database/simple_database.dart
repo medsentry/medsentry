@@ -133,7 +133,10 @@ class SimpleDatabase {
       final id = item['record_id'];
       final deletedAt = item['deleted_at'];
       if (table is String && id is String && deletedAt is String) {
-        _syncDeletes['$table|$id'] = DateTime.parse(deletedAt);
+        final parsed = DateTime.tryParse(deletedAt);
+        if (parsed != null) {
+          _syncDeletes['$table|$id'] = parsed;
+        }
       }
     }
   }
@@ -161,11 +164,14 @@ class SimpleDatabase {
     target
       ..clear()
       ..addEntries(
-        raw.whereType<Map>().map((item) {
-          final entity = fromJson(item.cast<String, dynamic>());
-          final id = item['id'] as String;
-          return MapEntry(id, entity);
-        }),
+        raw
+            .whereType<Map>()
+            .where((item) => item['id'] is String && (item['id'] as String).isNotEmpty)
+            .map((item) {
+              final entity = fromJson(item.cast<String, dynamic>());
+              final id = item['id'] as String;
+              return MapEntry(id, entity);
+            }),
       );
   }
 
@@ -1249,7 +1255,7 @@ class SimpleDatabase {
       patientId: raw['patient_id'] as String?,
       oldValues: _remoteJsonString(raw['old_values']),
       newValues: _remoteJsonString(raw['new_values']),
-      timestamp: DateTime.parse(occurredAt),
+      timestamp: DateTime.tryParse(occurredAt) ?? DateTime.now(),
       isSynced: true,
       syncStatus: 0,
     );

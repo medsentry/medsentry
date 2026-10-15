@@ -453,6 +453,15 @@ class Patient {
     };
   }
 
+  static T? _safeEnumValue<T extends Enum>(List<T> values, String? raw) {
+    if (raw == null) return null;
+    final clean = raw.trim().toLowerCase();
+    for (final val in values) {
+      if (val.name.toLowerCase() == clean) return val;
+    }
+    return null;
+  }
+
   factory Patient.fromJson(Map<String, dynamic> json) {
     return Patient(
       id: json['id'] as String,
@@ -461,7 +470,7 @@ class Patient {
       middleName: json['middle_name'] as String?,
       suffix: json['suffix'] as String?,
       dateOfBirth: json['date_of_birth'] != null
-          ? DateTime.parse(json['date_of_birth'] as String)
+          ? DateTime.tryParse(json['date_of_birth'] as String)
           : null,
       gender: json['gender'] as String?,
       civilStatus: json['civil_status'] as String?,
@@ -476,7 +485,8 @@ class Patient {
       zipCode: json['zip_code'] as String?,
       philHealthNumber: json['philhealth_number'] as String?,
       philHealthCategory: json['philhealth_category'] != null
-          ? PhilHealthCategory.values.byName(
+          ? _safeEnumValue(
+              PhilHealthCategory.values,
               json['philhealth_category'] as String,
             )
           : null,
@@ -494,10 +504,10 @@ class Patient {
       is4PsBeneficiary: json['is_4ps_beneficiary'] as bool? ?? false,
       householdIdNumber: json['household_id_number'] as String?,
       waterSource: json['water_source'] != null
-          ? WaterSourceLevel.values.byName(json['water_source'] as String)
+          ? _safeEnumValue(WaterSourceLevel.values, json['water_source'] as String)
           : null,
       toiletFacility: json['toilet_facility'] != null
-          ? ToiletFacilityType.values.byName(json['toilet_facility'] as String)
+          ? _safeEnumValue(ToiletFacilityType.values, json['toilet_facility'] as String)
           : null,
       height: json['height'] != null
           ? (json['height'] as num).toDouble()
@@ -508,22 +518,22 @@ class Patient {
       allergies: json['allergies'] as String?,
       medicalHistory: json['medical_history'] as String?,
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
+          ? DateTime.tryParse(json['updated_at'] as String)
           : null,
       lastVisitDate: json['last_visit_date'] != null
-          ? DateTime.parse(json['last_visit_date'] as String)
+          ? DateTime.tryParse(json['last_visit_date'] as String)
           : null,
       syncStatus: json['sync_status'] as int?,
       syncError: json['sync_error'] as String?,
       category: json['category'] != null
-          ? PatientCategory.values.byName(json['category'] as String)
+          ? _safeEnumValue(PatientCategory.values, json['category'] as String)
           : null,
       isArchived: json['is_archived'] as bool? ?? false,
       archivedAt: json['archived_at'] != null
-          ? DateTime.parse(json['archived_at'] as String)
+          ? DateTime.tryParse(json['archived_at'] as String)
           : null,
     );
   }

@@ -23,7 +23,6 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
   final Color? backgroundColor;
-  final Color? borderColor;
   final VoidCallback? onTap;
   final BorderSide? borderSide;
   final BorderRadius? borderRadius;
@@ -40,7 +39,6 @@ class AppCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.margin = EdgeInsets.zero,
     this.backgroundColor,
-    this.borderColor,
     this.onTap,
     this.borderSide,
     this.borderRadius,
@@ -109,7 +107,10 @@ class AppCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final hasHeader =
-        title != null || titleText != null || icon != null || headerAction != null;
+        title != null ||
+        titleText != null ||
+        icon != null ||
+        headerAction != null;
 
     final effectiveBorderRadius = borderRadius ?? AppRadius.roundedMd;
 
@@ -118,17 +119,22 @@ class AppCard extends StatelessWidget {
 
     switch (variant) {
       case AppCardVariant.standard:
-        effectiveBgColor = backgroundColor ??
+        effectiveBgColor =
+            backgroundColor ??
             (isDark ? AppColors.cardSurface : AppColors.lightCardSurface);
         effectiveShadows = isDark ? AppShadows.subtle : AppShadows.subtle;
         break;
       case AppCardVariant.elevated:
-        effectiveBgColor = backgroundColor ??
-            (isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface);
+        effectiveBgColor =
+            backgroundColor ??
+            (isDark
+                ? AppColors.elevatedSurface
+                : AppColors.lightElevatedSurface);
         effectiveShadows = AppShadows.card;
         break;
       case AppCardVariant.glass:
-        effectiveBgColor = backgroundColor ??
+        effectiveBgColor =
+            backgroundColor ??
             (isDark
                 ? AppColors.cardSurface.withValues(alpha: AppGlass.opacityCard)
                 : Colors.white.withValues(alpha: 0.85));
@@ -140,9 +146,10 @@ class AppCard extends StatelessWidget {
         break;
     }
 
-    final border = borderSide ??
+    final border =
+        borderSide ??
         BorderSide(
-          color: borderColor ?? (isDark ? AppColors.border : AppColors.lightBorder),
+          color: isDark ? AppColors.border : AppColors.lightBorder,
           width: AppColors.borderWidth,
         );
 
@@ -187,7 +194,9 @@ class AppCard extends StatelessWidget {
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.2,
-                            color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                            color: isDark
+                                ? AppColors.textPrimary
+                                : AppColors.lightTextPrimary,
                           ),
                         )
                       else
@@ -197,7 +206,9 @@ class AppCard extends StatelessWidget {
                         Text(
                           subtitle!,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                            color: isDark
+                                ? AppColors.textSecondary
+                                : AppColors.lightTextSecondary,
                           ),
                         ),
                       ],
@@ -210,13 +221,12 @@ class AppCard extends StatelessWidget {
           ),
           Divider(
             height: 1,
-            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+            color: isDark
+                ? AppColors.borderSubtle
+                : AppColors.lightBorderSubtle,
           ),
         ],
-        Padding(
-          padding: padding,
-          child: child,
-        ),
+        Padding(padding: padding, child: child),
       ],
     );
 
@@ -293,8 +303,8 @@ class AppStatCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final effectiveIconColor = iconColor ?? AppColors.primaryEmerald;
-    final effectiveIconBg = iconBackgroundColor ??
-        effectiveIconColor.withValues(alpha: 0.12);
+    final effectiveIconBg =
+        iconBackgroundColor ?? effectiveIconColor.withValues(alpha: 0.12);
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -317,11 +327,7 @@ class AppStatCard extends StatelessWidget {
                     width: AppColors.borderWidth,
                   ),
                 ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: effectiveIconColor,
-                ),
+                child: Icon(icon, size: 20, color: effectiveIconColor),
               ),
               ?trailing,
             ],
@@ -334,7 +340,9 @@ class AppStatCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w500,
-              color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+              color: isDark
+                  ? AppColors.textSecondary
+                  : AppColors.lightTextSecondary,
               letterSpacing: 0.1,
             ),
           ),
@@ -346,7 +354,9 @@ class AppStatCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w700,
-              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+              color: isDark
+                  ? AppColors.textPrimary
+                  : AppColors.lightTextPrimary,
               letterSpacing: -0.5,
               height: 1.1,
             ),
@@ -360,14 +370,14 @@ class AppStatCard extends StatelessWidget {
                     isTrendPositive == true
                         ? Icons.trending_up
                         : (isTrendPositive == false
-                            ? Icons.trending_down
-                            : Icons.trending_flat),
+                              ? Icons.trending_down
+                              : Icons.trending_flat),
                     size: 14,
                     color: isTrendPositive == true
                         ? AppColors.success
                         : (isTrendPositive == false
-                            ? AppColors.critical
-                            : AppColors.neutral),
+                              ? AppColors.critical
+                              : AppColors.neutral),
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -378,8 +388,8 @@ class AppStatCard extends StatelessWidget {
                       color: isTrendPositive == true
                           ? AppColors.success
                           : (isTrendPositive == false
-                              ? AppColors.critical
-                              : AppColors.neutral),
+                                ? AppColors.critical
+                                : AppColors.neutral),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -392,7 +402,9 @@ class AppStatCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11.5,
-                        color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                        color: isDark
+                            ? AppColors.textMuted
+                            : AppColors.lightTextMuted,
                       ),
                     ),
                   ),
