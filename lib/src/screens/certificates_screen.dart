@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/certificate_service.dart';
 import '../utils/file_exporter/file_exporter.dart';
+import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
@@ -38,9 +39,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
   Widget build(BuildContext context) {
     final patientsAsync = ref.watch(patientsProvider);
     final settingsAsync = ref.watch(systemSettingsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: ResponsiveLayout.pagePadding(context),
       child: ResponsiveContentContainer(
         maxWidth: 960,
         padding: EdgeInsets.zero,
@@ -51,30 +53,24 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
               'Certificate Generation',
               style: Theme.of(
                 context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              ).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isDark ? AppColors.textPrimary : null,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Generate medical certificates and patient record summaries.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(
+                color: isDark ? AppColors.textSecondary : Theme.of(
                   context,
                 ).colorScheme.onSurface.withValues(alpha: 0.68),
               ),
             ),
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.45),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
+            const SizedBox(height: 16),
+            AppCard(
+              padding: EdgeInsets.all(ResponsiveLayout.isMobile(context) ? 14 : 20),
+              child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -223,7 +219,6 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen> {
                     ),
                   ],
                 ),
-              ),
             ),
           ],
         ),

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import '../config/app_design_tokens.dart';
 
 export 'forms/app_form_components.dart';
 
 /// A professional, reusable form dialog widget for MedSentry EMR.
-/// Provides consistent styling, responsive sizing, and professional
+/// Provides consistent styling, responsive sizing, and cohesive dark healthcare
 /// presentation across all form-based modals in the application.
 class AppFormDialog extends StatelessWidget {
   final IconData? icon;
@@ -26,10 +27,10 @@ class AppFormDialog extends StatelessWidget {
     this.subtitle,
     required this.content,
     this.actions,
-    this.maxWidth = 520,
+    this.maxWidth = 540,
     this.isLoading = false,
     this.loadingText,
-    this.contentPadding = const EdgeInsets.fromLTRB(24, 0, 24, 24),
+    this.contentPadding = const EdgeInsets.fromLTRB(24, 16, 24, 24),
     this.showCloseButton = true,
     this.headerColor,
     this.onClose,
@@ -38,7 +39,7 @@ class AppFormDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primary = headerColor ?? theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
 
     final screenWidth = MediaQuery.sizeOf(context).width;
     final screenHeight = MediaQuery.sizeOf(context).height;
@@ -57,7 +58,7 @@ class AppFormDialog extends StatelessWidget {
 
     final effectiveContentPadding = EdgeInsets.fromLTRB(
       isCompactWidth ? 16.0 : contentPadding.left,
-      contentPadding.top,
+      isCompactHeight ? 12.0 : contentPadding.top,
       isCompactWidth ? 16.0 : contentPadding.right,
       isCompactHeight ? 14.0 : contentPadding.bottom,
     );
@@ -73,11 +74,15 @@ class AppFormDialog extends StatelessWidget {
           maxWidth: responsiveMaxWidth,
           maxHeight: responsiveMaxHeight,
         ),
-        child: Card(
-          elevation: 8,
-          shadowColor: Colors.black.withValues(alpha: 0.15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.modalSurface : AppColors.lightModalSurface,
+            borderRadius: AppRadius.roundedLg,
+            border: Border.all(
+              color: isDark ? AppColors.border : AppColors.lightBorder,
+              width: AppColors.borderWidth,
+            ),
+            boxShadow: AppShadows.overlay,
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -87,35 +92,43 @@ class AppFormDialog extends StatelessWidget {
               // Header
               Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [primary, primary.withValues(alpha: 0.85)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  color: isDark
+                      ? AppColors.sidebarBackground
+                      : AppColors.lightElevatedSurface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                      width: AppColors.borderWidth,
+                    ),
                   ),
                 ),
                 padding: EdgeInsets.fromLTRB(
                   isCompactWidth ? 16 : 24,
-                  isCompactHeight ? 12 : 20,
+                  isCompactHeight ? 12 : 18,
                   16,
-                  isCompactHeight ? 12 : 20,
+                  isCompactHeight ? 12 : 18,
                 ),
                 child: Row(
                   children: [
                     if (icon != null) ...[
                       Container(
-                        width: isCompactHeight ? 36 : 44,
-                        height: isCompactHeight ? 36 : 44,
+                        width: isCompactHeight ? 34 : 40,
+                        height: isCompactHeight ? 34 : 40,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
+                          color: AppColors.primaryEmeraldSubtle,
+                          borderRadius: AppRadius.roundedSm,
+                          border: Border.all(
+                            color: AppColors.primaryEmerald.withValues(alpha: 0.25),
+                            width: AppColors.borderWidth,
+                          ),
                         ),
                         child: Icon(
                           icon,
-                          color: Colors.white,
-                          size: isCompactHeight ? 20 : 24,
+                          color: AppColors.primaryEmerald,
+                          size: isCompactHeight ? 18 : 20,
                         ),
                       ),
-                      SizedBox(width: isCompactWidth ? 10 : 16),
+                      SizedBox(width: isCompactWidth ? 10 : 14),
                     ],
                     Expanded(
                       child: Column(
@@ -124,18 +137,19 @@ class AppFormDialog extends StatelessWidget {
                           Text(
                             title,
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: isCompactHeight ? 17 : 20,
+                              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                              fontSize: isCompactHeight ? 16 : 18,
                               fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
                             ),
                           ),
                           if (subtitle != null) ...[
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Text(
                               subtitle!,
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: isCompactHeight ? 12 : 13,
+                                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                fontSize: isCompactHeight ? 11.5 : 12.5,
                                 height: 1.3,
                               ),
                             ),
@@ -146,7 +160,11 @@ class AppFormDialog extends StatelessWidget {
                     if (showCloseButton && !isLoading)
                       IconButton(
                         onPressed: onClose ?? () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close, color: Colors.white70),
+                        icon: Icon(
+                          Icons.close,
+                          size: 18,
+                          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                        ),
                         tooltip: 'Close',
                       ),
                   ],
@@ -157,28 +175,27 @@ class AppFormDialog extends StatelessWidget {
               if (isLoading)
                 Expanded(
                   child: Container(
-                    color: theme.scaffoldBackgroundColor,
+                    color: isDark ? AppColors.modalSurface : AppColors.lightModalSurface,
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          SizedBox(
-                            width: 48,
-                            height: 48,
+                          const SizedBox(
+                            width: 40,
+                            height: 40,
                             child: CircularProgressIndicator(
-                              strokeWidth: 3,
+                              strokeWidth: 2.5,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                primary,
+                                AppColors.primaryEmerald,
                               ),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 16),
                           Text(
                             loadingText ?? 'Processing...',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.7,
-                              ),
+                            style: TextStyle(
+                              color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -195,16 +212,15 @@ class AppFormDialog extends StatelessWidget {
                   ),
                 ),
 
-                // Actions (Wrap ensures buttons never overflow on narrow screens)
+                // Actions Footer
                 if (actions != null && actions!.isNotEmpty)
                   Container(
                     decoration: BoxDecoration(
-                      color: theme.scaffoldBackgroundColor.withValues(
-                        alpha: 0.5,
-                      ),
+                      color: isDark ? AppColors.sidebarBackground : AppColors.lightElevatedSurface,
                       border: Border(
                         top: BorderSide(
-                          color: theme.dividerColor.withValues(alpha: 0.5),
+                          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                          width: AppColors.borderWidth,
                         ),
                       ),
                     ),
@@ -215,7 +231,7 @@ class AppFormDialog extends StatelessWidget {
                     child: Wrap(
                       alignment: WrapAlignment.end,
                       crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
+                      spacing: 10,
                       runSpacing: 8,
                       children: actions!,
                     ),
@@ -251,58 +267,63 @@ class AppFormField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
             Text(
               label,
-              style: theme.textTheme.bodyMedium?.copyWith(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
+                fontSize: 13,
+                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
               ),
             ),
             if (required)
-              Text(
+              const Text(
                 ' *',
                 style: TextStyle(
-                  color: theme.colorScheme.error,
+                  color: AppColors.critical,
                   fontWeight: FontWeight.w700,
+                  fontSize: 13,
                 ),
               ),
           ],
         ),
         if (hint != null) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             hint!,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            style: TextStyle(
+              color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+              fontSize: 11.5,
             ),
           ),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: 7),
         field,
         if (helperText != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Text(
             helperText!,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              fontSize: 12,
+            style: TextStyle(
+              color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+              fontSize: 11.5,
             ),
           ),
         ],
         if (errorText != null) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 5),
           Text(
             errorText!,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.error,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+            style: const TextStyle(
+              color: AppColors.critical,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -330,30 +351,31 @@ class AppDialogAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     if (isPrimary) {
-      return ElevatedButton.icon(
+      return FilledButton.icon(
         onPressed: onPressed,
-        icon: icon != null ? Icon(icon, size: 18) : const SizedBox.shrink(),
+        icon: icon != null ? Icon(icon, size: 16) : const SizedBox.shrink(),
         label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDestructive ? theme.colorScheme.error : null,
-          foregroundColor: isDestructive ? Colors.white : null,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        style: FilledButton.styleFrom(
+          backgroundColor: isDestructive ? AppColors.critical : AppColors.primaryEmerald,
+          foregroundColor: isDestructive ? Colors.white : AppColors.textOnEmerald,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         ),
       );
     }
 
-    return TextButton.icon(
+    return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: icon != null ? Icon(icon, size: 18) : const SizedBox.shrink(),
+      icon: icon != null ? Icon(icon, size: 16) : const SizedBox.shrink(),
       label: Text(label),
-      style: TextButton.styleFrom(
-        foregroundColor: isDestructive ? theme.colorScheme.error : null,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        textStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: isDestructive ? AppColors.critical : null,
+        side: isDestructive ? const BorderSide(color: AppColors.criticalBorder) : null,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+        textStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
       ),
     );
   }
@@ -376,48 +398,53 @@ class AppInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveIconColor = iconColor ?? AppColors.primaryEmerald;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.3)),
+        color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
+        borderRadius: AppRadius.roundedMd,
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+          width: AppColors.borderWidth,
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: (iconColor ?? theme.colorScheme.primary).withValues(
-                alpha: 0.1,
-              ),
-              borderRadius: BorderRadius.circular(10),
+              color: effectiveIconColor.withValues(alpha: 0.12),
+              borderRadius: AppRadius.roundedSm,
             ),
             child: Icon(
               icon,
-              color: iconColor ?? theme.colorScheme.primary,
-              size: 20,
+              color: effectiveIconColor,
+              size: 18,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: theme.textTheme.bodyLarge?.copyWith(
+                  style: TextStyle(
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                   ),
                 ),
               ],
@@ -444,21 +471,20 @@ class AppWarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.criticalBg,
+        borderRadius: AppRadius.roundedMd,
         border: Border.all(
-          color: theme.colorScheme.error.withValues(alpha: 0.3),
+          color: AppColors.criticalBorder,
+          width: AppColors.borderWidth,
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: theme.colorScheme.error, size: 24),
+          Icon(icon, color: AppColors.critical, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -466,16 +492,18 @@ class AppWarningCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: theme.textTheme.titleSmall?.copyWith(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.error,
+                    color: AppColors.critical,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   message,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 12.5,
                     height: 1.4,
                   ),
                 ),

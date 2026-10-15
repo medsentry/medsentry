@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/user.dart';
 import '../providers/providers.dart';
+import '../widgets/app_card.dart';
 import '../widgets/layout/responsive_layout.dart';
 import 'settings_screen.dart';
 
@@ -12,9 +13,7 @@ class StaffScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ResponsiveContentContainer(
-      child: Padding(
-        padding: ResponsiveLayout.pagePadding(context),
-        child: Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -27,36 +26,26 @@ class StaffScreen extends ConsumerWidget {
           Text(
             'Manage administrators and staff accounts for this RHU.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.72),
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
-                ),
-              ),
+            child: AppCard(
               padding: const EdgeInsets.all(16),
-                child: StaffManagementPanel(
-                  embedded: true,
-                  onAddUser: () => _showStaffFormDialog(context, ref),
-                  onEditUser: (user) =>
-                      _showStaffFormDialog(context, ref, existingUser: user),
-                  onDeactivateUser: (user) =>
-                      _confirmDeactivateStaff(context, ref, user),
-                ),
+              child: StaffManagementPanel(
+                embedded: true,
+                onAddUser: () => _showStaffFormDialog(context, ref),
+                onEditUser: (user) =>
+                    _showStaffFormDialog(context, ref, existingUser: user),
+                onDeactivateUser: (user) =>
+                    _confirmDeactivateStaff(context, ref, user),
               ),
             ),
+          ),
         ],
       ),
-    ),
-  );
+    );
   }
 
   Future<void> _showStaffFormDialog(

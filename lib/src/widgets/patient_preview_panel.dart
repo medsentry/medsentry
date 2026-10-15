@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../config/app_design_tokens.dart';
 import '../models/patient.dart';
-import '../providers/theme_provider.dart';
 
 class PatientPreviewPanel extends StatelessWidget {
   final Patient patient;
@@ -17,10 +17,10 @@ class PatientPreviewPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categoryColor = _patientCategoryColor(patient.category);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return ColoredBox(
-      color: theme.colorScheme.surface,
+    return Container(
+      color: isDark ? AppColors.sidebarBackground : Colors.white,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         child: Column(
@@ -29,14 +29,14 @@ class PatientPreviewPanel extends StatelessWidget {
             Row(
               children: [
                 CircleAvatar(
-                  radius: 28,
-                  backgroundColor: categoryColor,
+                  radius: 26,
+                  backgroundColor: AppColors.primaryEmeraldSubtle,
                   child: Text(
                     _initialsFor(patient),
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.primaryEmerald,
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 16,
                     ),
                   ),
                 ),
@@ -47,16 +47,19 @@ class PatientPreviewPanel extends StatelessWidget {
                     children: [
                       Text(
                         patient.fullName,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                          letterSpacing: -0.2,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         'ID: ${patient.id}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.65,
-                          ),
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
                         ),
                       ),
                     ],
@@ -64,25 +67,76 @@ class PatientPreviewPanel extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: [
                 if (patient.category != null)
-                  Chip(
-                    label: Text(patient.category!.displayName),
-                    backgroundColor: categoryColor.withValues(alpha: 0.12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryEmeraldSubtle,
+                      borderRadius: AppRadius.roundedPill,
+                      border: Border.all(color: AppColors.primaryEmerald.withValues(alpha: 0.25)),
+                    ),
+                    child: Text(
+                      patient.category!.displayName,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryEmerald,
+                      ),
+                    ),
                   ),
                 if (patient.isPwd)
-                  const Chip(
-                    label: Text('PWD'),
-                    avatar: Icon(Icons.accessible, size: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
+                      borderRadius: AppRadius.roundedPill,
+                      border: Border.all(color: isDark ? AppColors.border : AppColors.lightBorder),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.accessible,
+                          size: 13,
+                          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'PWD',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                if (patient.is4PsBeneficiary) const Chip(label: Text('4Ps')),
+                if (patient.is4PsBeneficiary)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.pendingBg,
+                      borderRadius: AppRadius.roundedPill,
+                      border: Border.all(color: AppColors.pendingBorder),
+                    ),
+                    child: const Text(
+                      '4Ps',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.pending,
+                      ),
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             _PreviewSection(
               title: 'Demographics',
               rows: [
@@ -92,7 +146,7 @@ class PatientPreviewPanel extends StatelessWidget {
                 _PreviewRow('Barangay', patient.barangay ?? 'Not recorded'),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             _PreviewSection(
               title: 'Medical',
               rows: [
@@ -101,39 +155,27 @@ class PatientPreviewPanel extends StatelessWidget {
                 _PreviewRow('PhilHealth', patient.philHealthNumber ?? 'N/A'),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed:
                     onOpenRecord ??
                     () => context.push('/patients/${patient.id}'),
-                icon: const Icon(Icons.open_in_new),
+                icon: const Icon(Icons.open_in_new, size: 16),
                 label: const Text('Open Record'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryEmerald,
+                  foregroundColor: AppColors.textOnEmerald,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Color _patientCategoryColor(PatientCategory? category) {
-    if (category == null) return MedSentryColors.green700;
-    switch (category) {
-      case PatientCategory.infant:
-      case PatientCategory.toddler:
-      case PatientCategory.preschool:
-      case PatientCategory.pediatric:
-        return MedSentryColors.green500;
-      case PatientCategory.senior:
-      case PatientCategory.seniorCitizen:
-        return MedSentryColors.green800;
-      case PatientCategory.pregnant:
-        return MedSentryColors.emerald600;
-      default:
-        return MedSentryColors.green700;
-    }
   }
 }
 
@@ -157,26 +199,26 @@ class _PreviewSection extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(8),
+        color: isDark ? AppColors.cardSurface : AppColors.lightCardSurface,
+        borderRadius: AppRadius.roundedSm,
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(
-            alpha: isDark ? 0.35 : 0.65,
-          ),
+          color: isDark ? AppColors.border : AppColors.lightBorder,
+          width: AppColors.borderWidth,
         ),
       ),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: theme.textTheme.titleSmall?.copyWith(
+            style: TextStyle(
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
+              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           ...rows.map(
             (row) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -184,19 +226,22 @@ class _PreviewSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    width: 100,
+                    width: 90,
                     child: Text(
                       row.label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                       ),
                     ),
                   ),
                   Expanded(
                     child: Text(
                       row.value,
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: TextStyle(
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
+                        color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                       ),
                     ),
                   ),

@@ -113,14 +113,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => Theme(
-          data: buildMedSentryTheme(
-            Brightness.light,
-            accentTheme: ref.read(accentThemeProvider),
-          ),
-          child: LoginScreen(
-            locked: state.uri.queryParameters['locked'] == '1',
-          ),
+        builder: (context, state) => LoginScreen(
+          locked: state.uri.queryParameters['locked'] == '1',
         ),
       ),
       StatefulShellRoute.indexedStack(

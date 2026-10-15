@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../models/patient.dart';
 import '../providers/providers.dart';
 import '../utils/patient_address_data.dart';
+import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
@@ -77,16 +78,28 @@ class PatientDetailScreen extends ConsumerWidget {
 
     if (confirmed != true) return;
 
-    await ref.read(databaseProvider).archivePatient(patient.id);
-    ref.invalidate(patientsProvider);
-    ref.invalidate(archivedPatientsProvider);
-    ref.invalidate(patientProvider(patient.id));
+    try {
+      final userId = ref.read(currentUserProvider)?.id ?? 'system';
+      await ref
+          .read(patientRepositoryProvider)
+          .deletePatient(patient.id, userId);
+      ref.invalidate(patientsProvider);
+      ref.invalidate(archivedPatientsProvider);
+      ref.invalidate(auditLogsProvider);
+      ref.invalidate(patientProvider(patient.id));
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${patient.fullName} archived.')));
-      context.go('/patients');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${patient.fullName} archived.')),
+        );
+        context.go('/patients');
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not archive patient: $error')),
+        );
+      }
     }
   }
 }
@@ -100,15 +113,18 @@ class _PatientIdentityHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(10),
+        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+        borderRadius: AppRadius.roundedMd,
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
+        boxShadow: isDark ? AppShadows.subtle : null,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -120,8 +136,10 @@ class _PatientIdentityHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _PatientIdentity(patient: patient),
-                const SizedBox(height: 14),
-                actions,
+                if (onArchive != null) ...[
+                  const SizedBox(height: 12),
+                  actions,
+                ],
               ],
             );
           }
@@ -151,17 +169,34 @@ class _PatientIdentity extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Padding(
+          padding: const EdgeInsets.only(right: 8, top: 4),
+          child: IconButton.filledTonal(
+            tooltip: 'Back to Patients',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/patients');
+              }
+            },
+          ),
+        ),
         Container(
-          width: 58,
-          height: 58,
+          width: 50,
+          height: 50,
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
+            color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+            borderRadius: AppRadius.roundedSm,
             border: Border.all(
-              color: theme.colorScheme.primary.withValues(alpha: 0.25),
+              color: isDark ? primary.withValues(alpha: 0.25) : primary.withValues(alpha: 0.25),
             ),
           ),
           alignment: Alignment.center,
@@ -170,13 +205,13 @@ class _PatientIdentity extends StatelessWidget {
                 ? patient.firstName[0].toUpperCase()
                 : '?',
             style: TextStyle(
-              color: theme.colorScheme.primary,
-              fontSize: 24,
+              color: primary,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
             ),
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,6 +226,7 @@ class _PatientIdentity extends StatelessWidget {
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.2,
+                        color: isDark ? AppColors.textPrimary : null,
                       ),
                     ),
                   ),
@@ -324,7 +360,7 @@ class _OverviewTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+      padding: const EdgeInsets.only(top: 4, bottom: 16),
       children: [
         Wrap(
           spacing: 8,
@@ -1417,27 +1453,32 @@ class _SectionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+
+    return AppCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: theme.colorScheme.primary),
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+                  borderRadius: AppRadius.roundedSm,
+                ),
+                child: Icon(icon, size: 16, color: primary),
+              ),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.1,
+                  color: isDark ? AppColors.textPrimary : null,
                 ),
               ),
             ],
@@ -1504,28 +1545,30 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(
+        color: isDark ? AppColors.elevatedSurface : theme.colorScheme.surfaceContainerHighest.withValues(
           alpha: 0.35,
         ),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppRadius.roundedSm,
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: theme.colorScheme.onSurfaceVariant),
+          Icon(icon, size: 13, color: isDark ? AppColors.primaryEmerald : theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: theme.colorScheme.onSurface,
+              color: isDark ? AppColors.textPrimary : theme.colorScheme.onSurface,
             ),
           ),
         ],

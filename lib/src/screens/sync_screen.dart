@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
+import '../widgets/app_card.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
@@ -62,7 +63,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     final lastSync = ref.watch(lastSyncTimeProvider);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: ResponsiveLayout.pagePadding(context),
       child: ResponsiveContentContainer(
         maxWidth: 960,
         padding: EdgeInsets.zero,
@@ -121,18 +122,12 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
-                ),
-              ),
+            AppCard(
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.people_outlined),
+                    leading: const Icon(Icons.people_outlined, color: AppColors.primaryEmerald),
                     title: const Text('Patients'),
                     trailing: Text(
                       '${_stats!.totalPatients}',
@@ -141,7 +136,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.folder_outlined),
+                    leading: const Icon(Icons.folder_outlined, color: AppColors.info),
                     title: const Text('Documents'),
                     trailing: Text(
                       '${_stats!.totalDocuments}',
@@ -233,16 +228,10 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isMobile = ResponsiveLayout.isMobile(context);
     return SizedBox(
-      width: 220,
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-          ),
-        ),
+      width: isMobile ? double.infinity : 220,
+      child: AppCard(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,9 +240,9 @@ class _StatusCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: color.withValues(alpha: 0.2)),
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: color.withValues(alpha: 0.25)),
               ),
               child: Icon(icon, color: color, size: 18),
             ),
@@ -269,9 +258,9 @@ class _StatusCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                color: AppColors.textSecondary,
               ),
             ),
           ],

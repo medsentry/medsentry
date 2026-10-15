@@ -99,7 +99,7 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Center(
       child: Container(
@@ -110,31 +110,40 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+                color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
+                borderRadius: AppRadius.roundedMd,
+                border: Border.all(
+                  color: isDark ? AppColors.border : AppColors.lightBorder,
+                  width: AppColors.borderWidth,
+                ),
               ),
               child: Icon(
                 icon,
-                size: AppIconSize.xl,
-                color: colorScheme.primary,
+                size: 26,
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               title,
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: colorScheme.onSurface,
+                fontSize: 16,
+                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                letterSpacing: -0.2,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.65),
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                height: 1.4,
               ),
               textAlign: TextAlign.center,
             ),

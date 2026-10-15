@@ -7,6 +7,7 @@ import '../models/document.dart';
 import '../models/patient.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
+import '../widgets/app_card.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
@@ -126,7 +127,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               }).length;
 
               return SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                padding: ResponsiveLayout.pagePadding(context),
                 child: ResponsiveContentContainer(
                   maxWidth: 1400,
                   padding: EdgeInsets.zero,
@@ -275,7 +276,10 @@ class _DocumentsPageHeader extends StatelessWidget {
                 children: [
                   titleWidget,
                   const SizedBox(height: 12),
-                  uploadButton,
+                  SizedBox(
+                    width: double.infinity,
+                    child: uploadButton,
+                  ),
                 ],
               );
             }
@@ -298,32 +302,32 @@ class _DocumentsPageHeader extends StatelessWidget {
               icon: Icons.folder_outlined,
               label: 'Total',
               value: '$totalCount',
-              color: MedSentryColors.green700,
+              color: AppColors.primaryEmerald,
             ),
             _StatChip(
               icon: Icons.today_outlined,
               label: 'Today',
               value: '$todayCount',
-              color: MedSentryColors.green600,
+              color: AppColors.info,
             ),
             _StatChip(
               icon: Icons.pending_actions_outlined,
               label: 'Pending review',
               value: '$pendingCount',
-              color: const Color(0xFFF59E0B),
+              color: AppColors.pending,
             ),
             _StatChip(
               icon: Icons.verified_outlined,
               label: 'Verified',
               value: '$verifiedCount',
-              color: const Color(0xFF16A34A),
+              color: AppColors.success,
             ),
             if (filteredCount != totalCount)
               _StatChip(
                 icon: Icons.filter_alt_outlined,
                 label: 'Showing',
                 value: '$filteredCount',
-                color: MedSentryColors.green800,
+                color: AppColors.analytical,
               ),
           ],
         ),
@@ -348,13 +352,15 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
+        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+        borderRadius: AppRadius.roundedSm,
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
         ),
       ),
       child: Row(
@@ -372,7 +378,7 @@ class _StatChip extends StatelessWidget {
           Text(
             '$label: ',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
               fontSize: 12,
             ),
           ),
@@ -381,6 +387,7 @@ class _StatChip extends StatelessWidget {
             style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w700,
               fontSize: 12,
+              color: isDark ? AppColors.textPrimary : null,
             ),
           ),
         ],
@@ -420,85 +427,97 @@ class _DocumentsToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search title, patient, PhilHealth, or type...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              onChanged: onSearchChanged,
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: searchController,
+            decoration: const InputDecoration(
+              hintText: 'Search title, patient, PhilHealth, or type...',
+              prefixIcon: Icon(Icons.search),
+              isDense: true,
             ),
+            onChanged: onSearchChanged,
+          ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SizedBox(
-                  width: 170,
-                  child: DropdownButtonFormField<DocumentType?>(
-                    initialValue: typeFilter,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Type',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: [
-                      const DropdownMenuItem<DocumentType?>(
-                        value: null,
-                        child: Text('All types'),
-                      ),
-                      ...DocumentType.values.map(
-                        (type) => DropdownMenuItem<DocumentType?>(
-                          value: type,
-                          child: Text(_typeDisplay(type)),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final isVeryNarrow = width < 420;
+                final isNarrow = width < 600;
+                final dropdownWidth = isVeryNarrow
+                    ? width
+                    : isNarrow
+                        ? (width - 10) / 2
+                        : 170.0;
+
+                return Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: dropdownWidth,
+                      child: DropdownButtonFormField<DocumentType?>(
+                        initialValue: typeFilter,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Type',
+                          border: OutlineInputBorder(),
+                          isDense: true,
                         ),
+                        items: [
+                          const DropdownMenuItem<DocumentType?>(
+                            value: null,
+                            child: Text('All types'),
+                          ),
+                          ...DocumentType.values.map(
+                            (type) => DropdownMenuItem<DocumentType?>(
+                              value: type,
+                              child: Text(_typeDisplay(type)),
+                            ),
+                          ),
+                        ],
+                        onChanged: onTypeChanged,
                       ),
-                    ],
-                    onChanged: onTypeChanged,
-                  ),
-                ),
-                SizedBox(
-                  width: 170,
-                  child: DropdownButtonFormField<DocumentStatus?>(
-                    initialValue: statusFilter,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Status',
-                      border: OutlineInputBorder(),
-                      isDense: true,
                     ),
-                    items: [
-                      const DropdownMenuItem<DocumentStatus?>(
-                        value: null,
-                        child: Text('All statuses'),
-                      ),
-                      ...DocumentStatus.values.map(
-                        (status) => DropdownMenuItem<DocumentStatus?>(
-                          value: status,
-                          child: Text(_statusDisplay(status)),
+                    SizedBox(
+                      width: dropdownWidth,
+                      child: DropdownButtonFormField<DocumentStatus?>(
+                        initialValue: statusFilter,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Status',
+                          border: OutlineInputBorder(),
+                          isDense: true,
                         ),
+                        items: [
+                          const DropdownMenuItem<DocumentStatus?>(
+                            value: null,
+                            child: Text('All statuses'),
+                          ),
+                          ...DocumentStatus.values.map(
+                            (status) => DropdownMenuItem<DocumentStatus?>(
+                              value: status,
+                              child: Text(_statusDisplay(status)),
+                            ),
+                          ),
+                        ],
+                        onChanged: onStatusChanged,
                       ),
-                    ],
-                    onChanged: onStatusChanged,
-                  ),
-                ),
-                if (hasFilters)
-                  ActionChip(
-                    avatar: const Icon(Icons.filter_alt_off_outlined, size: 16),
-                    label: const Text('Clear filters'),
-                    onPressed: onClearFilters,
-                  ),
-              ],
+                    ),
+                    if (hasFilters)
+                      ActionChip(
+                        avatar:
+                            const Icon(Icons.filter_alt_off_outlined, size: 16),
+                        label: const Text('Clear filters'),
+                        onPressed: onClearFilters,
+                      ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 10),
             Wrap(
@@ -546,7 +565,6 @@ class _DocumentsToolbar extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -613,7 +631,7 @@ class _DocumentsGrid extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: crossAxisCount == 1 ? 2.8 : 1.15,
+            mainAxisExtent: crossAxisCount == 1 ? 210.0 : 215.0,
           ),
           itemCount: documents.length,
           itemBuilder: (context, index) {
@@ -622,7 +640,7 @@ class _DocumentsGrid extends StatelessWidget {
               patient: patientMap[documents[index].patientId],
               canManage: canManage,
               onChanged: onChanged,
-              compact: crossAxisCount > 1,
+              compact: width < 600 || crossAxisCount > 1,
             );
           },
         );
@@ -652,22 +670,12 @@ class _DocumentCard extends ConsumerWidget {
     final typeColor = _typeColor(document.type);
     final date = document.scanDate ?? document.createdAt;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => _openDocument(context),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return AppCard(
+      onTap: () => _openDocument(context),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -815,47 +823,65 @@ class _DocumentCard extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: 10),
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
-                  Icon(
-                    Icons.calendar_today_outlined,
-                    size: 14,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: 14,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        date != null ? _formatDate(date) : 'Unknown date',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        Icons.sd_storage_outlined,
+                        size: 14,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        DocumentService.formatFileSize(document.fileSize),
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    date != null ? _formatDate(date) : 'Unknown date',
-                    style: theme.textTheme.labelSmall,
-                  ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    Icons.sd_storage_outlined,
-                    size: 14,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    DocumentService.formatFileSize(document.fileSize),
-                    style: theme.textTheme.labelSmall,
-                  ),
-                  const Spacer(),
-                  if (canManage && document.status == DocumentStatus.pending)
-                    TextButton.icon(
-                      onPressed: () => _verifyDocument(context, ref),
-                      icon: const Icon(Icons.verified_outlined, size: 18),
-                      label: const Text('Verify'),
-                    ),
-                  IconButton(
-                    tooltip: 'Open',
-                    onPressed: () => _openDocument(context),
-                    icon: const Icon(Icons.open_in_new),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (canManage &&
+                          document.status == DocumentStatus.pending)
+                        TextButton.icon(
+                          onPressed: () => _verifyDocument(context, ref),
+                          icon: const Icon(Icons.verified_outlined, size: 16),
+                          label: const Text('Verify'),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      IconButton(
+                        tooltip: 'Open',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _openDocument(context),
+                        icon: const Icon(Icons.open_in_new, size: 20),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 
@@ -980,10 +1006,11 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: AppRadius.roundedSm,
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Text(
         label,
@@ -999,12 +1026,12 @@ class _Badge extends StatelessWidget {
 
 Color _typeColor(DocumentType type) {
   return switch (type) {
-    DocumentType.labResult => MedSentryColors.green700,
-    DocumentType.xRay => const Color(0xFF0EA5E9),
-    DocumentType.prescription => const Color(0xFF8B5CF6),
-    DocumentType.medicalCertificate => MedSentryColors.green800,
-    DocumentType.referral => const Color(0xFFF59E0B),
-    DocumentType.other => MedSentryColors.statusNeutral,
+    DocumentType.labResult => AppColors.primaryEmerald,
+    DocumentType.xRay => AppColors.info,
+    DocumentType.prescription => AppColors.analytical,
+    DocumentType.medicalCertificate => AppColors.primaryEmeraldDark,
+    DocumentType.referral => AppColors.pending,
+    DocumentType.other => AppColors.neutral,
   };
 }
 

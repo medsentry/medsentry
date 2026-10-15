@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
@@ -72,7 +71,9 @@ class ReportService {
       },
       'summary': {
         'new_patients': patients.length,
-        'total_patients': allPatients.where((patient) => !patient.isArchived).length,
+        'total_patients': allPatients
+            .where((patient) => !patient.isArchived)
+            .length,
         'documents': documents.length,
       },
       'patient_registrations_by_period': registrationCounts,

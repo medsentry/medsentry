@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:medsentry/src/widgets/layout/responsive_layout.dart';
-import 'package:medsentry/src/widgets/app_form_dialog.dart';
+import 'package:medsentry/src/models/patient.dart';
+import 'package:medsentry/src/models/system_settings.dart';
+import 'package:medsentry/src/models/user.dart';
+import 'package:medsentry/src/providers/providers.dart';
+import 'package:medsentry/src/screens/archive_screen.dart';
 import 'package:medsentry/src/utils/context_extensions.dart';
+import 'package:medsentry/src/widgets/app_form_dialog.dart';
+import 'package:medsentry/src/widgets/app_scaffold.dart';
+import 'package:medsentry/src/widgets/layout/responsive_layout.dart';
 
 void main() {
   group('ResponsiveBreakpoints Tests', () {
@@ -344,6 +351,108 @@ void main() {
 
       expect(find.text('Compact Landscape Dialog'), findsOneWidget);
       expect(find.text('Confirm'), findsOneWidget);
+    });
+
+    testWidgets('AppScaffold on mobile (< 600px) does not render NavigationBar and renders menu drawer trigger', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final testUser = User(
+        id: 'test-user',
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User',
+        role: UserRole.admin,
+        isActive: true,
+        pinEnabled: false,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            syncStatusProvider.overrideWithValue(SyncStatus.synced),
+            currentUserProvider.overrideWith((ref) => testUser),
+            systemSettingsProvider.overrideWith(
+              (ref) => Future.value(const SystemSettings()),
+            ),
+          ],
+          child: const MaterialApp(
+            home: AppScaffold(
+              title: 'Dashboard',
+              navigationItems: [
+                AppNavigationItem(
+                  label: 'Dashboard',
+                  path: '/dashboard',
+                  icon: Icons.dashboard_outlined,
+                  selectedIcon: Icons.dashboard,
+                ),
+                AppNavigationItem(
+                  label: 'Patients',
+                  path: '/patients',
+                  icon: Icons.people_outlined,
+                  selectedIcon: Icons.people,
+                ),
+                AppNavigationItem(
+                  label: 'Documents',
+                  path: '/documents',
+                  icon: Icons.folder_outlined,
+                  selectedIcon: Icons.folder,
+                ),
+              ],
+              body: Text('Mobile Main Body'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // NavigationBar should NOT be present on mobile
+      expect(find.byType(NavigationBar), findsNothing);
+
+      // Drawer trigger button (menu) should be present in mobile AppBar
+      expect(find.byTooltip('Open menu'), findsOneWidget);
+
+      // Body should be rendered
+      expect(find.text('Mobile Main Body'), findsOneWidget);
+    });
+
+    testWidgets('ArchiveScreen on mobile viewport renders PopupMenuButton and no layout overflow', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final dummyArchivedPatient = Patient(
+        id: 'patient-archive-01',
+        firstName: 'Maria',
+        lastName: 'Santos',
+        archivedAt: DateTime(2026, 3, 1),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            archivedPatientsProvider.overrideWith(
+              (ref) => Future.value([dummyArchivedPatient]),
+            ),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: ArchiveScreen(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Should render the patient tile
+      expect(find.text('Maria Santos'), findsOneWidget);
+      // Trailing on mobile should use PopupMenuButton (more_vert)
+      expect(find.byType(PopupMenuButton<String>), findsOneWidget);
+      // No overflows
+      expect(tester.takeException(), isNull);
     });
   });
 }

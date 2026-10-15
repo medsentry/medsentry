@@ -6,55 +6,49 @@ import '../config/app_design_tokens.dart';
 
 export '../config/app_design_tokens.dart';
 
-/// MedSentry brand palette and base healthcare colors.
+/// Legacy MedSentry brand palette aliased to [AppColors] for backward compatibility.
 abstract final class MedSentryColors {
   // Brand Greens
-  static const seed = Color(0xFF15803D);
-  static const seedDark = Color(0xFF4ADE80);
+  static const seed = AppColors.primaryEmerald;
+  static const seedDark = AppColors.primaryEmerald;
 
   // Backgrounds
-  static const lightScaffold = Color(0xFFF8FAFC); // Clean slate tint
-  static const lightSurface = Color(0xFFFFFFFF);
-  static const darkScaffold = Color(0xFF0B131D); // Deep medical navy/slate
-  static const darkSurface = Color(0xFF111C2A); // Elevated slate surface
-  static const darkSurfaceElevated = Color(0xFF182638);
-  static const darkAppBar = Color(0xFF0F1A26);
+  static const lightScaffold = AppColors.lightAppBackground;
+  static const lightSurface = AppColors.lightCardSurface;
+  static const darkScaffold = AppColors.appBackground; // #080909
+  static const darkSurface = AppColors.cardSurface; // #111214
+  static const darkSurfaceElevated = AppColors.elevatedSurface; // #191A1C
+  static const darkAppBar = AppColors.sidebarBackground; // #111214
 
   // Status/Semantic Colors
-  // 🟢 Green — Normal, Active, Completed, Available
-  static const statusNormal = Color(0xFF16A34A); // Green 600
-  static const statusNormalDark = Color(0xFF4ADE80); // Green 400
-  static const statusNormalBg = Color(0xFFDCFCE7); // Green 100
+  static const statusNormal = AppColors.success;
+  static const statusNormalDark = AppColors.success;
+  static const statusNormalBg = AppColors.successBg;
 
-  // 🟡 Yellow/Amber — Pending, Waiting, Warning, Needs Attention
-  static const statusWarning = Color(0xFFD97706); // Amber 600
-  static const statusWarningDark = Color(0xFFFBBF24); // Amber 400
-  static const statusWarningBg = Color(0xFFFEF3C7); // Amber 100
+  static const statusWarning = AppColors.pending;
+  static const statusWarningDark = AppColors.pending;
+  static const statusWarningBg = AppColors.pendingBg;
 
-  // 🔴 Red — Critical, Failed, Urgent, Overdue
-  static const statusCritical = Color(0xFFDC2626); // Red 600
-  static const statusCriticalDark = Color(0xFFF87171); // Red 400
-  static const statusCriticalBg = Color(0xFFFEE2E2); // Red 100
+  static const statusCritical = AppColors.critical;
+  static const statusCriticalDark = AppColors.critical;
+  static const statusCriticalBg = AppColors.criticalBg;
 
-  // 🔵 Blue — Informational, General, In Progress
-  static const statusInfo = Color(0xFF2563EB); // Blue 600
-  static const statusInfoDark = Color(0xFF60A5FA); // Blue 400
-  static const statusInfoBg = Color(0xFFDBEAFE); // Blue 100
+  static const statusInfo = AppColors.info;
+  static const statusInfoDark = AppColors.info;
+  static const statusInfoBg = AppColors.infoBg;
 
-  // ⚪ Gray — Inactive, Archived, Disabled, or Neutral
-  static const statusNeutral = Color(0xFF64748B); // Slate 500
-  static const statusNeutralDark = Color(0xFF94A3B8); // Slate 400
-  static const statusNeutralBg = Color(0xFFF1F5F9); // Slate 100
+  static const statusNeutral = AppColors.neutral;
+  static const statusNeutralDark = AppColors.neutral;
+  static const statusNeutralBg = AppColors.neutralBg;
 
-  // Shades of Green (Default Brand)
-  static const green900 = Color(0xFF14532D);
+  static const green900 = AppColors.primaryEmeraldDeep;
   static const green800 = Color(0xFF166534);
-  static const green700 = Color(0xFF15803D);
+  static const green700 = AppColors.primaryEmeraldDark;
   static const green600 = Color(0xFF16A34A);
   static const green500 = Color(0xFF22C55E);
-  static const green400 = Color(0xFF4ADE80);
-  static const emerald600 = Color(0xFF059669);
-  static const emerald700 = Color(0xFF047857);
+  static const green400 = AppColors.primaryEmerald;
+  static const emerald600 = AppColors.primaryEmeraldDark;
+  static const emerald700 = AppColors.primaryEmeraldDeep;
 }
 
 /// A ThemeExtension to access standardized semantic healthcare colors anywhere in the app.
@@ -69,6 +63,8 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
   final Color infoBg;
   final Color neutral;
   final Color neutralBg;
+  final Color analytical;
+  final Color analyticalBg;
 
   // Direct semantic aliases
   Color get active => normal;
@@ -90,6 +86,8 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
     required this.infoBg,
     required this.neutral,
     required this.neutralBg,
+    this.analytical = AppColors.analytical,
+    this.analyticalBg = AppColors.analyticalBg,
   });
 
   @override
@@ -104,6 +102,8 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
     Color? infoBg,
     Color? neutral,
     Color? neutralBg,
+    Color? analytical,
+    Color? analyticalBg,
   }) {
     return SemanticColors(
       normal: normal ?? this.normal,
@@ -116,6 +116,8 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
       infoBg: infoBg ?? this.infoBg,
       neutral: neutral ?? this.neutral,
       neutralBg: neutralBg ?? this.neutralBg,
+      analytical: analytical ?? this.analytical,
+      analyticalBg: analyticalBg ?? this.analyticalBg,
     );
   }
 
@@ -136,15 +138,18 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
       infoBg: Color.lerp(infoBg, other.infoBg, t)!,
       neutral: Color.lerp(neutral, other.neutral, t)!,
       neutralBg: Color.lerp(neutralBg, other.neutralBg, t)!,
+      analytical: Color.lerp(analytical, other.analytical, t)!,
+      analyticalBg: Color.lerp(analyticalBg, other.analyticalBg, t)!,
     );
   }
 }
 
-/// Theme Mode state notifier with SharedPreferences persistence
+/// Theme Mode state notifier with SharedPreferences persistence.
+/// Defaults to [ThemeMode.dark] to embody the premium dark healthcare foundation.
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   static const _key = 'medsentry_theme_mode';
 
-  ThemeModeNotifier() : super(ThemeMode.light) {
+  ThemeModeNotifier() : super(ThemeMode.dark) {
     _load();
   }
 
@@ -176,7 +181,7 @@ final themeModeProvider =
   return ThemeModeNotifier();
 });
 
-/// Accent Theme state notifier with SharedPreferences persistence
+/// Accent Theme state notifier with SharedPreferences persistence.
 class AccentThemeNotifier extends StateNotifier<AppAccentTheme> {
   static const _key = 'medsentry_accent_theme';
 
@@ -218,63 +223,55 @@ ThemeData buildMedSentryTheme(
       isDark ? accentTheme.darkPrimaryColor : accentTheme.primaryColor;
   final secondary = accentTheme.secondaryColor;
 
-  final surfaceColor =
-      isDark ? MedSentryColors.darkSurface : MedSentryColors.lightSurface;
   final scaffoldColor =
-      isDark ? MedSentryColors.darkScaffold : MedSentryColors.lightScaffold;
+      isDark ? AppColors.appBackground : AppColors.lightAppBackground;
+  final surfaceColor =
+      isDark ? AppColors.cardSurface : AppColors.lightCardSurface;
+  final elevatedSurfaceColor =
+      isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface;
+  final borderColor = isDark ? AppColors.border : AppColors.lightBorder;
+  final borderSubtleColor =
+      isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle;
+  final textPrimaryColor =
+      isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
+  final textSecondaryColor =
+      isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
 
-  final colorScheme = ColorScheme.fromSeed(
-    seedColor: primary,
+  final colorScheme = ColorScheme(
     brightness: brightness,
     primary: primary,
-    onPrimary: isDark ? const Color(0xFF0F172A) : Colors.white,
+    onPrimary: isDark ? AppColors.textOnEmerald : Colors.white,
     primaryContainer: isDark
-        ? primary.withValues(alpha: 0.22)
+        ? primary.withValues(alpha: 0.18)
         : primary.withValues(alpha: 0.12),
     onPrimaryContainer: isDark ? primary : accentTheme.primaryColor,
     secondary: secondary,
+    onSecondary: Colors.white,
     surface: surfaceColor,
-    onSurface: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
-    error: isDark
-        ? MedSentryColors.statusCriticalDark
-        : MedSentryColors.statusCritical,
+    onSurface: textPrimaryColor,
+    error: isDark ? AppColors.critical : const Color(0xFFDC2626),
+    onError: Colors.white,
     errorContainer: isDark
-        ? MedSentryColors.statusCriticalDark.withValues(alpha: 0.2)
-        : MedSentryColors.statusCriticalBg,
-    outline: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-    outlineVariant:
-        isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+        ? AppColors.critical.withValues(alpha: 0.18)
+        : const Color(0xFFFEE2E2),
+    onErrorContainer: isDark ? AppColors.critical : const Color(0xFF991B1B),
+    outline: borderColor,
+    outlineVariant: borderSubtleColor,
   );
 
   final semanticColors = SemanticColors(
-    normal: isDark
-        ? MedSentryColors.statusNormalDark
-        : MedSentryColors.statusNormal,
-    normalBg: isDark
-        ? MedSentryColors.statusNormalDark.withValues(alpha: 0.2)
-        : MedSentryColors.statusNormalBg,
-    warning: isDark
-        ? MedSentryColors.statusWarningDark
-        : MedSentryColors.statusWarning,
-    warningBg: isDark
-        ? MedSentryColors.statusWarningDark.withValues(alpha: 0.2)
-        : MedSentryColors.statusWarningBg,
-    critical: isDark
-        ? MedSentryColors.statusCriticalDark
-        : MedSentryColors.statusCritical,
-    criticalBg: isDark
-        ? MedSentryColors.statusCriticalDark.withValues(alpha: 0.2)
-        : MedSentryColors.statusCriticalBg,
-    info: isDark ? MedSentryColors.statusInfoDark : MedSentryColors.statusInfo,
-    infoBg: isDark
-        ? MedSentryColors.statusInfoDark.withValues(alpha: 0.2)
-        : MedSentryColors.statusInfoBg,
-    neutral: isDark
-        ? MedSentryColors.statusNeutralDark
-        : MedSentryColors.statusNeutral,
-    neutralBg: isDark
-        ? MedSentryColors.statusNeutralDark.withValues(alpha: 0.2)
-        : MedSentryColors.statusNeutralBg,
+    normal: isDark ? AppColors.success : const Color(0xFF16A34A),
+    normalBg: isDark ? AppColors.successBg : const Color(0xFFDCFCE7),
+    warning: isDark ? AppColors.pending : const Color(0xFFD97706),
+    warningBg: isDark ? AppColors.pendingBg : const Color(0xFFFEF3C7),
+    critical: isDark ? AppColors.critical : const Color(0xFFDC2626),
+    criticalBg: isDark ? AppColors.criticalBg : const Color(0xFFFEE2E2),
+    info: isDark ? AppColors.info : const Color(0xFF2563EB),
+    infoBg: isDark ? AppColors.infoBg : const Color(0xFFDBEAFE),
+    neutral: isDark ? AppColors.neutral : const Color(0xFF64748B),
+    neutralBg: isDark ? AppColors.neutralBg : const Color(0xFFF1F5F9),
+    analytical: isDark ? AppColors.analytical : const Color(0xFF7C3AED),
+    analyticalBg: isDark ? AppColors.analyticalBg : const Color(0xFFEDE9FE),
   );
 
   return ThemeData(
@@ -287,67 +284,91 @@ ThemeData buildMedSentryTheme(
     appBarTheme: AppBarTheme(
       elevation: 0,
       centerTitle: false,
-      backgroundColor: isDark ? MedSentryColors.darkAppBar : primary,
-      foregroundColor: Colors.white,
-      titleTextStyle: const TextStyle(
+      backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
+      foregroundColor: textPrimaryColor,
+      surfaceTintColor: Colors.transparent,
+      titleTextStyle: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w700,
-        color: Colors.white,
+        color: textPrimaryColor,
+        letterSpacing: -0.2,
       ),
     ),
     cardTheme: CardThemeData(
       color: surfaceColor,
       elevation: 0,
-      shadowColor: Colors.black.withValues(alpha: 0.04),
+      shadowColor: Colors.black.withValues(alpha: 0.2),
       shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.roundedLg,
+        borderRadius: AppRadius.roundedMd,
         side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.8),
+          color: borderColor,
+          width: AppColors.borderWidth,
         ),
       ),
       margin: EdgeInsets.zero,
     ),
     dividerTheme: DividerThemeData(
-      color: colorScheme.outlineVariant.withValues(alpha: 0.7),
-      thickness: 1,
+      color: borderSubtleColor,
+      thickness: AppColors.borderWidth,
       space: 1,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: isDark ? MedSentryColors.darkSurfaceElevated : Colors.white,
+      fillColor: isDark ? AppColors.inputSurface : AppColors.lightInputSurface,
       hintStyle: TextStyle(
-        color: colorScheme.onSurface.withValues(alpha: 0.5),
+        color: textSecondaryColor.withValues(alpha: 0.6),
         fontSize: 14,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
-        borderRadius: AppRadius.roundedMd,
+        borderRadius: AppRadius.roundedSm,
         borderSide: BorderSide(
-          color: colorScheme.outlineVariant,
+          color: borderColor,
+          width: AppColors.borderWidth,
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: AppRadius.roundedMd,
+        borderRadius: AppRadius.roundedSm,
         borderSide: BorderSide(
-          color: colorScheme.outlineVariant,
+          color: borderColor,
+          width: AppColors.borderWidth,
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: AppRadius.roundedMd,
-        borderSide: BorderSide(color: colorScheme.primary, width: 1.8),
+        borderRadius: AppRadius.roundedSm,
+        borderSide: BorderSide(
+          color: primary,
+          width: AppColors.borderWidthActive,
+        ),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: AppRadius.roundedMd,
-        borderSide: BorderSide(color: colorScheme.error, width: 1.2),
+        borderRadius: AppRadius.roundedSm,
+        borderSide: BorderSide(
+          color: colorScheme.error,
+          width: AppColors.borderWidth,
+        ),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: AppRadius.roundedSm,
+        borderSide: BorderSide(
+          color: colorScheme.error,
+          width: AppColors.borderWidthActive,
+        ),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         elevation: 0,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
         minimumSize: const Size(0, AppDimensions.buttonHeight),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          letterSpacing: -0.1,
+        ),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -357,32 +378,45 @@ ThemeData buildMedSentryTheme(
         foregroundColor: colorScheme.onPrimary,
         minimumSize: const Size(0, AppDimensions.buttonHeight),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          letterSpacing: -0.1,
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, AppDimensions.buttonHeight),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
-        side: BorderSide(color: colorScheme.outlineVariant),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        foregroundColor: textPrimaryColor,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+        side: BorderSide(color: borderColor, width: AppColors.borderWidth),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          letterSpacing: -0.1,
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: colorScheme.primary,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
-        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+        textStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          letterSpacing: -0.1,
+        ),
       ),
     ),
     chipTheme: ChipThemeData(
       shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedPill),
-      side: BorderSide(color: colorScheme.outlineVariant),
-      backgroundColor: surfaceColor,
+      side: BorderSide(color: borderColor, width: AppColors.borderWidth),
+      backgroundColor: elevatedSurfaceColor,
       labelStyle: TextStyle(
-        color: colorScheme.onSurface.withValues(alpha: 0.9),
+        color: textPrimaryColor,
         fontWeight: FontWeight.w600,
         fontSize: 12,
       ),
@@ -390,38 +424,83 @@ ThemeData buildMedSentryTheme(
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
+      backgroundColor: elevatedSurfaceColor,
+      contentTextStyle: TextStyle(color: textPrimaryColor, fontSize: 13),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.roundedSm,
+        side: BorderSide(color: borderColor, width: AppColors.borderWidth),
+      ),
     ),
     dialogTheme: DialogThemeData(
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedLg),
+      backgroundColor:
+          isDark ? AppColors.modalSurface : AppColors.lightModalSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.roundedLg,
+        side: BorderSide(color: borderColor, width: AppColors.borderWidth),
+      ),
       titleTextStyle: TextStyle(
-        color: colorScheme.onSurface,
+        color: textPrimaryColor,
         fontSize: 18,
         fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
       ),
       contentTextStyle: TextStyle(
-        color: colorScheme.onSurface.withValues(alpha: 0.8),
+        color: textSecondaryColor,
+        fontSize: 14,
+        height: 1.5,
       ),
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: surfaceColor,
+      backgroundColor:
+          isDark ? AppColors.sidebarBackground : Colors.white,
       elevation: 0,
       minExtendedWidth: AppDimensions.sidebarExpanded,
-      selectedIconTheme: IconThemeData(color: colorScheme.primary, size: 22),
+      selectedIconTheme: IconThemeData(color: colorScheme.primary, size: 20),
       unselectedIconTheme: IconThemeData(
-        color: colorScheme.onSurface.withValues(alpha: 0.7),
-        size: 21,
+        color: textSecondaryColor,
+        size: 20,
       ),
       selectedLabelTextStyle: TextStyle(
         color: colorScheme.primary,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
       ),
       unselectedLabelTextStyle: TextStyle(
-        color: colorScheme.onSurface.withValues(alpha: 0.75),
+        color: textSecondaryColor,
+        fontSize: 13,
       ),
       indicatorColor: colorScheme.primary.withValues(alpha: 0.12),
       indicatorShape: RoundedRectangleBorder(
+        borderRadius: AppRadius.roundedSm,
+      ),
+    ),
+    dataTableTheme: DataTableThemeData(
+      headingRowHeight: AppDimensions.tableHeaderHeight,
+      dataRowMinHeight: AppDimensions.tableRowHeight,
+      dataRowMaxHeight: AppDimensions.tableRowHeight,
+      headingTextStyle: TextStyle(
+        color: textSecondaryColor,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.2,
+      ),
+      dataTextStyle: TextStyle(
+        color: textPrimaryColor,
+        fontSize: 13,
+      ),
+      dividerThickness: 1,
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: elevatedSurfaceColor,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadius.roundedMd,
+        side: BorderSide(color: borderColor, width: AppColors.borderWidth),
+      ),
+      textStyle: TextStyle(
+        color: textPrimaryColor,
+        fontSize: 13,
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(

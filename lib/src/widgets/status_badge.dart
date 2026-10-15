@@ -4,11 +4,12 @@ import '../models/document.dart';
 import '../utils/context_extensions.dart';
 
 enum BadgeStatus {
-  normal, // Green / Success / Active
-  warning, // Amber / Pending / Waiting
-  critical, // Red / Urgent / Cancelled
-  info, // Blue / In Progress
-  neutral, // Gray / Inactive / Archived
+  normal, // Green / Success / Active (#34D399)
+  warning, // Amber / Pending / Waiting (#F59E0B)
+  critical, // Red / Urgent / Cancelled (#F87171)
+  info, // Blue / In Progress (#60A5FA)
+  neutral, // Gray / Inactive / Archived (#9CA3AF)
+  analytical, // Violet / Clinical Metric (#A78BFA)
 }
 
 /// Standardized Healthcare Status Badge for MedSentry EMR.
@@ -30,7 +31,7 @@ class StatusBadge extends StatelessWidget {
     this.showDot = false,
   });
 
-  /// 🟢 Dot status badge (shadcn style micro status indicator)
+  /// 🟢 Micro status indicator with colored dot
   factory StatusBadge.dot({
     required String text,
     BadgeStatus status = BadgeStatus.normal,
@@ -44,7 +45,7 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  /// 🟢 Active state
+  /// 🟢 Active / Success state
   factory StatusBadge.active({String text = 'Active', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
@@ -64,7 +65,37 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  /// 🟡 Pending state
+  /// ⚪ Neutral state
+  factory StatusBadge.neutral({required String text, IconData? icon, bool showDot = false}) {
+    return StatusBadge(
+      text: text,
+      status: BadgeStatus.neutral,
+      icon: icon,
+      showDot: showDot,
+    );
+  }
+
+  /// 🔴 Critical state
+  factory StatusBadge.critical({required String text, IconData? icon, bool showDot = false}) {
+    return StatusBadge(
+      text: text,
+      status: BadgeStatus.critical,
+      icon: icon ?? Icons.warning_amber_rounded,
+      showDot: showDot,
+    );
+  }
+
+  /// 🟢 Normal state
+  factory StatusBadge.normal({required String text, IconData? icon, bool showDot = false}) {
+    return StatusBadge(
+      text: text,
+      status: BadgeStatus.normal,
+      icon: icon ?? Icons.check_circle_outline,
+      showDot: showDot,
+    );
+  }
+
+  /// 🟡 Pending / Warning state
   factory StatusBadge.pending({String text = 'Pending', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
@@ -84,7 +115,7 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  /// 🔴 Cancelled state
+  /// 🔴 Cancelled / Error state
   factory StatusBadge.cancelled({String text = 'Cancelled', IconData? icon, bool showDot = false}) {
     return StatusBadge(
       text: text,
@@ -110,6 +141,16 @@ class StatusBadge extends StatelessWidget {
       text: text,
       status: BadgeStatus.info,
       icon: icon ?? Icons.info_outline,
+      showDot: showDot,
+    );
+  }
+
+  /// 🟣 Analytical / Category state
+  factory StatusBadge.analytical({required String text, IconData? icon, bool showDot = false}) {
+    return StatusBadge(
+      text: text,
+      status: BadgeStatus.analytical,
+      icon: icon,
       showDot: showDot,
     );
   }
@@ -149,43 +190,53 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.semanticColors;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Color textColor;
     Color bgColor;
+    Color borderColor;
 
     switch (status) {
       case BadgeStatus.normal:
         textColor = colors.normal;
-        bgColor = colors.normalBg;
+        bgColor = isDark ? AppColors.successBg : colors.normalBg;
+        borderColor = isDark ? AppColors.successBorder : colors.normal.withValues(alpha: 0.25);
         break;
       case BadgeStatus.warning:
         textColor = colors.warning;
-        bgColor = colors.warningBg;
+        bgColor = isDark ? AppColors.pendingBg : colors.warningBg;
+        borderColor = isDark ? AppColors.pendingBorder : colors.warning.withValues(alpha: 0.25);
         break;
       case BadgeStatus.critical:
         textColor = colors.critical;
-        bgColor = colors.criticalBg;
+        bgColor = isDark ? AppColors.criticalBg : colors.criticalBg;
+        borderColor = isDark ? AppColors.criticalBorder : colors.critical.withValues(alpha: 0.25);
         break;
       case BadgeStatus.info:
         textColor = colors.info;
-        bgColor = colors.infoBg;
+        bgColor = isDark ? AppColors.infoBg : colors.infoBg;
+        borderColor = isDark ? AppColors.infoBorder : colors.info.withValues(alpha: 0.25);
         break;
       case BadgeStatus.neutral:
         textColor = colors.neutral;
-        bgColor = colors.neutralBg;
+        bgColor = isDark ? AppColors.neutralBg : colors.neutralBg;
+        borderColor = isDark ? AppColors.neutralBorder : colors.neutral.withValues(alpha: 0.25);
+        break;
+      case BadgeStatus.analytical:
+        textColor = colors.analytical;
+        bgColor = isDark ? AppColors.analyticalBg : colors.analyticalBg;
+        borderColor = isDark ? AppColors.analyticalBorder : colors.analytical.withValues(alpha: 0.25);
         break;
     }
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
       decoration: BoxDecoration(
-        color: isDark ? textColor.withValues(alpha: 0.15) : bgColor,
+        color: bgColor,
         borderRadius: isPill ? AppRadius.roundedPill : AppRadius.roundedSm,
         border: Border.all(
-          color: textColor.withValues(alpha: isDark ? 0.4 : 0.25),
-          width: 1,
+          color: borderColor,
+          width: AppColors.borderWidth,
         ),
       ),
       child: Row(

@@ -1,16 +1,27 @@
 import 'package:flutter/material.dart';
 import '../config/app_design_tokens.dart';
 
+/// Item in a breadcrumb trail
+class AppBreadcrumbItem {
+  final String label;
+  final VoidCallback? onTap;
+
+  const AppBreadcrumbItem({required this.label, this.onTap});
+}
+
 /// Standardized Page Header component for MedSentry EMR.
-/// Communicates context, purpose, search/filters, and primary actions consistently.
+/// Communicates breadcrumbs, context, purpose, search/filters, and primary/secondary actions consistently.
 class AppPageHeader extends StatelessWidget {
   final String title;
   final String? description;
   final Widget? badge;
   final Widget? leading;
+  final List<AppBreadcrumbItem>? breadcrumbs;
   final List<Widget>? actions;
+  final Widget? primaryAction;
   final Widget? searchBar;
   final Widget? filterBar;
+  final Widget? toolbar;
   final EdgeInsets padding;
 
   const AppPageHeader({
@@ -19,9 +30,12 @@ class AppPageHeader extends StatelessWidget {
     this.description,
     this.badge,
     this.leading,
+    this.breadcrumbs,
     this.actions,
+    this.primaryAction,
     this.searchBar,
     this.filterBar,
+    this.toolbar,
     this.padding = const EdgeInsets.only(bottom: AppSpacing.lg),
   });
 
@@ -29,6 +43,12 @@ class AppPageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    final allActions = <Widget>[
+      ...?actions,
+      ?primaryAction,
+    ];
 
     return Padding(
       padding: padding,
@@ -36,6 +56,13 @@ class AppPageHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // 1. Breadcrumbs
+          if (breadcrumbs != null && breadcrumbs!.isNotEmpty) ...[
+            _buildBreadcrumbs(context),
+            const SizedBox(height: AppSpacing.xs),
+          ],
+
+          // 2. Title, Description, and Actions
           LayoutBuilder(
             builder: (context, constraints) {
               final isNarrow = constraints.maxWidth < 650;
@@ -54,12 +81,12 @@ class AppPageHeader extends StatelessWidget {
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.3,
-                        color: colorScheme.onSurface,
+                        color: isDark ? AppColors.textPrimary : colorScheme.onSurface,
                       ),
                     ),
                   ),
                   if (badge != null) ...[
-                    const SizedBox(width: AppSpacing.md),
+                    const SizedBox(width: AppSpacing.sm),
                     badge!,
                   ],
                 ],
@@ -71,7 +98,8 @@ class AppPageHeader extends StatelessWidget {
                       child: Text(
                         description!,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: isDark ? AppColors.textSecondary : colorScheme.onSurface.withValues(alpha: 0.7),
+                          height: 1.4,
                         ),
                       ),
                     )
@@ -83,12 +111,12 @@ class AppPageHeader extends StatelessWidget {
                   children: [
                     titleContent,
                     ?descriptionWidget,
-                    if (actions != null && actions!.isNotEmpty) ...[
+                    if (allActions.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.md),
                       Wrap(
                         spacing: AppSpacing.sm,
                         runSpacing: AppSpacing.sm,
-                        children: actions!,
+                        children: allActions,
                       ),
                     ],
                   ],
@@ -108,11 +136,11 @@ class AppPageHeader extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (actions != null && actions!.isNotEmpty) ...[
+                  if (allActions.isNotEmpty) ...[
                     const SizedBox(width: AppSpacing.lg),
                     Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: actions!
+                      children: allActions
                           .map(
                             (a) => Padding(
                               padding: const EdgeInsets.only(
@@ -128,8 +156,11 @@ class AppPageHeader extends StatelessWidget {
               );
             },
           ),
-          if (searchBar != null || filterBar != null) ...[
+
+          // 3. Optional Toolbar / Search / Filters
+          if (toolbar != null || searchBar != null || filterBar != null) ...[
             const SizedBox(height: AppSpacing.md),
+            ?toolbar,
             ?searchBar,
             if (filterBar != null) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -138,6 +169,70 @@ class AppPageHeader extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildBreadcrumbs(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final items = breadcrumbs!;
+    final breadcrumbWidgets = <Widget>[];
+
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+      final isLast = i == items.length - 1;
+
+      if (item.onTap != null && !isLast) {
+        breadcrumbWidgets.add(
+          InkWell(
+            onTap: item.onTap,
+            borderRadius: AppRadius.roundedXs,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+              child: Text(
+                item.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? AppColors.textSecondary : Colors.black54,
+                ),
+              ),
+            ),
+          ),
+        );
+      } else {
+        breadcrumbWidgets.add(
+          Text(
+            item.label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isLast ? FontWeight.w600 : FontWeight.w500,
+              color: isLast
+                  ? (isDark ? AppColors.textPrimary : Colors.black87)
+                  : (isDark ? AppColors.textSecondary : Colors.black54),
+            ),
+          ),
+        );
+      }
+
+      if (!isLast) {
+        breadcrumbWidgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text(
+              '/',
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? AppColors.textMuted : Colors.black38,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: breadcrumbWidgets,
     );
   }
 }

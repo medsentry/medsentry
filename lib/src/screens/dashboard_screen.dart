@@ -252,20 +252,48 @@ class DashboardScreen extends ConsumerWidget {
     IconData icon,
     VoidCallback onTap,
   ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        dense: true,
-        leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
-        title: Text(label),
-        trailing: Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: AppCard(
         onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.12),
+                borderRadius: AppRadius.roundedSm,
+              ),
+              child: Icon(icon, color: primary, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: primary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: isDark ? AppColors.textSecondary : Colors.black45,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -319,32 +347,34 @@ class DashboardScreen extends ConsumerWidget {
     User? user,
     List<Patient> patients,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Recent Patient Records',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: patients.map((patient) {
-              return ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-                title: Text(patient.fullName),
-                subtitle: Text('ID: ${patient.id}'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: user?.canAccessPatientRecords == true
-                    ? () => context.go('/patients/${patient.id}')
-                    : null,
-              );
-            }).toList(),
-          ),
-        ),
-      ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AppCard(
+      titleText: 'Recent Patient Records',
+      subtitle: 'Recently accessed or registered patients in this clinic',
+      headerAction: TextButton.icon(
+        onPressed: user?.canAccessPatientRecords == true ? () => context.go('/patients') : null,
+        icon: const Icon(Icons.arrow_forward, size: 16),
+        label: const Text('View All'),
+      ),
+      child: Column(
+        children: patients.map((patient) {
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              backgroundColor: isDark ? AppColors.primaryEmeraldSubtle : AppColors.lightInputSurface,
+              foregroundColor: isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark,
+              child: const Icon(Icons.person_outline, size: 20),
+            ),
+            title: Text(patient.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text('ID: ${patient.id} • ${patient.gender?.toUpperCase() ?? 'N/A'}'),
+            trailing: const Icon(Icons.chevron_right, size: 18),
+            onTap: user?.canAccessPatientRecords == true
+                ? () => context.go('/patients/${patient.id}')
+                : null,
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -352,44 +382,41 @@ class DashboardScreen extends ConsumerWidget {
     BuildContext context,
     List<AuditLog> activity,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Staff Activity',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : Theme.of(context).colorScheme.primary;
+
+    return AppCard(
+      titleText: 'Staff Activity',
+      subtitle: 'Recent actions and audit events in this facility',
+      headerAction: TextButton.icon(
+        onPressed: () => context.go('/audit-logs'),
+        icon: const Icon(Icons.history, size: 16),
+        label: const Text('Audit Trail'),
+      ),
+      child: Column(
+        children: activity.take(5).map((log) {
+          return ListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            leading: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.1),
+                borderRadius: AppRadius.roundedSm,
+              ),
+              child: Icon(Icons.history, color: primary, size: 18),
             ),
-            TextButton(
-              onPressed: () => context.go('/audit-logs'),
-              child: const Text('View All'),
+            title: Text(
+              '${log.actionDisplay} — ${log.entityType}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: activity.take(5).map((log) {
-              return ListTile(
-                dense: true,
-                leading: Icon(
-                  Icons.history,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 20,
-                ),
-                title: Text('${log.actionDisplay} — ${log.entityType}'),
-                subtitle: Text(
-                  '${log.userName ?? log.userId} • ${_formatTime(log.timestamp)}',
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
+            subtitle: Text(
+              '${log.userName ?? log.userId} • ${_formatTime(log.timestamp)}',
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -400,18 +427,19 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildWelcomeHero(BuildContext context, String name) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(10),
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: AppRadius.roundedMd,
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(
-            alpha: isDark ? 0.35 : 0.65,
-          ),
+          color: isDark ? AppColors.border : AppColors.lightBorder,
+          width: AppColors.borderWidth,
         ),
+        boxShadow: isDark ? AppShadows.subtle : null,
       ),
       child: Row(
         children: [
@@ -419,12 +447,15 @@ class DashboardScreen extends ConsumerWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+              borderRadius: AppRadius.roundedSm,
+              border: Border.all(
+                color: isDark ? AppColors.primaryEmerald.withValues(alpha: 0.25) : Colors.transparent,
+              ),
             ),
             child: Icon(
               Icons.health_and_safety_outlined,
-              color: theme.colorScheme.primary,
+              color: primary,
               size: 24,
             ),
           ),
@@ -438,13 +469,14 @@ class DashboardScreen extends ConsumerWidget {
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.2,
+                    color: isDark ? AppColors.textPrimary : null,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'RHU Clinical Command Center • MedSentry Workspace Active',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
                   ),
                 ),
               ],
@@ -576,115 +608,101 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildWorkflowCard(BuildContext context, _WorkflowAction action) {
     final enabled = action.onTap != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: action.onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: action.color.withValues(alpha: enabled ? 0.12 : 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  action.icon,
-                  color: enabled
-                      ? action.color
-                      : Theme.of(context).disabledColor,
-                ),
+    return AppCard(
+      onTap: action.onTap,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: action.color.withValues(alpha: enabled ? 0.12 : 0.05),
+              borderRadius: AppRadius.roundedSm,
+              border: Border.all(
+                color: action.color.withValues(alpha: enabled ? 0.2 : 0.0),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      action.title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: enabled ? null : Theme.of(context).disabledColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      action.description,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        height: 1.35,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.68),
-                      ),
-                    ),
-                  ],
+            ),
+            child: Icon(
+              action.icon,
+              color: enabled
+                  ? action.color
+                  : Theme.of(context).disabledColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  action.title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: enabled ? (isDark ? AppColors.textPrimary : null) : Theme.of(context).disabledColor,
+                  ),
                 ),
-              ),
-              if (enabled) ...[
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.chevron_right,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.45),
+                const SizedBox(height: 4),
+                Text(
+                  action.description,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    height: 1.35,
+                    color: isDark ? AppColors.textSecondary : Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
                 ),
               ],
-            ],
+            ),
           ),
-        ),
+          if (enabled) ...[
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right,
+              color: isDark ? AppColors.textSecondary : Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.45),
+            ),
+          ],
+        ],
       ),
     );
   }
 
   Widget _buildAnalyticsPreview(BuildContext context, ReportStats stats) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '30-Day Analytics',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => context.go('/reports'),
-                  icon: const Icon(Icons.insights_outlined, size: 18),
-                  label: const Text('Open Reports'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 24,
-              runSpacing: 12,
-              children: [
-                _AnalyticsChip(
-                  label: 'New patients',
-                  value: stats.newPatients.toString(),
-                  delta: stats.newPatientsDelta,
-                ),
-              ],
-            ),
-          ],
-        ),
+    return AppCard(
+      titleText: '30-Day Analytics',
+      headerAction: TextButton.icon(
+        onPressed: () => context.go('/reports'),
+        icon: const Icon(Icons.insights_outlined, size: 18),
+        label: const Text('Open Reports'),
+      ),
+      child: Wrap(
+        spacing: 24,
+        runSpacing: 12,
+        children: [
+          _AnalyticsChip(
+            label: 'New patients',
+            value: stats.newPatients.toString(),
+            delta: stats.newPatientsDelta,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStatCard(BuildContext context, _StatCardData data) {
-    return _InteractiveStatCard(data: data);
+    return AppStatCard(
+      title: data.title,
+      value: data.value,
+      subtitle: data.subtitle,
+      icon: data.icon,
+      iconColor: data.color,
+      onTap: data.onTap,
+    );
   }
 
   Widget _buildAlertCard(
@@ -694,37 +712,51 @@ class DashboardScreen extends ConsumerWidget {
     required String description,
     required Color color,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.68),
-                    ),
-                  ),
-                ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AppCard(
+      variant: AppCardVariant.elevated,
+      borderColor: color.withValues(alpha: 0.3),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: AppRadius.roundedSm,
+              border: Border.all(
+                color: color.withValues(alpha: 0.25),
               ),
             ),
-          ],
-        ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? AppColors.textPrimary : null,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: isDark ? AppColors.textSecondary : Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -975,18 +1007,19 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildSuperAdminHero(BuildContext context, String name) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(10),
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: AppRadius.roundedMd,
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(
-            alpha: isDark ? 0.35 : 0.65,
-          ),
+          color: isDark ? AppColors.border : AppColors.lightBorder,
+          width: AppColors.borderWidth,
         ),
+        boxShadow: isDark ? AppShadows.subtle : null,
       ),
       child: Row(
         children: [
@@ -994,12 +1027,15 @@ class DashboardScreen extends ConsumerWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+              borderRadius: AppRadius.roundedSm,
+              border: Border.all(
+                color: isDark ? AppColors.primaryEmerald.withValues(alpha: 0.25) : Colors.transparent,
+              ),
             ),
             child: Icon(
               Icons.shield_outlined,
-              color: theme.colorScheme.primary,
+              color: primary,
               size: 24,
             ),
           ),
@@ -1018,6 +1054,7 @@ class DashboardScreen extends ConsumerWidget {
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.2,
+                        color: isDark ? AppColors.textPrimary : null,
                       ),
                     ),
                     Container(
@@ -1026,18 +1063,16 @@ class DashboardScreen extends ConsumerWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
                         borderRadius: AppRadius.roundedSm,
                         border: Border.all(
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.3,
-                          ),
+                          color: isDark ? AppColors.primaryEmerald.withValues(alpha: 0.3) : primary.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Text(
                         'SUPER ADMIN',
                         style: TextStyle(
-                          color: theme.colorScheme.primary,
+                          color: primary,
                           fontSize: 10.5,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.4,
@@ -1050,7 +1085,7 @@ class DashboardScreen extends ConsumerWidget {
                 Text(
                   'Provincial Health Command Center • MedSentry Platform Oversight',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
                   ),
                 ),
               ],
@@ -1247,111 +1282,3 @@ class _WorkflowAction {
   });
 }
 
-class _InteractiveStatCard extends StatefulWidget {
-  final _StatCardData data;
-
-  const _InteractiveStatCard({required this.data});
-
-  @override
-  State<_InteractiveStatCard> createState() => _InteractiveStatCardState();
-}
-
-class _InteractiveStatCardState extends State<_InteractiveStatCard> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final data = widget.data;
-    final isClickable = data.onTap != null;
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: _isHovered && isClickable
-              ? theme.colorScheme.primary.withValues(alpha: 0.5)
-              : theme.colorScheme.outlineVariant.withValues(
-                  alpha: isDark ? 0.35 : 0.65,
-                ),
-          width: 1.0,
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          mouseCursor: isClickable
-              ? SystemMouseCursors.click
-              : SystemMouseCursors.basic,
-          onHover: (hovering) {
-            if (isClickable && mounted) {
-              setState(() => _isHovered = hovering);
-            }
-          },
-          onTap: data.onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        data.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.75,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: data.color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(data.icon, color: data.color, size: 18),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  data.value,
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.6,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                if (data.subtitle != null) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    data.subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.55,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../models/generated_report.dart';
 import '../providers/providers.dart';
 import '../services/report_service.dart';
+import '../widgets/app_card.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/report_export_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
@@ -44,6 +45,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return SingleChildScrollView(
       padding: ResponsiveLayout.pagePadding(context),
       child: ResponsiveContentContainer(
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -134,117 +136,114 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   String _formatDate(DateTime date) => DateFormat('MMM d, yyyy').format(date);
 
   Widget _buildRangeSelector(BuildContext context) {
-    final theme = Theme.of(context);
     final canApply =
         !_draftFilters.endDate.isBefore(_draftFilters.startDate) &&
         !_draftFilters.endDate.isAfter(DateTime.now());
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            SizedBox(
-              width: 180,
-              child: DropdownButtonFormField<ReportDatePreset>(
-                initialValue: _draftFilters.preset,
-                decoration: const InputDecoration(
-                  labelText: 'Date Range',
-                  border: OutlineInputBorder(),
-                  isDense: true,
+    return SizedBox(
+      width: double.infinity,
+      child: AppCard(
+        padding: const EdgeInsets.all(16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final isVeryNarrow = width < 420;
+            final isNarrow = width < 600;
+            final dropdownWidth = isVeryNarrow
+                ? width
+                : isNarrow
+                    ? (width - 12) / 2
+                    : 180.0;
+            final groupingWidth = isVeryNarrow
+                ? width
+                : isNarrow
+                    ? (width - 12) / 2
+                    : 150.0;
+
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: dropdownWidth,
+                  child: DropdownButtonFormField<ReportDatePreset>(
+                    initialValue: _draftFilters.preset,
+                    decoration: const InputDecoration(
+                      labelText: 'Date Range',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: ReportDatePreset.values
+                        .map(
+                          (preset) => DropdownMenuItem(
+                            value: preset,
+                            child: Text(preset.label),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (preset) {
+                      if (preset == null) return;
+                      setState(() {
+                        _draftFilters = ReportFilters.forPreset(
+                          preset,
+                          grouping: _draftFilters.grouping,
+                        );
+                      });
+                    },
+                  ),
                 ),
-                items: ReportDatePreset.values
-                    .map(
-                      (preset) => DropdownMenuItem(
-                        value: preset,
-                        child: Text(preset.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (preset) {
-                  if (preset == null) return;
-                  setState(() {
-                    _draftFilters = ReportFilters.forPreset(
-                      preset,
-                      grouping: _draftFilters.grouping,
-                    );
-                  });
-                },
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: _pickReportStartDate,
-              icon: const Icon(Icons.calendar_today_outlined, size: 18),
-              label: Text('From ${_formatDate(_draftFilters.startDate)}'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _pickReportEndDate,
-              icon: const Icon(Icons.event_outlined, size: 18),
-              label: Text('To ${_formatDate(_draftFilters.endDate)}'),
-            ),
-            SizedBox(
-              width: 150,
-              child: DropdownButtonFormField<ReportGrouping>(
-                initialValue: _draftFilters.grouping,
-                decoration: const InputDecoration(
-                  labelText: 'Group By',
-                  border: OutlineInputBorder(),
-                  isDense: true,
+                OutlinedButton.icon(
+                  onPressed: _pickReportStartDate,
+                  icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                  label: Text('From ${_formatDate(_draftFilters.startDate)}'),
                 ),
-                items: ReportGrouping.values
-                    .map(
-                      (grouping) => DropdownMenuItem(
-                        value: grouping,
-                        child: Text(grouping.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (grouping) {
-                  if (grouping != null) {
-                    setState(() {
-                      _draftFilters = _draftFilters.copyWith(
-                        grouping: grouping,
-                      );
-                    });
-                  }
-                },
-              ),
-            ),
-            FilledButton.icon(
-              onPressed: canApply ? _applyReportFilters : null,
-              icon: const Icon(Icons.filter_alt_outlined),
-              label: const Text('Apply Filters'),
-            ),
-            FilledButton.icon(
-              onPressed: () => ReportExportDialog.show(
-                context,
-                reportType: 'Patient Statistics',
-                startDate: _draftFilters.startDate,
-                endDate: _draftFilters.endDate,
-              ),
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-              label: const Text('Export PDF Report'),
-              style: FilledButton.styleFrom(
-                backgroundColor: context.semanticColors.info,
-                foregroundColor: Colors.white,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _resetReportFilters,
-              icon: const Icon(Icons.restart_alt),
-              label: const Text('Reset'),
-            ),
-          ],
+                OutlinedButton.icon(
+                  onPressed: _pickReportEndDate,
+                  icon: const Icon(Icons.event_outlined, size: 18),
+                  label: Text('To ${_formatDate(_draftFilters.endDate)}'),
+                ),
+                SizedBox(
+                  width: groupingWidth,
+                  child: DropdownButtonFormField<ReportGrouping>(
+                    initialValue: _draftFilters.grouping,
+                    decoration: const InputDecoration(
+                      labelText: 'Group By',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    items: ReportGrouping.values
+                        .map(
+                          (grouping) => DropdownMenuItem(
+                            value: grouping,
+                            child: Text(grouping.label),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (grouping) {
+                      if (grouping != null) {
+                        setState(() {
+                          _draftFilters = _draftFilters.copyWith(
+                            grouping: grouping,
+                          );
+                        });
+                      }
+                    },
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: canApply ? _applyReportFilters : null,
+                  icon: const Icon(Icons.filter_alt_outlined),
+                  label: const Text('Apply Filters'),
+                ),
+                TextButton.icon(
+                  onPressed: _resetReportFilters,
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Reset'),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -327,28 +326,32 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildNoReportData(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('No data for this period'),
-                  Text('Try another date range or change the report filters.'),
-                ],
-              ),
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: AppColors.info),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No data for this period',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  'Try another date range or change the report filters.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: _resetReportFilters,
-              child: const Text('Reset Filters'),
-            ),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: _resetReportFilters,
+            child: const Text('Reset Filters'),
+          ),
+        ],
       ),
     );
   }
@@ -361,7 +364,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         value: stats.newPatients.toString(),
         delta: stats.newPatientsDelta,
         icon: Icons.person_add_alt_1,
-        color: context.semanticColors.normal,
+        color: AppColors.primaryEmerald,
       ),
     ];
 
@@ -382,71 +385,74 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 (constraints.maxWidth - (12 * (columns - 1))) / columns;
             return SizedBox(
               width: width,
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: kpi.color.withValues(alpha: 0.12),
-                        child: Icon(kpi.icon, color: kpi.color),
+              child: AppCard(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: kpi.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              kpi.title,
-                              style: Theme.of(context).textTheme.bodySmall,
+                      child: Icon(kpi.icon, color: kpi.color, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            kpi.title,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
                             ),
-                            if (kpi.subtitle != null)
-                              Text(
-                                kpi.subtitle!,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.55),
-                                    ),
+                          ),
+                          if (kpi.subtitle != null)
+                            Text(
+                              kpi.subtitle!,
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: AppColors.textTertiary,
                               ),
-                            const SizedBox(height: 2),
-                            Text(
-                              kpi.value,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                Icon(
-                                  kpi.delta.isPositive
-                                      ? Icons.trending_up
-                                      : Icons.trending_down,
-                                  size: 14,
+                          const SizedBox(height: 4),
+                          Text(
+                            kpi.value,
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                kpi.delta.isPositive
+                                    ? Icons.trending_up
+                                    : Icons.trending_down,
+                                size: 14,
+                                color: kpi.delta.isPositive
+                                    ? AppColors.success
+                                    : AppColors.critical,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                kpi.delta.formatted,
+                                style: TextStyle(
                                   color: kpi.delta.isPositive
-                                      ? context.semanticColors.normal
-                                      : context.semanticColors.critical,
+                                      ? AppColors.success
+                                      : AppColors.critical,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  kpi.delta.formatted,
-                                  style: TextStyle(
-                                    color: kpi.delta.isPositive
-                                        ? context.semanticColors.normal
-                                        : context.semanticColors.critical,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -525,91 +531,96 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         ? _formatTrendLabel(trends.last.date, grouping)
         : '';
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '$subtitle · avg ${average.toStringAsFixed(1)} per period',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
                       ),
-                      Text(
-                        '$subtitle · avg ${average.toStringAsFixed(1)} per period',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.62),
-                        ),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              if (trends.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: lineColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: lineColor.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '$total total',
+                    style: TextStyle(
+                      color: lineColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-                if (trends.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: lineColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 220,
+            child: values.isEmpty
+                ? Center(
                     child: Text(
-                      '$total total',
-                      style: TextStyle(
-                        color: lineColor,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
+                      'No data available',
+                      style: TextStyle(color: context.semanticColors.neutral),
                     ),
+                  )
+                : CustomPaint(
+                    painter: _TrendLinePainter(
+                      values: values,
+                      lineColor: lineColor,
+                      gridColor: AppColors.border.withValues(alpha: 0.3),
+                    ),
+                    child: const SizedBox.expand(),
                   ),
+          ),
+          if (startLabel.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  startLabel,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+                Text(
+                  endLabel,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 220,
-              child: values.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No data available',
-                        style: TextStyle(color: context.semanticColors.neutral),
-                      ),
-                    )
-                  : CustomPaint(
-                      painter: _TrendLinePainter(
-                        values: values,
-                        lineColor: lineColor,
-                        gridColor: Theme.of(
-                          context,
-                        ).colorScheme.outline.withValues(alpha: 0.2),
-                      ),
-                      child: const SizedBox.expand(),
-                    ),
-            ),
-            if (startLabel.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    startLabel,
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                  Text(endLabel, style: Theme.of(context).textTheme.labelSmall),
-                ],
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -620,91 +631,89 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required List<DistributionMetric> metrics,
     required String emptyMessage,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 12),
-            if (metrics.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Text(
-                    emptyMessage,
-                    style: TextStyle(color: context.semanticColors.neutral),
-                  ),
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          if (metrics.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  emptyMessage,
+                  style: TextStyle(color: context.semanticColors.neutral),
                 ),
-              )
-            else
-              ...metrics.asMap().entries.map((entry) {
-                final index = entry.key;
-                final metric = entry.value;
-                final maxVal = metrics.map((e) => e.value).reduce(math.max);
-                final ratio = maxVal > 0 ? metric.value / maxVal : 0.0;
-                final colors = [
-                  context.semanticColors.info,
-                  context.semanticColors.normal,
-                  context.semanticColors.warning,
-                  context.semanticColors.neutral,
-                  context.semanticColors.critical,
-                  context.semanticColors.info,
-                ];
-                final color = colors[index % colors.length];
+              ),
+            )
+          else
+            ...metrics.asMap().entries.map((entry) {
+              final index = entry.key;
+              final metric = entry.value;
+              final maxVal = metrics.map((e) => e.value).reduce(math.max);
+              final ratio = maxVal > 0 ? metric.value / maxVal : 0.0;
+              final colors = [
+                AppColors.info,
+                AppColors.primaryEmerald,
+                AppColors.warning,
+                AppColors.textSecondary,
+                AppColors.critical,
+                AppColors.analytical,
+              ];
+              final color = colors[index % colors.length];
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              metric.label,
-                              style: Theme.of(context).textTheme.bodySmall,
-                              overflow: TextOverflow.ellipsis,
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            metric.label,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textPrimary,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          Text(
-                            '${metric.value}',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${metric.percentage.toStringAsFixed(0)}%',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.55),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          minHeight: 10,
-                          value: ratio,
-                          backgroundColor: color.withValues(alpha: 0.12),
-                          valueColor: AlwaysStoppedAnimation<Color>(color),
                         ),
+                        Text(
+                          '${metric.value}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${metric.percentage.toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        minHeight: 8,
+                        value: ratio,
+                        backgroundColor: color.withValues(alpha: 0.12),
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
                       ),
-                    ],
-                  ),
-                );
-              }),
-          ],
-        ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
       ),
     );
   }
@@ -749,21 +758,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   Widget _buildEmptyReportsSection(BuildContext context) {
     return _buildSection(context, 'Recent Reports', [
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: context.semanticColors.neutral),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'No reports generated yet. Use the options above to create your first report.',
-                  style: TextStyle(color: context.semanticColors.neutral),
-                ),
+      AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, color: context.semanticColors.neutral),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No reports generated yet. Use the options above to create your first report.',
+                style: TextStyle(color: context.semanticColors.neutral),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     ]);
@@ -778,17 +785,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     VoidCallback onTap,
   ) {
     final theme = Theme.of(context);
-    return Container(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
+      padding: EdgeInsets.zero,
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
         leading: Container(
           width: 38,
           height: 38,
@@ -809,13 +810,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         subtitle: Text(
           description,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: AppColors.textSecondary,
           ),
         ),
         trailing: Icon(
           Icons.arrow_forward_ios,
           size: 13,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+          color: AppColors.textTertiary,
         ),
         onTap: onTap,
       ),
@@ -828,20 +829,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     IconData icon,
     VoidCallback onTap,
   ) {
-    final theme = Theme.of(context);
     final isMobile = context.isMobile;
 
-    return Container(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
+      padding: EdgeInsets.zero,
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
         leading: Icon(icon, color: context.semanticColors.neutral),
         title: Text(report.title),
         subtitle: Text(

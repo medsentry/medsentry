@@ -18,12 +18,14 @@ class LoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final indicator = SizedBox(
       width: size,
       height: size,
-      child: CircularProgressIndicator(
+      child: const CircularProgressIndicator(
         strokeWidth: 2.5,
-        valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryEmerald),
       ),
     );
 
@@ -39,8 +41,9 @@ class LoadingState extends StatelessWidget {
               const SizedBox(width: AppSpacing.md),
               Text(
                 message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                 ),
               ),
             ],
@@ -60,8 +63,9 @@ class LoadingState extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             Text(
               message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -88,8 +92,8 @@ class AppSkeletonLoader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
-    final highlightColor = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+    final baseColor = isDark ? AppColors.elevatedSurface : const Color(0xFFE2E8F0);
+    final highlightColor = isDark ? AppColors.border : const Color(0xFFF1F5F9);
 
     return Shimmer.fromColors(
       baseColor: baseColor,
@@ -182,7 +186,7 @@ class AppErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final message = _sanitizeErrorMessage(error);
 
     return Center(
@@ -196,29 +200,33 @@ class AppErrorState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: colorScheme.error.withValues(alpha: 0.1),
+                color: AppColors.criticalBg,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppColors.criticalBorder),
               ),
               child: Icon(
                 icon,
-                size: AppIconSize.xl,
-                color: colorScheme.error,
+                size: AppIconSize.lg,
+                color: AppColors.critical,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               title,
-              style: theme.textTheme.titleMedium?.copyWith(
+              style: TextStyle(
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: colorScheme.onSurface,
+                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                height: 1.4,
               ),
               textAlign: TextAlign.center,
             ),
@@ -226,8 +234,11 @@ class AppErrorState extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl),
               FilledButton.tonalIcon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 18),
+                icon: const Icon(Icons.refresh, size: 16),
                 label: const Text('Try Again'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+                ),
               ),
             ],
           ],

@@ -13,22 +13,41 @@ extension BuildContextExtensions on BuildContext {
   /// Easy access to TextTheme
   TextTheme get textTheme => Theme.of(this).textTheme;
 
+  /// Easy check if dark mode is active
+  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+
+  /// Context-aware background color
+  Color get scaffoldBackgroundColor => Theme.of(this).scaffoldBackgroundColor;
+
+  /// Context-aware surface color
+  Color get surfaceColor => isDark ? AppColors.cardSurface : AppColors.lightCardSurface;
+
+  /// Context-aware elevated surface color
+  Color get elevatedSurfaceColor => isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface;
+
+  /// Context-aware primary border color
+  Color get borderColor => isDark ? AppColors.border : AppColors.lightBorder;
+
+  /// Context-aware subtle border color
+  Color get borderSubtleColor => isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle;
+
   /// Access the custom SemanticColors
   SemanticColors get semanticColors {
     final extension = Theme.of(this).extension<SemanticColors>();
     if (extension == null) {
-      // Fallback colors if not found
-      return SemanticColors(
-        normal: MedSentryColors.statusNormal,
-        normalBg: MedSentryColors.statusNormalBg,
-        warning: MedSentryColors.statusWarning,
-        warningBg: MedSentryColors.statusWarningBg,
-        critical: MedSentryColors.statusCritical,
-        criticalBg: MedSentryColors.statusCriticalBg,
-        info: MedSentryColors.statusInfo,
-        infoBg: MedSentryColors.statusInfoBg,
-        neutral: MedSentryColors.statusNeutral,
-        neutralBg: MedSentryColors.statusNeutralBg,
+      return const SemanticColors(
+        normal: AppColors.success,
+        normalBg: AppColors.successBg,
+        warning: AppColors.pending,
+        warningBg: AppColors.pendingBg,
+        critical: AppColors.critical,
+        criticalBg: AppColors.criticalBg,
+        info: AppColors.info,
+        infoBg: AppColors.infoBg,
+        neutral: AppColors.neutral,
+        neutralBg: AppColors.neutralBg,
+        analytical: AppColors.analytical,
+        analyticalBg: AppColors.analyticalBg,
       );
     }
     return extension;

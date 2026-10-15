@@ -254,7 +254,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+      backgroundColor: isDark ? AppColors.appBackground : AppColors.lightBackground,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -294,7 +294,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ],
                         const SizedBox(height: 16),
-                        _buildAuthForm(context, isTall: false),
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.cardSurface : Colors.white,
+                            borderRadius: AppRadius.roundedLg,
+                            border: Border.all(
+                              color: isDark ? AppColors.border : AppColors.lightBorder,
+                              width: AppColors.borderWidth,
+                            ),
+                            boxShadow: isDark ? AppShadows.subtle : null,
+                          ),
+                          child: _buildAuthForm(context, isTall: false),
+                        ),
                         const SizedBox(height: 20),
                         _buildBottomBar(context, compact: true),
                       ],
@@ -342,7 +354,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 constraints: BoxConstraints(
                                   maxWidth: formMaxWidth,
                                 ),
-                                child: _buildAuthForm(context, isTall: isTall),
+                                child: Container(
+                                  padding: EdgeInsets.all(isTall ? 32 : 24),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? AppColors.cardSurface : Colors.white,
+                                    borderRadius: AppRadius.roundedLg,
+                                    border: Border.all(
+                                      color: isDark ? AppColors.border : AppColors.lightBorder,
+                                      width: AppColors.borderWidth,
+                                    ),
+                                    boxShadow: isDark ? AppShadows.subtle : [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.05),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: _buildAuthForm(context, isTall: isTall),
+                                ),
                               ),
                             ),
                           ),
@@ -382,7 +412,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool isTall = false,
   }) {
     final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
     final settings = ref.watch(systemSettingsProvider).valueOrNull ??
         const SystemSettings();
 
@@ -396,8 +427,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           SystemLogo(
             dataUri: settings.logoDataUri,
             size: isTall ? 36 : 30,
-            backgroundColor: primary,
-            iconColor: Colors.white,
+            backgroundColor: isDark ? AppColors.primaryEmeraldSubtle : primary,
+            iconColor: isDark ? AppColors.primaryEmerald : Colors.white,
             iconSize: isTall ? 22 : 18,
           ),
           const SizedBox(width: 10),
@@ -407,7 +438,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fontSize: isTall ? 20 : 17,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.3,
-              color: primary,
+              color: isDark ? AppColors.textPrimary : primary,
             ),
           ),
           const Spacer(),
@@ -477,8 +508,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildAuthForm(BuildContext context, {bool isTall = false}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = theme.colorScheme.primary;
-    final fieldBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
+    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+    final fieldBg = isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC);
+    final borderColor = isDark ? AppColors.border : AppColors.lightBorder;
     final settings = ref.watch(systemSettingsProvider).valueOrNull ??
         const SystemSettings();
 
@@ -493,8 +525,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             SystemLogo(
               dataUri: settings.logoDataUri,
               size: isTall ? 40 : 34,
-              backgroundColor: primary,
-              iconColor: Colors.white,
+              backgroundColor: isDark ? AppColors.primaryEmeraldSubtle : primary,
+              iconColor: isDark ? AppColors.primaryEmerald : Colors.white,
               iconSize: isTall ? 24 : 20,
             ),
             const SizedBox(width: 12),
@@ -510,13 +542,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ?.copyWith(
                             fontWeight: FontWeight.w800,
                             letterSpacing: -0.3,
-                            color: primary,
+                            color: isDark ? AppColors.textPrimary : primary,
                           ),
                 ),
                 Text(
                   settings.organizationName,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  style: TextStyle(
+                    color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
                   ),
@@ -599,7 +631,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           const SizedBox(height: 14),
         ],
 
-        // Input fields with soft filled styling matching the reference image
+        // Input fields with soft filled styling matching the design system
         if (!_isPinLogin) ...[
           if (!_sessionLocked) ...[
             TextField(
@@ -615,16 +647,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 filled: true,
                 fillColor: fieldBg,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderRadius: AppRadius.roundedSm,
+                  borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+                  borderRadius: AppRadius.roundedSm,
+                  borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: primary, width: 1.6),
+                  borderRadius: AppRadius.roundedSm,
+                  borderSide: BorderSide(color: primary, width: AppColors.borderWidthActive),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -659,16 +691,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               filled: true,
               fillColor: fieldBg,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
+                borderRadius: AppRadius.roundedSm,
+                borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
+                borderRadius: AppRadius.roundedSm,
+                borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: primary, width: 1.6),
+                borderRadius: AppRadius.roundedSm,
+                borderSide: BorderSide(color: primary, width: AppColors.borderWidthActive),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -712,16 +744,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               filled: true,
               fillColor: fieldBg,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
+                borderRadius: AppRadius.roundedSm,
+                borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
+                borderRadius: AppRadius.roundedSm,
+                borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: primary, width: 1.6),
+                borderRadius: AppRadius.roundedSm,
+                borderSide: BorderSide(color: primary, width: AppColors.borderWidthActive),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -738,7 +770,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         const SizedBox(height: 8),
 
-        // Remember Me ! & Need Help? row (matching reference)
+        // Remember Me & Need Help row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -762,7 +794,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Remember Me !',
+                  'Remember Me',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                     fontSize: 13,
@@ -812,17 +844,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: theme.colorScheme.error.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
+              color: isDark ? AppColors.criticalBg : theme.colorScheme.error.withValues(alpha: 0.08),
+              borderRadius: AppRadius.roundedSm,
               border: Border.all(
-                color: theme.colorScheme.error.withValues(alpha: 0.25),
+                color: isDark ? AppColors.critical.withValues(alpha: 0.3) : theme.colorScheme.error.withValues(alpha: 0.25),
               ),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.error_outline_rounded,
-                  color: theme.colorScheme.error,
+                  color: isDark ? AppColors.critical : theme.colorScheme.error,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
@@ -830,7 +862,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Text(
                     _error!,
                     style: TextStyle(
-                      color: theme.colorScheme.error,
+                      color: isDark ? AppColors.critical : theme.colorScheme.error,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -848,20 +880,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           onPressed: _isLoading ? null : _login,
           style: ElevatedButton.styleFrom(
             backgroundColor: primary,
-            foregroundColor: Colors.white,
+            foregroundColor: isDark ? AppColors.textOnEmerald : Colors.white,
             minimumSize: Size.fromHeight(isTall ? 50 : 46),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.roundedSm,
             ),
             elevation: 0,
           ),
           child: _isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isDark ? AppColors.textOnEmerald : Colors.white,
+                    ),
                   ),
                 )
               : Text(
@@ -913,8 +947,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               style: OutlinedButton.styleFrom(
                 minimumSize: Size.fromHeight(isTall ? 46 : 42),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppRadius.roundedSm,
                 ),
+                side: BorderSide(color: borderColor, width: AppColors.borderWidth),
               ),
             ),
             const SizedBox(height: 8),

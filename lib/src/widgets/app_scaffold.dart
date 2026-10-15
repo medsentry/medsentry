@@ -25,7 +25,7 @@ class AppNavigationItem {
   });
 }
 
-/// Main app scaffold with navigation rail for desktop layout
+/// Main app scaffold with responsive sidebar, topbar, and drawer
 class AppScaffold extends ConsumerStatefulWidget {
   final Widget body;
   final String title;
@@ -53,13 +53,9 @@ class AppScaffold extends ConsumerStatefulWidget {
 class _AppScaffoldState extends ConsumerState<AppScaffold> {
   bool _sidebarExpanded = true;
 
-  static const _sidebarExpandedWidth = 228.0;
-  static const _sidebarCollapsedWidth = 72.0;
-
   @override
   void initState() {
     super.initState();
-    // Register keyboard shortcut for search (Ctrl+K)
     ServicesBinding.instance.keyboard.addHandler(_handleKeyEvent);
   }
 
@@ -71,7 +67,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent) {
-      // Ctrl+K or Ctrl+F to open Command Palette
       if ((event.logicalKey == LogicalKeyboardKey.keyK ||
               event.logicalKey == LogicalKeyboardKey.keyF) &&
           HardwareKeyboard.instance.isControlPressed) {
@@ -88,32 +83,32 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     final syncStatus = ref.watch(syncStatusProvider);
     final isMobile = ResponsiveLayout.isMobile(context);
     final isTablet = ResponsiveLayout.isTablet(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     if (isMobile) {
       return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: _buildMobileAppBar(context, user, syncStatus),
         drawer: _buildDrawer(context, user, syncStatus),
-        bottomNavigationBar: _buildMobileBottomNav(context),
-        body: SafeArea(child: widget.body),
+        body: SafeArea(top: false, child: widget.body),
         floatingActionButton: widget.floatingActionButton,
       );
     }
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
+        preferredSize: const Size.fromHeight(AppDimensions.appBarHeight),
         child: Container(
           decoration: BoxDecoration(
-            color:
-                Theme.of(context).appBarTheme.backgroundColor ??
-                Theme.of(context).primaryColor,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 2,
-                offset: const Offset(0, 2),
+            color: isDark ? AppColors.sidebarBackground : Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                width: AppColors.borderWidth,
               ),
-            ],
+            ),
           ),
           child: SafeArea(
             child: Padding(
@@ -121,17 +116,18 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final isCompact = constraints.maxWidth < 800;
-                  final spacing = isCompact ? 12.0 : 24.0;
+                  final spacing = isCompact ? 12.0 : 20.0;
 
                   return Row(
                     children: [
-                      // LEFT ZONE: Identity & Context
+                      // LEFT ZONE: Brand & Context
                       Flexible(
                         flex: isCompact ? 1 : 0,
                         child: _buildIdentityZone(context),
                       ),
                       SizedBox(width: spacing),
-                      // CENTER ZONE: Global Action (Search)
+
+                      // CENTER ZONE: Global Search Bar (Ctrl+K)
                       Expanded(
                         flex: 3,
                         child: _buildSearchZone(
@@ -140,7 +136,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                         ),
                       ),
                       SizedBox(width: spacing),
-                      // RIGHT ZONE: Status & User Profile (flexible to avoid overflow)
+
+                      // RIGHT ZONE: Sync, Clock & Profile
                       Flexible(
                         flex: isCompact ? 1 : 0,
                         child: _buildStatusZone(context, user, syncStatus),
@@ -155,12 +152,11 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       ),
       body: Row(
         children: [
-          // On tablet, lock sidebar to collapsed rail (72px) with tooltips
           _buildSidebar(context, forceCollapsed: isTablet),
           VerticalDivider(
-            thickness: 1,
-            width: 1,
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.35),
+            thickness: AppColors.borderWidth,
+            width: AppColors.borderWidth,
+            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
           ),
           Expanded(child: widget.body),
         ],
@@ -174,71 +170,95 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     User? user,
     SyncStatus syncStatus,
   ) {
-    final isCompact = ResponsiveLayout.isCompactHeight(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
+    final currentPath = GoRouter.maybeOf(context)?.state.uri.path ?? '';
+    final isDetailRoute =
+        currentPath.startsWith('/patients/') && currentPath != '/patients';
+
     return AppBar(
-      toolbarHeight: isCompact ? 48 : 56,
-      backgroundColor:
-          Theme.of(context).appBarTheme.backgroundColor ??
-          Theme.of(context).primaryColor,
-      leading: Builder(
-        builder: (drawerContext) => IconButton(
-          tooltip: 'Open menu',
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () => Scaffold.of(drawerContext).openDrawer(),
-        ),
-      ),
+      elevation: 0,
+      backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
+      foregroundColor: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+      titleSpacing: 0,
+      leading: isDetailRoute
+          ? IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Back to Patients',
+              onPressed: () => context.go('/patients'),
+            )
+          : Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.menu),
+                tooltip: 'Open menu',
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
+              ),
+            ),
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SystemLogo(
             dataUri: settings.logoDataUri,
-            size: 32,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            iconColor: Colors.white,
-            iconSize: 20,
+            size: 28,
+            backgroundColor: isDark
+                ? AppColors.primaryEmeraldSubtle
+                : AppColors.primaryEmerald.withValues(alpha: 0.15),
+            iconColor: AppColors.primaryEmerald,
+            iconSize: 18,
             borderRadius: 6,
           ),
           const SizedBox(width: 8),
-          const Text(
-            'MedSentry',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+          Flexible(
+            child: Text(
+              widget.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+              ),
             ),
           ),
         ],
       ),
       actions: [
-        if (user?.canAccessPatientRecords == true)
-          IconButton(
-            tooltip: 'Search Patients',
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () => _showMobileSearchDialog(context),
+        IconButton(
+          tooltip: 'Search (Ctrl+K)',
+          icon: Icon(
+            Icons.search,
+            size: 20,
+            color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
           ),
+          onPressed: () => showMedsentryCommandPalette(context, ref),
+        ),
         _SyncStatusDropdown(status: syncStatus),
-        const SizedBox(width: 4),
-        if (user != null) _buildMobileUserAvatar(context, user),
-        const SizedBox(width: 8),
+        if (user != null) ...[
+          Padding(
+            padding: const EdgeInsets.only(right: 12, left: 4),
+            child: _buildMobileUserAvatar(context, user),
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildMobileUserAvatar(BuildContext context, User user) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return PopupMenuButton<String>(
       tooltip: 'Account Menu',
       offset: const Offset(0, 48),
       child: CircleAvatar(
-        radius: 16,
-        backgroundColor: Colors.white.withValues(alpha: 0.25),
+        radius: 15,
+        backgroundColor: AppColors.primaryEmeraldSubtle,
         child: Text(
           user.initials,
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.primaryEmerald,
             fontWeight: FontWeight.bold,
-            fontSize: 12,
+            fontSize: 11,
           ),
         ),
       ),
@@ -250,11 +270,17 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             children: [
               Text(
                 user.displayName,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                ),
               ),
               Text(
                 user.roleDisplay,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                style: TextStyle(
+                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                  fontSize: 11,
+                ),
               ),
             ],
           ),
@@ -264,7 +290,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           value: 'profile',
           child: Row(
             children: [
-              Icon(Icons.person_outline),
+              Icon(Icons.person_outline, size: 18),
               SizedBox(width: 8),
               Text('My Profile'),
             ],
@@ -274,9 +300,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout, color: Colors.red),
+              Icon(Icons.logout, color: AppColors.critical, size: 18),
               SizedBox(width: 8),
-              Text('Log Out', style: TextStyle(color: Colors.red)),
+              Text('Log Out', style: TextStyle(color: AppColors.critical)),
             ],
           ),
         ),
@@ -299,60 +325,27 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  Widget? _buildMobileBottomNav(BuildContext context) {
-    // Hide bottom navigation on compact/short viewports (e.g. landscape phone, virtual keyboard)
-    // to give maximum vertical space to content. Full navigation is accessible via the Drawer.
-    if (MediaQuery.sizeOf(context).height < 520) return null;
-
-    // Only display on mobile if there are enough core items
-    if (widget.navigationItems.length < 3) return null;
-
-    final primaryItems = widget.navigationItems.take(4).toList();
-    final currentIndex = widget.currentIndex;
-    final selectedIndex = currentIndex < 4 ? currentIndex : 4;
-
-    return NavigationBar(
-      selectedIndex: selectedIndex,
-      height: 64,
-      onDestinationSelected: (index) {
-        if (index == 4) {
-          // Open drawer for extra destinations
-          Scaffold.of(context).openDrawer();
-          return;
-        }
-        _onNavigationSelected(index, context);
-      },
-      destinations: [
-        ...primaryItems.map(
-          (item) => NavigationDestination(
-            icon: Icon(item.icon),
-            selectedIcon: Icon(item.selectedIcon),
-            label: item.label,
-          ),
-        ),
-        const NavigationDestination(
-          icon: Icon(Icons.menu),
-          selectedIcon: Icon(Icons.menu_open),
-          label: 'More',
-        ),
-      ],
-    );
-  }
-
   Widget _buildDrawer(BuildContext context, User? user, SyncStatus syncStatus) {
     final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
 
     return Drawer(
+      backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
       child: SafeArea(
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              color: primary,
-              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                  ),
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -360,23 +353,24 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                     children: [
                       SystemLogo(
                         dataUri: settings.logoDataUri,
-                        size: 44,
-                        backgroundColor: Colors.white.withValues(alpha: 0.2),
-                        iconColor: Colors.white,
-                        iconSize: 26,
-                        borderRadius: 10,
+                        size: 40,
+                        backgroundColor: AppColors.primaryEmeraldSubtle,
+                        iconColor: AppColors.primaryEmerald,
+                        iconSize: 24,
+                        borderRadius: 8,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'MedSentry',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 19,
+                                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
+                                letterSpacing: -0.2,
                               ),
                             ),
                             Text(
@@ -384,8 +378,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                                   ? 'Super Admin Network'
                                   : 'Rural Health Unit',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 12,
+                                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                fontSize: 11,
                               ),
                             ),
                           ],
@@ -393,19 +387,19 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Text(
                     user?.displayName ?? 'User',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
+                    style: TextStyle(
+                      color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   Text(
                     user?.email ?? '',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                       fontSize: 12,
                     ),
                   ),
@@ -434,18 +428,34 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 },
               ),
             ),
-            const Divider(height: 1),
+            Divider(
+              height: 1,
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+            ),
             ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('My Profile'),
+              leading: Icon(
+                Icons.person_outline,
+                size: 20,
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+              ),
+              title: Text(
+                'My Profile',
+                style: TextStyle(
+                  color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                  fontSize: 14,
+                ),
+              ),
               onTap: () {
                 Navigator.of(context).pop();
                 context.push('/profile');
               },
             ),
             ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Log Out', style: TextStyle(color: Colors.red)),
+              leading: const Icon(Icons.logout, color: AppColors.critical, size: 20),
+              title: const Text(
+                'Log Out',
+                style: TextStyle(color: AppColors.critical, fontSize: 14),
+              ),
               onTap: () async {
                 Navigator.of(context).pop();
                 try {
@@ -465,10 +475,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  void _showMobileSearchDialog(BuildContext context) {
-    showMedsentryCommandPalette(context, ref);
-  }
-
   void _onNavigationSelected(int index, BuildContext context) {
     if (widget.onTabChanged != null) {
       widget.onTabChanged!(index);
@@ -481,14 +487,17 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
   Widget _buildSidebar(BuildContext context, {bool forceCollapsed = false}) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isExpanded = !forceCollapsed && _sidebarExpanded;
-    final width = isExpanded ? _sidebarExpandedWidth : _sidebarCollapsedWidth;
+    final width = isExpanded
+        ? AppDimensions.sidebarExpanded
+        : AppDimensions.sidebarCollapsed;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
+      duration: AppDurations.normal,
       curve: Curves.easeInOut,
       width: width,
-      color: theme.colorScheme.surface,
+      color: isDark ? AppColors.sidebarBackground : Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -509,7 +518,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
           ),
           if (!forceCollapsed) ...[
-            const Divider(height: 1),
+            Divider(
+              height: 1,
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+            ),
             _buildSidebarToggle(context),
           ],
         ],
@@ -518,6 +530,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   }
 
   Widget _buildSidebarToggle(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final label = _sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar';
 
     return Tooltip(
@@ -525,33 +538,28 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       child: InkWell(
         onTap: () => setState(() => _sidebarExpanded = !_sidebarExpanded),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             mainAxisAlignment: _sidebarExpanded
                 ? MainAxisAlignment.spaceBetween
                 : MainAxisAlignment.center,
             children: [
               if (_sidebarExpanded)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Text(
-                    'Collapse',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.65),
-                    ),
+                Text(
+                  'Collapse',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   ),
                 ),
-              IconButton(
-                tooltip: label,
-                onPressed: () =>
-                    setState(() => _sidebarExpanded = !_sidebarExpanded),
-                icon: AnimatedRotation(
-                  turns: _sidebarExpanded ? 0 : 0.5,
-                  duration: const Duration(milliseconds: 220),
-                  child: const Icon(Icons.chevron_left),
+              AnimatedRotation(
+                turns: _sidebarExpanded ? 0 : 0.5,
+                duration: AppDurations.normal,
+                child: Icon(
+                  Icons.chevron_left,
+                  size: 20,
+                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                 ),
               ),
             ],
@@ -561,51 +569,52 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  /// LEFT ZONE: Identity & Context
+  /// LEFT ZONE: Brand & Context
   Widget _buildIdentityZone(BuildContext context) {
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Logo Icon
         SystemLogo(
           dataUri: settings.logoDataUri,
-          size: 40,
-          backgroundColor: Colors.white.withValues(alpha: 0.2),
-          iconColor: Colors.white,
-          iconSize: 24,
+          size: 36,
+          backgroundColor: isDark
+              ? AppColors.primaryEmeraldSubtle
+              : AppColors.primaryEmerald.withValues(alpha: 0.15),
+          iconColor: AppColors.primaryEmerald,
+          iconSize: 22,
+          borderRadius: 8,
         ),
         const SizedBox(width: 12),
-        // App Name & Facility
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'MedSentry',
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
+                  color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: -0.2,
                 ),
               ),
               Text(
                 ref.watch(currentUserProvider)?.isSuperAdmin == true
                     ? 'Super Admin • All RHUs'
-                    : 'Healthcare Management Network',
+                    : 'Rural Health Unit',
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.85),
+                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   fontSize: 11,
-                  fontWeight:
-                      ref.watch(currentUserProvider)?.isSuperAdmin == true
-                      ? FontWeight.w700
-                      : FontWeight.normal,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -615,33 +624,38 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  /// CENTER ZONE: Global Action (Search Command Palette)
+  /// CENTER ZONE: Global Search Bar (Ctrl+K)
   Widget _buildSearchZone(BuildContext context, {required bool enabled}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return InkWell(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppRadius.roundedSm,
       onTap: enabled ? () => showMedsentryCommandPalette(context, ref) : null,
       child: Container(
         height: 38,
-        constraints: const BoxConstraints(maxWidth: 540),
+        constraints: const BoxConstraints(maxWidth: 520),
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+          color: isDark ? AppColors.inputSurface : AppColors.lightInputSurface,
+          borderRadius: AppRadius.roundedSm,
+          border: Border.all(
+            color: isDark ? AppColors.border : AppColors.lightBorder,
+            width: AppColors.borderWidth,
+          ),
         ),
         child: Row(
           children: [
             Icon(
               Icons.search,
-              size: 18,
-              color: Colors.white.withValues(alpha: 0.8),
+              size: 16,
+              color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Search patients, records, or jump to page...',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   fontSize: 13,
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -650,13 +664,16 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
+                color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
+                borderRadius: AppRadius.roundedXs,
+                border: Border.all(
+                  color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                ),
               ),
               child: Text(
                 'Ctrl + K',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.95),
+                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -668,16 +685,18 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  /// RIGHT ZONE: Status & User Profile
+  /// RIGHT ZONE: Status, Clock & Profile
   Widget _buildStatusZone(
     BuildContext context,
     User? user,
     SyncStatus syncStatus,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 300;
-        final hideClock = constraints.maxWidth < 200;
+        final isCompact = constraints.maxWidth < 320;
+        final hideClock = constraints.maxWidth < 220;
 
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -699,10 +718,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                       padding: const EdgeInsets.only(right: 8),
                       child: IconButton(
                         tooltip: 'Install MedSentry to Device',
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.install_desktop_outlined,
-                          color: Colors.white,
-                          size: 20,
+                          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                          size: 18,
                         ),
                         onPressed: () async {
                           final installed = await installer.promptInstall();
@@ -725,7 +744,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             _SyncStatusDropdown(status: syncStatus),
 
             if (!hideClock) ...[
-              SizedBox(width: isCompact ? 12 : 16),
+              SizedBox(width: isCompact ? 10 : 16),
               // Live Clock
               StreamBuilder<DateTime>(
                 stream: Stream.periodic(
@@ -739,18 +758,18 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        _formatTime(now),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                        formatTime12h(now),
+                        style: TextStyle(
+                          color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       if (!isCompact)
                         Text(
                           _formatDate(now),
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
+                            color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
                             fontSize: 11,
                           ),
                         ),
@@ -760,30 +779,39 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
               ),
             ],
 
-            SizedBox(width: isCompact ? 12 : 16),
+            SizedBox(width: isCompact ? 10 : 16),
 
             // User Profile
             if (user != null)
               PopupMenuButton<String>(
+                offset: const Offset(0, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppRadius.roundedMd,
+                  side: BorderSide(
+                    color: isDark ? AppColors.border : AppColors.lightBorder,
+                    width: AppColors.borderWidth,
+                  ),
+                ),
+                color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircleAvatar(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Theme.of(context).primaryColor,
-                      radius: 18,
+                      backgroundColor: AppColors.primaryEmeraldSubtle,
+                      radius: 16,
                       child: Text(
                         user.initials.isNotEmpty ? user.initials : 'U',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          color: AppColors.primaryEmerald,
+                          fontSize: 12,
                         ),
                       ),
                     ),
                     if (!isCompact) ...[
                       const SizedBox(width: 8),
                       ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 100),
+                        constraints: const BoxConstraints(maxWidth: 110),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -792,10 +820,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                               user.displayName,
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                              style: TextStyle(
+                                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                             Text(
@@ -803,8 +831,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 11,
+                                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
@@ -814,32 +843,19 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                     const SizedBox(width: 4),
                     Icon(
                       Icons.arrow_drop_down,
-                      color: Colors.white.withValues(alpha: 0.8),
+                      size: 18,
+                      color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                     ),
                   ],
                 ),
                 itemBuilder: (context) => [
-                  if (ref.watch(pwaInstallerProvider).canInstall)
-                    const PopupMenuItem(
-                      value: 'install_pwa',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.install_desktop_outlined,
-                            color: Color(0xFF0D9488),
-                          ),
-                          SizedBox(width: 8),
-                          Text('Install App to Device'),
-                        ],
-                      ),
-                    ),
                   PopupMenuItem(
                     value: 'lock',
                     child: Row(
-                      children: [
-                        Icon(Icons.lock_outline, color: Colors.orange[700]),
-                        const SizedBox(width: 8),
-                        const Text('Lock Screen'),
+                      children: const [
+                        Icon(Icons.lock_outline, color: AppColors.pending, size: 18),
+                        SizedBox(width: 8),
+                        Text('Lock Screen'),
                       ],
                     ),
                   ),
@@ -847,22 +863,22 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                     value: 'profile',
                     child: Row(
                       children: [
-                        Icon(Icons.person_outline),
+                        Icon(Icons.person_outline, size: 18),
                         SizedBox(width: 8),
                         Text('My Profile'),
                       ],
                     ),
                   ),
                   const PopupMenuDivider(),
-                  PopupMenuItem(
+                  const PopupMenuItem(
                     value: 'logout',
                     child: Row(
                       children: [
-                        Icon(Icons.logout, color: Colors.red[700]),
-                        const SizedBox(width: 8),
+                        Icon(Icons.logout, color: AppColors.critical, size: 18),
+                        SizedBox(width: 8),
                         Text(
                           'Log Out',
-                          style: TextStyle(color: Colors.red[700]),
+                          style: TextStyle(color: AppColors.critical),
                         ),
                       ],
                     ),
@@ -870,17 +886,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 ],
                 onSelected: (value) async {
                   switch (value) {
-                    case 'install_pwa':
-                      final installer = ref.read(pwaInstallerProvider);
-                      final installed = await installer.promptInstall();
-                      if (installed) {
-                        AppNotification.success(
-                          title: 'Installation Started',
-                          message:
-                              'MedSentry is being installed to your device.',
-                        );
-                      }
-                      break;
                     case 'lock':
                       final user = ref.read(currentUserProvider);
                       await ref
@@ -921,10 +926,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  String _formatTime(DateTime dateTime) {
-    return formatTime12h(dateTime);
-  }
-
   String _formatDate(DateTime dateTime) {
     final months = [
       'Jan',
@@ -959,22 +960,28 @@ class _SidebarNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final background = selected
-        ? primary.withValues(alpha: 0.12)
+        ? AppColors.primaryEmeraldSubtle
         : Colors.transparent;
-    final foreground = selected ? primary : theme.colorScheme.onSurface;
+
+    final foreground = selected
+        ? AppColors.primaryEmerald
+        : (isDark ? AppColors.textSecondary : AppColors.lightTextSecondary);
 
     final content = Material(
       color: background,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: AppRadius.roundedSm,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.roundedSm,
         mouseCursor: SystemMouseCursors.click,
         onTap: onTap,
+        hoverColor: isDark
+            ? AppColors.elevatedSurface.withValues(alpha: 0.5)
+            : AppColors.lightElevatedSurface,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
+          constraints: const BoxConstraints(minHeight: 42),
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: expanded ? 12 : 0,
@@ -985,7 +992,7 @@ class _SidebarNavItem extends StatelessWidget {
                     children: [
                       Icon(
                         selected ? item.selectedIcon : item.icon,
-                        size: 22,
+                        size: 19,
                         color: foreground,
                       ),
                       const SizedBox(width: 12),
@@ -993,9 +1000,10 @@ class _SidebarNavItem extends StatelessWidget {
                         child: Text(
                           item.label,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
+                          style: TextStyle(
+                            fontSize: 13,
                             fontWeight: selected
-                                ? FontWeight.w700
+                                ? FontWeight.w600
                                 : FontWeight.w500,
                             color: foreground,
                           ),
@@ -1003,11 +1011,11 @@ class _SidebarNavItem extends StatelessWidget {
                       ),
                       if (selected)
                         Container(
-                          width: 4,
-                          height: 20,
+                          width: 3,
+                          height: 16,
                           decoration: BoxDecoration(
-                            color: primary,
-                            borderRadius: BorderRadius.circular(4),
+                            color: AppColors.primaryEmerald,
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                     ],
@@ -1015,7 +1023,7 @@ class _SidebarNavItem extends StatelessWidget {
                 : Center(
                     child: Icon(
                       selected ? item.selectedIcon : item.icon,
-                      size: 22,
+                      size: 20,
                       color: foreground,
                     ),
                   ),
@@ -1025,7 +1033,7 @@ class _SidebarNavItem extends StatelessWidget {
     );
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 3),
       child: expanded ? content : Tooltip(message: item.label, child: content),
     );
   }
@@ -1045,56 +1053,69 @@ class _SyncStatusDropdown extends ConsumerWidget {
 
     switch (status) {
       case SyncStatus.synced:
-        color = Colors.green;
+        color = AppColors.success;
         statusText = 'Online & Synced';
-        icon = Icons.cloud_done;
+        icon = Icons.cloud_done_outlined;
         break;
       case SyncStatus.syncing:
-        color = Colors.blue;
+        color = AppColors.info;
         statusText = 'Syncing...';
         icon = Icons.sync;
         break;
       case SyncStatus.pending:
-        color = Colors.orange;
-        statusText = 'Offline (Pending)';
-        icon = Icons.cloud_off;
+        color = AppColors.pending;
+        statusText = 'Pending Sync';
+        icon = Icons.cloud_upload_outlined;
         break;
       case SyncStatus.error:
-        color = Colors.red;
+        color = AppColors.critical;
         statusText = 'Sync Error';
         icon = Icons.error_outline;
         break;
       case SyncStatus.offline:
-        color = Colors.grey;
+        color = AppColors.neutral;
         statusText = 'Offline Mode';
-        icon = Icons.cloud_off;
+        icon = Icons.cloud_off_outlined;
         break;
     }
 
     return PopupMenuButton<String>(
-      tooltip: 'Sync Status: $statusText',
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 4),
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-        ],
+      tooltip: 'Sync: $statusText',
+      offset: const Offset(0, 40),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: AppRadius.roundedSm,
+          border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 15),
+            const SizedBox(width: 6),
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+          ],
+        ),
       ),
       itemBuilder: (context) => [
         PopupMenuItem(
           enabled: false,
           child: Row(
             children: [
-              Icon(icon, color: color, size: 20),
+              Icon(icon, color: color, size: 18),
               const SizedBox(width: 8),
               Text(
                 statusText,
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -1103,16 +1124,20 @@ class _SyncStatusDropdown extends ConsumerWidget {
         const PopupMenuItem(
           value: 'sync_now',
           child: Row(
-            children: [Icon(Icons.sync), SizedBox(width: 8), Text('Sync Now')],
+            children: [
+              Icon(Icons.sync, size: 18),
+              SizedBox(width: 8),
+              Text('Sync Now', style: TextStyle(fontSize: 13)),
+            ],
           ),
         ),
         const PopupMenuItem(
           value: 'sync_settings',
           child: Row(
             children: [
-              Icon(Icons.settings),
+              Icon(Icons.settings_outlined, size: 18),
               SizedBox(width: 8),
-              Text('Sync Settings'),
+              Text('Sync Settings', style: TextStyle(fontSize: 13)),
             ],
           ),
         ),

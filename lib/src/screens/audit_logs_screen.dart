@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/audit_log.dart';
 import '../providers/providers.dart';
+import '../widgets/app_card.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/layout/responsive_layout.dart';
@@ -54,58 +55,87 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isMobile = constraints.maxWidth < 600;
-                    final searchField = TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search by user, patient, or description...',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                    );
-                    final actionDropdown = DropdownButton<AuditAction?>(
-                      value: _filterAction,
-                      hint: const Text('All Actions'),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('All Actions'),
+                AppCard(
+                  padding: const EdgeInsets.all(12),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isMobile = constraints.maxWidth < 600;
+                      final searchField = TextField(
+                        decoration: const InputDecoration(
+                          hintText: 'Search by user, patient, or description...',
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(),
+                          isDense: true,
                         ),
-                        ...AuditAction.values.map(
-                          (a) => DropdownMenuItem(
-                            value: a,
-                            child: Text(_actionLabel(a)),
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                      );
+                      final actionDropdown = DropdownButton<AuditAction?>(
+                        value: _filterAction,
+                        hint: const Text('All Actions'),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('All Actions'),
                           ),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _filterAction = v),
-                    );
-
-                    if (isMobile) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          searchField,
-                          const SizedBox(height: 8),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: actionDropdown,
+                          ...AuditAction.values.map(
+                            (a) => DropdownMenuItem(
+                              value: a,
+                              child: Text(_actionLabel(a)),
+                            ),
                           ),
                         ],
+                        onChanged: (v) => setState(() => _filterAction = v),
                       );
-                    }
 
-                    return Row(
-                      children: [
-                        Expanded(child: searchField),
-                        const SizedBox(width: 12),
-                        actionDropdown,
-                      ],
-                    );
-                  },
+                      if (isMobile) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            searchField,
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                                border: Border.all(
+                                  color: AppColors.border,
+                                ),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<AuditAction?>(
+                                  isExpanded: true,
+                                  value: _filterAction,
+                                  hint: const Text('All Actions'),
+                                  items: [
+                                    const DropdownMenuItem(
+                                      value: null,
+                                      child: Text('All Actions'),
+                                    ),
+                                    ...AuditAction.values.map(
+                                      (a) => DropdownMenuItem(
+                                        value: a,
+                                        child: Text(_actionLabel(a)),
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (v) =>
+                                      setState(() => _filterAction = v),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(child: searchField),
+                          const SizedBox(width: 12),
+                          actionDropdown,
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -133,29 +163,28 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    context.isMobile ? 16 : 24,
+                    0,
+                    context.isMobile ? 16 : 24,
+                    24,
+                  ),
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final log = filtered[index];
                     final color = _actionColor(context, log.action);
-                    return Container(
+                    return AppCard(
                       margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
-                        ),
-                      ),
+                      padding: EdgeInsets.zero,
                       child: ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                         leading: Container(
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
+                            color: color.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: color.withValues(alpha: 0.2)),
+                            border: Border.all(color: color.withValues(alpha: 0.25)),
                           ),
                           child: Icon(
                             _actionIcon(log.action),
@@ -163,25 +192,29 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                             size: 18,
                           ),
                         ),
-                        title: Row(
+                        title: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
-                            Expanded(
-                              child: Text(
-                                '${log.actionDisplay} — ${log.entityType}',
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            Text(
+                              '${log.actionDisplay} — ${log.entityType}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            StatusBadge.info(text: log.action.name.toUpperCase(), showDot: true),
+                            _buildActionBadge(log.action),
                           ],
                         ),
                         subtitle: Text(
                           '${log.userName ?? log.userId} • ${_formatDateTime(log.timestamp)}'
                           '${log.patientName != null ? ' • ${log.patientName}' : ''}'
                           '${log.description != null ? '\n${log.description}' : ''}',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                            color: AppColors.textSecondary,
                           ),
                         ),
                         isThreeLine: log.description != null,
@@ -201,6 +234,31 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildActionBadge(AuditAction action) {
+    return switch (action) {
+      AuditAction.delete => StatusBadge.critical(
+        text: action.name.toUpperCase(),
+        showDot: true,
+      ),
+      AuditAction.update => StatusBadge.pending(
+        text: action.name.toUpperCase(),
+        showDot: true,
+      ),
+      AuditAction.create || AuditAction.sync || AuditAction.backup => StatusBadge.normal(
+        text: action.name.toUpperCase(),
+        showDot: true,
+      ),
+      AuditAction.login || AuditAction.logout => StatusBadge.info(
+        text: action.name.toUpperCase(),
+        showDot: true,
+      ),
+      _ => StatusBadge.neutral(
+        text: action.name.toUpperCase(),
+        showDot: true,
+      ),
+    };
   }
 
   String _actionLabel(AuditAction action) {

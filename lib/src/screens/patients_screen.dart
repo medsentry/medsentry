@@ -412,32 +412,34 @@ class _PatientsPageHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(10),
+              color: theme.brightness == Brightness.dark ? AppColors.cardSurface : theme.colorScheme.surface,
+              borderRadius: AppRadius.roundedMd,
               border: Border.all(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                color: theme.brightness == Brightness.dark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
+              boxShadow: theme.brightness == Brightness.dark ? AppShadows.subtle : null,
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isNarrow = constraints.maxWidth < 520;
+                final isDark = theme.brightness == Brightness.dark;
+                final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+
                 final titleSection = Row(
                   children: [
                     Container(
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+                        borderRadius: AppRadius.roundedSm,
                         border: Border.all(
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.2,
-                          ),
+                          color: isDark ? primary.withValues(alpha: 0.25) : primary.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Icon(
                         Icons.people_alt_outlined,
-                        color: theme.colorScheme.primary,
+                        color: primary,
                         size: 20,
                       ),
                     ),
@@ -451,13 +453,14 @@ class _PatientsPageHeader extends StatelessWidget {
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.2,
+                              color: isDark ? AppColors.textPrimary : null,
                             ),
                           ),
                           const SizedBox(height: 1),
                           Text(
                             'Search, filter, and open patient records across RHU barangays',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
+                              color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(
                                 alpha: 0.65,
                               ),
                             ),
@@ -483,7 +486,10 @@ class _PatientsPageHeader extends StatelessWidget {
                       titleSection,
                       if (registerButton != null) ...[
                         const SizedBox(height: 12),
-                        registerButton,
+                        SizedBox(
+                          width: double.infinity,
+                          child: registerButton,
+                        ),
                       ],
                     ],
                   );
@@ -543,24 +549,30 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(6),
+        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+        borderRadius: AppRadius.roundedSm,
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            icon,
+            size: 14,
+            color: isDark ? AppColors.primaryEmerald : theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 6),
           Text(
             '$label: ',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
               fontSize: 12,
             ),
           ),
@@ -569,6 +581,7 @@ class _StatChip extends StatelessWidget {
             style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w700,
               fontSize: 12,
+              color: isDark ? AppColors.textPrimary : null,
             ),
           ),
         ],
@@ -650,48 +663,62 @@ class _PatientsToolbar extends StatelessWidget {
             onChanged: onSearchChanged,
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 180,
-                child: _FilterDropdown<String>(
-                  label: 'Barangay',
-                  value: barangayFilter,
-                  items: barangays,
-                  itemLabel: (value) => value,
-                  onChanged: onBarangayChanged,
-                ),
-              ),
-              SizedBox(
-                width: 180,
-                child: _FilterDropdown<String>(
-                  label: 'Purok',
-                  value: purokFilter,
-                  items: puroks,
-                  itemLabel: (value) => value,
-                  onChanged: onPurokChanged,
-                ),
-              ),
-              SizedBox(
-                width: 180,
-                child: _FilterDropdown<PatientCategory>(
-                  label: 'Category',
-                  value: categoryFilter,
-                  items: PatientCategory.values,
-                  itemLabel: (value) => value.displayName,
-                  onChanged: onCategoryChanged,
-                ),
-              ),
-              if (hasFilters)
-                ActionChip(
-                  avatar: const Icon(Icons.filter_alt_off_outlined, size: 16),
-                  label: const Text('Clear filters'),
-                  onPressed: onClearFilters,
-                ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final isVeryNarrow = width < 420;
+              final isNarrow = width < 600;
+              final dropdownWidth = isVeryNarrow
+                  ? width
+                  : isNarrow
+                      ? (width - 8) / 2
+                      : 180.0;
+
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SizedBox(
+                    width: dropdownWidth,
+                    child: _FilterDropdown<String>(
+                      label: 'Barangay',
+                      value: barangayFilter,
+                      items: barangays,
+                      itemLabel: (value) => value,
+                      onChanged: onBarangayChanged,
+                    ),
+                  ),
+                  SizedBox(
+                    width: dropdownWidth,
+                    child: _FilterDropdown<String>(
+                      label: 'Purok',
+                      value: purokFilter,
+                      items: puroks,
+                      itemLabel: (value) => value,
+                      onChanged: onPurokChanged,
+                    ),
+                  ),
+                  SizedBox(
+                    width: dropdownWidth,
+                    child: _FilterDropdown<PatientCategory>(
+                      label: 'Category',
+                      value: categoryFilter,
+                      items: PatientCategory.values,
+                      itemLabel: (value) => value.displayName,
+                      onChanged: onCategoryChanged,
+                    ),
+                  ),
+                  if (hasFilters)
+                    ActionChip(
+                      avatar:
+                          const Icon(Icons.filter_alt_off_outlined, size: 16),
+                      label: const Text('Clear filters'),
+                      onPressed: onClearFilters,
+                    ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -885,13 +912,16 @@ class _BarangaySectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : Theme.of(context).colorScheme.primary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+        color: isDark ? AppColors.elevatedSurface : primary.withValues(alpha: 0.08),
+        borderRadius: AppRadius.roundedSm,
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+          color: isDark ? AppColors.border : primary.withValues(alpha: 0.15),
         ),
       ),
       child: Row(
@@ -899,7 +929,7 @@ class _BarangaySectionHeader extends StatelessWidget {
           Icon(
             Icons.holiday_village_outlined,
             size: 18,
-            color: Theme.of(context).colorScheme.primary,
+            color: primary,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -907,14 +937,25 @@ class _BarangaySectionHeader extends StatelessWidget {
               barangay,
               style: Theme.of(
                 context,
-              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+              ).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isDark ? AppColors.textPrimary : null,
+              ),
             ),
           ),
-          Text(
-            '$patientCount',
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.primary,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+              borderRadius: AppRadius.roundedSm,
+            ),
+            child: Text(
+              '$patientCount',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: primary,
+              ),
             ),
           ),
         ],
@@ -2497,22 +2538,24 @@ class _PatientListTile extends StatelessWidget {
     final categoryColor = _patientCategoryColor(patient.category);
     final initials = _patientInitials(patient);
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
 
     return Container(
       decoration: BoxDecoration(
         color: isSelected
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
-            : theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+            ? (isDark ? AppColors.primaryEmeraldSubtle : theme.colorScheme.primaryContainer.withValues(alpha: 0.12))
+            : (isDark ? AppColors.cardSurface : theme.colorScheme.surface),
+        borderRadius: AppRadius.roundedSm,
         border: Border.all(
           color: isSelected
-              ? theme.colorScheme.primary
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+              ? primary
+              : (isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.45)),
           width: isSelected ? 1.5 : 1.0,
         ),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.roundedSm,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
@@ -2650,22 +2693,24 @@ class _PatientGridCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final categoryColor = _patientCategoryColor(patient.category);
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
 
     return Container(
       decoration: BoxDecoration(
         color: isSelected
-            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
-            : theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+            ? (isDark ? AppColors.primaryEmeraldSubtle : theme.colorScheme.primaryContainer.withValues(alpha: 0.12))
+            : (isDark ? AppColors.cardSurface : theme.colorScheme.surface),
+        borderRadius: AppRadius.roundedSm,
         border: Border.all(
           color: isSelected
-              ? theme.colorScheme.primary
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+              ? primary
+              : (isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.45)),
           width: isSelected ? 1.5 : 1.0,
         ),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.roundedSm,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(14),

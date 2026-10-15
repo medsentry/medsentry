@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/providers.dart';
+import '../widgets/app_card.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 
@@ -21,7 +22,7 @@ class ArchiveScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            padding: EdgeInsets.fromLTRB(isMobile ? 16 : 24, 20, isMobile ? 16 : 24, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -35,9 +36,7 @@ class ArchiveScreen extends ConsumerWidget {
                 Text(
                   'Manage inactive patient records. Restore archived records when needed.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -54,79 +53,78 @@ class ArchiveScreen extends ConsumerWidget {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  padding: EdgeInsets.fromLTRB(isMobile ? 16 : 24, 0, isMobile ? 16 : 24, 24),
                   itemCount: patients.length,
                   itemBuilder: (context, index) {
                     final patient = patients[index];
-                    return Container(
+                    return AppCard(
                       margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.45),
-                        ),
-                      ),
+                      padding: EdgeInsets.zero,
                       child: ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                         leading: Container(
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
+                            color: AppColors.elevatedSurface,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                              color: AppColors.border,
                             ),
                           ),
-                          child: const Icon(Icons.archive_outlined, size: 18),
+                          child: const Icon(Icons.archive_outlined, size: 18, color: AppColors.textSecondary),
                         ),
                         title: Text(patient.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(
                           'ID: ${patient.id}'
                           '${patient.archivedAt != null ? ' • Archived ${_formatDate(patient.archivedAt!)}' : ''}',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       trailing: isMobile
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  onPressed: () =>
-                                      context.go('/patients/${patient.id}'),
-                                  icon: const Icon(
-                                    Icons.visibility_outlined,
-                                    size: 20,
-                                  ),
-                                  tooltip: 'View',
-                                ),
-                                IconButton(
-                                  onPressed: () async {
-                                    await ref
-                                        .read(databaseProvider)
-                                        .restoreArchivedPatient(patient.id);
-                                    ref.invalidate(archivedPatientsProvider);
-                                    ref.invalidate(patientsProvider);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            '${patient.fullName} restored successfully.',
-                                          ),
+                          ? PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert),
+                              tooltip: 'Actions',
+                              onSelected: (value) async {
+                                if (value == 'view') {
+                                  context.go('/patients/${patient.id}');
+                                } else if (value == 'restore') {
+                                  await ref
+                                      .read(databaseProvider)
+                                      .restoreArchivedPatient(patient.id);
+                                  ref.invalidate(archivedPatientsProvider);
+                                  ref.invalidate(patientsProvider);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '${patient.fullName} restored successfully.',
                                         ),
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(
-                                    Icons.unarchive_outlined,
-                                    size: 20,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'view',
+                                  child: ListTile(
+                                    leading: Icon(Icons.visibility_outlined),
+                                    title: Text('View Record'),
+                                    contentPadding: EdgeInsets.zero,
+                                    dense: true,
                                   ),
-                                  tooltip: 'Restore',
+                                ),
+                                const PopupMenuItem(
+                                  value: 'restore',
+                                  child: ListTile(
+                                    leading: Icon(Icons.unarchive_outlined),
+                                    title: Text('Restore Patient'),
+                                    contentPadding: EdgeInsets.zero,
+                                    dense: true,
+                                  ),
                                 ),
                               ],
                             )

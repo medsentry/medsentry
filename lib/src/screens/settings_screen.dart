@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
+import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
@@ -152,12 +153,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 32),
             Container(
               decoration: BoxDecoration(
-                color: context.semanticColors.criticalBg.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.critical.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(
-                  color: context.semanticColors.critical.withValues(
-                    alpha: 0.35,
-                  ),
+                  color: AppColors.critical.withValues(alpha: 0.35),
                 ),
               ),
               padding: const EdgeInsets.all(16),
@@ -209,17 +208,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final colorScheme = theme.colorScheme;
 
     return _buildSection(context, 'Appearance & Theme', [
-      Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.7),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+      AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -361,8 +352,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ],
           ),
         ),
-      ),
-    ]);
+      ]);
   }
 
   Widget _buildSection(
@@ -1633,45 +1623,56 @@ class _RolesPermissionsTab extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Expanded(
-          child: SingleChildScrollView(
-            child: Table(
-              columnWidths: const {
-                0: FlexColumnWidth(2.8),
-                1: FlexColumnWidth(0.8),
-                2: FlexColumnWidth(0.8),
-              },
-              border: TableBorder.all(
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-              ),
-              children: [
-                TableRow(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                  ),
-                  children: const [
-                    _RoleHeaderCell('Permission'),
-                    _RoleHeaderCell('Admin'),
-                    _RoleHeaderCell('Staff'),
-                  ],
-                ),
-                ..._permissions.map(
-                  (row) => TableRow(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Text(
-                          row.label,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final minTableWidth = constraints.maxWidth < 460 ? 460.0 : constraints.maxWidth;
+              return SingleChildScrollView(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: minTableWidth),
+                    child: Table(
+                      columnWidths: const {
+                        0: FlexColumnWidth(2.8),
+                        1: FixedColumnWidth(72),
+                        2: FixedColumnWidth(72),
+                      },
+                      border: TableBorder.all(
+                        color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
                       ),
-                      _RoleCheckCell(allowed: row.admin),
-                      _RoleCheckCell(allowed: row.staff),
-                    ],
+                      children: [
+                        TableRow(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.5),
+                          ),
+                          children: const [
+                            _RoleHeaderCell('Permission'),
+                            _RoleHeaderCell('Admin'),
+                            _RoleHeaderCell('Staff'),
+                          ],
+                        ),
+                        ..._permissions.map(
+                          (row) => TableRow(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Text(
+                                  row.label,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                              _RoleCheckCell(allowed: row.admin),
+                              _RoleCheckCell(allowed: row.staff),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ],
@@ -1765,8 +1766,9 @@ class _UserManagementTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.zero,
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Theme.of(
@@ -1778,15 +1780,15 @@ class _UserManagementTile extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
-        title: Row(
+        title: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 4,
           children: [
-            Expanded(
-              child: Text(
-                user.fullName,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+            Text(
+              user.fullName,
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(width: 8),
             if (user.isActive)
               StatusBadge.active(text: 'Active')
             else
@@ -1826,23 +1828,59 @@ class _UserManagementTile extends StatelessWidget {
             ],
           ),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (canEdit)
-              IconButton(
-                tooltip: 'Edit user',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: onEdit,
+        trailing: context.isMobile
+            ? (canEdit || (canDeactivate && user.isActive && onDeactivate != null))
+                ? PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    tooltip: 'User options',
+                    onSelected: (val) {
+                      if (val == 'edit') onEdit();
+                      if (val == 'deactivate') onDeactivate?.call();
+                    },
+                    itemBuilder: (context) => [
+                      if (canEdit)
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Edit user'),
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ),
+                      if (canDeactivate && user.isActive && onDeactivate != null)
+                        PopupMenuItem(
+                          value: 'deactivate',
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.person_off_outlined,
+                              color: context.semanticColors.warning,
+                            ),
+                            title: const Text('Deactivate'),
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ),
+                    ],
+                  )
+                : null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (canEdit)
+                    IconButton(
+                      tooltip: 'Edit user',
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: onEdit,
+                    ),
+                  if (canDeactivate && user.isActive && onDeactivate != null)
+                    IconButton(
+                      tooltip: 'Deactivate user',
+                      icon: const Icon(Icons.person_off_outlined),
+                      onPressed: onDeactivate,
+                    ),
+                ],
               ),
-            if (canDeactivate && user.isActive && onDeactivate != null)
-              IconButton(
-                tooltip: 'Deactivate user',
-                icon: const Icon(Icons.person_off_outlined),
-                onPressed: onDeactivate,
-              ),
-          ],
-        ),
       ),
     );
   }

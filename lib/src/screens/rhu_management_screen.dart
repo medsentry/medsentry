@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/clinic.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
+import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/layout/responsive_layout.dart';
@@ -40,7 +41,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        padding: ResponsiveLayout.pagePadding(context),
         child: ResponsiveContentContainer(
           maxWidth: 1400,
           padding: EdgeInsets.zero,
@@ -194,90 +195,80 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
             const SizedBox(height: 24),
 
             // Search and Filter Bar
-            Card(
-              elevation: 0,
-              color: colorScheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: LayoutBuilder(
-                  builder: (context, filterConstraints) {
-                    final isNarrow = filterConstraints.maxWidth < 640;
-                    final searchField = TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText:
-                            'Search facilities by name, code, or location...',
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () {
-                                  setState(() {
-                                    _searchController.clear();
-                                    _searchQuery = '';
-                                  });
-                                },
-                              )
-                            : null,
-                        isDense: true,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 10,
-                        ),
+            AppCard(
+              padding: const EdgeInsets.all(12),
+              child: LayoutBuilder(
+                builder: (context, filterConstraints) {
+                  final isNarrow = filterConstraints.maxWidth < 640;
+                  final searchField = TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Search facilities by name, code, or location...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      isDense: true,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 10,
                       ),
-                      onChanged: (val) {
-                        setState(() {
-                          _searchQuery = val.trim().toLowerCase();
-                        });
-                      },
-                    );
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        _searchQuery = val.trim().toLowerCase();
+                      });
+                    },
+                  );
 
-                    final filterButtons = SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(value: 'all', label: Text('All')),
-                        ButtonSegment(value: 'active', label: Text('Active')),
-                        ButtonSegment(
-                          value: 'inactive',
-                          label: Text('Inactive'),
+                  final filterButtons = SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'all', label: Text('All')),
+                      ButtonSegment(value: 'active', label: Text('Active')),
+                      ButtonSegment(
+                        value: 'inactive',
+                        label: Text('Inactive'),
+                      ),
+                    ],
+                    selected: {_statusFilter},
+                    onSelectionChanged: (val) {
+                      setState(() {
+                        _statusFilter = val.first;
+                      });
+                    },
+                  );
+
+                  if (isNarrow) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        searchField,
+                        const Divider(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: filterButtons,
                         ),
                       ],
-                      selected: {_statusFilter},
-                      onSelectionChanged: (val) {
-                        setState(() {
-                          _statusFilter = val.first;
-                        });
-                      },
                     );
+                  }
 
-                    if (isNarrow) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          searchField,
-                          const Divider(height: 16),
-                          SizedBox(
-                            width: double.infinity,
-                            child: filterButtons,
-                          ),
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      children: [
-                        Expanded(child: searchField),
-                        const SizedBox(width: 16),
-                        filterButtons,
-                      ],
-                    );
-                  },
-                ),
+                  return Row(
+                    children: [
+                      Expanded(child: searchField),
+                      const SizedBox(width: 16),
+                      filterButtons,
+                    ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 20),
@@ -333,7 +324,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
-                        mainAxisExtent: 280,
+                        mainAxisExtent: constraints.maxWidth <= 600 ? 310 : 280,
                       ),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
@@ -370,51 +361,42 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
     required Color color,
   }) {
     final theme = Theme.of(context);
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 26),
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                      fontWeight: FontWeight.w500,
-                    ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -425,205 +407,197 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
     List<User> assignedStaff,
   ) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
     final isActive = clinic.isActive;
 
-    return Card(
-      elevation: 0,
-      color: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: isActive
-              ? colorScheme.outlineVariant.withValues(alpha: 0.6)
-              : colorScheme.outlineVariant.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top row: Title + Status
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        clinic.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+    return AppCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: Title + Status
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      clinic.name,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.elevatedSurface,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppColors.border, width: 0.5),
+                      ),
+                      child: Text(
+                        clinic.code,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                          color: AppColors.textSecondary,
                         ),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          clinic.code,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isActive)
+                StatusBadge.active(text: 'Active', showDot: true)
+              else
+                StatusBadge.inactive(text: 'Inactive', showDot: true),
+            ],
+          ),
+          const Divider(height: 24),
+
+          // Contact / Location info
+          Row(
+            children: [
+              const Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  clinic.address ?? 'No address provided',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.phone_outlined,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  clinic.contactNumber ?? 'No contact phone',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.email_outlined,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  clinic.email ?? 'No email on record',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+
+          // Footer: Personnel info + Action buttons
+          Row(
+            children: [
+              InkWell(
+                onTap: assignedStaff.isEmpty
+                    ? null
+                    : () => _showAssignedStaffDialog(
+                        context,
+                        clinic,
+                        assignedStaff,
+                      ),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 4,
+                    horizontal: 2,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.groups_outlined,
+                        size: 16,
+                        color: AppColors.primaryEmerald,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${assignedStaff.length} Staff',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: AppColors.primaryEmerald,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (isActive)
-                  StatusBadge.active(text: 'Active', showDot: true)
-                else
-                  StatusBadge.inactive(text: 'Inactive', showDot: true),
-              ],
-            ),
-            const Divider(height: 24),
-
-            // Contact / Location info
-            Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: colorScheme.onSurfaceVariant,
+              ),
+              const Spacer(),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                tooltip: 'Edit Facility',
+                onPressed: () => _showEditClinicDialog(context, clinic),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  isActive ? Icons.toggle_on : Icons.toggle_off_outlined,
+                  size: 24,
+                  color: isActive
+                      ? AppColors.success
+                      : AppColors.textSecondary,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    clinic.address ?? 'No address provided',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                tooltip: isActive
+                    ? 'Deactivate Facility'
+                    : 'Activate Facility',
+                onPressed: () => _toggleClinicStatus(clinic),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 19,
+                  color: AppColors.critical,
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  Icons.phone_outlined,
-                  size: 16,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    clinic.contactNumber ?? 'No contact phone',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  Icons.email_outlined,
-                  size: 16,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    clinic.email ?? 'No email on record',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-
-            // Footer: Personnel info + Action buttons
-            Row(
-              children: [
-                InkWell(
-                  onTap: assignedStaff.isEmpty
-                      ? null
-                      : () => _showAssignedStaffDialog(
-                          context,
-                          clinic,
-                          assignedStaff,
-                        ),
-                  borderRadius: BorderRadius.circular(4),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 4,
-                      horizontal: 2,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.groups_outlined,
-                          size: 16,
-                          color: colorScheme.primary,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${assignedStaff.length} Staff',
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  tooltip: 'Edit Facility',
-                  onPressed: () => _showEditClinicDialog(context, clinic),
-                ),
-                IconButton(
-                  icon: Icon(
-                    isActive ? Icons.toggle_on : Icons.toggle_off_outlined,
-                    size: 24,
-                    color: isActive
-                        ? context.semanticColors.normal
-                        : context.semanticColors.neutral,
-                  ),
-                  tooltip: isActive
-                      ? 'Deactivate Facility'
-                      : 'Activate Facility',
-                  onPressed: () => _toggleClinicStatus(clinic),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.delete_outline,
-                    size: 19,
-                    color: context.semanticColors.critical,
-                  ),
-                  tooltip: 'Delete Facility',
-                  onPressed: () =>
-                      _confirmDeleteClinic(context, clinic, assignedStaff),
-                ),
-              ],
-            ),
-          ],
-        ),
+                tooltip: 'Delete Facility',
+                onPressed: () =>
+                    _confirmDeleteClinic(context, clinic, assignedStaff),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
