@@ -24,7 +24,6 @@ abstract final class AppColors {
   // Typography & Text
   static const Color textPrimary = Color(0xFFF3F4F6);
   static const Color textSecondary = Color(0xFF9CA3AF);
-  static const Color textTertiary = Color(0xFF6B7280);
   static const Color textMuted = Color(0xFF6B7280);
   static const Color textDisabled = Color(0xFF4B5563);
   static const Color textOnEmerald = Color(0xFF064E3B);
@@ -47,9 +46,6 @@ abstract final class AppColors {
   static const Color pending = Color(0xFFF59E0B);
   static const Color pendingBg = Color(0x1FF59E0B);
   static const Color pendingBorder = Color(0x4DF59E0B);
-  static const Color warning = pending;
-  static const Color warningBg = pendingBg;
-  static const Color warningBorder = pendingBorder;
 
   // Critical / Error / Urgent
   static const Color critical = Color(0xFFF87171);
@@ -73,7 +69,6 @@ abstract final class AppColors {
 
   // Light Theme Overrides (for dual-theme support)
   static const Color lightAppBackground = Color(0xFFF8FAFC);
-  static const Color lightBackground = lightAppBackground;
   static const Color lightSidebarBackground = Color(0xFFFFFFFF);
   static const Color lightCardSurface = Color(0xFFFFFFFF);
   static const Color lightElevatedSurface = Color(0xFFF1F5F9);
@@ -85,6 +80,13 @@ abstract final class AppColors {
   static const Color lightBorder = Color(0xFFE2E8F0);
   static const Color lightBorderSubtle = Color(0xFFF1F5F9);
   static const Color lightBorderActive = Color(0xFFCBD5E1);
+
+  // Backward compatibility & semantic aliases
+  static const Color lightBackground = lightAppBackground;
+  static const Color warning = pending;
+  static const Color warningBg = pendingBg;
+  static const Color warningBorder = pendingBorder;
+  static const Color textTertiary = textMuted;
 }
 
 /// Standardized Glassmorphism Design Tokens.
@@ -149,11 +151,7 @@ abstract final class AppShadows {
   static const List<BoxShadow> none = [];
 
   static const List<BoxShadow> subtle = [
-    BoxShadow(
-      color: Color(0x33000000),
-      offset: Offset(0, 1),
-      blurRadius: 2,
-    ),
+    BoxShadow(color: Color(0x33000000), offset: Offset(0, 1), blurRadius: 2),
   ];
 
   static const List<BoxShadow> card = [

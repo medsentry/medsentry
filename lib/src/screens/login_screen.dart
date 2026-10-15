@@ -254,7 +254,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.appBackground : AppColors.lightBackground,
+      backgroundColor: isDark
+          ? AppColors.appBackground
+          : AppColors.lightBackground,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -297,10 +299,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.cardSurface : Colors.white,
+                            color: isDark
+                                ? AppColors.cardSurface
+                                : Colors.white,
                             borderRadius: AppRadius.roundedLg,
                             border: Border.all(
-                              color: isDark ? AppColors.border : AppColors.lightBorder,
+                              color: isDark
+                                  ? AppColors.border
+                                  : AppColors.lightBorder,
                               width: AppColors.borderWidth,
                             ),
                             boxShadow: isDark ? AppShadows.subtle : null,
@@ -357,21 +363,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 child: Container(
                                   padding: EdgeInsets.all(isTall ? 32 : 24),
                                   decoration: BoxDecoration(
-                                    color: isDark ? AppColors.cardSurface : Colors.white,
+                                    color: isDark
+                                        ? AppColors.cardSurface
+                                        : Colors.white,
                                     borderRadius: AppRadius.roundedLg,
                                     border: Border.all(
-                                      color: isDark ? AppColors.border : AppColors.lightBorder,
+                                      color: isDark
+                                          ? AppColors.border
+                                          : AppColors.lightBorder,
                                       width: AppColors.borderWidth,
                                     ),
-                                    boxShadow: isDark ? AppShadows.subtle : [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.05),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
+                                    boxShadow: isDark
+                                        ? AppShadows.subtle
+                                        : [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: 0.05,
+                                              ),
+                                              blurRadius: 16,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
                                   ),
-                                  child: _buildAuthForm(context, isTall: isTall),
+                                  child: _buildAuthForm(
+                                    context,
+                                    isTall: isTall,
+                                  ),
                                 ),
                               ),
                             ),
@@ -391,10 +408,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
             if (height < 560) {
               return SingleChildScrollView(
-                child: SizedBox(
-                  height: 560,
-                  child: wideContent,
-                ),
+                child: SizedBox(height: 560, child: wideContent),
               );
             }
 
@@ -413,9 +427,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
-    final settings = ref.watch(systemSettingsProvider).valueOrNull ??
-        const SystemSettings();
+    final primary = isDark
+        ? AppColors.primaryEmerald
+        : theme.colorScheme.primary;
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -479,8 +495,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildIllustrationPanel(BuildContext context) {
-    final settings = ref.watch(systemSettingsProvider).valueOrNull ??
-        const SystemSettings();
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -508,11 +524,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildAuthForm(BuildContext context, {bool isTall = false}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+    final primary = isDark
+        ? AppColors.primaryEmerald
+        : theme.colorScheme.primary;
     final fieldBg = isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC);
     final borderColor = isDark ? AppColors.border : AppColors.lightBorder;
-    final settings = ref.watch(systemSettingsProvider).valueOrNull ??
-        const SystemSettings();
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -525,7 +543,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             SystemLogo(
               dataUri: settings.logoDataUri,
               size: isTall ? 40 : 34,
-              backgroundColor: isDark ? AppColors.primaryEmeraldSubtle : primary,
+              backgroundColor: isDark
+                  ? AppColors.primaryEmeraldSubtle
+                  : primary,
               iconColor: isDark ? AppColors.primaryEmerald : Colors.white,
               iconSize: isTall ? 24 : 20,
             ),
@@ -548,7 +568,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(
                   settings.organizationName,
                   style: TextStyle(
-                    color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.65),
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
                   ),
@@ -648,15 +670,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 fillColor: fieldBg,
                 border: OutlineInputBorder(
                   borderRadius: AppRadius.roundedSm,
-                  borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
+                  borderSide: BorderSide(
+                    color: borderColor,
+                    width: AppColors.borderWidth,
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: AppRadius.roundedSm,
-                  borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
+                  borderSide: BorderSide(
+                    color: borderColor,
+                    width: AppColors.borderWidth,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: AppRadius.roundedSm,
-                  borderSide: BorderSide(color: primary, width: AppColors.borderWidthActive),
+                  borderSide: BorderSide(
+                    color: primary,
+                    width: AppColors.borderWidthActive,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -692,15 +723,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fillColor: fieldBg,
               border: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
+                borderSide: BorderSide(
+                  color: borderColor,
+                  width: AppColors.borderWidth,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
+                borderSide: BorderSide(
+                  color: borderColor,
+                  width: AppColors.borderWidth,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(color: primary, width: AppColors.borderWidthActive),
+                borderSide: BorderSide(
+                  color: primary,
+                  width: AppColors.borderWidthActive,
+                ),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -745,15 +785,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fillColor: fieldBg,
               border: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
+                borderSide: BorderSide(
+                  color: borderColor,
+                  width: AppColors.borderWidth,
+                ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(color: borderColor, width: AppColors.borderWidth),
+                borderSide: BorderSide(
+                  color: borderColor,
+                  width: AppColors.borderWidth,
+                ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(color: primary, width: AppColors.borderWidthActive),
+                borderSide: BorderSide(
+                  color: primary,
+                  width: AppColors.borderWidthActive,
+                ),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -844,10 +893,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.criticalBg : theme.colorScheme.error.withValues(alpha: 0.08),
+              color: isDark
+                  ? AppColors.criticalBg
+                  : theme.colorScheme.error.withValues(alpha: 0.08),
               borderRadius: AppRadius.roundedSm,
               border: Border.all(
-                color: isDark ? AppColors.critical.withValues(alpha: 0.3) : theme.colorScheme.error.withValues(alpha: 0.25),
+                color: isDark
+                    ? AppColors.critical.withValues(alpha: 0.3)
+                    : theme.colorScheme.error.withValues(alpha: 0.25),
               ),
             ),
             child: Row(
@@ -862,7 +915,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Text(
                     _error!,
                     style: TextStyle(
-                      color: isDark ? AppColors.critical : theme.colorScheme.error,
+                      color: isDark
+                          ? AppColors.critical
+                          : theme.colorScheme.error,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -882,9 +937,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             backgroundColor: primary,
             foregroundColor: isDark ? AppColors.textOnEmerald : Colors.white,
             minimumSize: Size.fromHeight(isTall ? 50 : 46),
-            shape: RoundedRectangleBorder(
-              borderRadius: AppRadius.roundedSm,
-            ),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
             elevation: 0,
           ),
           child: _isLoading
@@ -949,7 +1002,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: AppRadius.roundedSm,
                 ),
-                side: BorderSide(color: borderColor, width: AppColors.borderWidth),
+                side: BorderSide(
+                  color: borderColor,
+                  width: AppColors.borderWidth,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -973,8 +1029,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }) {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
-    final settings = ref.watch(systemSettingsProvider).valueOrNull ??
-        const SystemSettings();
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
 
     return Padding(
       padding: EdgeInsets.symmetric(

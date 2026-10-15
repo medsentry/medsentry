@@ -46,7 +46,11 @@ class StatusBadge extends StatelessWidget {
   }
 
   /// 🟢 Active / Success state
-  factory StatusBadge.active({String text = 'Active', IconData? icon, bool showDot = false}) {
+  factory StatusBadge.active({
+    String text = 'Active',
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.normal,
@@ -55,8 +59,60 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
+  /// 🟢 Normal / Success / Create state
+  factory StatusBadge.normal({
+    required String text,
+    IconData? icon,
+    bool showDot = false,
+    bool isPill = true,
+  }) {
+    return StatusBadge(
+      text: text,
+      status: BadgeStatus.normal,
+      icon: icon ?? Icons.check_circle_outline,
+      showDot: showDot,
+      isPill: isPill,
+    );
+  }
+
+  /// 🔴 Critical / Urgent / Danger state
+  factory StatusBadge.critical({
+    required String text,
+    IconData? icon,
+    bool showDot = false,
+    bool isPill = true,
+  }) {
+    return StatusBadge(
+      text: text,
+      status: BadgeStatus.critical,
+      icon: icon ?? Icons.error_outline,
+      showDot: showDot,
+      isPill: isPill,
+    );
+  }
+
+  /// ⚪ Neutral / Default / Other state
+  factory StatusBadge.neutral({
+    required String text,
+    IconData? icon,
+    bool showDot = false,
+    bool isPill = true,
+  }) {
+    return StatusBadge(
+      text: text,
+      status: BadgeStatus.neutral,
+      icon: icon,
+      showDot: showDot,
+      isPill: isPill,
+    );
+  }
+
   /// ⚪ Inactive / Disabled state
-  factory StatusBadge.inactive({String text = 'Inactive', IconData? icon, bool showDot = false}) {
+  factory StatusBadge.inactive({
+    String text = 'Inactive',
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.neutral,
@@ -65,38 +121,12 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  /// ⚪ Neutral state
-  factory StatusBadge.neutral({required String text, IconData? icon, bool showDot = false}) {
-    return StatusBadge(
-      text: text,
-      status: BadgeStatus.neutral,
-      icon: icon,
-      showDot: showDot,
-    );
-  }
-
-  /// 🔴 Critical state
-  factory StatusBadge.critical({required String text, IconData? icon, bool showDot = false}) {
-    return StatusBadge(
-      text: text,
-      status: BadgeStatus.critical,
-      icon: icon ?? Icons.warning_amber_rounded,
-      showDot: showDot,
-    );
-  }
-
-  /// 🟢 Normal state
-  factory StatusBadge.normal({required String text, IconData? icon, bool showDot = false}) {
-    return StatusBadge(
-      text: text,
-      status: BadgeStatus.normal,
-      icon: icon ?? Icons.check_circle_outline,
-      showDot: showDot,
-    );
-  }
-
   /// 🟡 Pending / Warning state
-  factory StatusBadge.pending({String text = 'Pending', IconData? icon, bool showDot = false}) {
+  factory StatusBadge.pending({
+    String text = 'Pending',
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.warning,
@@ -106,7 +136,11 @@ class StatusBadge extends StatelessWidget {
   }
 
   /// 🟢 Completed state
-  factory StatusBadge.completed({String text = 'Completed', IconData? icon, bool showDot = false}) {
+  factory StatusBadge.completed({
+    String text = 'Completed',
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.normal,
@@ -116,7 +150,11 @@ class StatusBadge extends StatelessWidget {
   }
 
   /// 🔴 Cancelled / Error state
-  factory StatusBadge.cancelled({String text = 'Cancelled', IconData? icon, bool showDot = false}) {
+  factory StatusBadge.cancelled({
+    String text = 'Cancelled',
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.critical,
@@ -126,7 +164,11 @@ class StatusBadge extends StatelessWidget {
   }
 
   /// 🔵 In Progress state
-  factory StatusBadge.inProgress({String text = 'In Progress', IconData? icon, bool showDot = false}) {
+  factory StatusBadge.inProgress({
+    String text = 'In Progress',
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.info,
@@ -136,7 +178,11 @@ class StatusBadge extends StatelessWidget {
   }
 
   /// 🔵 Info state
-  factory StatusBadge.info({required String text, IconData? icon, bool showDot = false}) {
+  factory StatusBadge.info({
+    required String text,
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.info,
@@ -146,7 +192,11 @@ class StatusBadge extends StatelessWidget {
   }
 
   /// 🟣 Analytical / Category state
-  factory StatusBadge.analytical({required String text, IconData? icon, bool showDot = false}) {
+  factory StatusBadge.analytical({
+    required String text,
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.analytical,
@@ -156,7 +206,11 @@ class StatusBadge extends StatelessWidget {
   }
 
   /// 🟡 Waiting state
-  factory StatusBadge.waiting({String text = 'Waiting', IconData? icon, bool showDot = false}) {
+  factory StatusBadge.waiting({
+    String text = 'Waiting',
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.warning,
@@ -166,7 +220,11 @@ class StatusBadge extends StatelessWidget {
   }
 
   /// 🔴 Urgent / Critical state
-  factory StatusBadge.urgent({String text = 'Urgent', IconData? icon, bool showDot = false}) {
+  factory StatusBadge.urgent({
+    String text = 'Urgent',
+    IconData? icon,
+    bool showDot = false,
+  }) {
     return StatusBadge(
       text: text,
       status: BadgeStatus.critical,
@@ -200,32 +258,44 @@ class StatusBadge extends StatelessWidget {
       case BadgeStatus.normal:
         textColor = colors.normal;
         bgColor = isDark ? AppColors.successBg : colors.normalBg;
-        borderColor = isDark ? AppColors.successBorder : colors.normal.withValues(alpha: 0.25);
+        borderColor = isDark
+            ? AppColors.successBorder
+            : colors.normal.withValues(alpha: 0.25);
         break;
       case BadgeStatus.warning:
         textColor = colors.warning;
         bgColor = isDark ? AppColors.pendingBg : colors.warningBg;
-        borderColor = isDark ? AppColors.pendingBorder : colors.warning.withValues(alpha: 0.25);
+        borderColor = isDark
+            ? AppColors.pendingBorder
+            : colors.warning.withValues(alpha: 0.25);
         break;
       case BadgeStatus.critical:
         textColor = colors.critical;
         bgColor = isDark ? AppColors.criticalBg : colors.criticalBg;
-        borderColor = isDark ? AppColors.criticalBorder : colors.critical.withValues(alpha: 0.25);
+        borderColor = isDark
+            ? AppColors.criticalBorder
+            : colors.critical.withValues(alpha: 0.25);
         break;
       case BadgeStatus.info:
         textColor = colors.info;
         bgColor = isDark ? AppColors.infoBg : colors.infoBg;
-        borderColor = isDark ? AppColors.infoBorder : colors.info.withValues(alpha: 0.25);
+        borderColor = isDark
+            ? AppColors.infoBorder
+            : colors.info.withValues(alpha: 0.25);
         break;
       case BadgeStatus.neutral:
         textColor = colors.neutral;
         bgColor = isDark ? AppColors.neutralBg : colors.neutralBg;
-        borderColor = isDark ? AppColors.neutralBorder : colors.neutral.withValues(alpha: 0.25);
+        borderColor = isDark
+            ? AppColors.neutralBorder
+            : colors.neutral.withValues(alpha: 0.25);
         break;
       case BadgeStatus.analytical:
         textColor = colors.analytical;
         bgColor = isDark ? AppColors.analyticalBg : colors.analyticalBg;
-        borderColor = isDark ? AppColors.analyticalBorder : colors.analytical.withValues(alpha: 0.25);
+        borderColor = isDark
+            ? AppColors.analyticalBorder
+            : colors.analytical.withValues(alpha: 0.25);
         break;
     }
 
@@ -234,10 +304,7 @@ class StatusBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: isPill ? AppRadius.roundedPill : AppRadius.roundedSm,
-        border: Border.all(
-          color: borderColor,
-          width: AppColors.borderWidth,
-        ),
+        border: Border.all(color: borderColor, width: AppColors.borderWidth),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

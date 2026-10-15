@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../models/clinic.dart';
 import '../models/patient.dart';
 import '../models/audit_log.dart';
@@ -253,7 +252,9 @@ class DashboardScreen extends ConsumerWidget {
     VoidCallback onTap,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : Theme.of(context).colorScheme.primary;
+    final primary = isDark
+        ? AppColors.primaryEmerald
+        : Theme.of(context).colorScheme.primary;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -275,7 +276,10 @@ class DashboardScreen extends ConsumerWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
             Text(
@@ -353,7 +357,9 @@ class DashboardScreen extends ConsumerWidget {
       titleText: 'Recent Patient Records',
       subtitle: 'Recently accessed or registered patients in this clinic',
       headerAction: TextButton.icon(
-        onPressed: user?.canAccessPatientRecords == true ? () => context.go('/patients') : null,
+        onPressed: user?.canAccessPatientRecords == true
+            ? () => context.go('/patients')
+            : null,
         icon: const Icon(Icons.arrow_forward, size: 16),
         label: const Text('View All'),
       ),
@@ -362,12 +368,21 @@ class DashboardScreen extends ConsumerWidget {
           return ListTile(
             contentPadding: EdgeInsets.zero,
             leading: CircleAvatar(
-              backgroundColor: isDark ? AppColors.primaryEmeraldSubtle : AppColors.lightInputSurface,
-              foregroundColor: isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark,
+              backgroundColor: isDark
+                  ? AppColors.primaryEmeraldSubtle
+                  : AppColors.lightInputSurface,
+              foregroundColor: isDark
+                  ? AppColors.primaryEmerald
+                  : AppColors.primaryEmeraldDark,
               child: const Icon(Icons.person_outline, size: 20),
             ),
-            title: Text(patient.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text('ID: ${patient.id} • ${patient.gender?.toUpperCase() ?? 'N/A'}'),
+            title: Text(
+              patient.fullName,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'ID: ${patient.id} • ${patient.gender?.toUpperCase() ?? 'N/A'}',
+            ),
             trailing: const Icon(Icons.chevron_right, size: 18),
             onTap: user?.canAccessPatientRecords == true
                 ? () => context.go('/patients/${patient.id}')
@@ -383,7 +398,9 @@ class DashboardScreen extends ConsumerWidget {
     List<AuditLog> activity,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : Theme.of(context).colorScheme.primary;
+    final primary = isDark
+        ? AppColors.primaryEmerald
+        : Theme.of(context).colorScheme.primary;
 
     return AppCard(
       titleText: 'Staff Activity',
@@ -427,7 +444,9 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildWelcomeHero(BuildContext context, String name) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+    final primary = isDark
+        ? AppColors.primaryEmerald
+        : theme.colorScheme.primary;
 
     return Container(
       width: double.infinity,
@@ -447,10 +466,14 @@ class DashboardScreen extends ConsumerWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+              color: isDark
+                  ? AppColors.primaryEmeraldSubtle
+                  : primary.withValues(alpha: 0.1),
               borderRadius: AppRadius.roundedSm,
               border: Border.all(
-                color: isDark ? AppColors.primaryEmerald.withValues(alpha: 0.25) : Colors.transparent,
+                color: isDark
+                    ? AppColors.primaryEmerald.withValues(alpha: 0.25)
+                    : Colors.transparent,
               ),
             ),
             child: Icon(
@@ -476,7 +499,9 @@ class DashboardScreen extends ConsumerWidget {
                 Text(
                   'RHU Clinical Command Center • MedSentry Workspace Active',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.65),
                   ),
                 ),
               ],
@@ -628,9 +653,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
             child: Icon(
               action.icon,
-              color: enabled
-                  ? action.color
-                  : Theme.of(context).disabledColor,
+              color: enabled ? action.color : Theme.of(context).disabledColor,
             ),
           ),
           const SizedBox(width: 12),
@@ -642,7 +665,9 @@ class DashboardScreen extends ConsumerWidget {
                   action.title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: enabled ? (isDark ? AppColors.textPrimary : null) : Theme.of(context).disabledColor,
+                    color: enabled
+                        ? (isDark ? AppColors.textPrimary : null)
+                        : Theme.of(context).disabledColor,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -650,9 +675,11 @@ class DashboardScreen extends ConsumerWidget {
                   action.description,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     height: 1.35,
-                    color: isDark ? AppColors.textSecondary : Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.68),
                   ),
                 ),
               ],
@@ -662,9 +689,11 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(width: 8),
             Icon(
               Icons.chevron_right,
-              color: isDark ? AppColors.textSecondary : Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.45),
+              color: isDark
+                  ? AppColors.textSecondary
+                  : Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.45),
             ),
           ],
         ],
@@ -726,9 +755,7 @@ class DashboardScreen extends ConsumerWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
               borderRadius: AppRadius.roundedSm,
-              border: Border.all(
-                color: color.withValues(alpha: 0.25),
-              ),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
             ),
             child: Icon(icon, color: color, size: 24),
           ),
@@ -748,9 +775,11 @@ class DashboardScreen extends ConsumerWidget {
                 Text(
                   description,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isDark ? AppColors.textSecondary : Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.68),
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.68),
                   ),
                 ),
               ],
@@ -1007,7 +1036,9 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildSuperAdminHero(BuildContext context, String name) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+    final primary = isDark
+        ? AppColors.primaryEmerald
+        : theme.colorScheme.primary;
 
     return Container(
       width: double.infinity,
@@ -1027,17 +1058,17 @@ class DashboardScreen extends ConsumerWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+              color: isDark
+                  ? AppColors.primaryEmeraldSubtle
+                  : primary.withValues(alpha: 0.1),
               borderRadius: AppRadius.roundedSm,
               border: Border.all(
-                color: isDark ? AppColors.primaryEmerald.withValues(alpha: 0.25) : Colors.transparent,
+                color: isDark
+                    ? AppColors.primaryEmerald.withValues(alpha: 0.25)
+                    : Colors.transparent,
               ),
             ),
-            child: Icon(
-              Icons.shield_outlined,
-              color: primary,
-              size: 24,
-            ),
+            child: Icon(Icons.shield_outlined, color: primary, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -1063,10 +1094,14 @@ class DashboardScreen extends ConsumerWidget {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
+                        color: isDark
+                            ? AppColors.primaryEmeraldSubtle
+                            : primary.withValues(alpha: 0.1),
                         borderRadius: AppRadius.roundedSm,
                         border: Border.all(
-                          color: isDark ? AppColors.primaryEmerald.withValues(alpha: 0.3) : primary.withValues(alpha: 0.3),
+                          color: isDark
+                              ? AppColors.primaryEmerald.withValues(alpha: 0.3)
+                              : primary.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Text(
@@ -1085,7 +1120,9 @@ class DashboardScreen extends ConsumerWidget {
                 Text(
                   'Provincial Health Command Center • MedSentry Platform Oversight',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.65),
                   ),
                 ),
               ],
@@ -1281,4 +1318,3 @@ class _WorkflowAction {
     required this.onTap,
   });
 }
-
