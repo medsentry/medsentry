@@ -1,6 +1,7 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -36,6 +37,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePin = true;
   bool _canCheckBiometrics = false;
   bool _rememberMe = true;
+  String? _emailError;
+  String? _passwordFieldError;
+  String? _pinFieldError;
   final BiometricAuthService _biometricAuth = createBiometricAuthService();
 
   @override
@@ -128,16 +132,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     if (_isLoading) return;
 
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final pin = _pinController.text.trim();
+    final emailError =
+        !_isPinLogin &&
+            !_sessionLocked &&
+            !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)
+        ? (email.isEmpty
+              ? 'Enter your email address.'
+              : 'Enter a valid email address.')
+        : null;
+    final passwordError = !_isPinLogin && password.isEmpty
+        ? 'Enter your password.'
+        : null;
+    final pinError = _isPinLogin && !RegExp(r'^\d{4}$').hasMatch(pin)
+        ? 'Enter your 4-digit PIN.'
+        : null;
+
+    if (emailError != null || passwordError != null || pinError != null) {
+      setState(() {
+        _emailError = emailError;
+        _passwordFieldError = passwordError;
+        _pinFieldError = pinError;
+        _error = null;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
+      _emailError = null;
+      _passwordFieldError = null;
+      _pinFieldError = null;
     });
 
     try {
       final authRepo = ref.read(authRepositoryProvider);
 
       if (_isPinLogin) {
-        final user = await authRepo.loginWithPin(_pinController.text);
+        final user = await authRepo.loginWithPin(pin);
         if (user != null) {
           AppNotification.success(
             title: 'Welcome Back!',
@@ -160,10 +195,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         }
       } else {
-        final user = await authRepo.login(
-          _emailController.text,
-          _passwordController.text,
-        );
+        final user = await authRepo.login(email, password);
         if (user != null) {
           AppNotification.success(
             title: 'Welcome Back!',
@@ -303,7 +335,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   (isDark
                                           ? AppColors.cardSurface
                                           : Colors.white)
-                                      .withValues(alpha: isDark ? 0.88 : 0.92),
+                                      .withValues(alpha: isDark ? 0.94 : 0.96),
                               borderRadius: AppRadius.roundedLg,
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.48),
@@ -473,83 +505,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         : theme.colorScheme.primary;
     final fieldBg = isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC);
     final borderColor = isDark ? AppColors.border : AppColors.lightBorder;
-    final settings =
-        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Brand logo and title matching the reference
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SystemLogo(
-              dataUri: settings.logoDataUri,
-              size: isTall ? 40 : 34,
-              backgroundColor: isDark
-                  ? AppColors.primaryEmeraldSubtle
-                  : primary,
-              iconColor: isDark ? AppColors.primaryEmerald : Colors.white,
-              iconSize: isTall ? 24 : 20,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            decoration: BoxDecoration(
+              color: primary.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: primary.withValues(alpha: 0.16)),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                Icon(Icons.verified_user_outlined, size: 15, color: primary),
+                const SizedBox(width: 7),
                 Text(
-                  settings.appName,
-                  style:
-                      (isTall
-                              ? theme.textTheme.headlineSmall
-                              : theme.textTheme.titleLarge)
-                          ?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
-                            color: isDark ? AppColors.textPrimary : primary,
-                          ),
-                ),
-                Text(
-                  settings.organizationName,
+                  'SECURE CLINIC ACCESS',
                   style: TextStyle(
-                    color: isDark
-                        ? AppColors.textSecondary
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11,
+                    color: primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                    letterSpacing: 0.8,
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-        SizedBox(height: isTall ? 24 : 16),
-
-        // Welcome Back
-        Text(
-          _sessionLocked ? 'Screen Locked' : 'Welcome Back',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontSize: isTall ? 28 : 23,
-            fontWeight: FontWeight.w800,
-            color: theme.colorScheme.onSurface,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          _sessionLocked
-              ? (_isPinLogin
-                    ? 'Enter your 4-digit PIN to unlock.'
-                    : 'Enter your password to unlock this session.')
-              : 'Sign in to continue',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-            fontWeight: FontWeight.w500,
           ),
         ),
         SizedBox(height: isTall ? 22 : 16),
+
+        Text(
+          _sessionLocked ? 'Screen Locked' : 'Welcome back',
+          textAlign: TextAlign.left,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontSize: isTall ? 30 : 26,
+            fontWeight: FontWeight.w800,
+            color: theme.colorScheme.onSurface,
+            letterSpacing: -0.7,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _sessionLocked
+              ? (_isPinLogin
+                    ? 'Enter your 4-digit PIN to unlock your session.'
+                    : 'Sign in again to unlock your session.')
+              : 'Sign in to securely access your clinic workspace.',
+          textAlign: TextAlign.left,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+            height: 1.45,
+          ),
+        ),
+        SizedBox(height: isTall ? 24 : 20),
 
         // Session locked banner if returning user
         if ((_isPinLogin || _sessionLocked) && _lastUserEmail != null) ...[
@@ -606,6 +618,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: InputDecoration(
                 labelText: 'Email Address',
                 hintText: 'name@rhu.gov.ph',
+                errorText: _emailError,
                 prefixIcon: const Icon(
                   Icons.medical_services_outlined,
                   size: 20,
@@ -639,7 +652,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               keyboardType: TextInputType.emailAddress,
+              autofillHints: const [
+                AutofillHints.username,
+                AutofillHints.email,
+              ],
+              autocorrect: false,
+              textCapitalization: TextCapitalization.none,
               textInputAction: TextInputAction.next,
+              onChanged: (_) {
+                if (_emailError != null || _error != null) {
+                  setState(() {
+                    _emailError = null;
+                    _error = null;
+                  });
+                }
+              },
               onSubmitted: (_) => _submitFromEmailField(),
             ),
             const SizedBox(height: 12),
@@ -649,8 +676,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             focusNode: _passwordFocusNode,
             decoration: InputDecoration(
               labelText: 'Password',
+              errorText: _passwordFieldError,
               prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20),
               suffixIcon: IconButton(
+                tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                 icon: Icon(
                   _obscurePassword
                       ? Icons.visibility_off_outlined
@@ -691,8 +720,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 vertical: 14,
               ),
             ),
+            autofillHints: const [AutofillHints.password],
+            autocorrect: false,
+            enableSuggestions: false,
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
+            onChanged: (_) {
+              if (_passwordFieldError != null || _error != null) {
+                setState(() {
+                  _passwordFieldError = null;
+                  _error = null;
+                });
+              }
+            },
             onSubmitted: (_) => _submitLogin(),
           ),
           if (_sessionLocked && !_pinLoginAvailable) ...[
@@ -711,8 +751,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             decoration: InputDecoration(
               labelText: '4-digit PIN',
               hintText: 'Enter your PIN',
+              errorText: _pinFieldError,
               prefixIcon: const Icon(Icons.pin_outlined, size: 20),
               suffixIcon: IconButton(
+                tooltip: _obscurePin ? 'Show PIN' : 'Hide PIN',
                 icon: Icon(
                   _obscurePin
                       ? Icons.visibility_off_outlined
@@ -753,10 +795,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 vertical: 14,
               ),
             ),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             keyboardType: TextInputType.number,
             maxLength: 4,
             obscureText: _obscurePin,
             textInputAction: TextInputAction.done,
+            onChanged: (_) {
+              if (_pinFieldError != null || _error != null) {
+                setState(() {
+                  _pinFieldError = null;
+                  _error = null;
+                });
+              }
+            },
             onSubmitted: (_) => _submitLogin(),
           ),
         ],
@@ -801,6 +852,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   setState(() {
                     _isPinLogin = !_isPinLogin;
                     _error = null;
+                    _emailError = null;
+                    _passwordFieldError = null;
+                    _pinFieldError = null;
                   });
                 },
                 child: Text(
@@ -875,19 +929,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 16),
 
         // Primary Login / Sign In Button
-        ElevatedButton(
+        ElevatedButton.icon(
           onPressed: _isLoading ? null : _login,
           style: ElevatedButton.styleFrom(
             backgroundColor: primary,
             foregroundColor: isDark ? AppColors.textOnEmerald : Colors.white,
-            minimumSize: Size.fromHeight(isTall ? 50 : 46),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
-            elevation: 0,
+            minimumSize: Size.fromHeight(isTall ? 54 : 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 2,
+            shadowColor: primary.withValues(alpha: 0.25),
           ),
-          child: _isLoading
+          icon: _isLoading
               ? SizedBox(
-                  width: 20,
-                  height: 20,
+                  width: 18,
+                  height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
@@ -895,15 +952,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 )
-              : Text(
+              : Icon(
                   _sessionLocked
-                      ? (_isPinLogin ? 'Unlock with PIN' : 'Unlock')
-                      : (_isPinLogin ? 'Continue with PIN' : 'Sign In'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
+                      ? Icons.lock_open_rounded
+                      : Icons.arrow_forward,
+                  size: 18,
                 ),
+          label: Text(
+            _isLoading
+                ? 'Signing in...'
+                : _sessionLocked
+                ? (_isPinLogin ? 'Unlock with PIN' : 'Unlock session')
+                : (_isPinLogin ? 'Continue with PIN' : 'Sign in securely'),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
         ),
 
         // Alternative Login Options

@@ -100,7 +100,6 @@ class AuthRepository {
     for (final account in SeedCredentials.accounts) {
       await _ensureSeedAccount(account);
     }
-    unawaited(ensureOnlineSession());
   }
 
   String? _cachedSeedPasswordHash;
@@ -162,45 +161,11 @@ class AuthRepository {
     return null;
   }
 
-  Future<void> ensureOnlineSession([String? actorUserId]) async {
+  Future<void> ensureOnlineSession([String? _actorUserId]) async {
+    // A local session must never acquire a privileged Supabase session using
+    // seeded credentials. Online authentication happens only after explicit
+    // user sign-in.
     if (_supabase.auth.currentSession != null) return;
-
-    try {
-      if (_supabase.auth.currentUser != null &&
-          _supabase.auth.currentSession != null) {
-        return;
-      }
-    } catch (_) {}
-
-    if (actorUserId != null) {
-      final user = await _db.getUserById(actorUserId);
-      if (user != null &&
-          (user.email.toLowerCase() == 'superadmin@gmail.com' ||
-              user.role == UserRole.superAdmin)) {
-        try {
-          await _supabase.auth
-              .signInWithPassword(
-                email: user.email,
-                password: SeedCredentials.defaultPassword,
-              )
-              .timeout(const Duration(seconds: 3));
-          if (_supabase.auth.currentSession != null) return;
-        } catch (e) {
-          debugPrint('Silent re-auth using default password warning: $e');
-        }
-      }
-    }
-
-    try {
-      await _supabase.auth
-          .signInWithPassword(
-            email: 'superadmin@gmail.com',
-            password: SeedCredentials.defaultPassword,
-          )
-          .timeout(const Duration(seconds: 3));
-    } catch (e) {
-      debugPrint('Silent superadmin session acquisition failed: $e');
-    }
   }
 
   // Create new user
