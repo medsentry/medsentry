@@ -3,9 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/generated_report.dart';
+import '../models/models.dart';
 import '../providers/providers.dart';
+import '../services/app_notification.dart';
+import '../services/report_pdf_service.dart';
 import '../services/report_service.dart';
 import '../widgets/app_card.dart';
 import '../widgets/loading_state.dart';
@@ -24,12 +28,13 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   late ReportFilters _draftFilters;
-  String _activeTab = 'reports'; // 'reports' or 'logs'
+  String _activeTab = 'reports'; // 'reports', 'visits', or 'logs'
   String _reportSearchQuery = '';
   String _reportTypeFilter = 'all';
   String _reportSortOrder = 'newest';
   String _auditSearchQuery = '';
   String _auditActionFilter = 'all';
+  bool _isExportingConsultations = false;
   late final TextEditingController _reportSearchController;
   late final TextEditingController _auditSearchController;
 
@@ -55,9 +60,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    ref.watch(reportFiltersProvider);
+    final filters = ref.watch(reportFiltersProvider);
     final reportStatsAsync = ref.watch(reportStatsProvider);
     final generatedReportsAsync = ref.watch(generatedReportsProvider);
+    final consultationEntriesAsync = _activeTab == 'visits'
+        ? ref.watch(consultationReportEntriesProvider)
+        : const AsyncValue<List<ConsultationReportEntry>>.loading();
 
     return SingleChildScrollView(
       padding: ResponsiveLayout.pagePadding(context),
@@ -124,6 +132,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             const SizedBox(height: 16),
             if (_activeTab == 'reports')
               _buildGeneratedReportsSection(context, generatedReportsAsync)
+            else if (_activeTab == 'visits')
+              _buildConsultationReport(
+                context,
+                consultationEntriesAsync,
+                filters,
+              )
             else
               _buildHistoricalAuditLogsSection(context),
           ],
@@ -1073,6 +1087,241 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     }
   }
 
+  Widget _buildConsultationReport(
+    BuildContext context,
+    AsyncValue<List<ConsultationReportEntry>> entriesAsync,
+    ReportFilters filters,
+  ) {
+    final theme = Theme.of(context);
+    final dateRange =
+        '${DateFormat('MMM d, yyyy').format(filters.startDate)} – '
+        '${DateFormat('MMM d, yyyy').format(filters.endDate)}';
+
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: entriesAsync.when(
+        loading: () => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(28),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        error: (error, stackTrace) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Unable to load patient visits.'),
+            const SizedBox(height: 8),
+            Text('$error'),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () =>
+                    ref.invalidate(consultationReportEntriesProvider),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ),
+          ],
+        ),
+        data: (entries) {
+          final visits = filterConsultationReportEntries(
+            entries: entries,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Patient Visits & Consultations',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$dateRange · ${visits.length} visit${visits.length == 1 ? '' : 's'}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                  FilledButton.icon(
+                    onPressed: visits.isEmpty || _isExportingConsultations
+                        ? null
+                        : () => _exportConsultationReport(
+                            context,
+                            visits,
+                            filters,
+                          ),
+                    icon: _isExportingConsultations
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.picture_as_pdf_outlined),
+                    label: Text(
+                      _isExportingConsultations
+                          ? 'Exporting...'
+                          : 'Export PDF',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (visits.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.event_busy_outlined,
+                        size: 36,
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.45,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text('No visits in this reporting period'),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Choose a different date range to view consultation records.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                )
+              else
+                for (final entry in visits)
+                  _ConsultationReportTile(entry: entry),
+              const SizedBox(height: 8),
+              Text(
+                'Patient details are confidential. Exported PDFs are recorded in the audit log.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _exportConsultationReport(
+    BuildContext context,
+    List<ConsultationReportEntry> visits,
+    ReportFilters filters,
+  ) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null ||
+        !user.canAccessPatientRecords ||
+        !user.canGenerateReports) {
+      AppNotification.error(
+        title: 'Access Denied',
+        message: 'You are not authorized to export patient visit reports.',
+      );
+      return;
+    }
+
+    setState(() => _isExportingConsultations = true);
+    try {
+      final db = ref.read(databaseProvider);
+      final settings = await db.getSystemSettings();
+      final rows = visits.map((entry) {
+        final consultation = entry.consultation;
+        return [
+          entry.patient?.fullName ?? 'Unknown patient',
+          entry.visitDate == null
+              ? 'Unknown'
+              : DateFormat('MMM d, yyyy').format(entry.visitDate!),
+          entry.provider?.fullName ?? 'Not recorded',
+          consultation.assessment?.trim().isNotEmpty == true
+              ? consultation.assessment!.trim()
+              : 'Not recorded',
+          consultation.plan?.trim().isNotEmpty == true
+              ? consultation.plan!.trim()
+              : 'Not recorded',
+        ];
+      }).toList();
+      final bytes = await const ReportPdfService()
+          .generateConsultationHistoryPdf(
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            visitRows: rows,
+            settings: settings,
+            preparedByName: user.fullName,
+            preparedByRole: user.role.displayName,
+          );
+      final filename =
+          'MedSentry_Patient_Visits_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
+      final savedPath = await ReportService(db).exportReportToPdf(
+        pdfBytes: bytes,
+        filename: filename,
+        dialogTitle: 'Save Patient Visits Report',
+      );
+      if (savedPath == null) return;
+
+      final now = DateTime.now();
+      final reportId = const Uuid().v4();
+      await db.insertGeneratedReport(
+        GeneratedReport(
+          id: reportId,
+          title: 'Patient Visits - ${DateFormat('yyyy-MM-dd').format(now)}',
+          type: 'Patient Visits & Consultations',
+          generatedAt: now,
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+          filePath: savedPath,
+        ),
+      );
+      ref.invalidate(generatedReportsProvider);
+
+      try {
+        await ref.read(auditServiceProvider).logAction(
+          userId: user.id,
+          userName: user.fullName,
+          userRole: user.role.displayName,
+          action: AuditAction.export,
+          entityType: 'consultation_report',
+          entityId: reportId,
+          description:
+              'Exported patient visits report for ${DateFormat('yyyy-MM-dd').format(filters.startDate)} to ${DateFormat('yyyy-MM-dd').format(filters.endDate)}',
+          details: '${visits.length} consultation records; file: $filename',
+        );
+      } catch (error) {
+        AppNotification.error(
+          title: 'Audit Logging Error',
+          message:
+              'The PDF was saved, but the export could not be recorded in the audit log: $error',
+        );
+        return;
+      }
+
+      AppNotification.success(
+        title: 'Report Exported',
+        message: '${visits.length} visit records saved as $filename.',
+      );
+    } catch (error) {
+      AppNotification.error(
+        title: 'Report Export Error',
+        message: 'Could not export patient visits: $error',
+      );
+    } finally {
+      if (mounted) setState(() => _isExportingConsultations = false);
+    }
+  }
+
   Widget _buildTabSelector(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -1095,6 +1344,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             icon: Icons.description_outlined,
             isActive: _activeTab == 'reports',
             onTap: () => setState(() => _activeTab = 'reports'),
+          ),
+          _buildTabButton(
+            context,
+            title: 'Patient Visits',
+            icon: Icons.medical_information_outlined,
+            isActive: _activeTab == 'visits',
+            onTap: () => setState(() => _activeTab = 'visits'),
           ),
           _buildTabButton(
             context,
@@ -1655,6 +1911,87 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ConsultationReportTile extends StatelessWidget {
+  final ConsultationReportEntry entry;
+
+  const _ConsultationReportTile({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final consultation = entry.consultation;
+    final visitDate = entry.visitDate;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              Text(
+                entry.patient?.fullName ?? 'Unknown patient',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                visitDate == null
+                    ? 'Date not recorded'
+                    : DateFormat('MMM d, yyyy').format(visitDate),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            entry.provider?.fullName ?? 'Provider not recorded',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+            ),
+          ),
+          if (consultation.assessment?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Assessment',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(consultation.assessment!.trim()),
+          ],
+          if (consultation.plan?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Plan',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(consultation.plan!.trim()),
+          ],
+        ],
       ),
     );
   }

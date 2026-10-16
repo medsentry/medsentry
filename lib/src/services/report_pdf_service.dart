@@ -11,6 +11,140 @@ import '../models/models.dart';
 class ReportPdfService {
   const ReportPdfService();
 
+  Future<Uint8List> generateConsultationHistoryPdf({
+    required DateTime startDate,
+    required DateTime endDate,
+    required List<List<String>> visitRows,
+    required SystemSettings settings,
+    required String preparedByName,
+    required String preparedByRole,
+  }) async {
+    final pdf = pw.Document(
+      title: 'MedSentry - Patient Visits and Consultations',
+      author: 'MedSentry RHU Healthcare System',
+      subject: 'Confidential patient consultation report',
+    );
+    final generatedAt = DateTime.now();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(32),
+        header: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(
+              settings.clinicName,
+              style: pw.TextStyle(
+                fontSize: 15,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.teal900,
+              ),
+            ),
+            pw.SizedBox(height: 3),
+            pw.Text(
+              'PATIENT VISITS & CONSULTATIONS',
+              style: pw.TextStyle(
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blueGrey800,
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Period: ${DateFormat('MMM d, yyyy').format(startDate)} - '
+              '${DateFormat('MMM d, yyyy').format(endDate)}'
+              '    |    Generated: ${DateFormat('MMM d, yyyy h:mm a').format(generatedAt)}',
+              style: const pw.TextStyle(
+                fontSize: 8,
+                color: PdfColors.blueGrey700,
+              ),
+            ),
+            pw.SizedBox(height: 5),
+            pw.Divider(color: PdfColors.blueGrey300),
+            pw.SizedBox(height: 8),
+          ],
+        ),
+        footer: (context) => pw.Container(
+          alignment: pw.Alignment.centerRight,
+          margin: const pw.EdgeInsets.only(top: 8),
+          child: pw.Text(
+            'CONFIDENTIAL | Prepared by $preparedByName ($preparedByRole) | '
+            'Page ${context.pageNumber} of ${context.pagesCount}',
+            style: const pw.TextStyle(
+              fontSize: 7,
+              color: PdfColors.blueGrey600,
+            ),
+          ),
+        ),
+        build: (context) => [
+          pw.Text(
+            '${visitRows.length} visit${visitRows.length == 1 ? '' : 's'} in this reporting period.',
+            style: pw.TextStyle(
+              fontSize: 8,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          if (visitRows.isEmpty)
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(20),
+              child: pw.Text(
+                'No consultations were recorded in the selected period.',
+                style: const pw.TextStyle(fontSize: 9),
+              ),
+            )
+          else
+            pw.TableHelper.fromTextArray(
+              headers: const [
+                'Patient',
+                'Visit date',
+                'Provider',
+                'Assessment',
+                'Plan',
+              ],
+              data: visitRows,
+              border: pw.TableBorder.all(
+                color: PdfColors.grey300,
+                width: 0.5,
+              ),
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.teal900,
+              ),
+              headerStyle: pw.TextStyle(
+                color: PdfColors.white,
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+              ),
+              cellStyle: const pw.TextStyle(
+                fontSize: 7,
+                color: PdfColors.blueGrey900,
+              ),
+              cellAlignment: pw.Alignment.topLeft,
+              cellPadding: const pw.EdgeInsets.all(5),
+              columnWidths: {
+                0: const pw.FlexColumnWidth(1.3),
+                1: const pw.FlexColumnWidth(0.85),
+                2: const pw.FlexColumnWidth(1.1),
+                3: const pw.FlexColumnWidth(1.8),
+                4: const pw.FlexColumnWidth(1.8),
+              },
+            ),
+          pw.SizedBox(height: 10),
+          pw.Text(
+            'This report contains confidential patient health information. '
+            'Handle and share it only in accordance with applicable privacy policies.',
+            style: const pw.TextStyle(
+              fontSize: 7,
+              color: PdfColors.blueGrey700,
+            ),
+          ),
+        ],
+      ),
+    );
+    return pdf.save();
+  }
+
   /// Generates the complete official PDF document bytes completely offline.
   Future<Uint8List> generateReportPdf({
     required String reportType,
@@ -1038,6 +1172,8 @@ class ReportPdfService {
                 ['Date of Birth', dobStr, 'Age / Sex', '${patient.age ?? 'N/A'} yrs / ${(patient.gender ?? 'N/A').toUpperCase()}'],
                 ['Civil Status', (patient.civilStatus ?? 'N/A').toUpperCase(), 'Blood Type', patient.bloodType ?? 'Unspecified'],
                 ['Target Category', patient.category?.displayName ?? 'General Patient', 'Registration Date', regDateStr],
+                ['Religion', patient.religion ?? 'Not recorded', 'Local LGU ID', patient.localLguIdNumber ?? 'Not recorded'],
+                ['PhilHealth Category', patient.philHealthCategory?.displayName ?? 'Not recorded', 'Last Visit', patient.lastVisitDate == null ? 'Not recorded' : DateFormat('MMMM dd, yyyy').format(patient.lastVisitDate!)],
               ],
             ),
             pw.SizedBox(height: 12),
@@ -1062,8 +1198,28 @@ class ReportPdfService {
             ),
             pw.SizedBox(height: 12),
 
-            // Section 3: Clinical Alerts & Medical History
-            _buildSectionTitle('3. CLINICAL ALERTS & MEDICAL HISTORY'),
+            // Section 3: Household and FHSIS details already on the patient record.
+            _buildSectionTitle('3. HOUSEHOLD, ELIGIBILITY & ENVIRONMENT'),
+            pw.SizedBox(height: 6),
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              headerStyle: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+              headerHeight: 0,
+              cellHeight: 18,
+              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.blueGrey900),
+              data: [
+                ['Occupation', patient.occupation ?? 'Not recorded', 'Employer', patient.employer ?? 'Not recorded'],
+                ['Person with Disability', patient.isPwd ? 'Yes' : 'No', 'Solo Parent', patient.isSoloParent ? 'Yes' : 'No'],
+                ['Indigenous Person', patient.isIndigenousPerson ? 'Yes' : 'No', 'Ethnolinguistic Group', patient.tribeEthnolinguisticGroup ?? 'Not recorded'],
+                ['4Ps Beneficiary', patient.is4PsBeneficiary ? 'Yes' : 'No', 'Household ID', patient.householdIdNumber ?? 'Not recorded'],
+                ['Water Source', patient.waterSource?.displayName ?? 'Not recorded', 'Toilet Facility', patient.toiletFacility?.displayName ?? 'Not recorded'],
+              ],
+            ),
+            pw.SizedBox(height: 12),
+
+            // Section 4: Clinical Alerts & Medical History
+            _buildSectionTitle('4. CLINICAL ALERTS & MEDICAL HISTORY'),
             pw.SizedBox(height: 6),
             pw.Container(
               decoration: pw.BoxDecoration(
@@ -1083,6 +1239,16 @@ class ReportPdfService {
                   ),
                   pw.SizedBox(height: 6),
                   pw.Row(
+                    children: [
+                      pw.Text('Recorded Height / Weight: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
+                      pw.Text(
+                        '${patient.height == null ? 'Not recorded' : '${patient.height} cm'} / ${patient.weight == null ? 'Not recorded' : '${patient.weight} kg'}',
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.blueGrey900),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 6),
+                  pw.Row(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text('Past Medical History: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
@@ -1096,8 +1262,8 @@ class ReportPdfService {
             ),
             pw.SizedBox(height: 14),
 
-            // Section 4: Clinical Encounters & Consultations
-            _buildSectionTitle('4. CLINICAL ENCOUNTERS & CONSULTATIONS HISTORY'),
+            // Section 5: Clinical Encounters & Consultations
+            _buildSectionTitle('5. CLINICAL ENCOUNTERS & CONSULTATIONS HISTORY'),
             pw.SizedBox(height: 6),
             if (consultations.isEmpty)
               _buildEmptyState('No clinical consultation encounters recorded for this patient.')
@@ -1132,8 +1298,8 @@ class ReportPdfService {
               ),
             pw.SizedBox(height: 14),
 
-            // Section 5: Attached Medical Documents & Files
-            _buildSectionTitle('5. ATTACHED MEDICAL DOCUMENTS & FILES'),
+            // Section 6: Attached Medical Documents & Files
+            _buildSectionTitle('6. ATTACHED MEDICAL DOCUMENTS & FILES'),
             pw.SizedBox(height: 6),
             if (documents.isEmpty)
               _buildEmptyState('No external medical documents attached to this record.')
@@ -1170,7 +1336,7 @@ class ReportPdfService {
               ),
             pw.SizedBox(height: 24),
 
-            // Section 6: Official Sign-off Block
+            // Section 7: Official Sign-off Block
             _buildSignOffBlock(
               preparedByName: preparedByName,
               preparedByRole: preparedByRole,

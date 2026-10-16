@@ -2290,14 +2290,6 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                                   : 'Assigned to Platform Pool',
                             ),
                           ],
-                          const SizedBox(height: 16),
-                          Text(
-                            'Role Permissions & Access Overview',
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 8),
-                          _RoleSummaryCard(role: _role),
                           if (_isEdit) ...[
                             const SizedBox(height: 16),
                             SwitchListTile(
@@ -2641,29 +2633,5 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
     return isValidPhilippinePhone(trimmed)
         ? formatPhilippinePhone(trimmed)
         : trimmed;
-  }
-}
-
-class _RoleSummaryCard extends StatelessWidget {
-  final UserRole role;
-
-  const _RoleSummaryCard({required this.role});
-
-  @override
-  Widget build(BuildContext context) {
-    final summary = switch (role) {
-      UserRole.superAdmin =>
-        'Platform-wide control: manage all Rural Health Units, administrators, staff, and platform oversight.',
-      UserRole.admin =>
-        'Full system control: user accounts, audit logs, settings, backup, and oversight.',
-      UserRole.staff =>
-        'Daily RHU operations: patient registration, documents, certificates, and reports.',
-    };
-
-    return AppInfoCard(
-      icon: Icons.badge_outlined,
-      label: role.name.toUpperCase(),
-      value: summary,
-    );
   }
 }

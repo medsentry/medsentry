@@ -2,12 +2,82 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/patient.dart';
 import '../models/generated_report.dart';
+import '../models/consultation.dart';
+import '../models/user.dart';
 import '../utils/report_date_filter.dart';
 import 'providers.dart';
 
 final reportFiltersProvider = StateProvider<ReportFilters>(
   (ref) => ReportFilters.forPreset(ReportDatePreset.thisMonth),
 );
+
+class ConsultationReportEntry {
+  final Consultation consultation;
+  final Patient? patient;
+  final User? provider;
+
+  const ConsultationReportEntry({
+    required this.consultation,
+    required this.patient,
+    required this.provider,
+  });
+
+  DateTime? get visitDate =>
+      consultation.consultationDate ?? consultation.createdAt;
+}
+
+final consultationReportEntriesProvider =
+    FutureProvider<List<ConsultationReportEntry>>((ref) async {
+      ref.watch(databaseChangesProvider);
+      final db = ref.watch(databaseProvider);
+      final results = await Future.wait([
+        db.getAllConsultations(),
+        db.getAllPatients(includeArchived: true),
+        db.getAllUsers(),
+      ]);
+      final consultations = results[0] as List<Consultation>;
+      final patients = {
+        for (final patient in results[1] as List<Patient>) patient.id: patient,
+      };
+      final users = {
+        for (final user in results[2] as List<User>) user.id: user,
+      };
+
+      final entries = consultations
+          .map(
+            (consultation) => ConsultationReportEntry(
+              consultation: consultation,
+              patient: patients[consultation.patientId],
+              provider: users[consultation.doctorId ?? consultation.createdBy],
+            ),
+          )
+          .toList();
+      entries.sort((a, b) {
+        final aDate = a.visitDate;
+        final bDate = b.visitDate;
+        if (aDate == null) return bDate == null ? 0 : 1;
+        if (bDate == null) return -1;
+        return bDate.compareTo(aDate);
+      });
+      return entries;
+    });
+
+List<ConsultationReportEntry> filterConsultationReportEntries({
+  required List<ConsultationReportEntry> entries,
+  required DateTime startDate,
+  required DateTime endDate,
+}) {
+  final start = DateTime(startDate.year, startDate.month, startDate.day);
+  final endExclusive = DateTime(
+    endDate.year,
+    endDate.month,
+    endDate.day,
+  ).add(const Duration(days: 1));
+  return entries.where((entry) {
+    final date = entry.visitDate?.toLocal();
+    return date != null && !date.isBefore(start) && date.isBefore(endExclusive);
+  }).toList();
+}
 
 /// Report statistics model
 class ReportStats {

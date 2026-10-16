@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:medsentry/src/models/patient.dart';
 import 'package:medsentry/src/models/system_settings.dart';
 import 'package:medsentry/src/services/report_pdf_service.dart';
 
@@ -98,6 +99,38 @@ void main() {
         ),
         throwsArgumentError,
       );
+    });
+
+    test('individual patient PDF generates with expanded registered details', () async {
+      final pdfBytes = await pdfService.generateIndividualPatientRecordPdf(
+        patient: Patient(
+          id: 'P-002',
+          firstName: 'Ana',
+          lastName: 'Santos',
+          religion: 'Catholic',
+          localLguIdNumber: 'LGU-123',
+          philHealthCategory: PhilHealthCategory.indigent,
+          occupation: 'Farmer',
+          employer: 'Self-employed',
+          isPwd: true,
+          isSoloParent: true,
+          isIndigenousPerson: true,
+          tribeEthnolinguisticGroup: 'Manobo',
+          is4PsBeneficiary: true,
+          householdIdNumber: 'HH-45',
+          waterSource: WaterSourceLevel.level2,
+          toiletFacility: ToiletFacilityType.waterSealed,
+          height: 155,
+          weight: 52,
+          lastVisitDate: DateTime(2026, 10, 1),
+        ),
+        settings: settings,
+        preparedByName: 'Maria Santos, RN',
+        preparedByRole: 'Public Health Nurse',
+      );
+
+      expect(pdfBytes, isNotEmpty);
+      expect(ascii.decode(pdfBytes.sublist(0, 5)), '%PDF-');
     });
   });
 }
