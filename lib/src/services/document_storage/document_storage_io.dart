@@ -57,7 +57,14 @@ class IoDocumentFileStorage implements DocumentFileStorage {
     String openPath = filePath;
     if (decryptedBytes != null) {
       final tempDir = await getTemporaryDirectory();
-      final targetName = fileName ?? p.basename(filePath);
+      final sanitizedTargetName = p
+          .basename(fileName ?? p.basename(filePath))
+          .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_')
+          .replaceAll(RegExp(r'^\.+'), '')
+          .replaceAll(RegExp(r'\.+$'), '');
+      final targetName = sanitizedTargetName.isEmpty
+          ? 'document'
+          : sanitizedTargetName;
       final tempFile = File(p.join(tempDir.path, targetName));
       await tempFile.writeAsBytes(decryptedBytes, flush: true);
       openPath = tempFile.path;

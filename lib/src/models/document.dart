@@ -17,6 +17,7 @@ class MedicalDocument {
   final String? description;
   final String filePath;
   final String? fileUrl;
+  final String? storagePath;
   final int fileSize;
   final String? mimeType;
   final String? scannedBy;
@@ -37,6 +38,7 @@ class MedicalDocument {
     this.description,
     required this.filePath,
     this.fileUrl,
+    this.storagePath,
     required this.fileSize,
     this.mimeType,
     this.scannedBy,
@@ -90,6 +92,7 @@ class MedicalDocument {
     String? description,
     String? filePath,
     String? fileUrl,
+    String? storagePath,
     int? fileSize,
     String? mimeType,
     String? scannedBy,
@@ -110,6 +113,7 @@ class MedicalDocument {
       description: description ?? this.description,
       filePath: filePath ?? this.filePath,
       fileUrl: fileUrl ?? this.fileUrl,
+      storagePath: storagePath ?? this.storagePath,
       fileSize: fileSize ?? this.fileSize,
       mimeType: mimeType ?? this.mimeType,
       scannedBy: scannedBy ?? this.scannedBy,
@@ -133,6 +137,7 @@ class MedicalDocument {
       'description': description,
       'file_path': filePath,
       'file_url': fileUrl,
+      'storage_path': storagePath,
       'file_size': fileSize,
       'mime_type': mimeType,
       'scanned_by': scannedBy,
@@ -162,6 +167,7 @@ class MedicalDocument {
       description: json['description'] as String?,
       filePath: json['file_path'] as String? ?? '',
       fileUrl: json['file_url'] as String?,
+      storagePath: json['storage_path'] as String?,
       fileSize: (json['file_size'] as num?)?.toInt() ?? 0,
       mimeType: json['mime_type'] as String?,
       scannedBy: json['scanned_by'] as String?,

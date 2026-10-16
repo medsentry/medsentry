@@ -800,7 +800,7 @@ class _DocumentCard extends ConsumerWidget {
                         icon: const Icon(Icons.visibility_outlined, size: 20),
                       ),
                       IconButton(
-                        tooltip: 'Open with system app',
+                        tooltip: 'Open or download document',
                         visualDensity: VisualDensity.compact,
                         onPressed: () => _openDocument(context),
                         icon: const Icon(Icons.open_in_new, size: 20),
@@ -843,7 +843,10 @@ class _DocumentCard extends ConsumerWidget {
 
   Future<void> _openDocument(BuildContext context) async {
     try {
-      await DocumentService.openDocument(document.filePath);
+      await DocumentService.openDocument(
+        document.filePath,
+        fileName: DocumentService.fileNameForDocument(document),
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
@@ -887,14 +890,22 @@ class _DocumentCard extends ConsumerWidget {
     if (confirmed != true || !context.mounted) return;
 
     try {
-      await DocumentService.deleteDocument(document.filePath);
       await ref.read(databaseProvider).deleteDocument(document.id);
+      String? cleanupError;
+      try {
+        await DocumentService.deleteDocument(document.filePath);
+      } catch (e) {
+        cleanupError = '$e';
+      }
       onChanged(document.patientId);
 
       if (context.mounted) {
+        final message = cleanupError == null
+            ? 'Document deleted'
+            : 'Document record was deleted, but its stored file could not be removed: $cleanupError';
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Document deleted')));
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (e) {
       if (context.mounted) {
@@ -1021,6 +1032,21 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
       _zoomLevel = 1.0;
       _transformationController.value = Matrix4.identity();
     });
+  }
+
+  Future<void> _openDocument() async {
+    try {
+      await DocumentService.openDocument(
+        widget.document.filePath,
+        fileName: DocumentService.fileNameForDocument(widget.document),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to open or download document: $e')),
+        );
+      }
+    }
   }
 
   bool get _isImage {
@@ -1161,14 +1187,18 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Preview not available in this view',
+                              snapshot.hasError
+                                  ? 'Unable to load document preview'
+                                  : 'Preview not available in this view',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Click "Open in System App" below to view this file using your system application.',
+                              snapshot.hasError
+                                  ? '${snapshot.error}'
+                                  : 'Use "Open or Download File" below to access this document.',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: isDark
@@ -1297,11 +1327,9 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                             ),
                             const SizedBox(height: 24),
                             FilledButton.icon(
-                              onPressed: () => DocumentService.openDocument(
-                                widget.document.filePath,
-                              ),
-                              icon: const Icon(Icons.open_in_new),
-                              label: const Text('Open PDF Document'),
+                              onPressed: _openDocument,
+                              icon: const Icon(Icons.download_outlined),
+                              label: const Text('Download PDF Document'),
                             ),
                           ],
                         ),
@@ -1326,11 +1354,9 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                           ),
                           const SizedBox(height: 8),
                           FilledButton.icon(
-                            onPressed: () => DocumentService.openDocument(
-                              widget.document.filePath,
-                            ),
+                            onPressed: _openDocument,
                             icon: const Icon(Icons.open_in_new),
-                            label: const Text('Open File in Default App'),
+                            label: const Text('Open or Download File'),
                           ),
                         ],
                       ),
@@ -1368,11 +1394,9 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   OutlinedButton.icon(
-                    onPressed: () => DocumentService.openDocument(
-                      widget.document.filePath,
-                    ),
+                    onPressed: _openDocument,
                     icon: const Icon(Icons.open_in_new, size: 18),
-                    label: const Text('Open in System App'),
+                    label: const Text('Open / Download'),
                   ),
                   Row(
                     children: [
@@ -1533,6 +1557,7 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<DocumentType>(
+                        key: ValueKey(_selectedType),
                         initialValue: _selectedType,
                         decoration: const InputDecoration(
                           labelText: 'Document type',
@@ -1618,9 +1643,6 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
         if (_titleController.text.trim().isEmpty) {
           _titleController.text = picked.name;
         }
-        if (_selectedType == DocumentType.labResult) {
-          _selectedType = DocumentService.getDocumentType(picked.extension);
-        }
       });
     } on DocumentValidationException catch (e) {
       if (mounted) {
@@ -1651,6 +1673,7 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
     }
 
     setState(() => _isSaving = true);
+    String? savedFilePath;
 
     try {
       final documentId = _uuid.v4();
@@ -1662,6 +1685,7 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
         bytes: bytes,
         fileName: picked.name,
       );
+      savedFilePath = filePath;
       final currentUser = ref.read(currentUserProvider);
       final now = DateTime.now();
 
@@ -1684,6 +1708,7 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
       );
 
       await ref.read(databaseProvider).insertDocument(document);
+      savedFilePath = null;
       ref.invalidate(documentsProvider);
       ref.invalidate(patientDocumentsProvider(patient.id));
 
@@ -1700,10 +1725,21 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
         ).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } catch (e) {
+      var errorMessage = '$e';
+      if (savedFilePath != null) {
+        try {
+          await DocumentService.deleteDocument(savedFilePath);
+        } catch (cleanupError) {
+          errorMessage =
+              '$errorMessage. The incomplete file could not be removed: $cleanupError';
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Unable to save document: $e')));
+        ).showSnackBar(
+          SnackBar(content: Text('Unable to save document: $errorMessage')),
+        );
       }
     } finally {
       if (mounted) {

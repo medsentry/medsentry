@@ -147,29 +147,31 @@ class DocumentService {
 
   /// Read decrypted document bytes into memory for in-app preview
   static Future<Uint8List?> readDocumentBytes(String filePath) async {
-    try {
-      final rawBytes = await _fileStorage.readFile(filePath);
-      if (rawBytes == null) return null;
-      if (_isEncrypted(rawBytes)) {
-        final decryptedBytes = await _decryptBytes(rawBytes);
-        return Uint8List.fromList(decryptedBytes);
-      }
-      return Uint8List.fromList(rawBytes);
-    } catch (e) {
-      debugPrint('Failed to read document bytes: $e');
-      return null;
+    final rawBytes = await _fileStorage.readFile(filePath);
+    if (rawBytes == null) return null;
+    if (_isEncrypted(rawBytes)) {
+      final decryptedBytes = await _decryptBytes(rawBytes);
+      return Uint8List.fromList(decryptedBytes);
     }
+    return Uint8List.fromList(rawBytes);
   }
 
+  static Future<bool> hasLocalDocumentFile(String filePath) async =>
+      await _fileStorage.readFile(filePath) != null;
+
   /// Open a document using the default application
-  static Future<void> openDocument(String filePath) async {
+  static Future<void> openDocument(String filePath, {String? fileName}) async {
     try {
       final rawBytes = await _fileStorage.readFile(filePath);
       List<int>? decryptedBytes;
       if (rawBytes != null && _isEncrypted(rawBytes)) {
         decryptedBytes = await _decryptBytes(rawBytes);
       }
-      await _fileStorage.openFile(filePath, decryptedBytes: decryptedBytes);
+      await _fileStorage.openFile(
+        filePath,
+        decryptedBytes: decryptedBytes,
+        fileName: fileName,
+      );
     } catch (e) {
       throw Exception('Failed to open document: $e');
     }
@@ -198,14 +200,24 @@ class DocumentService {
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
-  /// Get document type from file extension
-  static DocumentType getDocumentType(String extension) {
-    final ext = extension.toLowerCase();
-    return switch (ext) {
-      'pdf' => DocumentType.labResult,
-      'jpg' || 'jpeg' || 'png' => DocumentType.xRay,
-      _ => DocumentType.other,
-    };
+  static String fileNameForDocument(MedicalDocument document) {
+    final title = document.title
+        .trim()
+        .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_')
+        .replaceAll(RegExp(r'^\.+'), '')
+        .replaceAll(RegExp(r'\.+$'), '');
+    final safeTitle = title.isEmpty ? document.id : title;
+    final extension = document.mimeType
+        ?.trim()
+        .replaceFirst(RegExp(r'^\.'), '')
+        .toLowerCase();
+    if (extension == null || !allowedExtensions.contains(extension)) {
+      return safeTitle;
+    }
+    if (safeTitle.toLowerCase().endsWith('.$extension')) {
+      return safeTitle;
+    }
+    return '$safeTitle.$extension';
   }
 
   static Future<List<int>> _encryptBytes(List<int> bytes) async {

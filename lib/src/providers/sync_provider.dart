@@ -55,6 +55,8 @@ class SyncServiceState {
 }
 
 class SyncService extends StateNotifier<SyncServiceState> {
+  static const String _documentBucket = 'medsentry-medical-documents';
+
   final Ref _ref;
   final SupabaseClient _supabase = Supabase.instance.client;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
@@ -520,22 +522,51 @@ class SyncService extends StateNotifier<SyncServiceState> {
       }
 
       for (final document in await db.getDocuments()) {
-        if (document.syncStatus == _synced) continue;
+        final hasStoragePath = document.storagePath?.isNotEmpty == true;
+        if (document.syncStatus == _synced &&
+            (hasStoragePath || document.filePath.trim().isEmpty)) {
+          continue;
+        }
         try {
+          if (document.filePath.trim().isEmpty) {
+            if (hasStoragePath || document.syncStatus == _synced) continue;
+            throw StateError('The local document file is missing.');
+          }
           final now = DateTime.now().toIso8601String();
-          final payload = document.toJson()
+          final clinicId = await _clinicIdForUpload(
+            'documents',
+            document.id,
+            profile,
+          );
+          final storagePath = '$clinicId/${document.id}';
+          final payload = document.copyWith(storagePath: storagePath).toJson()
             ..remove('sync_status')
             ..remove('file_path')
             ..remove('file_url')
             ..['created_at'] ??= now
             ..['updated_at'] = now;
-          payload['clinic_id'] = await _clinicIdForUpload(
-            'documents',
-            document.id,
-            profile,
-          );
+          payload['clinic_id'] = clinicId;
           await _supabase.from('documents').upsert(payload);
-          await db.updateDocument(document.copyWith(syncStatus: _synced));
+          final fileBytes = await DocumentService.readDocumentBytes(
+            document.filePath,
+          );
+          if (fileBytes == null) {
+            throw StateError('The local document file could not be read.');
+          }
+          await _supabase.storage
+              .from(_documentBucket)
+              .uploadBinary(
+                storagePath,
+                fileBytes,
+                fileOptions: FileOptions(
+                  cacheControl: '0',
+                  upsert: true,
+                  contentType: _documentContentType(document),
+                ),
+              );
+          await db.updateDocument(
+            document.copyWith(storagePath: storagePath, syncStatus: _synced),
+          );
           synced++;
         } catch (error, stackTrace) {
           debugPrint(
@@ -547,6 +578,9 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
       for (final deletion in await db.getPendingSyncDeletes()) {
         try {
+          if (deletion['table'] == 'documents') {
+            await _removeRemoteDocumentFile(deletion['record_id']!);
+          }
           await _supabase.rpc(
             'medsentry_apply_sync_delete',
             params: {
@@ -629,13 +663,58 @@ class SyncService extends StateNotifier<SyncServiceState> {
     for (final raw in rows) {
       final remote = MedicalDocument.fromJson(Map<String, dynamic>.from(raw));
       final local = localItems[remote.id];
+      final remoteIsNewer =
+          local != null &&
+          local.syncStatus == _synced &&
+          _isRemoteVersionNewer(remote.updatedAt, local.updatedAt);
+      final localFileExists =
+          local != null &&
+          local.filePath.trim().isNotEmpty &&
+          await DocumentService.hasLocalDocumentFile(local.filePath);
+      final cloudFileAvailable = remote.storagePath?.isNotEmpty == true;
+
       if (local == null ||
-          (local.syncStatus == _synced &&
-              _isRemoteVersionNewer(remote.updatedAt, local.updatedAt))) {
-        await db.updateDocument(
-          remote.copyWith(filePath: local?.filePath ?? '', syncStatus: _synced),
-        );
+          remoteIsNewer ||
+          (!localFileExists && cloudFileAvailable)) {
+        var localFilePath = localFileExists ? local!.filePath : '';
+        if (!localFileExists && cloudFileAvailable) {
+          final bytes = await _supabase.storage
+              .from(_documentBucket)
+              .download(remote.storagePath!);
+          localFilePath = await DocumentService.saveDocument(
+            documentId: remote.id,
+            patientId: remote.patientId,
+            bytes: bytes,
+            fileName: DocumentService.fileNameForDocument(remote),
+          );
+        }
+
+        final documentToSave = local == null || remoteIsNewer
+            ? remote.copyWith(filePath: localFilePath, syncStatus: _synced)
+            : local.copyWith(filePath: localFilePath);
+        await db.updateDocument(documentToSave);
       }
+    }
+  }
+
+  String _documentContentType(MedicalDocument document) {
+    return switch (document.mimeType?.toLowerCase()) {
+      'pdf' => 'application/pdf',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      _ => 'application/octet-stream',
+    };
+  }
+
+  Future<void> _removeRemoteDocumentFile(String documentId) async {
+    final row = await _supabase
+        .from('documents')
+        .select('storage_path')
+        .eq('id', documentId)
+        .maybeSingle();
+    final storagePath = row?['storage_path'];
+    if (storagePath is String && storagePath.isNotEmpty) {
+      await _supabase.storage.from(_documentBucket).remove([storagePath]);
     }
   }
 

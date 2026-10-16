@@ -305,6 +305,7 @@ CREATE TABLE public.documents (
   status text NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'verified', 'archived')),
   notes text,
+  storage_path text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   deleted_at timestamptz,
@@ -314,6 +315,21 @@ CREATE TABLE public.documents (
 
 CREATE INDEX documents_clinic_patient_date_idx ON public.documents (clinic_id, patient_id, created_at DESC);
 CREATE INDEX documents_clinic_consultation_idx ON public.documents (clinic_id, consultation_id);
+
+INSERT INTO storage.buckets
+  (id, name, public, file_size_limit, allowed_mime_types)
+VALUES
+  (
+    'medsentry-medical-documents',
+    'medsentry-medical-documents',
+    false,
+    10485760,
+    ARRAY['application/pdf', 'image/jpeg', 'image/png']
+  )
+ON CONFLICT (id) DO UPDATE
+SET public = false,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
 
 -- -----------------------------------------------------------------------------
 -- 9. AUDIT LOGS (TENANT ISOLATED + PLATFORM SCOPE)
@@ -933,6 +949,80 @@ CREATE POLICY documents_access ON public.documents FOR ALL TO authenticated
     )
   );
 
+-- Private document objects must match an existing document and its clinic.
+DROP POLICY IF EXISTS medical_documents_select ON storage.objects;
+DROP POLICY IF EXISTS medical_documents_insert ON storage.objects;
+DROP POLICY IF EXISTS medical_documents_update ON storage.objects;
+DROP POLICY IF EXISTS medical_documents_delete ON storage.objects;
+
+CREATE POLICY medical_documents_select ON storage.objects FOR SELECT TO authenticated
+  USING (
+    bucket_id = 'medsentry-medical-documents' AND EXISTS (
+      SELECT 1
+      FROM public.documents AS d
+      WHERE d.id::text = storage.filename(name)
+        AND d.clinic_id::text = (storage.foldername(name))[1]
+        AND (
+          public.medsentry_is_super_admin() OR
+          d.clinic_id = public.medsentry_current_clinic_id()
+        )
+    )
+  );
+
+CREATE POLICY medical_documents_insert ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'medsentry-medical-documents' AND EXISTS (
+      SELECT 1
+      FROM public.documents AS d
+      WHERE d.id::text = storage.filename(name)
+        AND d.clinic_id::text = (storage.foldername(name))[1]
+        AND (
+          public.medsentry_is_super_admin() OR
+          d.clinic_id = public.medsentry_current_clinic_id()
+        )
+    )
+  );
+
+CREATE POLICY medical_documents_update ON storage.objects FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'medsentry-medical-documents' AND EXISTS (
+      SELECT 1
+      FROM public.documents AS d
+      WHERE d.id::text = storage.filename(name)
+        AND d.clinic_id::text = (storage.foldername(name))[1]
+        AND (
+          public.medsentry_is_super_admin() OR
+          d.clinic_id = public.medsentry_current_clinic_id()
+        )
+    )
+  )
+  WITH CHECK (
+    bucket_id = 'medsentry-medical-documents' AND EXISTS (
+      SELECT 1
+      FROM public.documents AS d
+      WHERE d.id::text = storage.filename(name)
+        AND d.clinic_id::text = (storage.foldername(name))[1]
+        AND (
+          public.medsentry_is_super_admin() OR
+          d.clinic_id = public.medsentry_current_clinic_id()
+        )
+    )
+  );
+
+CREATE POLICY medical_documents_delete ON storage.objects FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'medsentry-medical-documents' AND EXISTS (
+      SELECT 1
+      FROM public.documents AS d
+      WHERE d.id::text = storage.filename(name)
+        AND d.clinic_id::text = (storage.foldername(name))[1]
+        AND (
+          public.medsentry_is_super_admin() OR
+          d.clinic_id = public.medsentry_current_clinic_id()
+        )
+    )
+  );
+
 -- Audit Logs Policies
 CREATE POLICY audit_logs_read ON public.audit_logs FOR SELECT TO authenticated
   USING (
@@ -1125,4 +1215,3 @@ BEGIN
     updated_at = now();
 END;
 $$;
-
