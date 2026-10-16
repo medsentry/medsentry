@@ -118,9 +118,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => LoginScreen(
-          locked: state.uri.queryParameters['locked'] == '1',
-        ),
+        builder: (context, state) =>
+            LoginScreen(locked: state.uri.queryParameters['locked'] == '1'),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -319,10 +318,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               Text(
                 state.error?.toString() ??
                     'The requested page could not be located.',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF9CA3AF),
-                ),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
