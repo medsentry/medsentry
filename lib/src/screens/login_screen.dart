@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -264,167 +266,113 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark
-          ? AppColors.appBackground
-          : AppColors.lightBackground,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final height = constraints.maxHeight;
-            final isWide = width >= 900;
-            final isTall = height >= 820;
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/rhu_madrid_background.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => ColoredBox(
+              color: isDark
+                  ? AppColors.appBackground
+                  : AppColors.lightBackground,
+            ),
+          ),
+          const ColoredBox(color: Color(0x66001410)),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final horizontalPadding = constraints.maxWidth >= 900
+                    ? (constraints.maxWidth * 0.045).clamp(32.0, 88.0)
+                    : 24.0;
+                final isTall = constraints.maxHeight >= 820;
+                final card = Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: ClipRRect(
+                        borderRadius: AppRadius.roundedLg,
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(isTall ? 32 : 24),
+                            decoration: BoxDecoration(
+                              color:
+                                  (isDark
+                                          ? AppColors.cardSurface
+                                          : Colors.white)
+                                      .withValues(alpha: isDark ? 0.88 : 0.92),
+                              borderRadius: AppRadius.roundedLg,
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.48),
+                                width: 1.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 32,
+                                  offset: const Offset(0, 12),
+                                ),
+                              ],
+                            ),
+                            child: _buildAuthForm(context, isTall: isTall),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
 
-            if (!isWide) {
-              final showIllustration = height >= 580;
-              final compactIllustrationHeight = (height * 0.28).clamp(
-                120.0,
-                240.0,
-              );
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
+                if (constraints.maxHeight < 680) {
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                      vertical: 8,
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildTopBar(context, compact: true),
-                        if (showIllustration) ...[
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: compactIllustrationHeight,
-                            child: Image.asset(
-                              'assets/images/rhu_doctors.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const SizedBox.shrink(),
-                            ),
-                          ),
-                        ],
+                        _buildTopBar(
+                          context,
+                          compact: true,
+                          onBackground: true,
+                        ),
                         const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.cardSurface
-                                : Colors.white,
-                            borderRadius: AppRadius.roundedLg,
-                            border: Border.all(
-                              color: isDark
-                                  ? AppColors.border
-                                  : AppColors.lightBorder,
-                              width: AppColors.borderWidth,
-                            ),
-                            boxShadow: isDark ? AppShadows.subtle : null,
-                          ),
-                          child: _buildAuthForm(context, isTall: false),
-                        ),
-                        const SizedBox(height: 20),
-                        _buildBottomBar(context, compact: true),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            final horizontalPadding = (width * 0.045).clamp(32.0, 88.0);
-            final formMaxWidth = (width * 0.28).clamp(380.0, 480.0);
-            final columnGap = (width * 0.035).clamp(28.0, 64.0);
-
-            final wideContent = Column(
-              children: [
-                _buildTopBar(
-                  context,
-                  horizontalPadding: horizontalPadding,
-                  isTall: isTall,
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                      vertical: isTall ? 12 : 4,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Left: Doctor & Clinician Illustration (Auto-resizes to fill available space)
-                        Expanded(
-                          flex: 6,
-                          child: _buildIllustrationPanel(context),
-                        ),
-                        SizedBox(width: columnGap),
-                        // Right: Clean Auth Form (Proportionally scales maxWidth & vertical spacing)
-                        Expanded(
-                          flex: 5,
-                          child: Center(
-                            child: SingleChildScrollView(
-                              padding: EdgeInsets.symmetric(
-                                vertical: isTall ? 16 : 8,
-                              ),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  maxWidth: formMaxWidth,
-                                ),
-                                child: Container(
-                                  padding: EdgeInsets.all(isTall ? 32 : 24),
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? AppColors.cardSurface
-                                        : Colors.white,
-                                    borderRadius: AppRadius.roundedLg,
-                                    border: Border.all(
-                                      color: isDark
-                                          ? AppColors.border
-                                          : AppColors.lightBorder,
-                                      width: AppColors.borderWidth,
-                                    ),
-                                    boxShadow: isDark
-                                        ? AppShadows.subtle
-                                        : [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.05,
-                                              ),
-                                              blurRadius: 16,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                  ),
-                                  child: _buildAuthForm(
-                                    context,
-                                    isTall: isTall,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                        card,
+                        const SizedBox(height: 16),
+                        _buildBottomBar(
+                          context,
+                          compact: true,
+                          onBackground: true,
                         ),
                       ],
                     ),
-                  ),
-                ),
-                _buildBottomBar(
-                  context,
-                  horizontalPadding: horizontalPadding,
-                  isTall: isTall,
-                ),
-              ],
-            );
+                  );
+                }
 
-            if (height < 560) {
-              return SingleChildScrollView(
-                child: SizedBox(height: 560, child: wideContent),
-              );
-            }
-
-            return wideContent;
-          },
-        ),
+                return Column(
+                  children: [
+                    _buildTopBar(
+                      context,
+                      horizontalPadding: horizontalPadding,
+                      isTall: isTall,
+                      onBackground: true,
+                    ),
+                    Expanded(child: card),
+                    _buildBottomBar(
+                      context,
+                      horizontalPadding: horizontalPadding,
+                      isTall: isTall,
+                      onBackground: true,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -434,10 +382,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool compact = false,
     double horizontalPadding = 48,
     bool isTall = false,
+    bool onBackground = false,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark
+    final primary = onBackground
+        ? Colors.white
+        : isDark
         ? AppColors.primaryEmerald
         : theme.colorScheme.primary;
     final settings =
@@ -453,8 +404,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           SystemLogo(
             dataUri: settings.logoDataUri,
             size: isTall ? 36 : 30,
-            backgroundColor: isDark ? AppColors.primaryEmeraldSubtle : primary,
-            iconColor: isDark ? AppColors.primaryEmerald : Colors.white,
+            backgroundColor: onBackground
+                ? AppColors.primaryEmerald
+                : isDark
+                ? AppColors.primaryEmeraldSubtle
+                : primary,
+            iconColor: isDark && !onBackground
+                ? AppColors.primaryEmerald
+                : Colors.white,
             iconSize: isTall ? 22 : 18,
           ),
           const SizedBox(width: 10),
@@ -464,7 +421,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fontSize: isTall ? 20 : 17,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.3,
-              color: isDark ? AppColors.textPrimary : primary,
+              color: onBackground
+                  ? Colors.white
+                  : isDark
+                  ? AppColors.textPrimary
+                  : primary,
             ),
           ),
           const Spacer(),
@@ -499,33 +460,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           },
           icon: const Icon(Icons.install_desktop_outlined, size: 18),
           label: const Text('Install App'),
-        );
-      },
-    );
-  }
-
-  Widget _buildIllustrationPanel(BuildContext context) {
-    final settings =
-        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Image.asset(
-              settings.logoAssetPath,
-              fit: BoxFit.contain,
-              width: constraints.maxWidth,
-              height: constraints.maxHeight,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: Colors.transparent,
-                child: const Center(
-                  child: Icon(Icons.medical_services_outlined, size: 80),
-                ),
-              ),
-            ),
-          ),
         );
       },
     );
@@ -1036,9 +970,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool compact = false,
     double horizontalPadding = 48,
     bool isTall = false,
+    bool onBackground = false,
   }) {
     final theme = Theme.of(context);
-    final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+    final mutedColor = onBackground
+        ? Colors.white.withValues(alpha: 0.85)
+        : theme.colorScheme.onSurface.withValues(alpha: 0.6);
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
 

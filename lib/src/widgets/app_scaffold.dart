@@ -556,30 +556,51 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
             onTap: () => context.go('/'),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF16171D) : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF262936)
-                      : AppColors.lightBorder,
-                  width: 1.2,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF16171D)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF262936)
+                          : AppColors.lightBorder,
+                      width: 1.2,
+                    ),
+                    boxShadow: isDark ? AppShadows.subtle : null,
+                  ),
+                  child: Center(
+                    child: SystemLogo(
+                      dataUri: settings.logoDataUri,
+                      size: 26,
+                      backgroundColor: Colors.transparent,
+                      iconColor: AppColors.primaryEmerald,
+                      iconSize: 22,
+                      borderRadius: 4,
+                    ),
+                  ),
                 ),
-                boxShadow: isDark ? AppShadows.subtle : null,
-              ),
-              child: Center(
-                child: SystemLogo(
-                  dataUri: settings.logoDataUri,
-                  size: 26,
-                  backgroundColor: Colors.transparent,
-                  iconColor: AppColors.primaryEmerald,
-                  iconSize: 22,
-                  borderRadius: 4,
-                ),
-              ),
+                if (isExpanded) ...[
+                  const SizedBox(width: 12),
+                  Text(
+                    settings.appName,
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColors.textPrimary
+                          : AppColors.lightTextPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),
