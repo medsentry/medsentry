@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/system_settings.dart';
+import '../models/system_notification.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
@@ -820,6 +821,17 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     SyncStatus syncStatus,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final notificationTarget = user?.canManageSystemData == true
+        ? NotificationTarget.admin
+        : NotificationTarget.staff;
+    final notificationsAsync = ref.watch(
+      notificationsProvider(notificationTarget),
+    );
+    final unreadCount =
+        notificationsAsync.valueOrNull
+            ?.where((notification) => !notification.isRead)
+            .length ??
+        0;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -904,28 +916,49 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 padding: EdgeInsets.zero,
                 tooltip: 'Notifications',
                 icon: Icon(
-                  Icons.notifications_none_rounded,
+                  unreadCount > 0
+                      ? Icons.notifications_active_outlined
+                      : Icons.notifications_none_rounded,
                   size: 19,
                   color: isDark
                       ? AppColors.textSecondary
                       : AppColors.lightTextSecondary,
                 ),
-                onPressed: () {
-                  context.push('/audit-logs');
-                },
+                onPressed: user == null
+                    ? null
+                    : () => _showNotifications(context, notificationTarget),
               ),
-              Positioned(
-                top: 8,
-                right: 9,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF97316),
-                    shape: BoxShape.circle,
+              if (unreadCount > 0)
+                Positioned(
+                  top: 2,
+                  right: 1,
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.sidebarBackground
+                            : Colors.white,
+                        width: 1.5,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      unreadCount > 9 ? '9+' : '$unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -940,6 +973,239 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       ],
     );
   }
+
+  Future<void> _showNotifications(
+    BuildContext context,
+    NotificationTarget target,
+  ) async {
+    final router = GoRouter.of(context);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => _NotificationsDialog(
+        target: target,
+        onOpen: (notification) async {
+          try {
+            await ref
+                .read(databaseProvider)
+                .markNotificationRead(notification.id);
+            ref.invalidate(notificationsProvider(target));
+            if (dialogContext.mounted) Navigator.pop(dialogContext);
+            if (!mounted) return;
+            if (notification.actionRoute != null &&
+                notification.actionRoute!.startsWith('/')) {
+              router.push(notification.actionRoute!);
+            }
+          } catch (e) {
+            AppNotification.error(
+              title: 'Notification Error',
+              message: 'Could not open this notification: $e',
+            );
+          }
+        },
+        onMarkAllRead: () async {
+          try {
+            await ref.read(databaseProvider).markAllNotificationsRead(target);
+            ref.invalidate(notificationsProvider(target));
+          } catch (e) {
+            AppNotification.error(
+              title: 'Notification Error',
+              message: 'Could not mark notifications as read: $e',
+            );
+          }
+        },
+      ),
+    );
+  }
+}
+
+class _NotificationsDialog extends ConsumerWidget {
+  final NotificationTarget target;
+  final ValueChanged<SystemNotification> onOpen;
+  final Future<void> Function() onMarkAllRead;
+
+  const _NotificationsDialog({
+    required this.target,
+    required this.onOpen,
+    required this.onMarkAllRead,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final notificationsAsync = ref.watch(notificationsProvider(target));
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(20),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 560),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_active_outlined),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Notifications',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => onMarkAllRead(),
+                    child: const Text('Mark all read'),
+                  ),
+                  IconButton(
+                    tooltip: 'Close notifications',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: notificationsAsync.when(
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+                error: (error, stackTrace) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Could not load notifications: $error'),
+                  ),
+                ),
+                data: (notifications) {
+                  if (notifications.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.notifications_off_outlined,
+                              size: 36,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.45,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text('You’re all caught up'),
+                            const SizedBox(height: 4),
+                            Text(
+                              'New alerts will appear here.',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: notifications.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, indent: 68, endIndent: 16),
+                    itemBuilder: (context, index) {
+                      final notification = notifications[index];
+                      return ListTile(
+                        onTap: () => onOpen(notification),
+                        leading: CircleAvatar(
+                          backgroundColor: notification.isRead
+                              ? (isDark
+                                    ? AppColors.elevatedSurface
+                                    : AppColors.lightElevatedSurface)
+                              : theme.colorScheme.primary.withValues(
+                                  alpha: 0.12,
+                                ),
+                          child: Icon(
+                            _notificationIcon(notification.type),
+                            color: notification.isRead
+                                ? theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  )
+                                : theme.colorScheme.primary,
+                            size: 20,
+                          ),
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                notification.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: notification.isRead
+                                      ? FontWeight.w500
+                                      : FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            if (!notification.isRead)
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                notification.message,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat(
+                                  'MMM d, h:mm a',
+                                ).format(notification.createdAt),
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        isThreeLine: true,
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _notificationIcon(NotificationType type) => switch (type) {
+    NotificationType.incompleteRecord => Icons.person_search_outlined,
+    NotificationType.syncFailed => Icons.cloud_sync_outlined,
+    NotificationType.pendingDocument => Icons.upload_file_outlined,
+    NotificationType.suspiciousActivity => Icons.security_outlined,
+    NotificationType.systemUpdate => Icons.system_update_outlined,
+    NotificationType.queueAlert => Icons.pending_actions_outlined,
+    NotificationType.general => Icons.notifications_outlined,
+  };
 }
 
 class _IndexedNavItem {

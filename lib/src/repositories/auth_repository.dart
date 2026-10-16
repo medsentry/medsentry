@@ -161,7 +161,7 @@ class AuthRepository {
     return null;
   }
 
-  Future<void> ensureOnlineSession([String? _actorUserId]) async {
+  Future<void> ensureOnlineSession() async {
     // A local session must never acquire a privileged Supabase session using
     // seeded credentials. Online authentication happens only after explicit
     // user sign-in.
@@ -225,7 +225,7 @@ class AuthRepository {
     }
 
     // Try to ensure an active Supabase online session if possible
-    await ensureOnlineSession(createdByUserId);
+    await ensureOnlineSession();
 
     String? remoteUserId;
     bool provisionedOnline = false;
@@ -356,7 +356,7 @@ class AuthRepository {
               .timeout(const Duration(seconds: 3));
         } catch (e) {
           debugPrint('Supabase background auth warning: $e');
-          await ensureOnlineSession(user.id);
+          await ensureOnlineSession();
         }
       }());
 
@@ -374,7 +374,7 @@ class AuthRepository {
               .timeout(const Duration(seconds: 3));
         } catch (e) {
           debugPrint('Supabase background auth warning: $e');
-          await ensureOnlineSession(localUser.id);
+          await ensureOnlineSession();
         }
       }());
       return localUser;
@@ -525,7 +525,7 @@ class AuthRepository {
       return _verifyPassword(pin, user.pinHash!);
     }
 
-    await ensureOnlineSession(userId);
+    await ensureOnlineSession();
     if (_supabase.auth.currentSession == null) {
       throw StateError('Connect to the internet to verify this PIN.');
     }
@@ -595,7 +595,7 @@ class AuthRepository {
 
     if (newPassword != null && newPassword.isNotEmpty) {
       await _validatePassword(newPassword);
-      await ensureOnlineSession(updatedByUserId);
+      await ensureOnlineSession();
       if (_supabase.auth.currentSession != null) {
         try {
           await _supabase.functions.invoke(
@@ -634,7 +634,8 @@ class AuthRepository {
       isActive: isActive ?? existing.isActive,
       isReactivated: willReactivate
           ? true
-          : (isReactivated ?? (existing.isReactivated && (isActive ?? existing.isActive))),
+          : (isReactivated ??
+                (existing.isReactivated && (isActive ?? existing.isActive))),
       pinEnabled: pinEnabled ?? existing.pinEnabled,
       updatedAt: DateTime.now(),
       syncStatus: existing.syncStatus == 0 ? 2 : existing.syncStatus,
@@ -662,7 +663,7 @@ class AuthRepository {
         updated.isActive != existing.isActive;
 
     if (accountChanged) {
-      await ensureOnlineSession(updatedByUserId);
+      await ensureOnlineSession();
       if (_supabase.auth.currentSession != null) {
         try {
           await _supabase.rpc(
@@ -713,7 +714,7 @@ class AuthRepository {
       throw ArgumentError('User not found');
     }
 
-    await ensureOnlineSession(deactivatedByUserId);
+    await ensureOnlineSession();
     if (_supabase.auth.currentSession != null) {
       try {
         await _supabase.rpc(
@@ -805,7 +806,9 @@ class AuthRepository {
 
     if (!actor.isSuperAdmin) {
       if (target.isSuperAdmin) {
-        throw StateError('Administrators cannot reset Super Administrator passwords');
+        throw StateError(
+          'Administrators cannot reset Super Administrator passwords',
+        );
       }
       if (target.clinicId != null &&
           actor.clinicId != null &&
@@ -817,7 +820,7 @@ class AuthRepository {
     }
 
     await _validatePassword(newPassword);
-    await ensureOnlineSession(actorUserId);
+    await ensureOnlineSession();
 
     if (_supabase.auth.currentSession != null) {
       try {
@@ -884,7 +887,7 @@ class AuthRepository {
     String? pin, {
     required bool enabled,
   }) async {
-    await ensureOnlineSession(userId);
+    await ensureOnlineSession();
     if (_supabase.auth.currentSession == null) {
       throw StateError('Connect to the internet to save this PIN online.');
     }
@@ -902,7 +905,7 @@ class AuthRepository {
   Future<User?> login(String email, String password) async {
     final user = await authenticate(email, password);
     if (user != null) {
-      unawaited(ensureOnlineSession(user.id));
+      unawaited(ensureOnlineSession());
     }
     return user;
   }
@@ -960,7 +963,7 @@ class AuthRepository {
       _failedPinAttempts = 0;
       _pinLockedUntil = null;
       await unlockSession();
-      unawaited(ensureOnlineSession(userId));
+      unawaited(ensureOnlineSession());
 
       await _auditService.logAction(
         userId: userId,
@@ -991,7 +994,7 @@ class AuthRepository {
       _failedPinAttempts = 0;
       _pinLockedUntil = null;
       await unlockSession();
-      unawaited(ensureOnlineSession(userId));
+      unawaited(ensureOnlineSession());
 
       await _auditService.logAction(
         userId: userId,
@@ -1016,7 +1019,7 @@ class AuthRepository {
     if (user == null || !user.isActive || !user.pinEnabled) return false;
     if (user.pinHash != null) return true;
 
-    await ensureOnlineSession(userId);
+    await ensureOnlineSession();
     return _supabase.auth.currentSession != null;
   }
 
@@ -1113,8 +1116,17 @@ class AuthRepository {
     // Check Supabase auth if session exists, but protect with strict timeout
     final supabaseUser = _supabase.auth.currentUser;
     if (supabaseUser != null) {
-      final emailUser = await _db.getUserByEmail(supabaseUser.email ?? '');
-      final candidateUser = localUser ?? emailUser;
+      if (userId == null) {
+        await _supabase.auth.signOut();
+        return null;
+      }
+      if (localUser != null &&
+          localUser.email.toLowerCase() !=
+              (supabaseUser.email ?? '').toLowerCase()) {
+        await _supabase.auth.signOut();
+        return localUser.isActive ? localUser : null;
+      }
+      final candidateUser = localUser;
 
       try {
         final profile = await _supabase
