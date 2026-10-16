@@ -17,7 +17,7 @@ class StaffScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Users',
+            'Staff',
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -25,9 +25,9 @@ class StaffScreen extends ConsumerWidget {
           const SizedBox(height: 6),
           Text(
             'Manage administrators and staff accounts for this RHU.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
           Expanded(

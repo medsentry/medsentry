@@ -989,6 +989,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       );
       return;
     }
+    if (!mounted || !context.mounted) return;
 
     await showDialog<void>(
       context: context,

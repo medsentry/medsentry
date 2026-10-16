@@ -77,7 +77,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   );
 
   static const _staffNavigationItem = AppNavigationItem(
-    label: 'Users',
+    label: 'Staff',
     path: '/staff',
     icon: Icons.manage_accounts_outlined,
     selectedIcon: Icons.manage_accounts_rounded,

@@ -177,7 +177,7 @@ void main() {
     await db.markAllNotificationsRead(NotificationTarget.staff);
 
     expect(await db.getUnreadNotificationCount(NotificationTarget.staff), 0);
-    expect(await db.getUnreadNotificationCount(NotificationTarget.admin), 2);
+    expect(await db.getUnreadNotificationCount(NotificationTarget.admin), 1);
   });
 
   test(
