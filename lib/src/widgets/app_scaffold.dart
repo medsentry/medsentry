@@ -6,22 +6,29 @@ import '../models/system_settings.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
-import '../utils/date_time_format.dart';
+import 'package:intl/intl.dart';
 import 'layout/responsive_layout.dart';
 import 'medsentry_command_dialog.dart';
 import 'system_logo.dart';
+import 'user_avatar.dart';
 
 class AppNavigationItem {
   final String label;
   final String path;
   final IconData icon;
   final IconData selectedIcon;
+  final String? group;
+  final int? badgeCount;
+  final Color? badgeColor;
 
   const AppNavigationItem({
     required this.label,
     required this.path,
     required this.icon,
     required this.selectedIcon,
+    this.group,
+    this.badgeCount,
+    this.badgeColor,
   });
 }
 
@@ -98,70 +105,65 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(AppDimensions.appBarHeight),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.sidebarBackground : Colors.white,
-            border: Border(
-              bottom: BorderSide(
-                color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
-                width: AppColors.borderWidth,
-              ),
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isCompact = constraints.maxWidth < 800;
-                  final spacing = isCompact ? 12.0 : 20.0;
-
-                  return Row(
-                    children: [
-                      // LEFT ZONE: Brand & Context
-                      Flexible(
-                        flex: isCompact ? 1 : 0,
-                        child: _buildIdentityZone(context),
-                      ),
-                      SizedBox(width: spacing),
-
-                      // CENTER ZONE: Global Search Bar (Ctrl+K)
-                      Expanded(
-                        flex: 3,
-                        child: _buildSearchZone(
-                          context,
-                          enabled: user?.canAccessPatientRecords == true,
-                        ),
-                      ),
-                      SizedBox(width: spacing),
-
-                      // RIGHT ZONE: Sync, Clock & Profile
-                      Flexible(
-                        flex: isCompact ? 1 : 0,
-                        child: _buildStatusZone(context, user, syncStatus),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-      ),
       body: Row(
         children: [
           _buildSidebar(context, forceCollapsed: isTablet),
           VerticalDivider(
             thickness: AppColors.borderWidth,
             width: AppColors.borderWidth,
-            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+            color: isDark
+                ? AppColors.borderSubtle
+                : AppColors.lightBorderSubtle,
           ),
-          Expanded(child: widget.body),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildDesktopHeader(context, user, syncStatus),
+                Expanded(child: widget.body),
+              ],
+            ),
+          ),
         ],
       ),
       floatingActionButton: widget.floatingActionButton,
+    );
+  }
+
+  Widget _buildDesktopHeader(
+    BuildContext context,
+    User? user,
+    SyncStatus syncStatus,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      height: 72.0,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.sidebarBackground : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? AppColors.borderSubtle
+                : AppColors.lightBorderSubtle,
+            width: AppColors.borderWidth,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        child: Row(
+          children: [
+            // LEFT ZONE: Dynamic Greeting / Title + Live Monitoring Pill + Subtitle
+            Expanded(child: _buildGreetingZone(context, user)),
+            const SizedBox(width: 16),
+
+            // RIGHT ZONE: Search Pill + Notification Bell + Sync
+            _buildHeaderActionsZone(context, user, syncStatus),
+          ],
+        ),
+      ),
     );
   }
 
@@ -181,7 +183,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     return AppBar(
       elevation: 0,
       backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
-      foregroundColor: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+      foregroundColor: isDark
+          ? AppColors.textPrimary
+          : AppColors.lightTextPrimary,
       titleSpacing: 0,
       leading: isDetailRoute
           ? IconButton(
@@ -218,7 +222,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.lightTextPrimary,
               ),
             ),
           ),
@@ -230,7 +236,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           icon: Icon(
             Icons.search,
             size: 20,
-            color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+            color: isDark
+                ? AppColors.textSecondary
+                : AppColors.lightTextSecondary,
           ),
           onPressed: () => showMedsentryCommandPalette(context, ref),
         ),
@@ -238,90 +246,54 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         if (user != null) ...[
           Padding(
             padding: const EdgeInsets.only(right: 12, left: 4),
-            child: _buildMobileUserAvatar(context, user),
+            child: _buildProfileButton(context, user, compact: true),
           ),
         ],
       ],
     );
   }
 
-  Widget _buildMobileUserAvatar(BuildContext context, User user) {
+  Widget _buildProfileButton(
+    BuildContext context,
+    User user, {
+    bool compact = false,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return PopupMenuButton<String>(
-      tooltip: 'Account Menu',
-      offset: const Offset(0, 48),
-      child: CircleAvatar(
-        radius: 15,
-        backgroundColor: AppColors.primaryEmeraldSubtle,
-        child: Text(
-          user.initials,
-          style: const TextStyle(
-            color: AppColors.primaryEmerald,
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
+    return Tooltip(
+      message: 'My Profile',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => context.push('/profile'),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 0 : 8,
+              vertical: 4,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                UserAvatar(user: user, radius: 16),
+                if (!compact) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    user.displayName,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.textPrimary
+                          : AppColors.lightTextPrimary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          enabled: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user.displayName,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
-                ),
-              ),
-              Text(
-                user.roleDisplay,
-                style: TextStyle(
-                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'profile',
-          child: Row(
-            children: [
-              Icon(Icons.person_outline, size: 18),
-              SizedBox(width: 8),
-              Text('My Profile'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout, color: AppColors.critical, size: 18),
-              SizedBox(width: 8),
-              Text('Log Out', style: TextStyle(color: AppColors.critical)),
-            ],
-          ),
-        ),
-      ],
-      onSelected: (value) async {
-        if (value == 'profile') {
-          context.push('/profile');
-        } else if (value == 'logout') {
-          try {
-            await ref.read(authRepositoryProvider).logout();
-            ref.read(currentUserProvider.notifier).state = null;
-            if (context.mounted) {
-              context.go('/login');
-            }
-          } catch (e) {
-            AppNotification.error(title: 'Logout Failed', message: '$e');
-          }
-        }
-      },
     );
   }
 
@@ -339,10 +311,14 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
+                color: isDark
+                    ? AppColors.elevatedSurface
+                    : AppColors.lightElevatedSurface,
                 border: Border(
                   bottom: BorderSide(
-                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                    color: isDark
+                        ? AppColors.borderSubtle
+                        : AppColors.lightBorderSubtle,
                   ),
                 ),
               ),
@@ -367,7 +343,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                             Text(
                               'MedSentry',
                               style: TextStyle(
-                                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                                color: isDark
+                                    ? AppColors.textPrimary
+                                    : AppColors.lightTextPrimary,
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: -0.2,
@@ -378,7 +356,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                                   ? 'Super Admin Network'
                                   : 'Rural Health Unit',
                               style: TextStyle(
-                                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : AppColors.lightTextSecondary,
                                 fontSize: 11,
                               ),
                             ),
@@ -391,7 +371,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                   Text(
                     user?.displayName ?? 'User',
                     style: TextStyle(
-                      color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                      color: isDark
+                          ? AppColors.textPrimary
+                          : AppColors.lightTextPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -399,7 +381,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                   Text(
                     user?.email ?? '',
                     style: TextStyle(
-                      color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                      color: isDark
+                          ? AppColors.textSecondary
+                          : AppColors.lightTextSecondary,
                       fontSize: 12,
                     ),
                   ),
@@ -430,43 +414,23 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
             Divider(
               height: 1,
-              color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+              color: isDark
+                  ? AppColors.borderSubtle
+                  : AppColors.lightBorderSubtle,
             ),
             ListTile(
-              leading: Icon(
-                Icons.person_outline,
+              leading: const Icon(
+                Icons.logout,
+                color: AppColors.critical,
                 size: 20,
-                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
               ),
-              title: Text(
-                'My Profile',
-                style: TextStyle(
-                  color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
-                  fontSize: 14,
-                ),
-              ),
-              onTap: () {
-                Navigator.of(context).pop();
-                context.push('/profile');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: AppColors.critical, size: 20),
               title: const Text(
                 'Log Out',
                 style: TextStyle(color: AppColors.critical, fontSize: 14),
               ),
               onTap: () async {
                 Navigator.of(context).pop();
-                try {
-                  await ref.read(authRepositoryProvider).logout();
-                  ref.read(currentUserProvider.notifier).state = null;
-                  if (context.mounted) {
-                    context.go('/login');
-                  }
-                } catch (e) {
-                  AppNotification.error(title: 'Logout Failed', message: '$e');
-                }
+                await _logout(context);
               },
             ),
           ],
@@ -489,44 +453,179 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isExpanded = !forceCollapsed && _sidebarExpanded;
-    final width = isExpanded
-        ? AppDimensions.sidebarExpanded
-        : AppDimensions.sidebarCollapsed;
+    final width = isExpanded ? 236.0 : AppDimensions.sidebarCollapsed;
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
+    // Group the navigation items
+    final groups = <String, List<_IndexedNavItem>>{};
+    for (int i = 0; i < widget.navigationItems.length; i++) {
+      final item = widget.navigationItems[i];
+      final groupName = item.group ?? 'OVERVIEW';
+      groups.putIfAbsent(groupName, () => []).add(_IndexedNavItem(i, item));
+    }
 
     return AnimatedContainer(
       duration: AppDurations.normal,
       curve: Curves.easeInOut,
       width: width,
-      color: isDark ? AppColors.sidebarBackground : Colors.white,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.sidebarBackground : Colors.white,
+        border: Border(
+          right: BorderSide(
+            color: isDark
+                ? AppColors.borderSubtle
+                : AppColors.lightBorderSubtle,
+            width: AppColors.borderWidth,
+          ),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Sidebar Top Brand Box
+          _buildSidebarBrand(context, isExpanded, settings),
+
+          // Categorized Navigation Items List
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              itemCount: widget.navigationItems.length,
-              itemBuilder: (context, index) {
-                final item = widget.navigationItems[index];
-                final selected = widget.currentIndex == index;
-                return _SidebarNavItem(
-                  item: item,
-                  selected: selected,
-                  expanded: isExpanded,
-                  onTap: () => _onNavigationSelected(index, context),
-                );
-              },
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              children: [
+                for (final entry in groups.entries) ...[
+                  if (isExpanded)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
+                      child: Text(
+                        entry.key.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: isDark
+                              ? AppColors.textMuted
+                              : AppColors.lightTextMuted,
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 8),
+                  for (final indexedItem in entry.value)
+                    _SidebarNavItem(
+                      item: indexedItem.item,
+                      selected: widget.currentIndex == indexedItem.index,
+                      expanded: isExpanded,
+                      onTap: () =>
+                          _onNavigationSelected(indexedItem.index, context),
+                    ),
+                ],
+              ],
             ),
           ),
+
+          _buildSidebarLogout(context, isExpanded),
+
           if (!forceCollapsed) ...[
             Divider(
               height: 1,
-              color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+              color: isDark
+                  ? AppColors.borderSubtle
+                  : AppColors.lightBorderSubtle,
             ),
             _buildSidebarToggle(context),
           ],
         ],
       ),
     );
+  }
+
+  Widget _buildSidebarBrand(
+    BuildContext context,
+    bool isExpanded,
+    SystemSettings settings,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: isExpanded ? 16 : 12,
+        vertical: 18,
+      ),
+      child: Align(
+        alignment: isExpanded ? Alignment.centerLeft : Alignment.center,
+        child: Tooltip(
+          message: 'MedSentry Clinical System',
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => context.go('/'),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF16171D) : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF262936)
+                      : AppColors.lightBorder,
+                  width: 1.2,
+                ),
+                boxShadow: isDark ? AppShadows.subtle : null,
+              ),
+              child: Center(
+                child: SystemLogo(
+                  dataUri: settings.logoDataUri,
+                  size: 26,
+                  backgroundColor: Colors.transparent,
+                  iconColor: AppColors.primaryEmerald,
+                  iconSize: 22,
+                  borderRadius: 4,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarLogout(BuildContext context, bool isExpanded) {
+    return Tooltip(
+      message: 'Log Out',
+      child: InkWell(
+        onTap: () => _logout(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            mainAxisAlignment: isExpanded
+                ? MainAxisAlignment.start
+                : MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.logout, color: AppColors.critical, size: 20),
+              if (isExpanded) ...[
+                const SizedBox(width: 12),
+                const Text(
+                  'Log Out',
+                  style: TextStyle(
+                    color: AppColors.critical,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await ref.read(authRepositoryProvider).logout();
+      ref.read(currentUserProvider.notifier).state = null;
+      if (context.mounted) context.go('/login');
+    } catch (e) {
+      AppNotification.error(title: 'Logout Failed', message: '$e');
+    }
   }
 
   Widget _buildSidebarToggle(BuildContext context) {
@@ -550,7 +649,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : AppColors.lightTextSecondary,
                   ),
                 ),
               AnimatedRotation(
@@ -559,7 +660,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 child: Icon(
                   Icons.chevron_left,
                   size: 20,
-                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
                 ),
               ),
             ],
@@ -569,380 +672,259 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  /// LEFT ZONE: Brand & Context
-  Widget _buildIdentityZone(BuildContext context) {
+  String _getTimeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  String _getGreetingIcon() {
+    final hour = DateTime.now().hour;
+    if (hour >= 6 && hour < 18) return '☀️';
+    return '🌙';
+  }
+
+  String _getUserGreetingName(User? user) {
+    if (user == null) return 'Dr. Rivera';
+    if (user.displayName.isNotEmpty) {
+      if (user.displayName.toLowerCase().startsWith('dr.') ||
+          user.displayName.toLowerCase().startsWith('dr ')) {
+        return user.displayName;
+      }
+      return 'Dr. ${user.lastName.isNotEmpty ? user.lastName : user.displayName}';
+    }
+    return 'Dr. Rivera';
+  }
+
+  Widget _buildGreetingZone(BuildContext context, User? user) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Row(
+    final isDashboard = widget.title == 'Dashboard' || widget.title.isEmpty;
+    final timeGreeting = _getTimeGreeting();
+    final greetingIcon = _getGreetingIcon();
+    final userName = _getUserGreetingName(user);
+    final greetingTitle = isDashboard
+        ? '$timeGreeting, $userName $greetingIcon'
+        : widget.title;
+
+    final dateStr = DateFormat('EEEE, d MMMM y').format(DateTime.now());
+    final facility = settings.clinicName.isNotEmpty
+        ? settings.clinicName
+        : 'Ward 4B — Cardiology';
+    final subtitle = '$dateStr · $facility';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        SystemLogo(
-          dataUri: settings.logoDataUri,
-          size: 36,
-          backgroundColor: isDark
-              ? AppColors.primaryEmeraldSubtle
-              : AppColors.primaryEmerald.withValues(alpha: 0.15),
-          iconColor: AppColors.primaryEmerald,
-          iconSize: 22,
-          borderRadius: 8,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                greetingTitle,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                  color: isDark
+                      ? AppColors.textPrimary
+                      : AppColors.lightTextPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+              decoration: BoxDecoration(
+                color: AppColors.primaryEmerald.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: AppColors.primaryEmerald.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryEmerald,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  const Text(
+                    'Live Monitoring',
+                    style: TextStyle(
+                      color: AppColors.primaryEmerald,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'MedSentry',
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                style: TextStyle(
-                  color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              Text(
-                ref.watch(currentUserProvider)?.isSuperAdmin == true
-                    ? 'Super Admin • All RHUs'
-                    : 'Rural Health Unit',
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                style: TextStyle(
-                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+        const SizedBox(height: 3),
+        Text(
+          subtitle,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark
+                ? AppColors.textSecondary
+                : AppColors.lightTextSecondary,
           ),
         ),
       ],
     );
   }
 
-  /// CENTER ZONE: Global Search Bar (Ctrl+K)
-  Widget _buildSearchZone(BuildContext context, {required bool enabled}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      borderRadius: AppRadius.roundedSm,
-      onTap: enabled ? () => showMedsentryCommandPalette(context, ref) : null,
-      child: Container(
-        height: 38,
-        constraints: const BoxConstraints(maxWidth: 520),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.inputSurface : AppColors.lightInputSurface,
-          borderRadius: AppRadius.roundedSm,
-          border: Border.all(
-            color: isDark ? AppColors.border : AppColors.lightBorder,
-            width: AppColors.borderWidth,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.search,
-              size: 16,
-              color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Search patients, records, or jump to page...',
-                style: TextStyle(
-                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-                  fontSize: 13,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
-                borderRadius: AppRadius.roundedXs,
-                border: Border.all(
-                  color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
-                ),
-              ),
-              child: Text(
-                'Ctrl + K',
-                style: TextStyle(
-                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// RIGHT ZONE: Status, Clock & Profile
-  Widget _buildStatusZone(
+  Widget _buildHeaderActionsZone(
     BuildContext context,
     User? user,
     SyncStatus syncStatus,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 320;
-        final hideClock = constraints.maxWidth < 220;
-
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // PWA Install Action if running on web and installable
-            Consumer(
-              builder: (context, ref, _) {
-                final installer = ref.watch(pwaInstallerProvider);
-                if (!installer.isSupported || installer.isInstalled) {
-                  return const SizedBox.shrink();
-                }
-                return StreamBuilder<bool>(
-                  stream: installer.onInstallableChanged,
-                  initialData: installer.canInstall,
-                  builder: (context, snapshot) {
-                    final canInstall = snapshot.data ?? installer.canInstall;
-                    if (!canInstall) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: IconButton(
-                        tooltip: 'Install MedSentry to Device',
-                        icon: Icon(
-                          Icons.install_desktop_outlined,
-                          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-                          size: 18,
-                        ),
-                        onPressed: () async {
-                          final installed = await installer.promptInstall();
-                          if (installed) {
-                            AppNotification.success(
-                              title: 'Installation Started',
-                              message:
-                                  'MedSentry is being installed to your device.',
-                            );
-                          }
-                        },
-                      ),
-                    );
-                  },
-                );
-              },
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Pill Search Bar (Ctrl+K)
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: user?.canAccessPatientRecords == true
+              ? () => showMedsentryCommandPalette(context, ref)
+              : null,
+          child: Container(
+            height: 38,
+            constraints: const BoxConstraints(minWidth: 180, maxWidth: 280),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.cardSurface
+                  : AppColors.lightElevatedSurface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? AppColors.border : AppColors.lightBorder,
+                width: 1,
+              ),
             ),
-
-            // Sync Status with Dropdown
-            _SyncStatusDropdown(status: syncStatus),
-
-            if (!hideClock) ...[
-              SizedBox(width: isCompact ? 10 : 16),
-              // Live Clock
-              StreamBuilder<DateTime>(
-                stream: Stream.periodic(
-                  const Duration(seconds: 1),
-                  (_) => DateTime.now(),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.search,
+                  size: 16,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
                 ),
-                builder: (context, snapshot) {
-                  final now = snapshot.data ?? DateTime.now();
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        formatTime12h(now),
-                        style: TextStyle(
-                          color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (!isCompact)
-                        Text(
-                          _formatDate(now),
-                          style: TextStyle(
-                            color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
-                            fontSize: 11,
-                          ),
-                        ),
-                    ],
-                  );
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Search patients, reports...',
+                    style: TextStyle(
+                      color: isDark
+                          ? AppColors.textSecondary
+                          : AppColors.lightTextSecondary,
+                      fontSize: 12.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Ctrl+K',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColors.textMuted
+                        : AppColors.lightTextMuted,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // Notification Bell Icon Button
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.cardSurface
+                : AppColors.lightElevatedSurface,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isDark ? AppColors.border : AppColors.lightBorder,
+              width: 1,
+            ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                tooltip: 'Notifications',
+                icon: Icon(
+                  Icons.notifications_none_rounded,
+                  size: 19,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+                onPressed: () {
+                  context.push('/audit-logs');
                 },
+              ),
+              Positioned(
+                top: 8,
+                right: 9,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF97316),
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(width: 10),
 
-            SizedBox(width: isCompact ? 10 : 16),
-
-            // User Profile
-            if (user != null)
-              PopupMenuButton<String>(
-                offset: const Offset(0, 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.roundedMd,
-                  side: BorderSide(
-                    color: isDark ? AppColors.border : AppColors.lightBorder,
-                    width: AppColors.borderWidth,
-                  ),
-                ),
-                color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.primaryEmeraldSubtle,
-                      radius: 16,
-                      child: Text(
-                        user.initials.isNotEmpty ? user.initials : 'U',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primaryEmerald,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    if (!isCompact) ...[
-                      const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 110),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user.displayName,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              user.roleDisplay,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_drop_down,
-                      size: 18,
-                      color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-                    ),
-                  ],
-                ),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'lock',
-                    child: Row(
-                      children: const [
-                        Icon(Icons.lock_outline, color: AppColors.pending, size: 18),
-                        SizedBox(width: 8),
-                        Text('Lock Screen'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'profile',
-                    child: Row(
-                      children: [
-                        Icon(Icons.person_outline, size: 18),
-                        SizedBox(width: 8),
-                        Text('My Profile'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout, color: AppColors.critical, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Log Out',
-                          style: TextStyle(color: AppColors.critical),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                onSelected: (value) async {
-                  switch (value) {
-                    case 'lock':
-                      final user = ref.read(currentUserProvider);
-                      await ref
-                          .read(authRepositoryProvider)
-                          .lockSession(userId: user?.id);
-                      ref.read(currentUserProvider.notifier).state = null;
-                      if (context.mounted) {
-                        context.go('/login?locked=1');
-                      }
-                      break;
-                    case 'profile':
-                      context.push('/profile');
-                      break;
-                    case 'logout':
-                      try {
-                        await ref.read(authRepositoryProvider).logout();
-                        ref.read(currentUserProvider.notifier).state = null;
-                        AppNotification.success(
-                          title: 'Logout Successful',
-                          message: 'You have safely closed your session.',
-                        );
-                        if (context.mounted) {
-                          context.go('/login');
-                        }
-                      } catch (e) {
-                        AppNotification.error(
-                          title: 'Logout Failed',
-                          message: 'An error occurred while logging out: $e',
-                        );
-                      }
-                      break;
-                  }
-                },
-              ),
-          ],
-        );
-      },
+        // Sync Status Dropdown
+        _SyncStatusDropdown(status: syncStatus),
+        if (user != null) ...[
+          const SizedBox(width: 8),
+          _buildProfileButton(context, user),
+        ],
+      ],
     );
   }
+}
 
-  String _formatDate(DateTime dateTime) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year}';
-  }
+class _IndexedNavItem {
+  final int index;
+  final AppNavigationItem item;
+  const _IndexedNavItem(this.index, this.item);
 }
 
 class _SidebarNavItem extends StatelessWidget {
@@ -963,71 +945,112 @@ class _SidebarNavItem extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final background = selected
-        ? AppColors.primaryEmeraldSubtle
+        ? (isDark
+              ? AppColors.primaryEmerald.withValues(alpha: 0.14)
+              : AppColors.primaryEmerald.withValues(alpha: 0.12))
         : Colors.transparent;
 
     final foreground = selected
         ? AppColors.primaryEmerald
-        : (isDark ? AppColors.textSecondary : AppColors.lightTextSecondary);
+        : (isDark ? const Color(0xFF8E929B) : AppColors.lightTextSecondary);
 
     final content = Material(
       color: background,
-      borderRadius: AppRadius.roundedSm,
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
-        borderRadius: AppRadius.roundedSm,
+        borderRadius: BorderRadius.circular(10),
         mouseCursor: SystemMouseCursors.click,
         onTap: onTap,
         hoverColor: isDark
-            ? AppColors.elevatedSurface.withValues(alpha: 0.5)
+            ? Colors.white.withValues(alpha: 0.04)
             : AppColors.lightElevatedSurface,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 42),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: expanded ? 12 : 0,
-              vertical: 8,
-            ),
-            child: expanded
-                ? Row(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 40),
+          padding: EdgeInsets.symmetric(
+            horizontal: expanded ? 10 : 0,
+            vertical: 8,
+          ),
+          child: expanded
+              ? Row(
+                  children: [
+                    if (selected)
+                      Container(
+                        width: 3.5,
+                        height: 18,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryEmerald,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      )
+                    else
+                      const SizedBox(width: 11.5),
+                    Icon(
+                      selected ? item.selectedIcon : item.icon,
+                      size: 19,
+                      color: foreground,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: foreground,
+                        ),
+                      ),
+                    ),
+                    if (item.badgeCount != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: item.badgeColor ?? AppColors.primaryEmerald,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '${item.badgeCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
+                )
+              : Center(
+                  child: Stack(
+                    clipBehavior: Clip.none,
                     children: [
                       Icon(
                         selected ? item.selectedIcon : item.icon,
-                        size: 19,
+                        size: 20,
                         color: foreground,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          item.label,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: selected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: foreground,
-                          ),
-                        ),
-                      ),
-                      if (selected)
-                        Container(
-                          width: 3,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryEmerald,
-                            borderRadius: BorderRadius.circular(2),
+                      if (item.badgeCount != null)
+                        Positioned(
+                          top: -3,
+                          right: -5,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color:
+                                  item.badgeColor ?? AppColors.primaryEmerald,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                     ],
-                  )
-                : Center(
-                    child: Icon(
-                      selected ? item.selectedIcon : item.icon,
-                      size: 20,
-                      color: foreground,
-                    ),
                   ),
-          ),
+                ),
         ),
       ),
     );

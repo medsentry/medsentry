@@ -134,13 +134,18 @@ final Map<String, MunicipalityAddressData> municipalityAddressData = {
 };
 
 String? formatMiddleInitial(String? value) {
-  final letter = value?.trim().replaceAll('.', '');
-  if (letter == null || letter.isEmpty) return null;
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty || trimmed == 'None') return null;
 
-  final match = RegExp(r'[A-Za-z]').firstMatch(letter);
-  if (match == null) return null;
+  final clean = trimmed.replaceAll('.', '').trim();
+  if (clean.isEmpty) return null;
 
-  return '${match.group(0)!.toUpperCase()}.';
+  if (clean.length == 1 && RegExp(r'[A-Za-z]').hasMatch(clean)) {
+    return '${clean.toUpperCase()}.';
+  }
+
+  // Capitalize first letter of middle name/initial
+  return '${clean[0].toUpperCase()}${clean.substring(1)}';
 }
 
 String? normalizeSuffix(String? value) {

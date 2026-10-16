@@ -38,8 +38,12 @@ class SimpleDatabase {
   Stream<int> get changes => _changes.stream;
   int get revision => _revision;
 
+  void Function(int revision)? onRevisionChanged;
+
   void notifyChanges() {
-    _changes.add(++_revision);
+    final next = ++_revision;
+    _changes.add(next);
+    onRevisionChanged?.call(next);
   }
 
   Future<void> useStoreFileForTesting(dynamic file) async {

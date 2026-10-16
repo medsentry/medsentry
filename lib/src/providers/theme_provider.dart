@@ -299,7 +299,7 @@ ThemeData buildMedSentryTheme(
       elevation: 0,
       shadowColor: Colors.black.withValues(alpha: 0.2),
       shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.roundedMd,
+        borderRadius: AppRadius.roundedCard,
         side: BorderSide(
           color: borderColor,
           width: AppColors.borderWidth,

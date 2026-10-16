@@ -43,7 +43,7 @@ class MedicalDocument {
     this.scanDate,
     this.verifiedBy,
     this.verifiedDate,
-    this.status = DocumentStatus.pending,
+    this.status = DocumentStatus.verified,
     this.notes,
     this.createdAt,
     this.updatedAt,
@@ -53,17 +53,17 @@ class MedicalDocument {
   String get typeDisplay {
     switch (type) {
       case DocumentType.labResult:
-        return 'Lab Result';
+        return 'Laboratory Result';
       case DocumentType.xRay:
-        return 'X-Ray';
+        return 'X-Ray / Imaging';
       case DocumentType.prescription:
         return 'Prescription';
       case DocumentType.medicalCertificate:
         return 'Medical Certificate';
       case DocumentType.referral:
-        return 'Referral';
+        return 'Referral Letter';
       case DocumentType.other:
-        return 'Other';
+        return 'Other Document';
     }
   }
 

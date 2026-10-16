@@ -12,6 +12,17 @@ extension UserRoleX on UserRole {
     }
   }
 
+  String get displayName {
+    switch (this) {
+      case UserRole.superAdmin:
+        return 'Super Admin';
+      case UserRole.admin:
+        return 'Admin';
+      case UserRole.staff:
+        return 'Staff';
+    }
+  }
+
   static UserRole fromDbValue(String value) {
     switch (value.toLowerCase()) {
       case 'super_admin':
@@ -37,6 +48,7 @@ class User {
   final String? contactNumber;
   final String? profileImageUrl;
   final bool isActive;
+  final bool isReactivated;
   final bool pinEnabled;
   final String? pinHash;
   final DateTime? lastLoginAt;
@@ -56,6 +68,7 @@ class User {
     this.contactNumber,
     this.profileImageUrl,
     required this.isActive,
+    this.isReactivated = false,
     required this.pinEnabled,
     this.pinHash,
     this.lastLoginAt,
@@ -94,11 +107,23 @@ class User {
   bool get canManageArchive => isAdmin;
   bool get canManageStaffAccounts => isSuperAdmin || isAdmin;
   bool get canManageSecurity => isSuperAdmin || isAdmin;
+  bool get canBackupSync => isAdmin;
   bool get canManageBackupSync => isAdmin;
   bool get canSyncRecords => isSuperAdmin || isAdmin || isStaff;
   bool get canGenerateCertificates => isStaff;
   bool get canAccessPatientRecords => isSuperAdmin || isAdmin || isStaff;
   bool get canGenerateReports => isSuperAdmin || isAdmin || isStaff;
+
+  // Explicit RBAC capabilities for Admin & Super Admin
+  bool get canEditUserProfiles => isSuperAdmin || isAdmin;
+  bool get canResetUserPasswords => isSuperAdmin || isAdmin;
+  bool get canManageUserRoles => isSuperAdmin || isAdmin;
+
+  String get accountStatusDisplay {
+    if (!isActive) return 'Inactive';
+    if (isReactivated) return 'Reactivated';
+    return 'Active';
+  }
 
   String get homePath => '/dashboard';
 
@@ -115,6 +140,7 @@ class User {
     String? contactNumber,
     String? profileImageUrl,
     bool? isActive,
+    bool? isReactivated,
     bool? pinEnabled,
     String? pinHash,
     DateTime? lastLoginAt,
@@ -134,6 +160,7 @@ class User {
       contactNumber: contactNumber ?? this.contactNumber,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       isActive: isActive ?? this.isActive,
+      isReactivated: isReactivated ?? this.isReactivated,
       pinEnabled: pinEnabled ?? this.pinEnabled,
       pinHash: pinHash ?? this.pinHash,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
@@ -156,6 +183,7 @@ class User {
       'contact_number': contactNumber,
       'profile_image_url': profileImageUrl,
       'is_active': isActive,
+      'is_reactivated': isReactivated,
       'pin_enabled': pinEnabled,
       'pin_hash': pinHash,
       'last_login_at': lastLoginAt?.toIso8601String(),
@@ -178,6 +206,7 @@ class User {
       contactNumber: json['contact_number'] as String?,
       profileImageUrl: json['profile_image_url'] as String?,
       isActive: json['is_active'] as bool? ?? true,
+      isReactivated: json['is_reactivated'] as bool? ?? false,
       pinEnabled: json['pin_enabled'] as bool? ?? false,
       pinHash: json['pin_hash'] as String?,
       lastLoginAt: json['last_login_at'] != null

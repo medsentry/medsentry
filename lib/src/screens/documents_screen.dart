@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +29,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   DocumentType? _typeFilter;
-  DocumentStatus? _statusFilter;
   _DocumentSortMode _sortMode = _DocumentSortMode.newest;
   _DocumentViewMode _viewMode = _DocumentViewMode.list;
 
@@ -37,15 +38,13 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     super.dispose();
   }
 
-  bool get _hasFilters =>
-      _searchQuery.isNotEmpty || _typeFilter != null || _statusFilter != null;
+  bool get _hasFilters => _searchQuery.isNotEmpty || _typeFilter != null;
 
   void _clearFilters() {
     setState(() {
       _searchController.clear();
       _searchQuery = '';
       _typeFilter = null;
-      _statusFilter = null;
     });
   }
 
@@ -65,8 +64,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           patientName.contains(query) ||
           (patient?.philHealthNumber?.toLowerCase().contains(query) ?? false);
       final matchesType = _typeFilter == null || doc.type == _typeFilter;
-      final matchesStatus =
-          _statusFilter == null || doc.status == _statusFilter;
+      final matchesStatus = doc.status != DocumentStatus.archived;
       return matchesSearch && matchesType && matchesStatus;
     }).toList();
 
@@ -111,12 +109,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                   patient.id: patient,
               };
               final filtered = _filterAndSort(documents, patientMap);
-              final pendingCount = documents
-                  .where((doc) => doc.status == DocumentStatus.pending)
-                  .length;
-              final verifiedCount = documents
-                  .where((doc) => doc.status == DocumentStatus.verified)
-                  .length;
               final today = DateTime.now();
               final todayCount = documents.where((doc) {
                 final date = doc.scanDate ?? doc.createdAt;
@@ -137,8 +129,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       _DocumentsPageHeader(
                         totalCount: documents.length,
                         filteredCount: filtered.length,
-                        pendingCount: pendingCount,
-                        verifiedCount: verifiedCount,
                         todayCount: todayCount,
                         canUpload: canManage,
                         onUpload: () => _showUploadDialog(context),
@@ -147,7 +137,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                       _DocumentsToolbar(
                         searchController: _searchController,
                         typeFilter: _typeFilter,
-                        statusFilter: _statusFilter,
                         sortMode: _sortMode,
                         viewMode: _viewMode,
                         hasFilters: _hasFilters,
@@ -155,8 +144,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
                             setState(() => _searchQuery = value),
                         onTypeChanged: (value) =>
                             setState(() => _typeFilter = value),
-                        onStatusChanged: (value) =>
-                            setState(() => _statusFilter = value),
                         onSortModeChanged: (value) =>
                             setState(() => _sortMode = value),
                         onViewModeChanged: (value) =>
@@ -207,18 +194,13 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   }
 
   Future<void> _showUploadDialog(BuildContext context) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => const _DocumentUploadDialog(),
-    );
+    await showDocumentUploadDialog(context);
   }
 }
 
 class _DocumentsPageHeader extends StatelessWidget {
   final int totalCount;
   final int filteredCount;
-  final int pendingCount;
-  final int verifiedCount;
   final int todayCount;
   final bool canUpload;
   final VoidCallback onUpload;
@@ -226,8 +208,6 @@ class _DocumentsPageHeader extends StatelessWidget {
   const _DocumentsPageHeader({
     required this.totalCount,
     required this.filteredCount,
-    required this.pendingCount,
-    required this.verifiedCount,
     required this.todayCount,
     required this.canUpload,
     required this.onUpload,
@@ -300,27 +280,15 @@ class _DocumentsPageHeader extends StatelessWidget {
           children: [
             _StatChip(
               icon: Icons.folder_outlined,
-              label: 'Total',
+              label: 'Total Documents',
               value: '$totalCount',
               color: AppColors.primaryEmerald,
             ),
             _StatChip(
               icon: Icons.today_outlined,
-              label: 'Today',
+              label: 'Uploaded Today',
               value: '$todayCount',
               color: AppColors.info,
-            ),
-            _StatChip(
-              icon: Icons.pending_actions_outlined,
-              label: 'Pending review',
-              value: '$pendingCount',
-              color: AppColors.pending,
-            ),
-            _StatChip(
-              icon: Icons.verified_outlined,
-              label: 'Verified',
-              value: '$verifiedCount',
-              color: AppColors.success,
             ),
             if (filteredCount != totalCount)
               _StatChip(
@@ -399,13 +367,11 @@ class _StatChip extends StatelessWidget {
 class _DocumentsToolbar extends StatelessWidget {
   final TextEditingController searchController;
   final DocumentType? typeFilter;
-  final DocumentStatus? statusFilter;
   final _DocumentSortMode sortMode;
   final _DocumentViewMode viewMode;
   final bool hasFilters;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<DocumentType?> onTypeChanged;
-  final ValueChanged<DocumentStatus?> onStatusChanged;
   final ValueChanged<_DocumentSortMode> onSortModeChanged;
   final ValueChanged<_DocumentViewMode> onViewModeChanged;
   final VoidCallback onClearFilters;
@@ -413,13 +379,11 @@ class _DocumentsToolbar extends StatelessWidget {
   const _DocumentsToolbar({
     required this.searchController,
     required this.typeFilter,
-    required this.statusFilter,
     required this.sortMode,
     required this.viewMode,
     required this.hasFilters,
     required this.onSearchChanged,
     required this.onTypeChanged,
-    required this.onStatusChanged,
     required this.onSortModeChanged,
     required this.onViewModeChanged,
     required this.onClearFilters,
@@ -445,13 +409,8 @@ class _DocumentsToolbar extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final width = constraints.maxWidth;
-                final isVeryNarrow = width < 420;
-                final isNarrow = width < 600;
-                final dropdownWidth = isVeryNarrow
-                    ? width
-                    : isNarrow
-                        ? (width - 10) / 2
-                        : 170.0;
+                final isNarrow = width < 500;
+                final dropdownWidth = isNarrow ? width : 260.0;
 
                 return Wrap(
                   spacing: 10,
@@ -464,7 +423,7 @@ class _DocumentsToolbar extends StatelessWidget {
                         initialValue: typeFilter,
                         isExpanded: true,
                         decoration: const InputDecoration(
-                          labelText: 'Type',
+                          labelText: 'Document Type',
                           border: OutlineInputBorder(),
                           isDense: true,
                         ),
@@ -483,36 +442,11 @@ class _DocumentsToolbar extends StatelessWidget {
                         onChanged: onTypeChanged,
                       ),
                     ),
-                    SizedBox(
-                      width: dropdownWidth,
-                      child: DropdownButtonFormField<DocumentStatus?>(
-                        initialValue: statusFilter,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        items: [
-                          const DropdownMenuItem<DocumentStatus?>(
-                            value: null,
-                            child: Text('All statuses'),
-                          ),
-                          ...DocumentStatus.values.map(
-                            (status) => DropdownMenuItem<DocumentStatus?>(
-                              value: status,
-                              child: Text(_statusDisplay(status)),
-                            ),
-                          ),
-                        ],
-                        onChanged: onStatusChanged,
-                      ),
-                    ),
                     if (hasFilters)
                       ActionChip(
                         avatar:
                             const Icon(Icons.filter_alt_off_outlined, size: 16),
-                        label: const Text('Clear filters'),
+                        label: const Text('Clear filter'),
                         onPressed: onClearFilters,
                       ),
                   ],
@@ -671,7 +605,7 @@ class _DocumentCard extends ConsumerWidget {
     final date = document.scanDate ?? document.createdAt;
 
     return AppCard(
-      onTap: () => _openDocument(context),
+      onTap: () => _previewDocument(context, ref),
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,7 +649,8 @@ class _DocumentCard extends ConsumerWidget {
                               label: document.typeDisplay,
                               color: typeColor,
                             ),
-                            StatusBadge.fromDocumentStatus(document.status),
+                            if (document.status == DocumentStatus.archived)
+                              StatusBadge.fromDocumentStatus(document.status),
                           ],
                         ),
                       ],
@@ -725,25 +660,23 @@ class _DocumentCard extends ConsumerWidget {
                     onSelected: (value) => _handleAction(context, ref, value),
                     itemBuilder: (context) => [
                       const PopupMenuItem(
-                        value: 'open',
+                        value: 'preview',
                         child: ListTile(
-                          leading: Icon(Icons.open_in_new),
-                          title: Text('Open file'),
+                          leading: Icon(Icons.visibility_outlined),
+                          title: Text('Preview file'),
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                         ),
                       ),
-                      if (canManage &&
-                          document.status == DocumentStatus.pending)
-                        const PopupMenuItem(
-                          value: 'verify',
-                          child: ListTile(
-                            leading: Icon(Icons.verified_outlined),
-                            title: Text('Mark verified'),
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
+                      const PopupMenuItem(
+                        value: 'open',
+                        child: ListTile(
+                          leading: Icon(Icons.open_in_new),
+                          title: Text('Open with system app'),
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
                         ),
+                      ),
                       if (canManage)
                         const PopupMenuItem(
                           value: 'edit',
@@ -860,18 +793,14 @@ class _DocumentCard extends ConsumerWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (canManage &&
-                          document.status == DocumentStatus.pending)
-                        TextButton.icon(
-                          onPressed: () => _verifyDocument(context, ref),
-                          icon: const Icon(Icons.verified_outlined, size: 16),
-                          label: const Text('Verify'),
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ),
                       IconButton(
-                        tooltip: 'Open',
+                        tooltip: 'Preview file',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _previewDocument(context, ref),
+                        icon: const Icon(Icons.visibility_outlined, size: 20),
+                      ),
+                      IconButton(
+                        tooltip: 'Open with system app',
                         visualDensity: VisualDensity.compact,
                         onPressed: () => _openDocument(context),
                         icon: const Icon(Icons.open_in_new, size: 20),
@@ -885,16 +814,26 @@ class _DocumentCard extends ConsumerWidget {
     );
   }
 
+  Future<void> _previewDocument(BuildContext context, WidgetRef ref) async {
+    await DocumentPreviewDialog.show(
+      context,
+      document: document,
+      patient: patient,
+      canManage: canManage,
+      onChanged: onChanged,
+    );
+  }
+
   Future<void> _handleAction(
     BuildContext context,
     WidgetRef ref,
     String action,
   ) async {
     switch (action) {
+      case 'preview':
+        await _previewDocument(context, ref);
       case 'open':
         await _openDocument(context);
-      case 'verify':
-        await _verifyDocument(context, ref);
       case 'edit':
         await _editDocument(context, ref);
       case 'delete':
@@ -910,36 +849,6 @@ class _DocumentCard extends ConsumerWidget {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Unable to open document: $e')));
-      }
-    }
-  }
-
-  Future<void> _verifyDocument(BuildContext context, WidgetRef ref) async {
-    if (!canManage || document.status == DocumentStatus.verified) return;
-
-    final currentUser = ref.read(currentUserProvider);
-    final now = DateTime.now();
-    final updated = document.copyWith(
-      status: DocumentStatus.verified,
-      verifiedBy: currentUser?.id ?? 'system',
-      verifiedDate: now,
-      updatedAt: now,
-      syncStatus: document.syncStatus == 0 ? 2 : document.syncStatus,
-    );
-
-    try {
-      await ref.read(databaseProvider).updateDocument(updated);
-      onChanged(document.patientId);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Document marked as verified')),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to verify document: $e')),
-        );
       }
     }
   }
@@ -1035,15 +944,495 @@ Color _typeColor(DocumentType type) {
   };
 }
 
-class _DocumentUploadDialog extends ConsumerStatefulWidget {
-  const _DocumentUploadDialog();
+/// Dedicated, interactive in-app modal preview dialog for medical documents and scans
+class DocumentPreviewDialog extends ConsumerStatefulWidget {
+  final MedicalDocument document;
+  final Patient? patient;
+  final bool canManage;
+  final void Function(String patientId) onChanged;
+
+  const DocumentPreviewDialog({
+    super.key,
+    required this.document,
+    required this.patient,
+    required this.canManage,
+    required this.onChanged,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    required MedicalDocument document,
+    Patient? patient,
+    bool canManage = false,
+    required void Function(String patientId) onChanged,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => DocumentPreviewDialog(
+        document: document,
+        patient: patient,
+        canManage: canManage,
+        onChanged: onChanged,
+      ),
+    );
+  }
 
   @override
-  ConsumerState<_DocumentUploadDialog> createState() =>
+  ConsumerState<DocumentPreviewDialog> createState() =>
+      _DocumentPreviewDialogState();
+}
+
+class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
+  final TransformationController _transformationController =
+      TransformationController();
+  late Future<Uint8List?> _bytesFuture;
+  double _zoomLevel = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _bytesFuture = DocumentService.readDocumentBytes(widget.document.filePath);
+  }
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  void _zoomIn() {
+    setState(() {
+      _zoomLevel = (_zoomLevel + 0.3).clamp(0.5, 4.0);
+      _transformationController.value =
+          Matrix4.diagonal3Values(_zoomLevel, _zoomLevel, 1.0);
+    });
+  }
+
+  void _zoomOut() {
+    setState(() {
+      _zoomLevel = (_zoomLevel - 0.3).clamp(0.5, 4.0);
+      _transformationController.value =
+          Matrix4.diagonal3Values(_zoomLevel, _zoomLevel, 1.0);
+    });
+  }
+
+  void _resetZoom() {
+    setState(() {
+      _zoomLevel = 1.0;
+      _transformationController.value = Matrix4.identity();
+    });
+  }
+
+  bool get _isImage {
+    final ext = (widget.document.mimeType ?? '').toLowerCase();
+    return ext == 'jpg' || ext == 'jpeg' || ext == 'png';
+  }
+
+  bool get _isPdf {
+    final ext = (widget.document.mimeType ?? '').toLowerCase();
+    return ext == 'pdf';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final typeColor = _typeColor(widget.document.type);
+    final date = widget.document.scanDate ?? widget.document.createdAt;
+
+    return Dialog(
+      backgroundColor:
+          isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant,
+        ),
+      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 880, maxHeight: 820),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: typeColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: typeColor.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Icon(
+                      _fileIcon(widget.document.mimeType ?? 'unknown'),
+                      color: typeColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                widget.document.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _Badge(
+                              label: widget.document.typeDisplay,
+                              color: typeColor,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          [
+                            if (widget.patient != null) widget.patient!.fullName,
+                            if (date != null) _formatDate(date),
+                            DocumentService.formatFileSize(
+                              widget.document.fileSize,
+                            ),
+                          ].join('  •  '),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: isDark
+                                ? AppColors.textSecondary
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close preview',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Content Viewer
+            Expanded(
+              child: Container(
+                color: isDark
+                    ? const Color(0xFF0D0E10)
+                    : const Color(0xFFF3F4F6),
+                alignment: Alignment.center,
+                child: FutureBuilder<Uint8List?>(
+                  future: _bytesFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryEmerald,
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError || snapshot.data == null) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _fileIcon(widget.document.mimeType ?? 'unknown'),
+                              size: 64,
+                              color: isDark
+                                  ? AppColors.textTertiary
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Preview not available in this view',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Click "Open in System App" below to view this file using your system application.',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final bytes = snapshot.data!;
+
+                    if (_isImage) {
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: InteractiveViewer(
+                              transformationController:
+                                  _transformationController,
+                              minScale: 0.5,
+                              maxScale: 4.0,
+                              clipBehavior: Clip.hardEdge,
+                              child: Center(
+                                child: Image.memory(
+                                  bytes,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Text('Unable to render image'),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 16,
+                            right: 16,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: (isDark ? Colors.black : Colors.white)
+                                    .withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isDark
+                                      ? AppColors.border
+                                      : Colors.grey.shade300,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.zoom_out, size: 20),
+                                    tooltip: 'Zoom out',
+                                    onPressed: _zoomOut,
+                                  ),
+                                  Text(
+                                    '${(_zoomLevel * 100).toInt()}%',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.zoom_in, size: 20),
+                                    tooltip: 'Zoom in',
+                                    onPressed: _zoomIn,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.restart_alt,
+                                      size: 20,
+                                    ),
+                                    tooltip: 'Reset zoom',
+                                    onPressed: _resetZoom,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+
+                    if (_isPdf) {
+                      return Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: AppColors.critical.withValues(
+                                  alpha: 0.12,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.picture_as_pdf,
+                                size: 44,
+                                color: AppColors.critical,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              widget.document.title,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'PDF Document (${DocumentService.formatFileSize(widget.document.fileSize)})',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            FilledButton.icon(
+                              onPressed: () => DocumentService.openDocument(
+                                widget.document.filePath,
+                              ),
+                              icon: const Icon(Icons.open_in_new),
+                              label: const Text('Open PDF Document'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _fileIcon(widget.document.mimeType ?? ''),
+                            size: 64,
+                            color: typeColor,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            widget.document.title,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          FilledButton.icon(
+                            onPressed: () => DocumentService.openDocument(
+                              widget.document.filePath,
+                            ),
+                            icon: const Icon(Icons.open_in_new),
+                            label: const Text('Open File in Default App'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            if (widget.document.description != null &&
+                widget.document.description!.isNotEmpty) ...[
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                child: Text(
+                  widget.document.description!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+
+            const Divider(height: 1),
+
+            // Footer action bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => DocumentService.openDocument(
+                      widget.document.filePath,
+                    ),
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    label: const Text('Open in System App'),
+                  ),
+                  Row(
+                    children: [
+                      if (widget.canManage) ...[
+                        TextButton.icon(
+                          onPressed: () async {
+                            Navigator.of(context).pop();
+                            final updated = await showDialog<bool>(
+                              context: context,
+                              builder: (_) => _DocumentEditDialog(
+                                document: widget.document,
+                              ),
+                            );
+                            if (updated == true) {
+                              widget.onChanged(widget.document.patientId);
+                            }
+                          },
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Edit'),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      FilledButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> showDocumentUploadDialog(
+  BuildContext context, {
+  Patient? initialPatient,
+}) async {
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) =>
+        DocumentUploadDialog(initialPatient: initialPatient),
+  );
+}
+
+class DocumentUploadDialog extends ConsumerStatefulWidget {
+  final Patient? initialPatient;
+
+  const DocumentUploadDialog({super.key, this.initialPatient});
+
+  @override
+  ConsumerState<DocumentUploadDialog> createState() =>
       _DocumentUploadDialogState();
 }
 
-class _DocumentUploadDialogState extends ConsumerState<_DocumentUploadDialog> {
+class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _patientSearchController = TextEditingController();
@@ -1060,6 +1449,10 @@ class _DocumentUploadDialogState extends ConsumerState<_DocumentUploadDialog> {
     super.initState();
     _titleController.addListener(_refreshSaveState);
     _patientSearchController.addListener(_handlePatientSearchChanged);
+    if (widget.initialPatient != null) {
+      _selectedPatient = widget.initialPatient;
+      _patientSearchController.text = _patientPickerLabel(widget.initialPatient!);
+    }
   }
 
   @override
@@ -1225,7 +1618,9 @@ class _DocumentUploadDialogState extends ConsumerState<_DocumentUploadDialog> {
         if (_titleController.text.trim().isEmpty) {
           _titleController.text = picked.name;
         }
-        _selectedType = DocumentService.getDocumentType(picked.extension);
+        if (_selectedType == DocumentType.labResult) {
+          _selectedType = DocumentService.getDocumentType(picked.extension);
+        }
       });
     } on DocumentValidationException catch (e) {
       if (mounted) {
@@ -1532,7 +1927,6 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
   final _descriptionController = TextEditingController();
   final _notesController = TextEditingController();
   DocumentType _type = DocumentType.labResult;
-  DocumentStatus _status = DocumentStatus.pending;
   bool _isSaving = false;
 
   @override
@@ -1543,7 +1937,6 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
     _descriptionController.text = document.description ?? '';
     _notesController.text = document.notes ?? '';
     _type = document.type;
-    _status = document.status;
     _titleController.addListener(_refresh);
   }
 
@@ -1578,49 +1971,22 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<DocumentType>(
-                      initialValue: _type,
-                      decoration: const InputDecoration(
-                        labelText: 'Document type',
-                        border: OutlineInputBorder(),
+              DropdownButtonFormField<DocumentType>(
+                initialValue: _type,
+                decoration: const InputDecoration(
+                  labelText: 'Document type',
+                  border: OutlineInputBorder(),
+                ),
+                items: DocumentType.values
+                    .map(
+                      (type) => DropdownMenuItem(
+                        value: type,
+                        child: Text(_typeDisplay(type)),
                       ),
-                      items: DocumentType.values
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(_typeDisplay(type)),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) =>
-                          setState(() => _type = value ?? DocumentType.other),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<DocumentStatus>(
-                      initialValue: _status,
-                      decoration: const InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: DocumentStatus.values
-                          .map(
-                            (status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(_statusDisplay(status)),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) => setState(
-                        () => _status = value ?? DocumentStatus.pending,
-                      ),
-                    ),
-                  ),
-                ],
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setState(() => _type = value ?? DocumentType.other),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -1671,12 +2037,8 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
 
     setState(() => _isSaving = true);
 
-    final currentUser = ref.read(currentUserProvider);
     final existing = widget.document;
     final now = DateTime.now();
-    final verifiedNow =
-        _status == DocumentStatus.verified &&
-        existing.status != DocumentStatus.verified;
 
     final updated = MedicalDocument(
       id: existing.id,
@@ -1692,11 +2054,9 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
       mimeType: existing.mimeType,
       scannedBy: existing.scannedBy,
       scanDate: existing.scanDate,
-      verifiedBy: verifiedNow
-          ? currentUser?.id ?? 'system'
-          : existing.verifiedBy,
-      verifiedDate: verifiedNow ? now : existing.verifiedDate,
-      status: _status,
+      verifiedBy: existing.verifiedBy,
+      verifiedDate: existing.verifiedDate,
+      status: existing.status,
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
@@ -1788,22 +2148,15 @@ IconData _fileIcon(String fileType) {
 
 String _typeDisplay(DocumentType type) {
   return switch (type) {
-    DocumentType.labResult => 'Lab Result',
+    DocumentType.labResult => 'Laboratory Result',
     DocumentType.xRay => 'X-Ray / Imaging',
     DocumentType.prescription => 'Prescription',
     DocumentType.medicalCertificate => 'Medical Certificate',
-    DocumentType.referral => 'Referral',
-    DocumentType.other => 'Other',
+    DocumentType.referral => 'Referral Letter',
+    DocumentType.other => 'Other Document',
   };
 }
 
-String _statusDisplay(DocumentStatus status) {
-  return switch (status) {
-    DocumentStatus.pending => 'Pending',
-    DocumentStatus.verified => 'Verified',
-    DocumentStatus.archived => 'Archived',
-  };
-}
 
 String _formatDate(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

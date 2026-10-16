@@ -640,26 +640,64 @@ class ReportPdfService {
           headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
           headerHeight: 22,
           cellHeight: 18,
-          cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
+          cellStyle: const pw.TextStyle(fontSize: 6.5, color: PdfColors.blueGrey900),
           oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-          headers: ['#', 'Patient ID', 'Full Name', 'Registration Date'],
+          headers: [
+            '#',
+            'Patient ID',
+            'Full Name (LN, FN, MI)',
+            'Age/Sex',
+            'Barangay & Purok',
+            'PhilHealth ID',
+            'Category',
+            'Reg. Date',
+          ],
           columnWidths: {
-            0: const pw.FixedColumnWidth(25),
-            1: const pw.FixedColumnWidth(80),
-            2: const pw.FlexColumnWidth(3),
-            3: const pw.FlexColumnWidth(2),
+            0: const pw.FixedColumnWidth(18),
+            1: const pw.FixedColumnWidth(55),
+            2: const pw.FlexColumnWidth(2.6),
+            3: const pw.FixedColumnWidth(44),
+            4: const pw.FlexColumnWidth(2.2),
+            5: const pw.FixedColumnWidth(65),
+            6: const pw.FlexColumnWidth(1.8),
+            7: const pw.FixedColumnWidth(55),
           },
           data: patientRecords.asMap().entries.map((entry) {
             final item = entry.value as Map<String, dynamic>;
             final rawDate = item['registered_at'];
             final parsedDate = rawDate != null ? DateTime.tryParse(rawDate.toString()) : null;
             final regDate = parsedDate != null
-                ? DateFormat('MMMM dd, yyyy').format(parsedDate)
+                ? DateFormat('MM/dd/yyyy').format(parsedDate)
                 : (rawDate?.toString() ?? '-');
+            final age = item['age'] != null ? '${item['age']}y' : '-';
+            final gender = (item['gender']?.toString().isNotEmpty == true)
+                ? item['gender'].toString().substring(0, 1).toUpperCase()
+                : '-';
+            final brgy = item['barangay']?.toString() ?? '-';
+            final purok = item['purok_sitio']?.toString();
+            final address = (purok != null && purok.isNotEmpty) ? '$brgy ($purok)' : brgy;
+
+            final fn = item['first_name']?.toString() ?? '';
+            final ln = item['last_name']?.toString() ?? '';
+            final mi = item['middle_name']?.toString() ?? '';
+            final suffix = item['suffix']?.toString();
+            String formattedName;
+            if (ln.isNotEmpty && fn.isNotEmpty) {
+              final miStr = mi.isNotEmpty ? (mi.length <= 2 ? '$mi.' : mi) : '';
+              final sufStr = (suffix != null && suffix.isNotEmpty && suffix != 'None') ? ' $suffix' : '';
+              formattedName = '$ln, $fn $miStr$sufStr'.trim();
+            } else {
+              formattedName = item['name'] ?? '-';
+            }
+
             return [
               '${entry.key + 1}',
               item['id'] ?? '-',
-              item['name'] ?? '-',
+              formattedName,
+              '$age/$gender',
+              address,
+              item['philhealth_number'] ?? 'None',
+              item['category'] ?? '-',
               regDate,
             ];
           }).toList(),
@@ -884,6 +922,270 @@ class ReportPdfService {
   // ==========================================
   // NAMING CONVENTION HELPER
   // ==========================================
+
+  /// Generates an official, comprehensive individual patient health record PDF.
+  Future<Uint8List> generateIndividualPatientRecordPdf({
+    required Patient patient,
+    required SystemSettings settings,
+    required String preparedByName,
+    required String preparedByRole,
+    String approvedByName = 'Dr. Maria Santos, MD',
+    String approvedByRole = 'Municipal Health Officer (MHO) / Medical Officer IV',
+    List<Consultation> consultations = const [],
+    List<MedicalDocument> documents = const [],
+  }) async {
+    final pdf = pw.Document(
+      title: 'MedSentry - Health Record - ${patient.fullName}',
+      author: 'MedSentry RHU Healthcare System',
+      creator: 'MedSentry Health Information System',
+      subject: 'Official RHU Health Record - DOH / LGU Compliance',
+    );
+
+    final generatedAt = DateTime.now();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 36, vertical: 32),
+        header: (pw.Context context) {
+          if (context.pageNumber == 1) {
+            return _buildFirstPageHeader(settings);
+          } else {
+            return pw.Column(
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      '${settings.clinicName} | PATIENT HEALTH RECORD',
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blueGrey800,
+                      ),
+                    ),
+                    pw.Text(
+                      'Patient: ${patient.fullName} (ID: ${patient.id})',
+                      style: const pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.blueGrey600,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 4),
+                pw.Container(height: 0.8, color: PdfColors.blueGrey200),
+                pw.SizedBox(height: 10),
+              ],
+            );
+          }
+        },
+        footer: (pw.Context context) => _buildPageFooter(context, settings),
+        build: (pw.Context context) {
+          final dobStr = patient.dateOfBirth != null
+              ? DateFormat('MMMM dd, yyyy').format(patient.dateOfBirth!)
+              : 'N/A';
+          final regDateStr = patient.createdAt != null
+              ? DateFormat('MMMM dd, yyyy').format(patient.createdAt!)
+              : 'N/A';
+
+          return [
+            // Title Header Banner
+            pw.Container(
+              decoration: const pw.BoxDecoration(
+                color: PdfColors.teal900,
+                borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+              ),
+              padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'INDIVIDUAL PATIENT HEALTH RECORD & CLINICAL SUMMARY',
+                    style: pw.TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                  ),
+                  pw.Text(
+                    'RECORD ID: ${patient.id}',
+                    style: pw.TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.teal100,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 12),
+
+            // Section 1: Demographics & Identification
+            _buildSectionTitle('1. PATIENT DEMOGRAPHICS & IDENTIFICATION'),
+            pw.SizedBox(height: 6),
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              headerStyle: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+              headerHeight: 0,
+              cellHeight: 18,
+              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.blueGrey900),
+              data: [
+                ['Full Name', patient.fullName, 'PhilHealth Identification', patient.philHealthNumber ?? 'None / Unenrolled'],
+                ['Last Name', patient.lastName, 'First Name', patient.firstName],
+                ['Middle Initial', patient.middleName?.isNotEmpty == true ? patient.middleName! : 'N/A', 'Suffix', patient.suffix ?? 'None'],
+                ['Date of Birth', dobStr, 'Age / Sex', '${patient.age ?? 'N/A'} yrs / ${(patient.gender ?? 'N/A').toUpperCase()}'],
+                ['Civil Status', (patient.civilStatus ?? 'N/A').toUpperCase(), 'Blood Type', patient.bloodType ?? 'Unspecified'],
+                ['Target Category', patient.category?.displayName ?? 'General Patient', 'Registration Date', regDateStr],
+              ],
+            ),
+            pw.SizedBox(height: 12),
+
+            // Section 2: Residential Address & Contact
+            _buildSectionTitle('2. RESIDENTIAL ADDRESS & CONTACT DETAILS'),
+            pw.SizedBox(height: 6),
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              headerStyle: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+              headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+              headerHeight: 0,
+              cellHeight: 18,
+              cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.blueGrey900),
+              data: [
+                ['Street / House No.', patient.address?.isNotEmpty == true ? patient.address! : 'N/A', 'Barangay', patient.barangay ?? 'N/A'],
+                ['Purok / Sitio', patient.purokSitio ?? 'N/A', 'Municipality / City', patient.city ?? 'Cantilan'],
+                ['Province', patient.province ?? 'Surigao del Sur', 'ZIP Code', patient.zipCode ?? '8317'],
+                ['Mobile / Contact', patient.contactNumber ?? 'None', 'Email Address', patient.email ?? 'None'],
+                ['Emergency Contact', patient.emergencyContactName ?? 'None', 'Relationship / Number', '${patient.emergencyContactRelation ?? 'N/A'} / ${patient.emergencyContactNumber ?? 'None'}'],
+              ],
+            ),
+            pw.SizedBox(height: 12),
+
+            // Section 3: Clinical Alerts & Medical History
+            _buildSectionTitle('3. CLINICAL ALERTS & MEDICAL HISTORY'),
+            pw.SizedBox(height: 6),
+            pw.Container(
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                color: PdfColors.grey50,
+              ),
+              padding: const pw.EdgeInsets.all(10),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Row(
+                    children: [
+                      pw.Text('Known Allergies: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: patient.allergies?.isNotEmpty == true ? PdfColors.red800 : PdfColors.blueGrey800)),
+                      pw.Text(patient.allergies?.isNotEmpty == true ? patient.allergies! : 'No known drug or environmental allergies recorded.', style: pw.TextStyle(fontSize: 8, color: patient.allergies?.isNotEmpty == true ? PdfColors.red900 : PdfColors.blueGrey900)),
+                    ],
+                  ),
+                  pw.SizedBox(height: 6),
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Past Medical History: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.blueGrey800)),
+                      pw.Expanded(
+                        child: pw.Text(patient.medicalHistory?.isNotEmpty == true ? patient.medicalHistory! : 'No significant medical history reported.', style: const pw.TextStyle(fontSize: 8, color: PdfColors.blueGrey900)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 14),
+
+            // Section 4: Clinical Encounters & Consultations
+            _buildSectionTitle('4. CLINICAL ENCOUNTERS & CONSULTATIONS HISTORY'),
+            pw.SizedBox(height: 6),
+            if (consultations.isEmpty)
+              _buildEmptyState('No clinical consultation encounters recorded for this patient.')
+            else
+              pw.TableHelper.fromTextArray(
+                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                headerStyle: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.teal800),
+                headerHeight: 20,
+                cellHeight: 18,
+                cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
+                oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                headers: ['Date', 'Attending Doctor', 'Chief Complaint / Subjective', 'Assessment / Diagnosis', 'Plan / Rx'],
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(65),
+                  1: const pw.FlexColumnWidth(2),
+                  2: const pw.FlexColumnWidth(2.5),
+                  3: const pw.FlexColumnWidth(2.5),
+                  4: const pw.FlexColumnWidth(2.5),
+                },
+                data: consultations.map((c) {
+                  final date = c.consultationDate ?? c.createdAt;
+                  final dateStr = date != null ? DateFormat('MM/dd/yyyy').format(date) : '-';
+                  return [
+                    dateStr,
+                    c.doctorId ?? 'RHU Clinician',
+                    c.subjective ?? '-',
+                    c.assessment ?? c.icd10Description ?? '-',
+                    c.plan ?? '-',
+                  ];
+                }).toList(),
+              ),
+            pw.SizedBox(height: 14),
+
+            // Section 5: Attached Medical Documents & Files
+            _buildSectionTitle('5. ATTACHED MEDICAL DOCUMENTS & FILES'),
+            pw.SizedBox(height: 6),
+            if (documents.isEmpty)
+              _buildEmptyState('No external medical documents attached to this record.')
+            else
+              pw.TableHelper.fromTextArray(
+                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                headerStyle: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
+                headerHeight: 20,
+                cellHeight: 18,
+                cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
+                oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+                headers: ['#', 'Document Title', 'Classification', 'Date Added', 'File Size'],
+                columnWidths: {
+                  0: const pw.FixedColumnWidth(20),
+                  1: const pw.FlexColumnWidth(3),
+                  2: const pw.FlexColumnWidth(2),
+                  3: const pw.FixedColumnWidth(70),
+                  4: const pw.FixedColumnWidth(60),
+                },
+                data: documents.asMap().entries.map((entry) {
+                  final doc = entry.value;
+                  final date = doc.scanDate ?? doc.createdAt;
+                  final dateStr = date != null ? DateFormat('MM/dd/yyyy').format(date) : '-';
+                  final sizeStr = '${(doc.fileSize / 1024).toStringAsFixed(1)} KB';
+                  return [
+                    '${entry.key + 1}',
+                    doc.title,
+                    doc.typeDisplay,
+                    dateStr,
+                    sizeStr,
+                  ];
+                }).toList(),
+              ),
+            pw.SizedBox(height: 24),
+
+            // Section 6: Official Sign-off Block
+            _buildSignOffBlock(
+              preparedByName: preparedByName,
+              preparedByRole: preparedByRole,
+              approvedByName: approvedByName,
+              approvedByRole: approvedByRole,
+              clinicName: settings.clinicName,
+              date: generatedAt,
+            ),
+          ];
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
 
   /// Builds a sanitized default filename adhering to:
   /// `MedSentry_[ReportType]_[FacilityName]_[YYYY-MM-DD].pdf`

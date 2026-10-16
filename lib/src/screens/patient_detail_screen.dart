@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 
-import '../models/patient.dart';
+import '../models/models.dart';
 import '../providers/providers.dart';
+import '../services/report_pdf_service.dart';
 import '../utils/patient_address_data.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
+import 'documents_screen.dart';
 
 class PatientDetailScreen extends ConsumerWidget {
   final String patientId;
@@ -27,8 +31,12 @@ class PatientDetailScreen extends ConsumerWidget {
         }
 
         final currentUser = ref.watch(currentUserProvider);
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+
         return ResponsiveContentContainer(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _PatientIdentityHeader(
                 patient: patient,
@@ -37,7 +45,70 @@ class PatientDetailScreen extends ConsumerWidget {
                     ? () => _archivePatient(context, ref, patient)
                     : null,
               ),
-              Expanded(child: _OverviewTab(patient: patient)),
+              _PatientActionsBar(
+                patient: patient,
+                onUploadDocuments: () => _handleUploadDocuments(context, ref, patient),
+                onAuditHistory: () => _handleAuditHistory(context, ref, patient),
+                onCreateRecord: () => _handleCreateRecord(context, ref, patient),
+                onEditDetails: () => _handleEditDetails(context, ref, patient),
+                onPrintRecord: () => _handlePrintRecord(context, ref, patient),
+                onArchive:
+                    currentUser?.canManageArchive == true && !patient.isArchived
+                    ? () => _archivePatient(context, ref, patient)
+                    : null,
+                onDelete: currentUser?.canManageArchive == true
+                    ? () => _confirmDeletePatient(context, ref, patient)
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: DefaultTabController(
+                  length: 4,
+                  child: Column(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+                          borderRadius: AppRadius.roundedSm,
+                          border: Border.all(
+                            color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: TabBar(
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          indicatorColor: isDark ? AppColors.primaryEmerald : theme.colorScheme.primary,
+                          labelColor: isDark ? AppColors.primaryEmerald : theme.colorScheme.primary,
+                          unselectedLabelColor: isDark ? AppColors.textSecondary : theme.colorScheme.onSurfaceVariant,
+                          tabs: const [
+                            Tab(icon: Icon(Icons.badge_outlined, size: 18), text: 'Demographics & Info'),
+                            Tab(icon: Icon(Icons.medical_services_outlined, size: 18), text: 'Clinical Records (SOAP)'),
+                            Tab(icon: Icon(Icons.attach_file_outlined, size: 18), text: 'Attached Documents'),
+                            Tab(icon: Icon(Icons.history_outlined, size: 18), text: 'Audit Trail'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: TabBarView(
+                          children: [
+                            _OverviewTab(patient: patient),
+                            _PatientConsultationsList(
+                              patient: patient,
+                              onCreateRecord: () => _handleCreateRecord(context, ref, patient),
+                            ),
+                            _PatientDocumentsList(
+                              patient: patient,
+                              onUploadDocument: () => _handleUploadDocuments(context, ref, patient),
+                            ),
+                            _PatientAuditTrailList(patient: patient),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         );
@@ -49,6 +120,111 @@ class PatientDetailScreen extends ConsumerWidget {
         onRetry: () => ref.invalidate(patientProvider(patientId)),
       ),
     );
+  }
+
+  Future<void> _handleUploadDocuments(
+    BuildContext context,
+    WidgetRef ref,
+    Patient patient,
+  ) async {
+    await showDocumentUploadDialog(context, initialPatient: patient);
+    ref.invalidate(patientDocumentsProvider(patient.id));
+    ref.invalidate(patientAuditLogsProvider(patient.id));
+    ref.invalidate(documentsProvider);
+  }
+
+  void _handleAuditHistory(
+    BuildContext context,
+    WidgetRef ref,
+    Patient patient,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _PatientAuditHistoryDialog(patient: patient),
+    );
+  }
+
+  Future<void> _handleCreateRecord(
+    BuildContext context,
+    WidgetRef ref,
+    Patient patient,
+  ) async {
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _CreateConsultationDialog(patient: patient),
+    );
+    if (created == true) {
+      ref.invalidate(patientConsultationsProvider(patient.id));
+      ref.invalidate(patientAuditLogsProvider(patient.id));
+    }
+  }
+
+  Future<void> _handleEditDetails(
+    BuildContext context,
+    WidgetRef ref,
+    Patient patient,
+  ) async {
+    final updated = await showDialog<bool>(
+      context: context,
+      builder: (_) => _PatientEditDialog(patient: patient),
+    );
+    if (updated == true) {
+      ref.invalidate(patientProvider(patient.id));
+      ref.invalidate(patientsProvider);
+    }
+  }
+
+  void _handlePrintRecord(
+    BuildContext context,
+    WidgetRef ref,
+    Patient patient,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _PatientPrintRecordDialog(patient: patient),
+    );
+  }
+
+  Future<void> _confirmDeletePatient(
+    BuildContext context,
+    WidgetRef ref,
+    Patient patient,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Patient Record'),
+        content: Text(
+          'Are you sure you want to permanently delete the record for ${patient.fullName}? This action is recorded in the audit trail.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final userId = ref.read(currentUserProvider)?.id ?? 'system';
+    await ref.read(patientRepositoryProvider).deletePatient(patient.id, userId);
+    ref.invalidate(patientsProvider);
+    ref.invalidate(patientProvider(patient.id));
+    ref.invalidate(auditLogsProvider);
+
+    if (context.mounted) {
+      context.go('/patients');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Patient record deleted successfully')),
+      );
+    }
   }
 
   Future<void> _archivePatient(
@@ -122,41 +298,13 @@ class _PatientIdentityHeader extends StatelessWidget {
         color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
         borderRadius: AppRadius.roundedMd,
         border: Border.all(
-          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: isDark
+              ? AppColors.border
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
         boxShadow: isDark ? AppShadows.subtle : null,
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 900;
-          final actions = _HeaderActions(onArchive: onArchive);
-
-          if (isNarrow) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _PatientIdentity(patient: patient),
-                if (onArchive != null) ...[
-                  const SizedBox(height: 12),
-                  actions,
-                ],
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _PatientIdentity(patient: patient)),
-              const SizedBox(width: 12),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 540),
-                child: actions,
-              ),
-            ],
-          );
-        },
-      ),
+      child: _PatientIdentity(patient: patient),
     );
   }
 }
@@ -325,29 +473,169 @@ class _PatientIdentity extends StatelessWidget {
   }
 }
 
-class _HeaderActions extends StatelessWidget {
+class _PatientActionsBar extends StatelessWidget {
+  final Patient patient;
+  final VoidCallback onUploadDocuments;
+  final VoidCallback onAuditHistory;
+  final VoidCallback onCreateRecord;
+  final VoidCallback onEditDetails;
+  final VoidCallback onPrintRecord;
   final VoidCallback? onArchive;
+  final VoidCallback? onDelete;
 
-  const _HeaderActions({this.onArchive});
+  const _PatientActionsBar({
+    required this.patient,
+    required this.onUploadDocuments,
+    required this.onAuditHistory,
+    required this.onCreateRecord,
+    required this.onEditDetails,
+    required this.onPrintRecord,
+    this.onArchive,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (onArchive == null) return const SizedBox.shrink();
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.end,
-          children: [
-            OutlinedButton.icon(
-              onPressed: onArchive,
-              icon: const Icon(Icons.archive_outlined),
-              label: const Text('Archive'),
-            ),
-          ],
-        );
-      },
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+        borderRadius: AppRadius.roundedMd,
+        border: Border.all(
+          color: isDark
+              ? AppColors.border
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        boxShadow: isDark ? AppShadows.subtle : null,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 680;
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            alignment:
+                isNarrow ? WrapAlignment.start : WrapAlignment.spaceBetween,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: isDark
+                          ? AppColors.primaryEmerald
+                          : theme.colorScheme.primary,
+                      foregroundColor: isDark
+                          ? const Color(0xFF080909)
+                          : theme.colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                    ),
+                    onPressed: onCreateRecord,
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text(
+                      'Create / New Record',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                    onPressed: onUploadDocuments,
+                    icon: const Icon(Icons.upload_file_outlined, size: 18),
+                    label: const Text('Upload Documents'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                    onPressed: onEditDetails,
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Edit Details'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                    onPressed: onPrintRecord,
+                    icon: const Icon(Icons.print_outlined, size: 18),
+                    label: const Text('Print Record'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                    ),
+                    onPressed: onAuditHistory,
+                    icon: const Icon(Icons.history_outlined, size: 18),
+                    label: const Text('History / Audit Log'),
+                  ),
+                ],
+              ),
+              if (onArchive != null || onDelete != null)
+                PopupMenuButton<String>(
+                  tooltip: 'More Patient Options',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (value) {
+                    if (value == 'archive') onArchive?.call();
+                    if (value == 'delete') onDelete?.call();
+                  },
+                  itemBuilder: (context) => [
+                    if (onArchive != null)
+                      const PopupMenuItem(
+                        value: 'archive',
+                        child: Row(
+                          children: [
+                            Icon(Icons.archive_outlined, size: 18),
+                            SizedBox(width: 8),
+                            Text('Archive Patient'),
+                          ],
+                        ),
+                      ),
+                    if (onDelete != null)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline,
+                              size: 18,
+                              color: Colors.redAccent,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Delete Record',
+                              style: TextStyle(color: Colors.redAccent),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -362,24 +650,6 @@ class _OverviewTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.only(top: 4, bottom: 16),
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          alignment: WrapAlignment.end,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () => _showEditPatientDialog(context, ref, patient),
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Edit'),
-            ),
-            FilledButton.tonalIcon(
-              onPressed: () => _confirmDeletePatient(context, ref, patient),
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Delete'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
         LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 760;
@@ -515,63 +785,6 @@ class _OverviewTab extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  Future<void> _showEditPatientDialog(
-    BuildContext context,
-    WidgetRef ref,
-    Patient patient,
-  ) async {
-    final updated = await showDialog<bool>(
-      context: context,
-      builder: (_) => _PatientEditDialog(patient: patient),
-    );
-
-    if (updated == true) {
-      ref.invalidate(patientProvider(patient.id));
-      ref.invalidate(patientsProvider);
-    }
-  }
-
-  Future<void> _confirmDeletePatient(
-    BuildContext context,
-    WidgetRef ref,
-    Patient patient,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Information'),
-        content: const Text(
-          'Are you sure you want to delete this information?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonalIcon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) return;
-
-    final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    await ref.read(patientRepositoryProvider).deletePatient(patient.id, userId);
-    ref.invalidate(patientsProvider);
-    ref.invalidate(patientProvider(patient.id));
-
-    if (context.mounted) {
-      context.go('/patients');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Patient information deleted')),
-      );
-    }
   }
 }
 
@@ -925,8 +1138,17 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
                     children: [
                       _responsiveRow([
                         AppTextField(
+                          controller: _lastNameController,
+                          label: 'Last Name (LN)',
+                          required: true,
+                          validator: (value) => isValidPersonName(value)
+                              ? null
+                              : 'Enter a valid last name (2-50 letters).',
+                          onChanged: (_) => _markDirty(),
+                        ),
+                        AppTextField(
                           controller: _firstNameController,
-                          label: 'First Name',
+                          label: 'First Name (FN)',
                           required: true,
                           validator: (value) => isValidPersonName(value)
                               ? null
@@ -935,29 +1157,12 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
                         ),
                         AppTextField(
                           controller: _middleInitialController,
-                          label: 'Middle Initial',
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[A-Za-z]'),
-                            ),
-                            LengthLimitingTextInputFormatter(2),
-                          ],
-                          onChanged: (v) {
-                            _formatMiddleInitialInput(v);
-                            _markDirty();
-                          },
-                        ),
-                        AppTextField(
-                          controller: _lastNameController,
-                          label: 'Last Name',
-                          required: true,
-                          validator: (value) => isValidPersonName(value)
-                              ? null
-                              : 'Enter a valid last name (2-50 letters).',
+                          label: 'Middle Initial (MI) (e.g., Guerda)',
+                          hint: 'e.g. Guerda or G.',
                           onChanged: (_) => _markDirty(),
                         ),
                         AppDropdownField<String>(
-                          label: 'Suffix',
+                          label: 'Suffix (e.g., Jr., Sr., III)',
                           value: _suffix,
                           items: _suffixItems
                               .map(
@@ -1317,15 +1522,6 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
     );
   }
 
-  void _formatMiddleInitialInput(String value) {
-    final formatted = formatMiddleInitial(value);
-    if (formatted == null || _middleInitialController.text == formatted) return;
-    _middleInitialController.value = TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-    );
-  }
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -1580,4 +1776,1238 @@ class _InfoChip extends StatelessWidget {
 String _shortDate(DateTime? date) {
   if (date == null) return 'N/A';
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+}
+
+class _PatientConsultationsList extends ConsumerWidget {
+  final Patient patient;
+  final VoidCallback onCreateRecord;
+
+  const _PatientConsultationsList({
+    required this.patient,
+    required this.onCreateRecord,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final consultationsAsync = ref.watch(
+      patientConsultationsProvider(patient.id),
+    );
+
+    return consultationsAsync.when(
+      data: (consultations) {
+        if (consultations.isEmpty) {
+          return Center(
+            child: AppCard(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 48,
+                    color: isDark ? AppColors.textSecondary : Colors.grey,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No clinical records recorded yet',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Create a SOAP consultation record for clinical observations, vitals, and diagnosis.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? AppColors.textSecondary : Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: isDark
+                          ? AppColors.primaryEmerald
+                          : theme.colorScheme.primary,
+                      foregroundColor: isDark
+                          ? const Color(0xFF080909)
+                          : theme.colorScheme.onPrimary,
+                    ),
+                    onPressed: onCreateRecord,
+                    icon: const Icon(Icons.add_circle_outline, size: 18),
+                    label: const Text('Create First Clinical Record'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final sorted = List<Consultation>.from(consultations)
+          ..sort((a, b) => (b.consultationDate ?? b.createdAt ?? DateTime.now())
+              .compareTo(a.consultationDate ?? a.createdAt ?? DateTime.now()));
+
+        return ListView.separated(
+          padding: const EdgeInsets.only(top: 4, bottom: 24),
+          itemCount: sorted.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final c = sorted[index];
+            final date = c.consultationDate ?? c.createdAt;
+            final dateStr =
+                date != null ? DateFormat('yyyy-MM-dd').format(date) : 'N/A';
+
+            return AppCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.primaryEmeraldSubtle
+                              : theme.colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: isDark
+                                ? AppColors.primaryEmerald.withValues(alpha: 0.3)
+                                : theme.colorScheme.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              size: 13,
+                              color: isDark
+                                  ? AppColors.primaryEmerald
+                                  : theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              dateStr,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: isDark
+                                    ? AppColors.primaryEmerald
+                                    : theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (c.icd10Code != null && c.icd10Code!.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.elevatedSurface
+                                : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: isDark
+                                  ? AppColors.border
+                                  : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: Text(
+                            'ICD-10: ${c.icd10Code}${c.icd10Description != null ? " - ${c.icd10Description}" : ""}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark
+                                  ? AppColors.textPrimary
+                                  : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (c.isFollowUp) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.pending.withValues(
+                              alpha: 0.15,
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Follow-up',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.pending,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (c.assessment != null && c.assessment!.isNotEmpty) ...[
+                    Text(
+                      'Diagnosis: ${c.assessment}',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? AppColors.textPrimary : null,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  _buildSoapRow(
+                    'Subjective (S)',
+                    c.subjective ?? 'None recorded',
+                    isDark,
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSoapRow(
+                    'Objective (O)',
+                    c.objective ?? 'None recorded',
+                    isDark,
+                  ),
+                  const SizedBox(height: 6),
+                  _buildSoapRow(
+                    'Plan (P)',
+                    c.plan ?? 'None recorded',
+                    isDark,
+                  ),
+                  if (c.followUpInstructions != null &&
+                      c.followUpInstructions!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _buildSoapRow(
+                      'Follow-up Instructions',
+                      c.followUpInstructions!,
+                      isDark,
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const LoadingState(),
+      error: (e, _) => Center(child: Text('Failed to load clinical records: $e')),
+    );
+  }
+
+  Widget _buildSoapRow(String title, String content, bool isDark) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 140,
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppColors.textSecondary : Colors.grey[700],
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            content,
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? AppColors.textPrimary : Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PatientDocumentsList extends ConsumerWidget {
+  final Patient patient;
+  final VoidCallback onUploadDocument;
+
+  const _PatientDocumentsList({
+    required this.patient,
+    required this.onUploadDocument,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final docsAsync = ref.watch(patientDocumentsProvider(patient.id));
+
+    return docsAsync.when(
+      data: (docs) {
+        if (docs.isEmpty) {
+          return Center(
+            child: AppCard(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.folder_open_outlined,
+                    size: 48,
+                    color: isDark ? AppColors.textSecondary : Colors.grey,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No documents attached',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Upload lab results, prescriptions, imaging scans, or medical certificates.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? AppColors.textSecondary : Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: isDark
+                          ? AppColors.primaryEmerald
+                          : theme.colorScheme.primary,
+                      foregroundColor: isDark
+                          ? const Color(0xFF080909)
+                          : theme.colorScheme.onPrimary,
+                    ),
+                    onPressed: onUploadDocument,
+                    icon: const Icon(Icons.upload_file_outlined, size: 18),
+                    label: const Text('Upload First Document'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 720;
+            return GridView.builder(
+              padding: const EdgeInsets.only(top: 4, bottom: 24),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isWide ? 2 : 1,
+                mainAxisExtent: 110,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: docs.length,
+              itemBuilder: (context, index) {
+                final doc = docs[index];
+                final isImage = (doc.mimeType?.startsWith('image/') ?? false) ||
+                    doc.filePath.toLowerCase().endsWith('.png') ||
+                    doc.filePath.toLowerCase().endsWith('.jpg') ||
+                    doc.filePath.toLowerCase().endsWith('.jpeg');
+                final fileSizeKb = (doc.fileSize / 1024).toStringAsFixed(1);
+                final docDate = doc.createdAt ?? DateTime.now();
+
+                return InkWell(
+                  onTap: () {
+                    final currentUser = ref.read(currentUserProvider);
+                    DocumentPreviewDialog.show(
+                      context,
+                      document: doc,
+                      patient: patient,
+                      canManage: currentUser?.canManageDocuments ?? false,
+                      onChanged: (_) {
+                        ref.invalidate(patientDocumentsProvider(patient.id));
+                      },
+                    );
+                  },
+                  borderRadius: AppRadius.roundedSm,
+                  child: AppCard(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? AppColors.primaryEmeraldSubtle
+                                : theme.colorScheme.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                            borderRadius: AppRadius.roundedSm,
+                          ),
+                          child: Icon(
+                            isImage
+                                ? Icons.image_outlined
+                                : Icons.picture_as_pdf_outlined,
+                            color: isDark
+                                ? AppColors.primaryEmerald
+                                : theme.colorScheme.primary,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                doc.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? AppColors.elevatedSurface
+                                          : Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      doc.typeDisplay,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? AppColors.textSecondary
+                                            : Colors.grey[800],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '$fileSizeKb KB',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark
+                                          ? AppColors.textSecondary
+                                          : Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                DateFormat('yyyy-MM-dd').format(docDate),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDark
+                                      ? AppColors.textSecondary
+                                      : Colors.grey[500],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.visibility_outlined, size: 20),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+      loading: () => const LoadingState(),
+      error: (e, _) => Center(child: Text('Failed to load documents: $e')),
+    );
+  }
+}
+
+class _PatientAuditTrailList extends ConsumerWidget {
+  final Patient patient;
+
+  const _PatientAuditTrailList({required this.patient});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final auditLogsAsync = ref.watch(patientAuditLogsProvider(patient.id));
+
+    return auditLogsAsync.when(
+      data: (logs) {
+        if (logs.isEmpty) {
+          return Center(
+            child: AppCard(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.history_toggle_off,
+                    size: 48,
+                    color: isDark ? AppColors.textSecondary : Colors.grey,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No audit history yet',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Audit records for creation, edits, documents, and consultations will appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? AppColors.textSecondary : Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final sorted = List<AuditLog>.from(logs)
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+        return ListView.separated(
+          padding: const EdgeInsets.only(top: 4, bottom: 24),
+          itemCount: sorted.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final log = sorted[index];
+            Color actionColor;
+            switch (log.action.name.toLowerCase()) {
+              case 'create':
+              case 'register':
+                actionColor = AppColors.primaryEmerald;
+                break;
+              case 'update':
+              case 'edit':
+                actionColor = AppColors.info;
+                break;
+              case 'delete':
+              case 'archive':
+                actionColor = AppColors.critical;
+                break;
+              default:
+                actionColor = AppColors.pending;
+            }
+
+            final dateStr =
+                DateFormat('yyyy-MM-dd HH:mm:ss').format(log.timestamp);
+
+            return AppCard(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: actionColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: actionColor.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Text(
+                          log.action.name.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: actionColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '[${log.entityType.toUpperCase()}]',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : Colors.grey[700],
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        dateStr,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    log.description ?? 'Activity recorded',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? AppColors.textPrimary : Colors.black87,
+                    ),
+                  ),
+                  if (log.userId.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Actor: ${log.userId}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const LoadingState(),
+      error: (e, _) => Center(child: Text('Failed to load audit history: $e')),
+    );
+  }
+}
+
+class _CreateConsultationDialog extends ConsumerStatefulWidget {
+  final Patient patient;
+
+  const _CreateConsultationDialog({required this.patient});
+
+  @override
+  ConsumerState<_CreateConsultationDialog> createState() =>
+      _CreateConsultationDialogState();
+}
+
+class _CreateConsultationDialogState
+    extends ConsumerState<_CreateConsultationDialog> {
+  final _formKey = GlobalKey<FormState>();
+  DateTime _consultationDate = DateTime.now();
+  late final TextEditingController _subjectiveController;
+  late final TextEditingController _objectiveController;
+  late final TextEditingController _assessmentController;
+  late final TextEditingController _planController;
+  late final TextEditingController _icd10Controller;
+  late final TextEditingController _icd10DescController;
+  late final TextEditingController _followUpNotesController;
+  bool _isFollowUp = false;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _subjectiveController = TextEditingController();
+    _objectiveController = TextEditingController();
+    _assessmentController = TextEditingController();
+    _planController = TextEditingController();
+    _icd10Controller = TextEditingController();
+    _icd10DescController = TextEditingController();
+    _followUpNotesController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _subjectiveController.dispose();
+    _objectiveController.dispose();
+    _assessmentController.dispose();
+    _planController.dispose();
+    _icd10Controller.dispose();
+    _icd10DescController.dispose();
+    _followUpNotesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final currentUser = ref.read(currentUserProvider);
+      final userId = currentUser?.id ?? 'system';
+
+      await ref.read(consultationRepositoryProvider).createConsultation(
+            patientId: widget.patient.id,
+            subjective: _subjectiveController.text.trim(),
+            objective: _objectiveController.text.trim(),
+            assessment: _assessmentController.text.trim(),
+            plan: _planController.text.trim(),
+            icd10Code: _icd10Controller.text.trim().isEmpty
+                ? 'R69'
+                : _icd10Controller.text.trim(),
+            icd10Description: _icd10DescController.text.trim().isEmpty
+                ? null
+                : _icd10DescController.text.trim(),
+            consultationDate: _consultationDate,
+            isFollowUp: _isFollowUp,
+            followUpInstructions: _isFollowUp &&
+                    _followUpNotesController.text.trim().isNotEmpty
+                ? _followUpNotesController.text.trim()
+                : null,
+            createdBy: userId,
+          );
+
+      ref.invalidate(patientConsultationsProvider(widget.patient.id));
+      ref.invalidate(patientAuditLogsProvider(widget.patient.id));
+
+      if (mounted) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Clinical consultation record created successfully.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save record: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppFormDialog(
+      icon: Icons.note_add_outlined,
+      title: 'New Clinical Record (SOAP)',
+      subtitle:
+          'Add consultation diagnosis, observations, and care plan for ${widget.patient.fullName}',
+      maxWidth: 780,
+      isLoading: _isSaving,
+      loadingText: 'Saving consultation record...',
+      onClose: _isSaving ? null : () => Navigator.pop(context),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppDatePickerField(
+                label: 'Consultation Date',
+                selectedDate: _consultationDate,
+                onDateSelected: (d) {
+                  if (d != null) setState(() => _consultationDate = d);
+                },
+              ),
+              const SizedBox(height: 16),
+              AppFormSection(
+                icon: Icons.chat_bubble_outline,
+                title: 'Subjective (S)',
+                subtitle:
+                    'Chief complaint, history of present illness, and symptoms reported by patient',
+                child: AppTextField(
+                  controller: _subjectiveController,
+                  label: 'Subjective Findings / Chief Complaint',
+                  hint:
+                      'e.g. Patient reports intermittent fever for 3 days accompanied by productive cough.',
+                  required: true,
+                  maxLines: 3,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Subjective note is required.' : null,
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppFormSection(
+                icon: Icons.monitor_heart_outlined,
+                title: 'Objective (O)',
+                subtitle:
+                    'Vital signs, physical examination, laboratory or imaging findings',
+                child: AppTextField(
+                  controller: _objectiveController,
+                  label: 'Objective Findings & Vital Signs',
+                  hint:
+                      'e.g. BP: 120/80 mmHg, HR: 78 bpm, RR: 18 cpm, Temp: 38.2 C. Chest: coarse crackles left base.',
+                  required: true,
+                  maxLines: 3,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Objective findings are required.' : null,
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppFormSection(
+                icon: Icons.assignment_outlined,
+                title: 'Assessment (A)',
+                subtitle:
+                    'Clinical impression, primary diagnosis, and ICD-10 classification',
+                child: Column(
+                  children: [
+                    AppTextField(
+                      controller: _assessmentController,
+                      label: 'Clinical Assessment / Impression',
+                      hint: 'e.g. Community-Acquired Pneumonia (Low Risk)',
+                      required: true,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Assessment is required.' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: AppTextField(
+                            controller: _icd10Controller,
+                            label: 'ICD-10 Code',
+                            hint: 'e.g. J18.9',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 3,
+                          child: AppTextField(
+                            controller: _icd10DescController,
+                            label: 'ICD-10 Description',
+                            hint: 'e.g. Pneumonia, unspecified organism',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppFormSection(
+                icon: Icons.medication_outlined,
+                title: 'Plan (P)',
+                subtitle:
+                    'Medications prescribed, diagnostic orders, patient education, follow-up',
+                child: Column(
+                  children: [
+                    AppTextField(
+                      controller: _planController,
+                      label: 'Treatment Plan & Prescriptions',
+                      hint:
+                          'e.g. Amoxicillin 500mg TID for 7 days. Paracetamol 500mg PRN. Increase oral fluid intake.',
+                      required: true,
+                      maxLines: 3,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Treatment plan is required.' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _isFollowUp,
+                      title: const Text('Schedule Follow-up Visit'),
+                      subtitle: const Text(
+                        'Patient requires re-evaluation or monitoring',
+                      ),
+                      onChanged: (val) =>
+                          setState(() => _isFollowUp = val ?? false),
+                    ),
+                    if (_isFollowUp) ...[
+                      const SizedBox(height: 8),
+                      AppTextField(
+                        controller: _followUpNotesController,
+                        label: 'Follow-up Instructions & Return Date',
+                        hint:
+                            'e.g. Return in 5 days or immediately if dyspnea worsens.',
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton.icon(
+          onPressed: _isSaving ? null : _handleSave,
+          icon: const Icon(Icons.check, size: 18),
+          label: const Text('Save Record'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PatientAuditHistoryDialog extends ConsumerWidget {
+  final Patient patient;
+
+  const _PatientAuditHistoryDialog({required this.patient});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final auditLogsAsync = ref.watch(patientAuditLogsProvider(patient.id));
+
+    return Dialog(
+      backgroundColor:
+          isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.roundedLg,
+        side: BorderSide(
+          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant,
+        ),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800, maxHeight: 680),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.primaryEmeraldSubtle
+                          : theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: AppRadius.roundedSm,
+                    ),
+                    child: Icon(
+                      Icons.history_outlined,
+                      color: isDark
+                          ? AppColors.primaryEmerald
+                          : theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Patient Audit & Activity History',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.textPrimary : null,
+                          ),
+                        ),
+                        Text(
+                          '${patient.fullName} (ID: ${patient.id})',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColors.textSecondary
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+              Expanded(
+                child: auditLogsAsync.when(
+                  data: (logs) {
+                    if (logs.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.history_toggle_off,
+                              size: 48,
+                              color: isDark
+                                  ? AppColors.textSecondary
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No audit records found for this patient.',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    final sorted = List<AuditLog>.from(logs)
+                      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+                    return ListView.separated(
+                      itemCount: sorted.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final log = sorted[index];
+                        return _buildAuditLogCard(context, log, isDark);
+                      },
+                    );
+                  },
+                  loading: () => const LoadingState(),
+                  error: (e, _) =>
+                      Center(child: Text('Error loading audit log: $e')),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAuditLogCard(BuildContext context, AuditLog log, bool isDark) {
+    Color actionColor;
+    switch (log.action.name.toLowerCase()) {
+      case 'create':
+      case 'register':
+        actionColor = AppColors.primaryEmerald;
+        break;
+      case 'update':
+      case 'edit':
+        actionColor = AppColors.info;
+        break;
+      case 'delete':
+      case 'archive':
+        actionColor = AppColors.critical;
+        break;
+      default:
+        actionColor = AppColors.pending;
+    }
+
+    final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(log.timestamp);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.elevatedSurface : Colors.grey.shade50,
+        borderRadius: AppRadius.roundedSm,
+        border: Border.all(
+          color: isDark ? AppColors.border : Colors.grey.shade300,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: actionColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: actionColor.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  log.action.name.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: actionColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (log.entityType.isNotEmpty)
+                Text(
+                  '[${log.entityType.toUpperCase()}]',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textSecondary : Colors.grey[700],
+                  ),
+                ),
+              const Spacer(),
+              Text(
+                dateStr,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? AppColors.textSecondary : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            log.description ?? 'Activity recorded',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isDark ? AppColors.textPrimary : Colors.black87,
+            ),
+          ),
+          if (log.userId.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Actor: ${log.userId}',
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? AppColors.textSecondary : Colors.grey[600],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PatientPrintRecordDialog extends ConsumerWidget {
+  final Patient patient;
+
+  const _PatientPrintRecordDialog({required this.patient});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final currentUser = ref.watch(currentUserProvider);
+    final settingsAsync = ref.watch(systemSettingsProvider);
+    final consultations =
+        ref.watch(patientConsultationsProvider(patient.id)).valueOrNull ?? [];
+    final documents =
+        ref.watch(patientDocumentsProvider(patient.id)).valueOrNull ?? [];
+
+    final settings = settingsAsync.valueOrNull ??
+        const SystemSettings(
+          clinicName: 'Surigao del Sur Rural Health Unit',
+          clinicCode: 'RHU-01',
+          clinicAddress: 'Surigao del Sur, Philippines',
+          clinicContact: '0906-985-6320',
+        );
+
+    return Dialog(
+      backgroundColor:
+          isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.roundedLg,
+        side: BorderSide(
+          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant,
+        ),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 900, maxHeight: 750),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.primaryEmeraldSubtle
+                          : theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: AppRadius.roundedSm,
+                    ),
+                    child: Icon(
+                      Icons.print_outlined,
+                      color: isDark
+                          ? AppColors.primaryEmerald
+                          : theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Official Patient Health Summary Record',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppColors.textPrimary : null,
+                          ),
+                        ),
+                        Text(
+                          'Comprehensive medical profile, history, consultations, and document registry for ${patient.fullName}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColors.textSecondary
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: AppRadius.roundedSm,
+                  child: PdfPreview(
+                    build: (format) =>
+                        ReportPdfService().generateIndividualPatientRecordPdf(
+                      patient: patient,
+                      settings: settings,
+                      preparedByName:
+                          currentUser?.fullName ?? 'Healthcare Staff',
+                      preparedByRole: currentUser?.role.displayName ?? 'Staff',
+                      consultations: consultations,
+                      documents: documents,
+                    ),
+                    canChangeOrientation: false,
+                    canChangePageFormat: false,
+                    allowPrinting: true,
+                    allowSharing: true,
+                    canDebug: false,
+                    pdfFileName:
+                        'MedSentry_${patient.lastName}_${patient.firstName}_Record.pdf',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

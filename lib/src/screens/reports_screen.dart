@@ -24,11 +24,28 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   late ReportFilters _draftFilters;
+  String _activeTab = 'reports'; // 'reports' or 'logs'
+  String _reportSearchQuery = '';
+  String _reportTypeFilter = 'all';
+  String _reportSortOrder = 'newest';
+  String _auditSearchQuery = '';
+  String _auditActionFilter = 'all';
+  late final TextEditingController _reportSearchController;
+  late final TextEditingController _auditSearchController;
 
   @override
   void initState() {
     super.initState();
     _draftFilters = ref.read(reportFiltersProvider);
+    _reportSearchController = TextEditingController();
+    _auditSearchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _reportSearchController.dispose();
+    _auditSearchController.dispose();
+    super.dispose();
   }
 
   List<double> _valuesFromTrends(List<ReportTrend> trends) {
@@ -102,31 +119,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 () => _showDateRangeDialog(context, 'Patient Statistics'),
               ),
             ]),
-            const SizedBox(height: 20),
-
-            generatedReportsAsync.when(
-              data: (generatedReports) => generatedReports.isNotEmpty
-                  ? _buildSection(
-                      context,
-                      'Recent Reports',
-                      generatedReports
-                          .map(
-                            (report) => _buildRecentReportTile(
-                              context,
-                              report,
-                              Icons.description_outlined,
-                              () => _viewReport(context, report),
-                            ),
-                          )
-                          .toList(),
-                    )
-                  : _buildEmptyReportsSection(context),
-              loading: () => const LoadingState(),
-              error: (error, stack) => _buildReportError(
-                context,
-                onRetry: () => ref.invalidate(generatedReportsProvider),
-              ),
-            ),
+            const SizedBox(height: 24),
+            _buildTabSelector(context),
+            const SizedBox(height: 16),
+            if (_activeTab == 'reports')
+              _buildGeneratedReportsSection(context, generatedReportsAsync)
+            else
+              _buildHistoricalAuditLogsSection(context),
           ],
         ),
       ),
@@ -1072,6 +1071,592 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         );
       }
     }
+  }
+
+  Widget _buildTabSelector(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+        borderRadius: AppRadius.roundedSm,
+        border: Border.all(
+          color: isDark
+              ? AppColors.border
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Wrap(
+        children: [
+          _buildTabButton(
+            context,
+            title: 'Generated Reports Archive',
+            icon: Icons.description_outlined,
+            isActive: _activeTab == 'reports',
+            onTap: () => setState(() => _activeTab = 'reports'),
+          ),
+          _buildTabButton(
+            context,
+            title: 'Historical Audit & Activity Logs',
+            icon: Icons.history_outlined,
+            isActive: _activeTab == 'logs',
+            onTap: () => setState(() => _activeTab = 'logs'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.roundedSm,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive
+              ? (isDark
+                  ? AppColors.primaryEmeraldSubtle
+                  : theme.colorScheme.primary.withValues(alpha: 0.12))
+              : Colors.transparent,
+          borderRadius: AppRadius.roundedSm,
+          border: isActive
+              ? Border.all(
+                  color: isDark
+                      ? AppColors.primaryEmerald.withValues(alpha: 0.4)
+                      : theme.colorScheme.primary.withValues(alpha: 0.4),
+                )
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isActive
+                  ? (isDark
+                      ? AppColors.primaryEmerald
+                      : theme.colorScheme.primary)
+                  : (isDark
+                      ? AppColors.textSecondary
+                      : theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                color: isActive
+                    ? (isDark
+                        ? AppColors.primaryEmerald
+                        : theme.colorScheme.primary)
+                    : (isDark
+                        ? AppColors.textPrimary
+                        : theme.colorScheme.onSurface),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGeneratedReportsSection(
+    BuildContext context,
+    AsyncValue<List<GeneratedReport>> generatedReportsAsync,
+  ) {
+    return generatedReportsAsync.when(
+      data: (allReports) {
+        if (allReports.isEmpty) {
+          return _buildEmptyReportsSection(context);
+        }
+        final query = _reportSearchQuery.trim().toLowerCase();
+        var filtered = allReports.where((r) {
+          final matchQuery = query.isEmpty ||
+              r.title.toLowerCase().contains(query) ||
+              r.type.toLowerCase().contains(query);
+          final matchType = _reportTypeFilter == 'all' ||
+              r.type.toLowerCase() == _reportTypeFilter.toLowerCase();
+          return matchQuery && matchType;
+        }).toList();
+
+        if (_reportSortOrder == 'newest') {
+          filtered.sort((a, b) => b.generatedAt.compareTo(a.generatedAt));
+        } else {
+          filtered.sort((a, b) => a.generatedAt.compareTo(b.generatedAt));
+        }
+
+        final distinctTypes = allReports.map((r) => r.type).toSet().toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildReportFilterBar(
+              context,
+              totalCount: allReports.length,
+              filteredCount: filtered.length,
+              types: distinctTypes,
+            ),
+            const SizedBox(height: 12),
+            if (filtered.isEmpty)
+              _buildEmptyFilteredReports(context)
+            else
+              ...filtered.map(
+                (report) => _buildRecentReportTile(
+                  context,
+                  report,
+                  Icons.description_outlined,
+                  () => _viewReport(context, report),
+                ),
+              ),
+          ],
+        );
+      },
+      loading: () => const LoadingState(),
+      error: (error, stack) => _buildReportError(
+        context,
+        onRetry: () => ref.invalidate(generatedReportsProvider),
+      ),
+    );
+  }
+
+  Widget _buildReportFilterBar(
+    BuildContext context, {
+    required int totalCount,
+    required int filteredCount,
+    required List<String> types,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 10,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        alignment: WrapAlignment.spaceBetween,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 200, maxWidth: 320),
+            child: TextField(
+              controller: _reportSearchController,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Search generated reports...',
+                hintStyle: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? AppColors.textSecondary : Colors.grey,
+                ),
+                prefixIcon: const Icon(Icons.search, size: 18),
+                suffixIcon: _reportSearchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 16),
+                        onPressed: () {
+                          _reportSearchController.clear();
+                          setState(() => _reportSearchQuery = '');
+                        },
+                      )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: AppRadius.roundedSm,
+                  borderSide: BorderSide(
+                    color: isDark
+                        ? AppColors.border
+                        : theme.colorScheme.outlineVariant,
+                  ),
+                ),
+              ),
+              onChanged: (val) => setState(() => _reportSearchQuery = val),
+            ),
+          ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (types.isNotEmpty)
+                DropdownButton<String>(
+                  value: _reportTypeFilter,
+                  underline: const SizedBox.shrink(),
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All Types')),
+                    ...types.map(
+                      (t) => DropdownMenuItem(value: t, child: Text(t)),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setState(() => _reportTypeFilter = val);
+                  },
+                ),
+              DropdownButton<String>(
+                value: _reportSortOrder,
+                underline: const SizedBox.shrink(),
+                items: const [
+                  DropdownMenuItem(value: 'newest', child: Text('Newest First')),
+                  DropdownMenuItem(value: 'oldest', child: Text('Oldest First')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setState(() => _reportSortOrder = val);
+                },
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.elevatedSurface
+                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: AppRadius.roundedSm,
+                ),
+                child: Text(
+                  'Showing $filteredCount of $totalCount',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoricalAuditLogsSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final auditLogsAsync = ref.watch(auditLogsProvider);
+
+    return auditLogsAsync.when(
+      data: (allLogs) {
+        final query = _auditSearchQuery.trim().toLowerCase();
+        var filtered = allLogs.where((l) {
+          final matchQuery = query.isEmpty ||
+              (l.description?.toLowerCase().contains(query) ?? false) ||
+              l.userId.toLowerCase().contains(query) ||
+              (l.patientId?.toLowerCase().contains(query) ?? false) ||
+              l.entityType.toLowerCase().contains(query);
+          final matchAction = _auditActionFilter == 'all' ||
+              l.action.name.toLowerCase() == _auditActionFilter.toLowerCase();
+          return matchQuery && matchAction;
+        }).toList();
+
+        filtered.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppCard(
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                alignment: WrapAlignment.spaceBetween,
+                children: [
+                  ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 200, maxWidth: 320),
+                    child: TextField(
+                      controller: _auditSearchController,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'Search audit logs (actor, entity, patient ID)...',
+                        hintStyle: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppColors.textSecondary : Colors.grey,
+                        ),
+                        prefixIcon: const Icon(Icons.search, size: 18),
+                        suffixIcon: _auditSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 16),
+                                onPressed: () {
+                                  _auditSearchController.clear();
+                                  setState(() => _auditSearchQuery = '');
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: AppRadius.roundedSm,
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? AppColors.border
+                                : theme.colorScheme.outlineVariant,
+                          ),
+                        ),
+                      ),
+                      onChanged: (val) =>
+                          setState(() => _auditSearchQuery = val),
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      DropdownButton<String>(
+                        value: _auditActionFilter,
+                        underline: const SizedBox.shrink(),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('All Actions')),
+                          DropdownMenuItem(value: 'create', child: Text('Create')),
+                          DropdownMenuItem(value: 'update', child: Text('Update')),
+                          DropdownMenuItem(value: 'delete', child: Text('Delete')),
+                          DropdownMenuItem(value: 'export', child: Text('Export')),
+                          DropdownMenuItem(value: 'login', child: Text('Login')),
+                          DropdownMenuItem(value: 'sync', child: Text('Sync')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setState(() => _auditActionFilter = val);
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Refresh Logs',
+                        icon: const Icon(Icons.refresh, size: 18),
+                        onPressed: () => ref.invalidate(auditLogsProvider),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.elevatedSurface
+                              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                          borderRadius: AppRadius.roundedSm,
+                        ),
+                        child: Text(
+                          'Showing ${filtered.length} of ${allLogs.length}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? AppColors.textSecondary
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (filtered.isEmpty)
+              AppCard(
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.history_toggle_off,
+                        size: 44,
+                        color: isDark ? AppColors.textSecondary : Colors.grey,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No audit logs match your search or filters.',
+                        style: TextStyle(
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filtered.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final log = filtered[index];
+                  Color actionColor;
+                  switch (log.action.name.toLowerCase()) {
+                    case 'create':
+                    case 'register':
+                      actionColor = AppColors.primaryEmerald;
+                      break;
+                    case 'update':
+                    case 'edit':
+                      actionColor = AppColors.info;
+                      break;
+                    case 'delete':
+                    case 'archive':
+                      actionColor = AppColors.critical;
+                      break;
+                    default:
+                      actionColor = AppColors.pending;
+                  }
+
+                  final dateStr =
+                      DateFormat('yyyy-MM-dd HH:mm:ss').format(log.timestamp);
+
+                  return AppCard(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: actionColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: actionColor.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: Text(
+                                log.action.name.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: actionColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '[${log.entityType.toUpperCase()}]',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                            if (log.patientId != null &&
+                                log.patientId!.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                'PID: ${log.patientId}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark
+                                      ? AppColors.primaryEmerald
+                                      : theme.colorScheme.primary,
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            Text(
+                              dateStr,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          log.description ?? 'Activity recorded',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color:
+                                isDark ? AppColors.textPrimary : Colors.black87,
+                          ),
+                        ),
+                        if (log.userId.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Actor: ${log.userId}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? AppColors.textSecondary
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
+        );
+      },
+      loading: () => const LoadingState(),
+      error: (error, stack) => _buildReportError(
+        context,
+        onRetry: () => ref.invalidate(auditLogsProvider),
+      ),
+    );
+  }
+
+  Widget _buildEmptyFilteredReports(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AppCard(
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 44,
+              color: isDark ? AppColors.textSecondary : Colors.grey,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No reports found matching your criteria.',
+              style: TextStyle(
+                color: isDark ? AppColors.textSecondary : Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () {
+                _reportSearchController.clear();
+                setState(() {
+                  _reportSearchQuery = '';
+                  _reportTypeFilter = 'all';
+                });
+              },
+              child: const Text('Reset Filter'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

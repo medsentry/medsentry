@@ -1119,8 +1119,6 @@ class _PatientRegistrationWizard extends ConsumerStatefulWidget {
 
 class _PatientRegistrationWizardState
     extends ConsumerState<_PatientRegistrationWizard> {
-  int _currentStep = 0;
-  final int _totalSteps = 4;
   bool _showValidationErrors = false;
   bool _isSubmitting = false;
 
@@ -1221,62 +1219,38 @@ class _PatientRegistrationWizardState
     }
   }
 
-  bool _isStepValid() {
-    switch (_currentStep) {
-      case 0:
-        return isValidPersonName(_firstNameController.text) &&
-            isValidPersonName(_lastNameController.text) &&
-            _dateOfBirth != null &&
-            _gender != null &&
-            _civilStatus != null;
-      case 1:
-        return (_streetController.text.trim().isEmpty ||
-                isValidPostalAddress(_streetController.text)) &&
-            _selectedBarangay != null &&
-            _selectedPurok != null &&
-            _selectedCity != null &&
-            _zipCodeController.text.trim().isNotEmpty &&
-            _isValidOptionalMobile(_contactNumberController.text) &&
-            _isValidOptionalEmail(_emailController.text);
-      case 2:
-        return isValidPersonName(_emergencyNameController.text) &&
-            _emergencyRelationController.text.trim().isNotEmpty &&
-            _isValidMobile(_emergencyContactController.text);
-      case 3:
-        return _isValidOptionalPhilHealth(_philHealthController.text);
-      default:
-        return false;
-    }
-  }
-
-  void _nextStep() {
-    if (!_isStepValid()) {
-      setState(() => _showValidationErrors = true);
-      return;
-    }
-
-    if (_currentStep < _totalSteps - 1) {
-      setState(() {
-        _currentStep++;
-        _showValidationErrors = false;
-      });
-    }
-  }
-
-  void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() {
-        _currentStep--;
-        _showValidationErrors = false;
-      });
-    }
+  bool _isFormValid() {
+    return isValidPersonName(_firstNameController.text) &&
+        isValidPersonName(_lastNameController.text) &&
+        _dateOfBirth != null &&
+        _gender != null &&
+        _civilStatus != null &&
+        (_streetController.text.trim().isEmpty ||
+            isValidPostalAddress(_streetController.text)) &&
+        _selectedBarangay != null &&
+        _selectedPurok != null &&
+        _selectedCity != null &&
+        _zipCodeController.text.trim().isNotEmpty &&
+        _isValidOptionalMobile(_contactNumberController.text) &&
+        _isValidOptionalEmail(_emailController.text) &&
+        isValidPersonName(_emergencyNameController.text) &&
+        _emergencyRelationController.text.trim().isNotEmpty &&
+        _isValidMobile(_emergencyContactController.text) &&
+        _isValidOptionalPhilHealth(_philHealthController.text);
   }
 
   Future<void> _submit() async {
     if (_isSubmitting) return;
     try {
-      if (!_isStepValid()) {
+      if (!_isFormValid()) {
         setState(() => _showValidationErrors = true);
+        final validationMessage = _validateBeforeSubmit();
+        if (validationMessage != null) {
+          AppNotification.warning(
+            title: 'Incomplete Registration',
+            message: validationMessage,
+          );
+        }
         return;
       }
 
@@ -1598,143 +1572,65 @@ class _PatientRegistrationWizardState
     return AppFormDialog(
       icon: Icons.person_add_outlined,
       title: 'New Patient Registration',
-      subtitle: 'Step ${_currentStep + 1} of $_totalSteps: ${_getStepTitle()}',
+      subtitle:
+          'Complete all required fields below to register a new patient in the health record.',
       maxWidth: 900,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildStepProgress(),
-          const SizedBox(height: 18),
-          _buildCurrentStep(),
-        ],
+      content: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.72,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildStep1PersonalInfo(),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 24),
+              _buildStep2ContactInfo(),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 24),
+              _buildStep3EmergencyContact(),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 24),
+              _buildStep4MedicalInfo(),
+            ],
+          ),
+        ),
       ),
       actions: [
-        if (_currentStep > 0)
-          AppDialogAction(label: 'Back', onPressed: _previousStep)
-        else
-          AppDialogAction(
-            label: 'Cancel',
-            onPressed: () => Navigator.pop(context),
-          ),
-        if (_currentStep < _totalSteps - 1)
-          AppDialogAction(
-            label: 'Next',
-            isPrimary: true,
-            icon: Icons.arrow_forward,
-            onPressed: _nextStep,
-          )
-        else
-          AppDialogAction(
-            label: _isSubmitting ? 'Registering...' : 'Register Patient',
-            isPrimary: true,
-            icon: _isSubmitting ? null : Icons.check,
-            onPressed: _isSubmitting ? null : _submit,
-          ),
+        AppDialogAction(
+          label: 'Cancel',
+          onPressed: () => Navigator.pop(context),
+        ),
+        AppDialogAction(
+          label: _isSubmitting ? 'Registering...' : 'Register Patient',
+          isPrimary: true,
+          icon: _isSubmitting ? null : Icons.check,
+          onPressed: _isSubmitting ? null : _submit,
+        ),
       ],
     );
-  }
-
-  Widget _buildStepProgress() {
-    final steps = List.generate(_totalSteps, (index) => index);
-    final isCompact = MediaQuery.sizeOf(context).width < 420;
-    final markerSize = isCompact ? 28.0 : 34.0;
-
-    return Row(
-      children: steps.expand((index) {
-        final isActive = index == _currentStep;
-        final isDone = index < _currentStep;
-        final color = isDone || isActive
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.outline.withValues(alpha: 0.45);
-
-        final marker = AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          width: markerSize,
-          height: markerSize,
-          decoration: BoxDecoration(
-            color: isDone || isActive
-                ? color
-                : Theme.of(context).colorScheme.surface,
-            border: Border.all(color: color),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: isDone
-                ? Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: isCompact ? 15 : 18,
-                  )
-                : Text(
-                    '${index + 1}',
-                    style: TextStyle(
-                      color: isActive
-                          ? Colors.white
-                          : Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                      fontSize: isCompact ? 12 : 14,
-                    ),
-                  ),
-          ),
-        );
-
-        return [
-          Tooltip(message: _getStepTitleFor(index), child: marker),
-          if (index < _totalSteps - 1)
-            Expanded(
-              child: Container(
-                height: 2,
-                margin: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 8),
-                color: color.withValues(alpha: isDone ? 1 : 0.35),
-              ),
-            ),
-        ];
-      }).toList(),
-    );
-  }
-
-  String _getStepTitle() {
-    return _getStepTitleFor(_currentStep);
-  }
-
-  String _getStepTitleFor(int step) {
-    switch (step) {
-      case 0:
-        return 'Personal Information';
-      case 1:
-        return 'Contact & Address';
-      case 2:
-        return 'Emergency Contact';
-      case 3:
-        return 'Medical & Administrative';
-      default:
-        return '';
-    }
-  }
-
-  Widget _buildCurrentStep() {
-    switch (_currentStep) {
-      case 0:
-        return _buildStep1PersonalInfo();
-      case 1:
-        return _buildStep2ContactInfo();
-      case 2:
-        return _buildStep3EmergencyContact();
-      case 3:
-        return _buildStep4MedicalInfo();
-      default:
-        return const SizedBox.shrink();
-    }
   }
 
   Widget _buildStep1PersonalInfo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Full Name', Icons.badge_outlined),
+        _buildSectionHeader('Personal Information (Full Name)', Icons.badge_outlined),
         _buildFormRow([
           _buildFormField(
-            label: 'First Name',
+            label: 'Last Name (LN)',
+            hint: 'Family surname',
+            required: true,
+            controller: _lastNameController,
+            onChanged: (_) => setState(() {}),
+            errorText: _requiredTextError(_lastNameController, 'Last name'),
+            icon: Icons.person_outline,
+          ),
+          _buildFormField(
+            label: 'First Name (FN)',
             hint: 'Given name',
             required: true,
             controller: _firstNameController,
@@ -1743,33 +1639,11 @@ class _PatientRegistrationWizardState
             icon: Icons.person_outline,
           ),
           _buildFormField(
-            label: 'Middle Initial',
-            hint: 'Middle initial',
+            label: 'Middle Initial (MI)',
+            hint: 'e.g. Guerda or G.',
             controller: _middleNameController,
-            maxLength: 2,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
-            ],
-            onChanged: (value) {
-              final formatted = formatMiddleInitial(value);
-              if (formatted != null &&
-                  _middleNameController.text != formatted) {
-                _middleNameController.value = TextEditingValue(
-                  text: formatted,
-                  selection: TextSelection.collapsed(offset: formatted.length),
-                );
-              }
-              setState(() {});
-            },
-            width: 150,
-          ),
-          _buildFormField(
-            label: 'Last Name',
-            hint: 'Family name',
-            required: true,
-            controller: _lastNameController,
             onChanged: (_) => setState(() {}),
-            errorText: _requiredTextError(_lastNameController, 'Last name'),
+            width: 150,
             icon: Icons.person_outline,
           ),
           _buildDropdownField(

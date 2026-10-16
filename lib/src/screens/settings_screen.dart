@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
+import '../services/document_service.dart';
 import '../providers/providers.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
@@ -13,6 +14,7 @@ import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/system_logo.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/user_avatar.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 
@@ -1370,7 +1372,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -1432,7 +1434,6 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
               onEditUser: widget.onEditUser,
               onDeactivateUser: widget.onDeactivateUser,
             ),
-            const _RolesPermissionsTab(),
           ],
         );
       },
@@ -1482,9 +1483,8 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
         TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'Active Users'),
-            Tab(text: 'Inactive'),
-            Tab(text: 'Roles & Permissions'),
+            Tab(text: 'Active Accounts'),
+            Tab(text: 'Inactive Accounts'),
           ],
         ),
         const SizedBox(height: 12),
@@ -1584,151 +1584,149 @@ class _StaffAccountsTab extends StatelessWidget {
   }
 }
 
-class _RolesPermissionsTab extends StatelessWidget {
-  const _RolesPermissionsTab();
+class _AdminResetPasswordDialog extends StatefulWidget {
+  final User user;
+  final User currentUser;
+  final Future<void> Function(String newPassword) onConfirmReset;
 
-  static const _permissions = [
-    _PermissionRow('Manage system settings', admin: true),
-    _PermissionRow('User account management', admin: true),
-    _PermissionRow('View audit logs', admin: true),
-    _PermissionRow('Archive management', admin: true),
-    _PermissionRow('Backup & synchronization', admin: true),
-    _PermissionRow('Access patient records', admin: true, staff: true),
-    _PermissionRow('Register patients', staff: true),
-    _PermissionRow('Manage documents', admin: true, staff: true),
-    _PermissionRow('Generate certificates', staff: true),
-    _PermissionRow('Generate reports', admin: true, staff: true),
-    _PermissionRow('Record synchronization', admin: true, staff: true),
-  ];
+  const _AdminResetPasswordDialog({
+    required this.user,
+    required this.currentUser,
+    required this.onConfirmReset,
+  });
+
+  @override
+  State<_AdminResetPasswordDialog> createState() =>
+      _AdminResetPasswordDialogState();
+}
+
+class _AdminResetPasswordDialogState extends State<_AdminResetPasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
+  bool _isPasswordVisible = false;
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+    try {
+      await widget.onConfirmReset(_passwordController.text.trim());
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to reset password: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Role access matrix',
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Admin controls system operations. Staff handles daily patient record activities.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(
-              context,
-            ).colorScheme.onSurface.withValues(alpha: 0.68),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final minTableWidth = constraints.maxWidth < 460 ? 460.0 : constraints.maxWidth;
-              return SingleChildScrollView(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: minTableWidth),
-                    child: Table(
-                      columnWidths: const {
-                        0: FlexColumnWidth(2.8),
-                        1: FixedColumnWidth(72),
-                        2: FixedColumnWidth(72),
-                      },
-                      border: TableBorder.all(
-                        color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
-                      ),
-                      children: [
-                        TableRow(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.5),
-                          ),
-                          children: const [
-                            _RoleHeaderCell('Permission'),
-                            _RoleHeaderCell('Admin'),
-                            _RoleHeaderCell('Staff'),
-                          ],
-                        ),
-                        ..._permissions.map(
-                          (row) => TableRow(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: Text(
-                                  row.label,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ),
-                              _RoleCheckCell(allowed: row.admin),
-                              _RoleCheckCell(allowed: row.staff),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+    return AppFormDialog(
+      icon: Icons.lock_reset_outlined,
+      title: 'Reset User Password',
+      subtitle:
+          'Set a new temporary password for ${widget.user.fullName} (${widget.user.email})',
+      maxWidth: 480,
+      isLoading: _isSaving,
+      loadingText: 'Resetting password...',
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppInfoCard(
+              icon: Icons.shield_outlined,
+              label: 'Administrative Security Reset',
+              value:
+                  'As an authorized administrator, you are updating the password for ${widget.user.fullName}. Password must be at least 8 characters long with letters and numbers.',
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: !_isPasswordVisible,
+              decoration: InputDecoration(
+                labelText: 'New Password *',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  tooltip:
+                      _isPasswordVisible ? 'Hide password' : 'Show password',
+                  onPressed: () =>
+                      setState(() => _isPasswordVisible = !_isPasswordVisible),
+                  icon: Icon(
+                    _isPasswordVisible
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+              validator: (val) {
+                final text = val?.trim() ?? '';
+                if (text.isEmpty) return 'New password is required.';
+                if (text.length < 8) {
+                  return 'Password must be at least 8 characters long.';
+                }
+                if (!RegExp(r'[A-Za-z]').hasMatch(text) ||
+                    !RegExp(r'[0-9]').hasMatch(text)) {
+                  return 'Must include both letters and numbers.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _confirmController,
+              obscureText: !_isPasswordVisible,
+              decoration: const InputDecoration(
+                labelText: 'Confirm New Password *',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+              validator: (val) {
+                if (val?.trim() != _passwordController.text.trim()) {
+                  return 'Passwords do not match.';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        AppDialogAction(
+          label: 'Cancel',
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+        ),
+        AppDialogAction(
+          label: 'Reset Password',
+          isPrimary: true,
+          icon: Icons.check,
+          onPressed: _isSaving ? null : _submit,
         ),
       ],
     );
   }
 }
 
-class _PermissionRow {
-  final String label;
-  final bool admin;
-  final bool staff;
-
-  const _PermissionRow(this.label, {this.admin = false, this.staff = false});
-}
-
-class _RoleHeaderCell extends StatelessWidget {
-  final String label;
-
-  const _RoleHeaderCell(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-}
-
-class _RoleCheckCell extends StatelessWidget {
-  final bool allowed;
-
-  const _RoleCheckCell({required this.allowed});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Icon(
-        allowed ? Icons.check_circle : Icons.remove_circle_outline,
-        size: 18,
-        color: allowed
-            ? context.semanticColors.normal
-            : context.semanticColors.neutral,
-      ),
-    );
-  }
-}
-
-class _UserManagementTile extends StatelessWidget {
+class _UserManagementTile extends ConsumerWidget {
   final User user;
   final User? currentUser;
   final VoidCallback onEdit;
@@ -1743,6 +1741,19 @@ class _UserManagementTile extends StatelessWidget {
 
   bool get canEdit {
     if (currentUser == null) return false;
+    if (!currentUser!.canEditUserProfiles) return false;
+    if (currentUser!.isSuperAdmin) return true;
+    if (user.role == UserRole.superAdmin) return false;
+    if (currentUser!.clinicId != null &&
+        user.clinicId != currentUser!.clinicId) {
+      return false;
+    }
+    return true;
+  }
+
+  bool get canResetPassword {
+    if (currentUser == null) return false;
+    if (!currentUser!.canResetUserPasswords) return false;
     if (currentUser!.isSuperAdmin) return true;
     if (user.role == UserRole.superAdmin) return false;
     if (currentUser!.clinicId != null &&
@@ -1764,21 +1775,54 @@ class _UserManagementTile extends StatelessWidget {
     return true;
   }
 
+  Future<void> _handleResetPassword(BuildContext context, WidgetRef ref) async {
+    final curUser = currentUser;
+    if (curUser == null) return;
+
+    await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => _AdminResetPasswordDialog(
+        user: user,
+        currentUser: curUser,
+        onConfirmReset: (newPassword) async {
+          await ref.read(authRepositoryProvider).adminResetUserPassword(
+            targetUserId: user.id,
+            newPassword: newPassword,
+            actorUserId: curUser.id,
+          );
+          ref.invalidate(usersProvider);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Password for ${user.fullName} has been reset.'),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge() {
+    if (user.isReactivated) {
+      return StatusBadge.info(text: 'Reactivated', showDot: true);
+    } else if (user.isActive) {
+      return StatusBadge.active(text: 'Active', showDot: true);
+    } else {
+      return StatusBadge.inactive(text: 'Inactive', showDot: true);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.zero,
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(
-            context,
-          ).colorScheme.primary.withValues(alpha: 0.12),
-          foregroundColor: Theme.of(context).colorScheme.primary,
-          child: Text(
-            user.initials,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
+        leading: UserAvatar(
+          user: user,
+          radius: 20,
+          showStatusIndicator: true,
         ),
         title: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -1789,10 +1833,7 @@ class _UserManagementTile extends StatelessWidget {
               user.fullName,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            if (user.isActive)
-              StatusBadge.active(text: 'Active')
-            else
-              StatusBadge.inactive(text: 'Inactive'),
+            _buildStatusBadge(),
           ],
         ),
         subtitle: Padding(
@@ -1829,12 +1870,13 @@ class _UserManagementTile extends StatelessWidget {
           ),
         ),
         trailing: context.isMobile
-            ? (canEdit || (canDeactivate && user.isActive && onDeactivate != null))
+            ? (canEdit || canResetPassword || (canDeactivate && user.isActive && onDeactivate != null))
                 ? PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),
                     tooltip: 'User options',
                     onSelected: (val) {
                       if (val == 'edit') onEdit();
+                      if (val == 'reset_pwd') _handleResetPassword(context, ref);
                       if (val == 'deactivate') onDeactivate?.call();
                     },
                     itemBuilder: (context) => [
@@ -1844,6 +1886,16 @@ class _UserManagementTile extends StatelessWidget {
                           child: ListTile(
                             leading: Icon(Icons.edit_outlined),
                             title: Text('Edit user'),
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ),
+                      if (canResetPassword)
+                        const PopupMenuItem(
+                          value: 'reset_pwd',
+                          child: ListTile(
+                            leading: Icon(Icons.lock_reset_outlined),
+                            title: Text('Reset Password'),
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                           ),
@@ -1867,6 +1919,12 @@ class _UserManagementTile extends StatelessWidget {
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (canResetPassword)
+                    IconButton(
+                      tooltip: 'Reset Password (Reset PWD)',
+                      icon: const Icon(Icons.lock_reset_outlined),
+                      onPressed: () => _handleResetPassword(context, ref),
+                    ),
                   if (canEdit)
                     IconButton(
                       tooltip: 'Edit user',
@@ -1904,6 +1962,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
   final _contactController = TextEditingController();
   final _specializationController = TextEditingController();
   final _licenseController = TextEditingController();
+  String? _profileImageUrl;
   UserRole _role = UserRole.staff;
   String? _clinicId;
   bool _isActive = true;
@@ -1920,6 +1979,26 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
     }
   }
 
+  Future<void> _pickProfilePhoto() async {
+    try {
+      final picked = await DocumentService.pickImage();
+      if (picked == null) return;
+      final bytes = await picked.getBytes();
+      final base64String = base64Encode(bytes);
+      final mimeType = picked.extension == 'png' ? 'image/png' : 'image/jpeg';
+      setState(() {
+        _profileImageUrl = 'data:$mimeType;base64,$base64String';
+        _isDirty = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to select profile picture: $e')),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1931,6 +2010,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
       _contactController.text = user.contactNumber ?? '';
       _specializationController.text = user.specialization ?? '';
       _licenseController.text = user.licenseNumber ?? '';
+      _profileImageUrl = user.profileImageUrl;
       _role = user.role;
       _clinicId = user.clinicId;
       _isActive = user.isActive;
@@ -2016,6 +2096,58 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Stack(
+                                children: [
+                                  UserAvatar(
+                                    user: widget.existingUser?.copyWith(
+                                      firstName: _firstNameController.text.isNotEmpty
+                                          ? _firstNameController.text
+                                          : 'New',
+                                      lastName: _lastNameController.text.isNotEmpty
+                                          ? _lastNameController.text
+                                          : 'User',
+                                      profileImageUrl: _profileImageUrl,
+                                    ) ??
+                                        User(
+                                          id: 'temp',
+                                          email: _emailController.text,
+                                          firstName: _firstNameController.text.isNotEmpty
+                                              ? _firstNameController.text
+                                              : 'New',
+                                          lastName: _lastNameController.text.isNotEmpty
+                                              ? _lastNameController.text
+                                              : 'User',
+                                          role: _role,
+                                          profileImageUrl: _profileImageUrl,
+                                          isActive: true,
+                                          pinEnabled: false,
+                                        ),
+                                    radius: 36,
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Material(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      shape: const CircleBorder(),
+                                      elevation: 2,
+                                      child: InkWell(
+                                        customBorder: const CircleBorder(),
+                                        onTap: _pickProfilePhoto,
+                                        child: const Padding(
+                                          padding: EdgeInsets.all(6),
+                                          child: Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                           _field(
                             controller: _emailController,
                             label: 'Email Address',
@@ -2435,6 +2567,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
           specialization: _emptyToNull(_specializationController.text),
           role: _role,
           isActive: _isActive,
+          profileImageUrl: _profileImageUrl,
           newPassword: _emptyToNull(_passwordController.text),
           updatedByUserId: currentUserId,
         );
@@ -2449,6 +2582,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
           licenseNumber: _emptyToNull(_licenseController.text),
           specialization: _emptyToNull(_specializationController.text),
           contactNumber: _phoneOrNull(_contactController.text),
+          profileImageUrl: _profileImageUrl,
           createdByUserId: currentUserId,
         );
       }

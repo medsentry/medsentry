@@ -42,12 +42,39 @@ SimpleDatabase database(Ref ref) {
   return SimpleDatabase();
 }
 
-/// A durable-write revision for refreshing cached role views. This prevents
-/// staff/admin screens from continuing to show a stale FutureProvider result.
-final databaseChangesProvider = StreamProvider<int>((ref) async* {
+/// A durable-write revision for refreshing cached role views. This guarantees
+/// frontend screens immediately refresh whenever the database is updated.
+class DatabaseChangesNotifier extends StateNotifier<int> {
+  final SimpleDatabase _db;
+  StreamSubscription<int>? _subscription;
+
+  DatabaseChangesNotifier(this._db) : super(_db.revision) {
+    _db.onRevisionChanged = (newRev) {
+      if (mounted) state = newRev;
+    };
+    _subscription = _db.changes.listen((newRevision) {
+      if (mounted) state = newRevision;
+    });
+  }
+
+  void refresh() {
+    state = _db.revision;
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    if (_db.onRevisionChanged != null) {
+      _db.onRevisionChanged = null;
+    }
+    super.dispose();
+  }
+}
+
+final databaseChangesProvider =
+    StateNotifierProvider<DatabaseChangesNotifier, int>((ref) {
   final db = ref.watch(databaseProvider);
-  yield db.revision;
-  yield* db.changes;
+  return DatabaseChangesNotifier(db);
 });
 
 @Riverpod(keepAlive: true)

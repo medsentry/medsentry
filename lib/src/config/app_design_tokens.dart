@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 /// radii, component heights, shadows, and animation durations.
 
 abstract final class AppColors {
-  // Application Foundations (Dark Healthcare Aesthetic)
-  static const Color appBackground = Color(0xFF080909);
-  static const Color sidebarBackground = Color(0xFF111214);
-  static const Color cardSurface = Color(0xFF111214);
-  static const Color elevatedSurface = Color(0xFF191A1C);
-  static const Color modalSurface = Color(0xFF141518);
-  static const Color inputSurface = Color(0xFF131416);
+  // Application Foundations (Dark Healthcare Aesthetic - Obsidian Clinical Theme)
+  static const Color appBackground = Color(0xFF0C0D11);
+  static const Color sidebarBackground = Color(0xFF111216);
+  static const Color cardSurface = Color(0xFF16171D);
+  static const Color elevatedSurface = Color(0xFF1D1F27);
+  static const Color modalSurface = Color(0xFF181A22);
+  static const Color inputSurface = Color(0xFF16171E);
 
   // Primary Emerald Accent
   static const Color primaryEmerald = Color(0xFF34D399);
@@ -23,15 +23,15 @@ abstract final class AppColors {
 
   // Typography & Text
   static const Color textPrimary = Color(0xFFF3F4F6);
-  static const Color textSecondary = Color(0xFF9CA3AF);
-  static const Color textMuted = Color(0xFF6B7280);
+  static const Color textSecondary = Color(0xFF8E929B);
+  static const Color textMuted = Color(0xFF636773);
   static const Color textDisabled = Color(0xFF4B5563);
   static const Color textOnEmerald = Color(0xFF064E3B);
 
   // Borders & Dividers
-  static const Color border = Color(0xFF2C2D30);
-  static const Color borderSubtle = Color(0xFF1F2023);
-  static const Color borderActive = Color(0xFF3F4045);
+  static const Color border = Color(0xFF232631);
+  static const Color borderSubtle = Color(0xFF1A1C24);
+  static const Color borderActive = Color(0xFF323645);
   static const Color borderFocus = Color(0xFF34D399);
   static const double borderWidth = 1.0;
   static const double borderWidthActive = 1.5;
@@ -210,6 +210,7 @@ abstract final class AppRadius {
   static const double sm = 6.0;
   static const double md = 10.0;
   static const double lg = 14.0;
+  static const double card = 16.0;
   static const double xl = 20.0;
   static const double pill = 999.0;
 
@@ -217,6 +218,7 @@ abstract final class AppRadius {
   static const Radius radiusSm = Radius.circular(sm);
   static const Radius radiusMd = Radius.circular(md);
   static const Radius radiusLg = Radius.circular(lg);
+  static const Radius radiusCard = Radius.circular(card);
   static const Radius radiusXl = Radius.circular(xl);
   static const Radius radiusPill = Radius.circular(pill);
 
@@ -224,6 +226,7 @@ abstract final class AppRadius {
   static const BorderRadius roundedSm = BorderRadius.all(radiusSm);
   static const BorderRadius roundedMd = BorderRadius.all(radiusMd);
   static const BorderRadius roundedLg = BorderRadius.all(radiusLg);
+  static const BorderRadius roundedCard = BorderRadius.all(radiusCard);
   static const BorderRadius roundedXl = BorderRadius.all(radiusXl);
   static const BorderRadius roundedPill = BorderRadius.all(radiusPill);
 }

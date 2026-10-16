@@ -19,71 +19,85 @@ class _AppShellState extends ConsumerState<AppShell> {
   static const _dashboardNavigationItem = AppNavigationItem(
     label: 'Dashboard',
     path: '/dashboard',
-    icon: Icons.dashboard_outlined,
-    selectedIcon: Icons.dashboard,
+    icon: Icons.grid_view_rounded,
+    selectedIcon: Icons.grid_view_rounded,
+    group: 'OVERVIEW',
   );
 
   static const _patientsNavigationItem = AppNavigationItem(
     label: 'Patients',
     path: '/patients',
-    icon: Icons.people_outlined,
-    selectedIcon: Icons.people,
+    icon: Icons.people_outline_rounded,
+    selectedIcon: Icons.people_rounded,
+    group: 'OVERVIEW',
+    badgeCount: 24,
+    badgeColor: Color(0xFFF97316),
   );
 
   static const _documentsNavigationItem = AppNavigationItem(
     label: 'Documents',
     path: '/documents',
     icon: Icons.folder_outlined,
-    selectedIcon: Icons.folder,
+    selectedIcon: Icons.folder_rounded,
+    group: 'OPERATIONS',
   );
 
   static const _certificatesNavigationItem = AppNavigationItem(
     label: 'Certificates',
     path: '/certificates',
     icon: Icons.description_outlined,
-    selectedIcon: Icons.description,
+    selectedIcon: Icons.description_rounded,
+    group: 'OVERVIEW',
   );
 
   static const _reportsNavigationItem = AppNavigationItem(
     label: 'Reports',
     path: '/reports',
-    icon: Icons.assessment_outlined,
-    selectedIcon: Icons.assessment,
+    icon: Icons.insert_chart_outlined_rounded,
+    selectedIcon: Icons.insert_chart_rounded,
+    group: 'ANALYTICS',
   );
 
   static const _auditNavigationItem = AppNavigationItem(
     label: 'Audit Logs',
     path: '/audit-logs',
-    icon: Icons.history_outlined,
-    selectedIcon: Icons.history,
+    icon: Icons.shield_outlined,
+    selectedIcon: Icons.shield_rounded,
+    group: 'ANALYTICS',
+    badgeCount: 3,
+    badgeColor: Color(0xFFA78BFA),
   );
 
   static const _archiveNavigationItem = AppNavigationItem(
     label: 'Archive',
     path: '/archive',
-    icon: Icons.archive_outlined,
-    selectedIcon: Icons.archive,
+    icon: Icons.inventory_2_outlined,
+    selectedIcon: Icons.inventory_2_rounded,
+    group: 'OPERATIONS',
   );
 
   static const _staffNavigationItem = AppNavigationItem(
     label: 'Users',
     path: '/staff',
-    icon: Icons.groups_outlined,
-    selectedIcon: Icons.groups,
+    icon: Icons.manage_accounts_outlined,
+    selectedIcon: Icons.manage_accounts_rounded,
+    group: 'OPERATIONS',
   );
 
   static const _settingsNavigationItem = AppNavigationItem(
     label: 'Settings',
     path: '/settings',
     icon: Icons.settings_outlined,
-    selectedIcon: Icons.settings,
+    selectedIcon: Icons.settings_rounded,
+    group: 'OPERATIONS',
   );
 
   static const _rhuNavigationItem = AppNavigationItem(
     label: 'RHU Units',
     path: '/rhus',
     icon: Icons.domain_outlined,
-    selectedIcon: Icons.domain,
+    selectedIcon: Icons.domain_rounded,
+    group: 'OPERATIONS',
   );
 
   static const _fallbackNavigationItems = [_dashboardNavigationItem];

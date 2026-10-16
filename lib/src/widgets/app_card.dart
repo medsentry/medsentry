@@ -112,7 +112,7 @@ class AppCard extends StatelessWidget {
         icon != null ||
         headerAction != null;
 
-    final effectiveBorderRadius = borderRadius ?? AppRadius.roundedMd;
+    final effectiveBorderRadius = borderRadius ?? AppRadius.roundedCard;
 
     Color effectiveBgColor;
     List<BoxShadow> effectiveShadows = AppShadows.none;

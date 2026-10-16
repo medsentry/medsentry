@@ -1,12 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/user.dart';
 import '../providers/providers.dart';
+import '../services/document_service.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/user_avatar.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -63,27 +67,10 @@ class ProfileScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24),
             child: Row(
               children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryEmerald.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.primaryEmerald.withValues(alpha: 0.35),
-                      width: 2,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      user.initials,
-                      style: const TextStyle(
-                        color: AppColors.primaryEmerald,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 24,
-                      ),
-                    ),
-                  ),
+                UserAvatar(
+                  user: user,
+                  radius: 36,
+                  showStatusIndicator: true,
                 ),
                 const SizedBox(width: 20),
                 Expanded(
@@ -100,7 +87,9 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          if (user.isActive)
+                          if (user.isReactivated)
+                            StatusBadge.info(text: 'Reactivated', showDot: true)
+                          else if (user.isActive)
                             StatusBadge.active(text: 'Active', showDot: true)
                           else
                             StatusBadge.inactive(text: 'Inactive', showDot: true),
@@ -257,6 +246,7 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
   late final TextEditingController _lastNameController;
   late final TextEditingController _contactController;
   late final TextEditingController _specializationController;
+  String? _profileImageUrl;
 
   bool _isSaving = false;
   bool _isDirty = false;
@@ -264,6 +254,26 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
   void _markDirty() {
     if (!_isDirty && mounted) {
       setState(() => _isDirty = true);
+    }
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    try {
+      final picked = await DocumentService.pickImage();
+      if (picked == null) return;
+      final bytes = await picked.getBytes();
+      final base64String = base64Encode(bytes);
+      final mimeType = picked.extension == 'png' ? 'image/png' : 'image/jpeg';
+      setState(() {
+        _profileImageUrl = 'data:$mimeType;base64,$base64String';
+        _isDirty = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to select profile picture: $e')),
+        );
+      }
     }
   }
 
@@ -277,6 +287,7 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
     _specializationController = TextEditingController(
       text: user.specialization ?? '',
     );
+    _profileImageUrl = user.profileImageUrl;
 
     _firstNameController.addListener(_markDirty);
     _lastNameController.addListener(_markDirty);
@@ -325,6 +336,7 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
             specialization: _specializationController.text.trim().isEmpty
                 ? null
                 : _specializationController.text.trim(),
+            profileImageUrl: _profileImageUrl,
             updatedByUserId: user.id,
           );
       ref.read(currentUserProvider.notifier).state = updated;
@@ -371,6 +383,48 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Stack(
+                    children: [
+                      UserAvatar(
+                        user: widget.user.copyWith(
+                          firstName: _firstNameController.text.isNotEmpty
+                              ? _firstNameController.text
+                              : widget.user.firstName,
+                          lastName: _lastNameController.text.isNotEmpty
+                              ? _lastNameController.text
+                              : widget.user.lastName,
+                          profileImageUrl: _profileImageUrl,
+                        ),
+                        radius: 40,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Material(
+                          color: Theme.of(context).colorScheme.primary,
+                          shape: const CircleBorder(),
+                          elevation: 2,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _pickProfilePhoto,
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(
+                                Icons.camera_alt,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               Row(
                 children: [
                   Expanded(

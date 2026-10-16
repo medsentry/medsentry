@@ -214,6 +214,7 @@ class AuthRepository {
     String? licenseNumber,
     String? specialization,
     String? contactNumber,
+    String? profileImageUrl,
     bool pinEnabled = false,
     String? pin,
     required String createdByUserId,
@@ -332,6 +333,7 @@ class AuthRepository {
       licenseNumber: licenseNumber,
       specialization: specialization,
       contactNumber: contactNumber,
+      profileImageUrl: profileImageUrl,
       isActive: true,
       pinEnabled: pinEnabled,
       pinHash: pinHash,
@@ -587,8 +589,10 @@ class AuthRepository {
     String? lastName,
     String? contactNumber,
     String? specialization,
+    String? profileImageUrl,
     UserRole? role,
     bool? isActive,
+    bool? isReactivated,
     bool? pinEnabled,
     String? newPassword,
     String? newPin,
@@ -608,7 +612,7 @@ class AuthRepository {
         newPassword != null ||
         newPin != null ||
         pinEnabled != null;
-    if (actor.id != id && !actor.canManageSystemData) {
+    if (actor.id != id && !actor.canManageStaffAccounts) {
       throw StateError('You are not allowed to update this account');
     }
     if (!actor.isSuperAdmin) {
@@ -620,7 +624,7 @@ class AuthRepository {
         throw StateError('User accounts must remain within your RHU');
       }
     }
-    if (actor.id == id && changesAccess && !actor.canManageSystemData) {
+    if (actor.id == id && changesAccess && !actor.canManageStaffAccounts) {
       throw StateError('Only an administrator can change account access');
     }
 
@@ -653,14 +657,19 @@ class AuthRepository {
       newPinHash = _hashPassword(newPin);
     }
 
+    final willReactivate = existing.isActive == false && (isActive == true);
     final updated = existing.copyWith(
       clinicId: clinicId ?? existing.clinicId,
       firstName: firstName ?? existing.firstName,
       lastName: lastName ?? existing.lastName,
       contactNumber: contactNumber ?? existing.contactNumber,
       specialization: specialization ?? existing.specialization,
+      profileImageUrl: profileImageUrl ?? existing.profileImageUrl,
       role: role ?? existing.role,
       isActive: isActive ?? existing.isActive,
+      isReactivated: willReactivate
+          ? true
+          : (isReactivated ?? (existing.isReactivated && (isActive ?? existing.isActive))),
       pinEnabled: pinEnabled ?? existing.pinEnabled,
       updatedAt: DateTime.now(),
       syncStatus: existing.syncStatus == 0 ? 2 : existing.syncStatus,
@@ -806,6 +815,69 @@ class AuthRepository {
       entityType: 'user',
       entityId: userId,
       description: 'Password changed for user: ${user.email}',
+    );
+  }
+
+  /// Triggers an administrative password reset for a subordinate or user account.
+  /// Accessible by both Admin and Super Admin roles according to RBAC scope.
+  Future<void> adminResetUserPassword({
+    required String targetUserId,
+    required String newPassword,
+    required String actorUserId,
+  }) async {
+    final actor = await _db.getUserById(actorUserId);
+    if (actor == null || !actor.isActive) {
+      throw StateError('An active user session is required to reset passwords');
+    }
+    if (!actor.canResetUserPasswords) {
+      throw StateError('You are not authorized to reset user passwords');
+    }
+
+    final target = await _db.getUserById(targetUserId);
+    if (target == null) {
+      throw ArgumentError('Target user not found');
+    }
+
+    if (!actor.isSuperAdmin) {
+      if (target.isSuperAdmin) {
+        throw StateError('Administrators cannot reset Super Administrator passwords');
+      }
+      if (target.clinicId != null &&
+          actor.clinicId != null &&
+          target.clinicId != actor.clinicId) {
+        throw StateError(
+          'You can only reset passwords for accounts within your RHU facility',
+        );
+      }
+    }
+
+    await _validatePassword(newPassword);
+    await ensureOnlineSession(actorUserId);
+
+    if (_supabase.auth.currentSession != null) {
+      try {
+        await _supabase.functions.invoke(
+          'provision-user',
+          body: {
+            'action': 'set_password',
+            'target_user_id': targetUserId,
+            'password': newPassword,
+          },
+        );
+      } catch (e) {
+        debugPrint('Remote password reset warning: $e');
+      }
+    }
+
+    await _db.updateUserPassword(targetUserId, _hashPassword(newPassword));
+
+    await _auditService.logAction(
+      userId: actorUserId,
+      action: AuditAction.passwordChange,
+      entityType: 'user',
+      entityId: targetUserId,
+      description:
+          'Administrative password reset for user: ${target.email} by ${actor.roleDisplay} ${actor.fullName}',
     );
   }
 

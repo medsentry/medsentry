@@ -84,10 +84,18 @@ class ReportService {
             (patient) => {
               'id': patient.id,
               'name': patient.fullName,
+              'first_name': patient.firstName,
+              'last_name': patient.lastName,
+              'middle_name': patient.middleName,
+              'suffix': patient.suffix,
               'age': patient.age,
               'gender': patient.gender ?? 'Unknown',
               'category': patient.category?.displayName ?? 'Uncategorized',
               'barangay': patient.barangay ?? 'Unspecified',
+              'purok_sitio': patient.purokSitio ?? '',
+              'philhealth_number': patient.philHealthNumber ?? 'None',
+              'blood_type': patient.bloodType ?? '',
+              'contact_number': patient.contactNumber ?? '',
               'registered_at': patient.createdAt?.toIso8601String(),
             },
           )

@@ -145,6 +145,22 @@ class DocumentService {
     }
   }
 
+  /// Read decrypted document bytes into memory for in-app preview
+  static Future<Uint8List?> readDocumentBytes(String filePath) async {
+    try {
+      final rawBytes = await _fileStorage.readFile(filePath);
+      if (rawBytes == null) return null;
+      if (_isEncrypted(rawBytes)) {
+        final decryptedBytes = await _decryptBytes(rawBytes);
+        return Uint8List.fromList(decryptedBytes);
+      }
+      return Uint8List.fromList(rawBytes);
+    } catch (e) {
+      debugPrint('Failed to read document bytes: $e');
+      return null;
+    }
+  }
+
   /// Open a document using the default application
   static Future<void> openDocument(String filePath) async {
     try {
