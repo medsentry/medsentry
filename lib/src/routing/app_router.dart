@@ -66,7 +66,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return '/login';
         }
 
-        if (currentUser != null && isLoginRoute) {
+        if (currentUser != null && (isLoginRoute || state.uri.path == '/')) {
           return currentUser.homePath;
         }
 
@@ -105,6 +105,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
     },
     routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) =>
+            ref.read(currentUserProvider)?.homePath ?? '/login',
+      ),
       GoRoute(path: '/queue', redirect: (context, state) => '/patients'),
       GoRoute(
         path: '/queue/:id/soap',

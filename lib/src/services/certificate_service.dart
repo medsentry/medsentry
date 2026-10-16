@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../models/models.dart';
+import '../utils/logo_utils.dart';
 
 enum CertificateType {
   medicalCertificate,
@@ -33,6 +34,7 @@ class CertificateService {
     int? restDays,
     String? issuedBy,
   }) async {
+    final logoBytes = decodeLogoDataUri(settings.logoDataUri);
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -45,6 +47,7 @@ class CertificateService {
               return _buildMedicalCertificate(
                 patient: patient,
                 settings: settings,
+                logoBytes: logoBytes,
                 purpose: purpose ?? 'Medical clearance',
                 findings: findings ?? 'N/A',
                 recommendations: recommendations ?? 'Follow-up as needed',
@@ -55,6 +58,7 @@ class CertificateService {
               return _buildPatientSummary(
                 patient: patient,
                 settings: settings,
+                logoBytes: logoBytes,
               );
           }
         },
@@ -71,10 +75,22 @@ class CertificateService {
     );
   }
 
-  pw.Widget _buildHeader(SystemSettings settings, String title) {
+  pw.Widget _buildHeader(
+    SystemSettings settings,
+    String title,
+    Uint8List? logoBytes,
+  ) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.center,
       children: [
+        if (logoBytes != null) ...[
+          pw.SizedBox(
+            width: 44,
+            height: 44,
+            child: pw.Image(pw.MemoryImage(logoBytes), fit: pw.BoxFit.contain),
+          ),
+          pw.SizedBox(height: 8),
+        ],
         pw.Text(
           'Republic of the Philippines',
           style: pw.TextStyle(fontSize: 10),
@@ -102,6 +118,7 @@ class CertificateService {
   pw.Widget _buildMedicalCertificate({
     required Patient patient,
     required SystemSettings settings,
+    required Uint8List? logoBytes,
     required String purpose,
     required String findings,
     required String recommendations,
@@ -112,7 +129,7 @@ class CertificateService {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        _buildHeader(settings, 'MEDICAL CERTIFICATE'),
+        _buildHeader(settings, 'MEDICAL CERTIFICATE', logoBytes),
         pw.Text('Date: $dateStr'),
         pw.SizedBox(height: 16),
         pw.Text(
@@ -150,11 +167,12 @@ class CertificateService {
   pw.Widget _buildPatientSummary({
     required Patient patient,
     required SystemSettings settings,
+    required Uint8List? logoBytes,
   }) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        _buildHeader(settings, 'PATIENT RECORD SUMMARY'),
+        _buildHeader(settings, 'PATIENT RECORD SUMMARY', logoBytes),
         _buildPatientInfo(patient),
         pw.SizedBox(height: 12),
         if (patient.allergies != null && patient.allergies!.isNotEmpty)

@@ -1007,20 +1007,6 @@ class SimpleDatabase {
     }).length;
   }
 
-  Future<List<MedicalDocument>> getPendingDocuments() async {
-    await _ensureLoaded();
-    return _documents.values
-        .where((d) => d.status == DocumentStatus.pending)
-        .toList();
-  }
-
-  Future<int> getPendingDocumentCount() async {
-    await _ensureLoaded();
-    return _documents.values
-        .where((d) => d.status == DocumentStatus.pending)
-        .length;
-  }
-
   Future<List<Patient>> getRecentlyUpdatedPatients(int limit) async {
     await _ensureLoaded();
     final active = _patients.values.where((p) => !p.isArchived).toList();
@@ -1040,10 +1026,10 @@ class SimpleDatabase {
     final pendingPatients = _patients.values
         .where((p) => (p.syncStatus ?? 0) != 0)
         .length;
-    final pendingDocuments = _documents.values
+    final pendingDocumentSyncCount = _documents.values
         .where((d) => (d.syncStatus ?? 0) != 0)
         .length;
-    return pendingPatients + pendingDocuments + _syncDeletes.length;
+    return pendingPatients + pendingDocumentSyncCount + _syncDeletes.length;
   }
 
   Future<List<Map<String, String>>> getPendingSyncDeletes() async {
@@ -1346,8 +1332,7 @@ class SimpleDatabase {
 
   Future<void> deleteNotification(String id) async {
     await _ensureLoaded();
-    _notifications.remove(id);
-    await _saveToDisk();
+    if (_notifications.remove(id) != null) await _saveToDisk();
   }
 
   Future<List<AuditLog>> getStaffActivityLogs(int limit) async {

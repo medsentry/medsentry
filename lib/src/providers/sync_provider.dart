@@ -941,12 +941,14 @@ class SyncService extends StateNotifier<SyncServiceState> {
     dynamic db,
     Map<String, dynamic> profile,
   ) async {
-    if (profile['role'] != 'admin' && profile['role'] != 'super_admin') return;
-    final clinicId = profile['role'] == 'super_admin'
+    final role = profile['role'] as String?;
+    if (role != 'admin' && role != 'super_admin' && role != 'staff') return;
+    final isAdmin = role == 'admin' || role == 'super_admin';
+    final clinicId = role == 'super_admin'
         ? null
         : profile['clinic_id'] as String?;
-    if (profile['role'] == 'admin' && clinicId == null) {
-      throw StateError('The clinic administrator profile has no clinic.');
+    if (role != 'super_admin' && clinicId == null) {
+      throw StateError('The clinic user profile has no clinic.');
     }
 
     final local = await db.getSystemSettings() as SystemSettings;
@@ -962,11 +964,11 @@ class SyncService extends StateNotifier<SyncServiceState> {
         ? DateTime.tryParse(remote!['updated_at'] as String)
         : null;
 
-    // Push local settings to server when: no remote exists, OR local is newer.
+    // Only administrators write settings; staff pull the clinic's branding.
     final localIsNewer =
         local.updatedAt != null &&
         (remoteUpdatedAt == null || local.updatedAt!.isAfter(remoteUpdatedAt));
-    if (remote == null || localIsNewer) {
+    if (isAdmin && (remote == null || localIsNewer)) {
       final updatedAt = local.updatedAt ?? DateTime.now();
       final value = local.toJson()
         ..['updated_at'] = updatedAt.toIso8601String();
@@ -979,6 +981,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
       });
       return;
     }
+
+    if (remote == null) return;
 
     final value = Map<String, dynamic>.from(remote['value'] as Map)
       ..['updated_at'] = remoteUpdatedAt?.toIso8601String();

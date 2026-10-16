@@ -10,7 +10,6 @@ class ExtendedDashboardStats {
   final int totalPatients;
   final int newPatientsToday;
   final int documentsToday;
-  final int pendingDocuments;
   final int pendingSyncCount;
   final int activeStaffCount;
   final int failedLoginCount;
@@ -18,14 +17,12 @@ class ExtendedDashboardStats {
   final int unreadNotifications;
   final List<Patient> recentPatients;
   final List<AuditLog> recentActivity;
-  final List<MedicalDocument> pendingDocumentList;
   final DateTime timestamp;
 
   ExtendedDashboardStats({
     required this.totalPatients,
     required this.newPatientsToday,
     required this.documentsToday,
-    required this.pendingDocuments,
     required this.pendingSyncCount,
     required this.activeStaffCount,
     required this.failedLoginCount,
@@ -33,7 +30,6 @@ class ExtendedDashboardStats {
     required this.unreadNotifications,
     required this.recentPatients,
     required this.recentActivity,
-    required this.pendingDocumentList,
     required this.timestamp,
   });
 }
@@ -55,7 +51,6 @@ final extendedDashboardStatsProvider = FutureProvider<ExtendedDashboardStats>((
     db.getPatientCount(),
     db.getTodayPatientCount(),
     db.getTodayDocumentCount(),
-    db.getPendingDocumentCount(),
     db.getPendingSyncCount(),
     db.getActiveStaffCount(),
     db.getFailedLoginCount(within: const Duration(days: 1)),
@@ -63,22 +58,19 @@ final extendedDashboardStatsProvider = FutureProvider<ExtendedDashboardStats>((
     db.getUnreadNotificationCount(notificationTarget),
     db.getRecentlyUpdatedPatients(5),
     db.getStaffActivityLogs(8),
-    db.getPendingDocuments(),
   ]);
 
   return ExtendedDashboardStats(
     totalPatients: results[0] as int,
     newPatientsToday: results[1] as int,
     documentsToday: results[2] as int,
-    pendingDocuments: results[3] as int,
-    pendingSyncCount: results[4] as int,
-    activeStaffCount: results[5] as int,
-    failedLoginCount: results[6] as int,
-    archivedPatientCount: results[7] as int,
-    unreadNotifications: results[8] as int,
-    recentPatients: results[9] as List<Patient>,
-    recentActivity: results[10] as List<AuditLog>,
-    pendingDocumentList: results[11] as List<MedicalDocument>,
+    pendingSyncCount: results[3] as int,
+    activeStaffCount: results[4] as int,
+    failedLoginCount: results[5] as int,
+    archivedPatientCount: results[6] as int,
+    unreadNotifications: results[7] as int,
+    recentPatients: results[8] as List<Patient>,
+    recentActivity: results[9] as List<AuditLog>,
     timestamp: DateTime.now(),
   );
 });

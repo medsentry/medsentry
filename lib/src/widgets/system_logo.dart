@@ -1,7 +1,8 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+
+import '../utils/logo_utils.dart';
 
 class SystemLogo extends StatelessWidget {
   final String dataUri;
@@ -44,13 +45,6 @@ class SystemLogo extends StatelessWidget {
   }
 
   Uint8List? _decodeImage() {
-    if (!dataUri.startsWith('data:image/')) return null;
-    final separator = dataUri.indexOf(',');
-    if (separator < 0) return null;
-    try {
-      return base64Decode(dataUri.substring(separator + 1));
-    } on FormatException {
-      return null;
-    }
+    return decodeLogoDataUri(dataUri);
   }
 }

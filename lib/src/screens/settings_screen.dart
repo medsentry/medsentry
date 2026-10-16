@@ -77,7 +77,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _buildListTile(
                 context,
                 'Clinic / RHU Information',
-                'Manage clinic name, address, contact, and patient ID format',
+                'Manage clinic details, patient ID format, and system logo',
                 Icons.local_hospital_outlined,
                 () => _showSystemSettingsDialog(context, ref),
               ),
@@ -1011,7 +1011,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Shown in the app header and login'),
+                                Text(
+                                  'Shown throughout the app, browser tab, and exported PDFs.',
+                                  style: Theme.of(ctx).textTheme.bodySmall,
+                                ),
                                 const SizedBox(height: 8),
                                 Wrap(
                                   spacing: 8,
@@ -1204,10 +1207,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         );
                     ref.invalidate(systemSettingsProvider);
+                    final syncResult = await ref
+                        .read(syncServiceProvider)
+                        .startSync();
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('System settings saved')),
+                        SnackBar(
+                          content: Text(
+                            syncResult.success
+                                ? 'System settings saved and synchronized.'
+                                : 'Settings saved locally; cloud sync was not completed: ${syncResult.message}',
+                          ),
+                        ),
                       );
                     }
                   },

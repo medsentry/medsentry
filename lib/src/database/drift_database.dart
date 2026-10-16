@@ -112,7 +112,7 @@ extension DocumentEntityMapper on DocumentEntity {
       mimeType: fileType,
       scannedBy: uploadedBy,
       scanDate: createdAt,
-      status: DocumentStatus.values.firstWhere((e) => e.name == status, orElse: () => DocumentStatus.pending),
+      status: documentStatusFromPersistedValue(status),
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

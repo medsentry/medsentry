@@ -8,6 +8,7 @@ import 'package:medsentry/src/models/consultation.dart';
 import 'package:medsentry/src/models/document.dart';
 import 'package:medsentry/src/models/generated_report.dart';
 import 'package:medsentry/src/models/system_notification.dart';
+import 'package:medsentry/src/services/notification_service.dart';
 
 void main() {
   late SimpleDatabase db;
@@ -178,6 +179,30 @@ void main() {
 
     expect(await db.getUnreadNotificationCount(NotificationTarget.staff), 0);
     expect(await db.getUnreadNotificationCount(NotificationTarget.admin), 1);
+  });
+
+  test('refresh removes obsolete pending-document notifications', () async {
+    await db.insertNotification(
+      SystemNotification(
+        id: 'pending_docs',
+        type: NotificationType.pendingDocument,
+        target: NotificationTarget.staff,
+        priority: NotificationPriority.normal,
+        title: 'Pending Document Uploads',
+        message: 'Documents awaiting verification.',
+        actionRoute: '/documents',
+        createdAt: DateTime.now(),
+      ),
+    );
+
+    await NotificationService(db).refreshSystemNotifications();
+
+    expect(
+      (await db.getNotifications()).any(
+        (notification) => notification.id == 'pending_docs',
+      ),
+      isFalse,
+    );
   });
 
   test(

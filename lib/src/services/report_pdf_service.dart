@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/models.dart';
+import '../utils/logo_utils.dart';
 
 /// Service responsible for client-side, 100% offline generation of official
 /// Philippine DOH / LGU Rural Health Unit (RHU) PDF Reports compliant with
@@ -19,6 +20,7 @@ class ReportPdfService {
     required String preparedByName,
     required String preparedByRole,
   }) async {
+    final logoBytes = decodeLogoDataUri(settings.logoDataUri);
     final pdf = pw.Document(
       title: 'MedSentry - Patient Visits and Consultations',
       author: 'MedSentry RHU Healthcare System',
@@ -33,13 +35,30 @@ class ReportPdfService {
         header: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text(
-              settings.clinicName,
-              style: pw.TextStyle(
-                fontSize: 15,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.teal900,
-              ),
+            pw.Row(
+              children: [
+                if (logoBytes != null) ...[
+                  pw.SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: pw.Image(
+                      pw.MemoryImage(logoBytes),
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ),
+                  pw.SizedBox(width: 8),
+                ],
+                pw.Expanded(
+                  child: pw.Text(
+                    settings.clinicName,
+                    style: pw.TextStyle(
+                      fontSize: 15,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.teal900,
+                    ),
+                  ),
+                ),
+              ],
             ),
             pw.SizedBox(height: 3),
             pw.Text(
@@ -169,6 +188,7 @@ class ReportPdfService {
     );
 
     final generatedAt = DateTime.now();
+    final logoBytes = decodeLogoDataUri(settings.logoDataUri);
     final summary = (reportData['summary'] as Map<String, dynamic>?) ?? {};
     final patientRecords =
         (reportData['patient_records'] as List<dynamic>?) ?? [];
@@ -183,13 +203,14 @@ class ReportPdfService {
         margin: const pw.EdgeInsets.symmetric(horizontal: 36, vertical: 32),
         header: (pw.Context context) {
           if (context.pageNumber == 1) {
-            return _buildFirstPageHeader(settings);
+            return _buildFirstPageHeader(settings, logoBytes: logoBytes);
           } else {
             return _buildRunningHeader(
               settings: settings,
               reportType: reportType,
               startDate: startDate,
               endDate: endDate,
+              logoBytes: logoBytes,
             );
           }
         },
@@ -242,7 +263,10 @@ class ReportPdfService {
   // HEADER FORMATTING
   // ==========================================
 
-  pw.Widget _buildFirstPageHeader(SystemSettings settings) {
+  pw.Widget _buildFirstPageHeader(
+    SystemSettings settings, {
+    Uint8List? logoBytes,
+  }) {
     final province = settings.province.isNotEmpty
         ? settings.province
         : 'Surigao del Sur';
@@ -319,7 +343,7 @@ class ReportPdfService {
             ),
 
             // Right MedSentry Healthcare MIS Crest
-            _buildMedSentrySeal(),
+            _buildMedSentrySeal(logoBytes),
           ],
         ),
         pw.SizedBox(height: 8),
@@ -344,6 +368,7 @@ class ReportPdfService {
     required String reportType,
     required DateTime startDate,
     required DateTime endDate,
+    Uint8List? logoBytes,
   }) {
     final dateRangeStr =
         '${DateFormat('MMM dd, yyyy').format(startDate)} - ${DateFormat('MMM dd, yyyy').format(endDate)}';
@@ -353,13 +378,29 @@ class ReportPdfService {
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(
-              '${settings.clinicName} | $reportType',
-              style: pw.TextStyle(
-                fontSize: 8,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.blueGrey800,
-              ),
+            pw.Row(
+              mainAxisSize: pw.MainAxisSize.min,
+              children: [
+                if (logoBytes != null) ...[
+                  pw.SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: pw.Image(
+                      pw.MemoryImage(logoBytes),
+                      fit: pw.BoxFit.contain,
+                    ),
+                  ),
+                  pw.SizedBox(width: 5),
+                ],
+                pw.Text(
+                  '${settings.clinicName} | $reportType',
+                  style: pw.TextStyle(
+                    fontSize: 8,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.blueGrey800,
+                  ),
+                ),
+              ],
             ),
             pw.Text(
               'Period: $dateRangeStr',
@@ -411,7 +452,7 @@ class ReportPdfService {
     );
   }
 
-  pw.Widget _buildMedSentrySeal() {
+  pw.Widget _buildMedSentrySeal(Uint8List? logoBytes) {
     return pw.Container(
       width: 48,
       height: 48,
@@ -421,27 +462,35 @@ class ReportPdfService {
         color: PdfColors.blueGrey50,
       ),
       alignment: pw.Alignment.center,
-      child: pw.Column(
-        mainAxisAlignment: pw.MainAxisAlignment.center,
-        children: [
-          pw.Text(
-            '+',
-            style: pw.TextStyle(
-              color: PdfColors.teal800,
-              fontSize: 16,
-              fontWeight: pw.FontWeight.bold,
+      child: logoBytes == null
+          ? pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                pw.Text(
+                  '+',
+                  style: pw.TextStyle(
+                    color: PdfColors.teal800,
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'MEDSENTRY',
+                  style: pw.TextStyle(
+                    color: PdfColors.blueGrey900,
+                    fontSize: 5.5,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ],
+            )
+          : pw.Padding(
+              padding: const pw.EdgeInsets.all(4),
+              child: pw.Image(
+                pw.MemoryImage(logoBytes),
+                fit: pw.BoxFit.contain,
+              ),
             ),
-          ),
-          pw.Text(
-            'MEDSENTRY',
-            style: pw.TextStyle(
-              color: PdfColors.blueGrey900,
-              fontSize: 5.5,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1068,6 +1117,7 @@ class ReportPdfService {
     List<Consultation> consultations = const [],
     List<MedicalDocument> documents = const [],
   }) async {
+    final logoBytes = decodeLogoDataUri(settings.logoDataUri);
     final pdf = pw.Document(
       title: 'MedSentry - Health Record - ${patient.fullName}',
       author: 'MedSentry RHU Healthcare System',
@@ -1083,7 +1133,7 @@ class ReportPdfService {
         margin: const pw.EdgeInsets.symmetric(horizontal: 36, vertical: 32),
         header: (pw.Context context) {
           if (context.pageNumber == 1) {
-            return _buildFirstPageHeader(settings);
+            return _buildFirstPageHeader(settings, logoBytes: logoBytes);
           } else {
             return pw.Column(
               children: [

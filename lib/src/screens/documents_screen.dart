@@ -2090,8 +2090,6 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
       mimeType: existing.mimeType,
       scannedBy: existing.scannedBy,
       scanDate: existing.scanDate,
-      verifiedBy: existing.verifiedBy,
-      verifiedDate: existing.verifiedDate,
       status: existing.status,
       notes: _notesController.text.trim().isEmpty
           ? null

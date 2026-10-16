@@ -233,13 +233,11 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  /// Factory for DocumentStatus
+  /// Factory for archived document status.
   factory StatusBadge.fromDocumentStatus(DocumentStatus status) {
     switch (status) {
-      case DocumentStatus.verified:
-        return StatusBadge.completed(text: 'Verified');
-      case DocumentStatus.pending:
-        return StatusBadge.pending(text: 'Pending');
+      case DocumentStatus.active:
+        return StatusBadge.active(text: 'Active');
       case DocumentStatus.archived:
         return StatusBadge.inactive(text: 'Archived');
     }

@@ -342,7 +342,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'MedSentry',
+                              settings.appName,
                               style: TextStyle(
                                 color: isDark
                                     ? AppColors.textPrimary
@@ -553,10 +553,13 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       child: Align(
         alignment: isExpanded ? Alignment.centerLeft : Alignment.center,
         child: Tooltip(
-          message: 'MedSentry Clinical System',
+          message: '${settings.appName} Clinical System',
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () => context.go('/'),
+            onTap: () {
+              final user = ref.read(currentUserProvider);
+              context.go(user?.homePath ?? '/dashboard');
+            },
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

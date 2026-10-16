@@ -8,24 +8,11 @@ class NotificationService {
 
   /// Scan system state and create alerts for admin/staff.
   Future<void> refreshSystemNotifications() async {
-    final pendingDocs = await _db.getPendingDocumentCount();
+    await _db.deleteNotification('pending_docs');
     final pendingSync = await _db.getPendingSyncCount();
     final failedLogins = await _db.getFailedLoginCount(
       within: const Duration(days: 1),
     );
-
-    if (pendingDocs > 0) {
-      await _upsertNotification(
-        id: 'pending_docs',
-        type: NotificationType.pendingDocument,
-        target: NotificationTarget.staff,
-        priority: NotificationPriority.normal,
-        title: 'Pending Document Uploads',
-        message:
-            '$pendingDocs document${pendingDocs == 1 ? '' : 's'} awaiting verification or upload.',
-        actionRoute: '/documents',
-      );
-    }
 
     if (pendingSync > 0) {
       await _upsertNotification(

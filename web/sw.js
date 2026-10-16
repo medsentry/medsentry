@@ -1,6 +1,6 @@
 // MedSentry Offline-First Service Worker
 const CACHE_PREFIX = 'medsentry-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v1.0.13`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.0.14`;
 const APP_SHELL_ASSETS = [
   './',
   'index.html',

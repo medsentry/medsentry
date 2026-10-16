@@ -7,7 +7,16 @@ enum DocumentType {
   other,
 }
 
-enum DocumentStatus { pending, verified, archived }
+enum DocumentStatus { active, archived }
+
+DocumentStatus documentStatusFromPersistedValue(Object? value) {
+  final normalized = value is String ? value.trim().toLowerCase() : null;
+  return switch (normalized) {
+    'archived' => DocumentStatus.archived,
+    'active' || 'pending' || 'verified' || null || '' => DocumentStatus.active,
+    _ => throw FormatException('Unsupported medical document status: $value'),
+  };
+}
 
 class MedicalDocument {
   final String id;
@@ -22,8 +31,6 @@ class MedicalDocument {
   final String? mimeType;
   final String? scannedBy;
   final DateTime? scanDate;
-  final String? verifiedBy;
-  final DateTime? verifiedDate;
   final DocumentStatus status;
   final String? notes;
   final DateTime? createdAt;
@@ -43,9 +50,7 @@ class MedicalDocument {
     this.mimeType,
     this.scannedBy,
     this.scanDate,
-    this.verifiedBy,
-    this.verifiedDate,
-    this.status = DocumentStatus.verified,
+    this.status = DocumentStatus.active,
     this.notes,
     this.createdAt,
     this.updatedAt,
@@ -71,10 +76,8 @@ class MedicalDocument {
 
   String get statusDisplay {
     switch (status) {
-      case DocumentStatus.pending:
-        return 'Pending';
-      case DocumentStatus.verified:
-        return 'Verified';
+      case DocumentStatus.active:
+        return 'Active';
       case DocumentStatus.archived:
         return 'Archived';
     }
@@ -97,8 +100,6 @@ class MedicalDocument {
     String? mimeType,
     String? scannedBy,
     DateTime? scanDate,
-    String? verifiedBy,
-    DateTime? verifiedDate,
     DocumentStatus? status,
     String? notes,
     DateTime? createdAt,
@@ -118,8 +119,6 @@ class MedicalDocument {
       mimeType: mimeType ?? this.mimeType,
       scannedBy: scannedBy ?? this.scannedBy,
       scanDate: scanDate ?? this.scanDate,
-      verifiedBy: verifiedBy ?? this.verifiedBy,
-      verifiedDate: verifiedDate ?? this.verifiedDate,
       status: status ?? this.status,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
@@ -142,8 +141,6 @@ class MedicalDocument {
       'mime_type': mimeType,
       'scanned_by': scannedBy,
       'scan_date': scanDate?.toIso8601String(),
-      'verified_by': verifiedBy,
-      'verified_date': verifiedDate?.toIso8601String(),
       'status': status.name,
       'notes': notes,
       'created_at': createdAt?.toIso8601String(),
@@ -154,8 +151,6 @@ class MedicalDocument {
 
   factory MedicalDocument.fromJson(Map<String, dynamic> json) {
     final rawType = json['type'] as String?;
-    final rawStatus = json['status'] as String?;
-
     return MedicalDocument(
       id: json['id'] as String,
       patientId: json['patient_id'] as String,
@@ -174,14 +169,7 @@ class MedicalDocument {
       scanDate: json['scan_date'] != null
           ? DateTime.tryParse(json['scan_date'] as String)
           : null,
-      verifiedBy: json['verified_by'] as String?,
-      verifiedDate: json['verified_date'] != null
-          ? DateTime.tryParse(json['verified_date'] as String)
-          : null,
-      status: DocumentStatus.values.firstWhere(
-        (e) => e.name.toLowerCase() == (rawStatus ?? '').trim().toLowerCase(),
-        orElse: () => DocumentStatus.pending,
-      ),
+      status: documentStatusFromPersistedValue(json['status']),
       notes: json['notes'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String)

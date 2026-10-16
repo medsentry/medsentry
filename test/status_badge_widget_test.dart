@@ -29,8 +29,8 @@ void main() {
     });
 
     testWidgets('renders fromDocumentStatus correctly', (tester) async {
-      await tester.pumpWidget(createTestWidget(StatusBadge.fromDocumentStatus(DocumentStatus.verified)));
-      expect(find.text('Verified'), findsOneWidget);
+      await tester.pumpWidget(createTestWidget(StatusBadge.fromDocumentStatus(DocumentStatus.archived)));
+      expect(find.text('Archived'), findsOneWidget);
     });
   });
 }
