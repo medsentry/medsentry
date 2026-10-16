@@ -8,7 +8,6 @@ class NotificationService {
 
   /// Scan system state and create alerts for admin/staff.
   Future<void> refreshSystemNotifications() async {
-    await _db.getPendingDocumentCount();
     final pendingDocs = await _db.getPendingDocumentCount();
     final pendingSync = await _db.getPendingSyncCount();
     final failedLogins = await _db.getFailedLoginCount(
@@ -53,7 +52,6 @@ class NotificationService {
         actionRoute: '/audit-logs',
       );
     }
-
   }
 
   Future<void> notifyIncompleteRecord(

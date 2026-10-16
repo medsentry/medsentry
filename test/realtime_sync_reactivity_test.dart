@@ -130,6 +130,56 @@ void main() {
     },
   );
 
+  test('notifications can be filtered and marked read by target', () async {
+    final now = DateTime.now();
+    await db.insertNotification(
+      SystemNotification(
+        id: 'staff-alert',
+        type: NotificationType.pendingDocument,
+        target: NotificationTarget.staff,
+        priority: NotificationPriority.normal,
+        title: 'Pending documents',
+        message: 'Documents need review.',
+        createdAt: now,
+      ),
+    );
+    await db.insertNotification(
+      SystemNotification(
+        id: 'shared-alert',
+        type: NotificationType.syncFailed,
+        target: NotificationTarget.all,
+        priority: NotificationPriority.high,
+        title: 'Sync pending',
+        message: 'Records need sync.',
+        createdAt: now,
+      ),
+    );
+    await db.insertNotification(
+      SystemNotification(
+        id: 'admin-alert',
+        type: NotificationType.suspiciousActivity,
+        target: NotificationTarget.admin,
+        priority: NotificationPriority.urgent,
+        title: 'Security alert',
+        message: 'Review recent activity.',
+        createdAt: now,
+      ),
+    );
+
+    expect(await db.getUnreadNotificationCount(NotificationTarget.staff), 2);
+    expect(
+      (await db.getNotifications(
+        target: NotificationTarget.staff,
+      )).map((notification) => notification.id).toSet(),
+      {'staff-alert', 'shared-alert'},
+    );
+
+    await db.markAllNotificationsRead(NotificationTarget.staff);
+
+    expect(await db.getUnreadNotificationCount(NotificationTarget.staff), 0);
+    expect(await db.getUnreadNotificationCount(NotificationTarget.admin), 2);
+  });
+
   test(
     'a remote update does not replace an unsynced local patient edit',
     () async {

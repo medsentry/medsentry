@@ -1142,6 +1142,10 @@ class AuthRepository {
 
         if (profile != null) {
           final remoteUser = User.fromJson(Map<String, dynamic>.from(profile));
+          if (localUser == null || remoteUser.id != localUser.id) {
+            await _supabase.auth.signOut();
+            return localUser?.isActive == true ? localUser : null;
+          }
           if (!remoteUser.isActive) {
             unawaited(_supabase.auth.signOut().catchError((_) {}));
             await _clearCurrentUserSession();
@@ -1151,11 +1155,7 @@ class AuthRepository {
           final currentUser = remoteUser.copyWith(
             pinHash: candidateUser?.pinHash,
           );
-          if (candidateUser == null) {
-            await _db.insertUser(currentUser);
-          } else {
-            await _db.updateUser(currentUser);
-          }
+          await _db.updateUser(currentUser);
           return currentUser;
         }
       } catch (e) {

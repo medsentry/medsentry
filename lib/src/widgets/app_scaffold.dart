@@ -979,6 +979,17 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     NotificationTarget target,
   ) async {
     final router = GoRouter.of(context);
+    try {
+      await ref.read(notificationServiceProvider).refreshSystemNotifications();
+      ref.invalidate(notificationsProvider(target));
+    } catch (e) {
+      AppNotification.error(
+        title: 'Notification Error',
+        message: 'Could not refresh notifications: $e',
+      );
+      return;
+    }
+
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => _NotificationsDialog(
