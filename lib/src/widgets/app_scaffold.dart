@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,15 +62,21 @@ class AppScaffold extends ConsumerStatefulWidget {
 
 class _AppScaffoldState extends ConsumerState<AppScaffold> {
   bool _sidebarExpanded = true;
+  Timer? _clockTimer;
+  DateTime _currentTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     ServicesBinding.instance.keyboard.addHandler(_handleKeyEvent);
+    _clockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) setState(() => _currentTime = DateTime.now());
+    });
   }
 
   @override
   void dispose() {
+    _clockTimer?.cancel();
     ServicesBinding.instance.keyboard.removeHandler(_handleKeyEvent);
     super.dispose();
   }
@@ -736,11 +744,12 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         ? '$timeGreeting, $userName $greetingIcon'
         : widget.title;
 
-    final dateStr = DateFormat('EEEE, d MMMM y').format(DateTime.now());
+    final timeStr = DateFormat('h:mm a').format(_currentTime);
+    final dateStr = DateFormat('EEEE, d MMMM y').format(_currentTime);
     final facility = settings.clinicName.isNotEmpty
         ? settings.clinicName
-        : 'Ward 4B — Cardiology';
-    final subtitle = '$dateStr · $facility';
+        : 'Madrid Rural Health Unit';
+    final subtitle = '$timeStr PHT · $dateStr · $facility';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -789,9 +798,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                     ),
                   ),
                   const SizedBox(width: 5),
-                  const Text(
-                    'Live Monitoring',
-                    style: TextStyle(
+                  Text(
+                    '$timeStr PHT • Live',
+                    style: const TextStyle(
                       color: AppColors.primaryEmerald,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -896,7 +905,42 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        // Quick Action Button
+        _buildQuickActionMenu(context, user, isDark),
+        const SizedBox(width: 10),
+
+        // Theme Mode Toggle Button
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.cardSurface
+                : AppColors.lightElevatedSurface,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isDark ? AppColors.border : AppColors.lightBorder,
+              width: 1,
+            ),
+          ),
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+            icon: Icon(
+              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              size: 19,
+              color: isDark
+                  ? const Color(0xFFFBBF24)
+                  : AppColors.lightTextSecondary,
+            ),
+            onPressed: () {
+              ref
+                  .read(themeModeProvider.notifier)
+                  .setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+            },
+          ),
+        ),
+        const SizedBox(width: 10),
 
         // Notification Bell Icon Button
         Container(
@@ -974,6 +1018,159 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           _buildProfileButton(context, user),
         ],
       ],
+    );
+  }
+
+  Widget _buildQuickActionMenu(BuildContext context, User? user, bool isDark) {
+    return PopupMenuButton<String>(
+      tooltip: 'Quick Actions',
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isDark ? AppColors.border : AppColors.lightBorder,
+        ),
+      ),
+      color: isDark ? AppColors.elevatedSurface : Colors.white,
+      onSelected: (action) {
+        switch (action) {
+          case 'patient':
+            context.go('/patients?action=add-patient');
+            break;
+          case 'certificate':
+            context.go('/certificates');
+            break;
+          case 'document':
+            context.go('/documents');
+            break;
+          case 'sync':
+            context.go('/sync');
+            break;
+          case 'search':
+            showMedsentryCommandPalette(context, ref);
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        if (user?.canRegisterPatients == true)
+          const PopupMenuItem(
+            value: 'patient',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.person_add_outlined,
+                  size: 18,
+                  color: AppColors.primaryEmerald,
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'New Patient Registration',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        if (user?.canGenerateCertificates == true)
+          const PopupMenuItem(
+            value: 'certificate',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.description_outlined,
+                  size: 18,
+                  color: Color(0xFF6366F1),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Issue Medical Certificate',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        if (user?.canManageDocuments == true)
+          const PopupMenuItem(
+            value: 'document',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.upload_file_outlined,
+                  size: 18,
+                  color: Color(0xFF0EA5E9),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Upload Medical Document',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        if (user?.canSyncRecords == true)
+          const PopupMenuItem(
+            value: 'sync',
+            child: Row(
+              children: [
+                Icon(Icons.sync_rounded, size: 18, color: Color(0xFFF97316)),
+                SizedBox(width: 10),
+                Text(
+                  'Sync Health Records',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'search',
+          child: Row(
+            children: [
+              Icon(Icons.search, size: 18, color: Color(0xFFA78BFA)),
+              SizedBox(width: 10),
+              Text(
+                'Command Palette (Ctrl+K)',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+        ),
+      ],
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.primaryEmerald,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryEmerald.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_rounded, size: 18, color: Colors.white),
+            SizedBox(width: 6),
+            Text(
+              'Quick Action',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(width: 2),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: Colors.white,
+            ),
+          ],
+        ),
+      ),
     );
   }
 

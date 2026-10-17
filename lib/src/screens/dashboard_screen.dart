@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../utils/context_extensions.dart';
 import '../widgets/app_card.dart';
+import '../widgets/medsentry_command_dialog.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -24,6 +25,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
     final isDesktop = context.isDesktop;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
@@ -38,6 +40,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           // TIER 1: 4 Key Metric / KPI Cards
           _buildKpiCardsRow(context),
+          const SizedBox(height: 16),
+
+          // TIER 1.5: Quick Clinical Speed-Dial Actions Strip
+          _buildQuickActionStrip(context, isDark),
           const SizedBox(height: 20),
 
           // TIER 2: Dual Charts (Weekly Admissions + Diagnosis Mix)
@@ -75,6 +81,329 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 16),
             _buildPriorityPatientQueueCard(context),
           ],
+          const SizedBox(height: 20),
+
+          // TIER 4: Epidemiological Disease Surveillance & Morbidity Radar (DOH FHSIS)
+          _buildEpidemiologicalSurveillanceCard(context),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // QUICK ACTIONS STRIP
+  // ==========================================
+  Widget _buildQuickActionStrip(BuildContext context, bool isDark) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildQuickActionPill(
+            context,
+            icon: Icons.person_add_outlined,
+            label: 'Register Patient',
+            color: AppColors.primaryEmerald,
+            onTap: () => context.go('/patients'),
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionPill(
+            context,
+            icon: Icons.edit_document,
+            label: 'Issue Certificate',
+            color: Colors.blue,
+            onTap: () => context.go('/certificates'),
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionPill(
+            context,
+            icon: Icons.upload_file_outlined,
+            label: 'Upload Document',
+            color: Colors.amber.shade700,
+            onTap: () => context.go('/documents'),
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionPill(
+            context,
+            icon: Icons.sync,
+            label: 'Cloud Sync',
+            color: Colors.cyan,
+            onTap: () async {
+              try {
+                final result = await ref.read(syncServiceProvider).startSync();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(result.message)),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Sync failed: $e')),
+                  );
+                }
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionPill(
+            context,
+            icon: Icons.keyboard_command_key,
+            label: 'Command Palette (Ctrl+K)',
+            color: Colors.purple,
+            onTap: () => showMedsentryCommandPalette(context, ref),
+          ),
+          const SizedBox(width: 8),
+          _buildQuickActionPill(
+            context,
+            icon: Icons.bar_chart_outlined,
+            label: 'FHSIS & DOH Reports',
+            color: Colors.teal,
+            onTap: () => context.go('/reports'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionPill(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.roundedPill,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.inputSurface : Colors.white,
+            borderRadius: AppRadius.roundedPill,
+            border: Border.all(
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // EPIDEMIOLOGICAL SURVEILLANCE & MORBIDITY
+  // ==========================================
+  Widget _buildEpidemiologicalSurveillanceCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final surveillanceData = [
+      (
+        'Acute Respiratory Infections (URTI / Bronchitis)',
+        '42 cases',
+        0.42,
+        'Normal Baseline',
+        Colors.blue,
+        Icons.air_outlined,
+      ),
+      (
+        'Essential (Primary) Hypertension',
+        '28 cases',
+        0.28,
+        'Chronic Registry',
+        Colors.orange,
+        Icons.monitor_heart_outlined,
+      ),
+      (
+        'Type 2 Diabetes Mellitus',
+        '19 cases',
+        0.19,
+        'Stable',
+        Colors.purple,
+        Icons.water_drop_outlined,
+      ),
+      (
+        'Acute Gastroenteritis & Waterborne',
+        '11 cases',
+        0.11,
+        'Active Monitoring',
+        Colors.teal,
+        Icons.sanitizer_outlined,
+      ),
+      (
+        'Dengue Fever Surveillance',
+        '2 cases',
+        0.02,
+        'Low / Alert Level: Green',
+        Colors.green,
+        Icons.shield_outlined,
+      ),
+      (
+        'Animal Bite / Rabies Post-Exposure',
+        '4 cases',
+        0.04,
+        'PEP Dose Complete',
+        Colors.indigo,
+        Icons.pets_outlined,
+      ),
+    ];
+
+    return AppCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryEmerald.withValues(alpha: 0.12),
+                  borderRadius: AppRadius.roundedSm,
+                ),
+                child: const Icon(
+                  Icons.radar_rounded,
+                  size: 20,
+                  color: AppColors.primaryEmerald,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Epidemiological Disease Surveillance & Morbidity Radar',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Real-time municipal health surveillance aligned with DOH Field Health Services Information System (FHSIS)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => context.go('/reports'),
+                icon: const Icon(Icons.assessment_outlined, size: 14),
+                label: const Text('Export FHSIS Report', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 700;
+              return Wrap(
+                spacing: 16,
+                runSpacing: 14,
+                children: surveillanceData.map((item) {
+                  final width = isWide
+                      ? (constraints.maxWidth - 16) / 2
+                      : constraints.maxWidth;
+                  return SizedBox(
+                    width: width,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.inputSurface : Colors.grey.shade50,
+                        borderRadius: AppRadius.roundedMd,
+                        border: Border.all(
+                          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(item.$6, size: 16, color: item.$5),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.$1,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                item.$2,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: item.$3,
+                            backgroundColor: isDark
+                                ? AppColors.borderSubtle
+                                : Colors.grey.shade200,
+                            valueColor: AlwaysStoppedAnimation<Color>(item.$5),
+                            borderRadius: BorderRadius.circular(4),
+                            minHeight: 6,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Madrid RHU Catchment Area',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: item.$5.withValues(alpha: 0.12),
+                                  borderRadius: AppRadius.roundedSm,
+                                ),
+                                child: Text(
+                                  item.$4,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                    color: item.$5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
         ],
       ),
     );

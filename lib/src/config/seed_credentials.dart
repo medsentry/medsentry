@@ -20,6 +20,28 @@ class SeedCredentials {
       role: UserRole.superAdmin,
       contactNumber: '09170000001',
     ),
+    SeedAccount(
+      id: '00000000-0000-4000-8000-000000000002',
+      clinicId: '086814000-madrid',
+      email: 'admin@gmail.com',
+      firstName: 'Dr. Elena',
+      lastName: 'Ramos',
+      role: UserRole.admin,
+      licenseNumber: 'PRC-0129845',
+      specialization: 'Municipal Health Officer (MHO)',
+      contactNumber: '09170000002',
+    ),
+    SeedAccount(
+      id: '00000000-0000-4000-8000-000000000003',
+      clinicId: '086814000-madrid',
+      email: 'staff@gmail.com',
+      firstName: 'Joy',
+      lastName: 'Fernandez, RN',
+      role: UserRole.staff,
+      licenseNumber: 'PRC-0294821',
+      specialization: 'Public Health Nurse / Triage',
+      contactNumber: '09170000003',
+    ),
   ];
 }
 

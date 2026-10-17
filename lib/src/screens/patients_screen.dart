@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../models/patient.dart';
 import '../providers/providers.dart';
 import '../services/app_notification.dart';
+import '../utils/file_exporter/file_exporter.dart';
 import '../utils/patient_address_data.dart';
 import '../widgets/app_form_dialog.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
@@ -131,6 +133,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                       onAddPatient: canRegisterPatients
                           ? () => _showAddPatientDialog(context)
                           : null,
+                      onExportRegistry: () =>
+                          _exportPatientRegistry(filteredPatients),
                     ),
                     _PatientsToolbar(
                       searchController: _searchController,
@@ -242,6 +246,58 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       _purokFilter = null;
       _categoryFilter = null;
     });
+  }
+
+  Future<void> _exportPatientRegistry(List<Patient> patients) async {
+    if (patients.isEmpty) {
+      AppNotification.warning(
+        title: 'Export Registry',
+        message: 'No patient records to export with current filters.',
+      );
+      return;
+    }
+    try {
+      final rows = <String>[
+        'Patient ID,Full Name,Gender,Birth Date,Age,Civil Status,Barangay,Purok,Contact Number,PhilHealth Number,Category,PWD',
+      ];
+      for (final p in patients) {
+        final dobStr = p.dateOfBirth != null
+            ? DateFormat('yyyy-MM-dd').format(p.dateOfBirth!)
+            : '';
+        rows.add([
+          '"${p.id}"',
+          '"${p.fullName.replaceAll('"', '""')}"',
+          '"${p.gender ?? ''}"',
+          '"$dobStr"',
+          '"${p.age ?? ''}"',
+          '"${p.civilStatus ?? ''}"',
+          '"${p.barangay ?? ''}"',
+          '"${p.purokSitio ?? ''}"',
+          '"${p.contactNumber ?? ''}"',
+          '"${p.philHealthNumber ?? ''}"',
+          '"${p.category?.displayName ?? ''}"',
+          '"${p.isPwd ? 'Yes' : 'No'}"',
+        ].join(','));
+      }
+      final csvContent = rows.join('\r\n');
+      final filename =
+          'RHU_Madrid_Patient_Registry_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
+      final path = await createFileExporter().exportTextFile(
+        filename: filename,
+        content: csvContent,
+      );
+      if (path.isNotEmpty) {
+        AppNotification.success(
+          title: 'Export Successful',
+          message: 'Saved ${patients.length} patient records to $filename',
+        );
+      }
+    } catch (e) {
+      AppNotification.error(
+        title: 'Export Failed',
+        message: 'Could not export patient registry: $e',
+      );
+    }
   }
 
   List<String> _uniqueSorted(Iterable<String?> values) {
@@ -392,12 +448,14 @@ class _PatientsPageHeader extends StatelessWidget {
   final int filteredCount;
   final int barangayCount;
   final VoidCallback? onAddPatient;
+  final VoidCallback? onExportRegistry;
 
   const _PatientsPageHeader({
     required this.totalCount,
     required this.filteredCount,
     required this.barangayCount,
     this.onAddPatient,
+    this.onExportRegistry,
   });
 
   @override
@@ -421,7 +479,7 @@ class _PatientsPageHeader extends StatelessWidget {
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 520;
+                final isNarrow = constraints.maxWidth < 580;
                 final isDark = theme.brightness == Brightness.dark;
                 final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
 
@@ -471,6 +529,14 @@ class _PatientsPageHeader extends StatelessWidget {
                   ],
                 );
 
+                final exportButton = onExportRegistry != null
+                    ? OutlinedButton.icon(
+                        onPressed: onExportRegistry,
+                        icon: const Icon(Icons.file_download_outlined, size: 16),
+                        label: const Text('Export CSV'),
+                      )
+                    : null;
+
                 final registerButton = onAddPatient != null
                     ? FilledButton.icon(
                         onPressed: onAddPatient,
@@ -484,11 +550,15 @@ class _PatientsPageHeader extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       titleSection,
-                      if (registerButton != null) ...[
+                      if (exportButton != null || registerButton != null) ...[
                         const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: registerButton,
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ?exportButton,
+                            ?registerButton,
+                          ],
                         ),
                       ],
                     ],
@@ -498,8 +568,11 @@ class _PatientsPageHeader extends StatelessWidget {
                 return Row(
                   children: [
                     Expanded(child: titleSection),
+                    if (exportButton != null) ...[
+                      exportButton,
+                      const SizedBox(width: 8),
+                    ],
                     if (registerButton != null) ...[
-                      const SizedBox(width: 12),
                       registerButton,
                     ],
                   ],
@@ -1121,6 +1194,42 @@ class _PatientRegistrationWizardState
     extends ConsumerState<_PatientRegistrationWizard> {
   bool _showValidationErrors = false;
   bool _isSubmitting = false;
+  int _currentStep = 0;
+
+  static const List<String> _commonAllergies = [
+    'Penicillin',
+    'Amoxicillin',
+    'Aspirin / NSAIDs',
+    'Sulfa Drugs',
+    'Seafood',
+    'Iodine',
+    'Latex',
+    'No Known Allergies (NKDA)',
+  ];
+
+  void _toggleAllergy(String allergy) {
+    final current = _allergiesController.text.trim();
+    if (allergy == 'No Known Allergies (NKDA)') {
+      setState(() => _allergiesController.text = 'NKDA');
+      return;
+    }
+    final list = current.isEmpty
+        ? <String>[]
+        : current
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty && s != 'NKDA')
+            .toList();
+
+    if (list.contains(allergy)) {
+      list.remove(allergy);
+    } else {
+      list.add(allergy);
+    }
+    setState(() {
+      _allergiesController.text = list.join(', ');
+    });
+  }
 
   // Step 1: Personal Information
   final _firstNameController = TextEditingController();
@@ -1567,36 +1676,240 @@ class _PatientRegistrationWizardState
     return 'Use 12 digits or leave it blank.';
   }
 
+  String _stepTitle(int step) {
+    switch (step) {
+      case 0:
+        return 'Personal Demographics';
+      case 1:
+        return 'Address & Household';
+      case 2:
+        return 'Emergency Contact';
+      case 3:
+        return 'Medical Profile & PhilHealth';
+      default:
+        return '';
+    }
+  }
+
+  bool _validateStep(int step) {
+    setState(() => _showValidationErrors = true);
+    switch (step) {
+      case 0:
+        return isValidPersonName(_firstNameController.text) &&
+            isValidPersonName(_lastNameController.text) &&
+            _dateOfBirth != null &&
+            _gender != null &&
+            _civilStatus != null;
+      case 1:
+        return (_streetController.text.trim().isEmpty ||
+                isValidPostalAddress(_streetController.text)) &&
+            _selectedBarangay != null &&
+            _selectedPurok != null &&
+            _selectedCity != null &&
+            _zipCodeController.text.trim().isNotEmpty &&
+            _isValidOptionalMobile(_contactNumberController.text) &&
+            _isValidOptionalEmail(_emailController.text);
+      case 2:
+        return isValidPersonName(_emergencyNameController.text) &&
+            _emergencyRelationController.text.trim().isNotEmpty &&
+            _isValidMobile(_emergencyContactController.text);
+      case 3:
+        return _isValidOptionalPhilHealth(_philHealthController.text);
+      default:
+        return true;
+    }
+  }
+
+  String? _validateStepMessage(int step) {
+    switch (step) {
+      case 0:
+        if (!isValidPersonName(_firstNameController.text) ||
+            !isValidPersonName(_lastNameController.text)) {
+          return 'Please enter valid first and last names (letters only).';
+        }
+        if (_dateOfBirth == null) return 'Please select birth date.';
+        if (_gender == null) return 'Please select gender.';
+        if (_civilStatus == null) return 'Please select civil status.';
+        return null;
+      case 1:
+        if (_selectedCity == null ||
+            _selectedBarangay == null ||
+            _selectedPurok == null) {
+          return 'Please select Municipality, Barangay, and Purok.';
+        }
+        if (_zipCodeController.text.trim().isEmpty) {
+          return 'Please enter ZIP code.';
+        }
+        if (!_isValidOptionalMobile(_contactNumberController.text)) {
+          return 'Contact number must be 11 digits starting with 09.';
+        }
+        return null;
+      case 2:
+        if (!isValidPersonName(_emergencyNameController.text)) {
+          return 'Please enter emergency contact name.';
+        }
+        if (_emergencyRelationController.text.trim().isNotEmpty != true) {
+          return 'Please specify relationship with emergency contact.';
+        }
+        if (!_isValidMobile(_emergencyContactController.text)) {
+          return 'Emergency contact number must be 11 digits starting with 09.';
+        }
+        return null;
+      case 3:
+        if (!_isValidOptionalPhilHealth(_philHealthController.text)) {
+          return 'PhilHealth number must be 12 digits or blank.';
+        }
+        return null;
+      default:
+        return null;
+    }
+  }
+
+  Widget _buildStepProgressBar(
+    BuildContext context,
+    bool isDark,
+    Color primary,
+  ) {
+    final steps = [
+      (0, 'Identity', Icons.person_outline),
+      (1, 'Address', Icons.home_outlined),
+      (2, 'Emergency', Icons.contact_phone_outlined),
+      (3, 'Medical', Icons.health_and_safety_outlined),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.elevatedSurface : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDark ? AppColors.border : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Row(
+        children: steps.map((s) {
+          final idx = s.$1;
+          final title = s.$2;
+          final isActive = _currentStep == idx;
+          final isPast = _currentStep > idx;
+
+          return Expanded(
+            child: InkWell(
+              onTap: () {
+                if (idx < _currentStep || _validateStep(_currentStep)) {
+                  setState(() {
+                    _showValidationErrors = false;
+                    _currentStep = idx;
+                  });
+                }
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: isPast
+                            ? AppColors.primaryEmerald
+                            : isActive
+                            ? primary
+                            : (isDark ? Colors.white12 : Colors.black12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: isPast
+                            ? const Icon(
+                                Icons.check,
+                                size: 13,
+                                color: Colors.white,
+                              )
+                            : Text(
+                                '${idx + 1}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: isActive
+                                      ? Colors.white
+                                      : (isDark
+                                            ? Colors.white70
+                                            : Colors.black54),
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isActive
+                              ? (isDark ? Colors.white : primary)
+                              : (isDark
+                                    ? AppColors.textSecondary
+                                    : Colors.black54),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildCurrentStepContent() {
+    switch (_currentStep) {
+      case 0:
+        return _buildStep1PersonalInfo();
+      case 1:
+        return _buildStep2ContactInfo();
+      case 2:
+        return _buildStep3EmergencyContact();
+      case 3:
+        return _buildStep4MedicalInfo();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = isDark
+        ? AppColors.primaryEmerald
+        : theme.colorScheme.primary;
+
     return AppFormDialog(
       icon: Icons.person_add_outlined,
       title: 'New Patient Registration',
-      subtitle:
-          'Complete all required fields below to register a new patient in the health record.',
+      subtitle: 'Step ${_currentStep + 1} of 4: ${_stepTitle(_currentStep)}',
       maxWidth: 900,
       content: SizedBox(
         height: MediaQuery.sizeOf(context).height * 0.72,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildStep1PersonalInfo(),
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 24),
-              _buildStep2ContactInfo(),
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 24),
-              _buildStep3EmergencyContact(),
-              const SizedBox(height: 24),
-              const Divider(),
-              const SizedBox(height: 24),
-              _buildStep4MedicalInfo(),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildStepProgressBar(context, isDark, primary),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                child: _buildCurrentStepContent(),
+              ),
+            ),
+          ],
         ),
       ),
       actions: [
@@ -1604,12 +1917,41 @@ class _PatientRegistrationWizardState
           label: 'Cancel',
           onPressed: () => Navigator.pop(context),
         ),
-        AppDialogAction(
-          label: _isSubmitting ? 'Registering...' : 'Register Patient',
-          isPrimary: true,
-          icon: _isSubmitting ? null : Icons.check,
-          onPressed: _isSubmitting ? null : _submit,
-        ),
+        if (_currentStep > 0)
+          AppDialogAction(
+            label: 'Previous',
+            icon: Icons.arrow_back,
+            onPressed: () => setState(() => _currentStep--),
+          ),
+        if (_currentStep < 3)
+          AppDialogAction(
+            label: 'Next Step',
+            isPrimary: true,
+            icon: Icons.arrow_forward,
+            onPressed: () {
+              if (_validateStep(_currentStep)) {
+                setState(() {
+                  _showValidationErrors = false;
+                  _currentStep++;
+                });
+              } else {
+                final msg = _validateStepMessage(_currentStep);
+                AppNotification.warning(
+                  title: 'Required Information Missing',
+                  message:
+                      msg ??
+                      'Please fill out all required fields before continuing.',
+                );
+              }
+            },
+          )
+        else
+          AppDialogAction(
+            label: _isSubmitting ? 'Registering...' : 'Register Patient',
+            isPrimary: true,
+            icon: _isSubmitting ? null : Icons.check_circle_outline,
+            onPressed: _isSubmitting ? null : _submit,
+          ),
       ],
     );
   }
@@ -2102,7 +2444,40 @@ class _PatientRegistrationWizardState
         const Divider(),
         const SizedBox(height: 24),
 
-        _buildSectionHeader('Medical History', Icons.history_outlined),
+        _buildSectionHeader(
+          'Medical History & Allergies',
+          Icons.history_outlined,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Common Allergies (tap chip to toggle):',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: _commonAllergies.map((allergy) {
+            final isSelected =
+                _allergiesController.text.contains(allergy) ||
+                (allergy == 'No Known Allergies (NKDA)' &&
+                    _allergiesController.text.trim() == 'NKDA');
+            return FilterChip(
+              label: Text(allergy, style: const TextStyle(fontSize: 11)),
+              selected: isSelected,
+              onSelected: (_) => _toggleAllergy(allergy),
+              selectedColor: const Color(0xFFEF4444).withValues(alpha: 0.15),
+              checkmarkColor: const Color(0xFFEF4444),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
         _buildFormField(
           label: 'Known Allergies',
           hint: 'e.g., Penicillin, Shellfish, Latex, etc.',

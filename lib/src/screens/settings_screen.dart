@@ -893,8 +893,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             if (result == null || result.files.isEmpty) return;
 
             final file = result.files.single;
-            if (file.size > 1024 * 1024) {
-              throw const FormatException('Choose an image smaller than 1 MB.');
+            if (file.size > 10 * 1024 * 1024) {
+              throw const FormatException('Choose an image smaller than 10 MB.');
             }
             final bytes = file.bytes;
             if (bytes == null || bytes.isEmpty) {
@@ -1036,7 +1036,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   ],
                                 ),
                                 Text(
-                                  'PNG, JPG, or WebP; maximum 1 MB.',
+                                  'PNG, JPG, or WebP; maximum 10 MB.',
                                   style: Theme.of(ctx).textTheme.bodySmall,
                                 ),
                               ],

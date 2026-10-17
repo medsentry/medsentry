@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../config/seed_credentials.dart';
 import '../models/models.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
@@ -37,6 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePin = true;
   bool _canCheckBiometrics = false;
   bool _rememberMe = true;
+  bool _isCapsLockOn = false;
   String? _emailError;
   String? _passwordFieldError;
   String? _pinFieldError;
@@ -45,9 +47,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    ServicesBinding.instance.keyboard.addHandler(_handleKeyEvent);
     _ensureDefaultAccounts();
     _checkPinLoginAvailability();
     _checkBiometrics();
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    final capsLockActive = HardwareKeyboard.instance.lockModesEnabled
+        .contains(KeyboardLockMode.capsLock);
+    if (capsLockActive != _isCapsLockOn && mounted) {
+      setState(() => _isCapsLockOn = capsLockActive);
+    }
+    return false;
+  }
+
+  void _quickFillDemo(String email, {bool autoLogin = false}) {
+    setState(() {
+      _isPinLogin = false;
+      _emailController.text = email;
+      _passwordController.text = SeedCredentials.defaultPassword;
+      _emailError = null;
+      _passwordFieldError = null;
+      _error = null;
+    });
+    if (autoLogin) {
+      _login();
+    }
   }
 
   Future<void> _ensureDefaultAccounts() async {
@@ -106,6 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    ServicesBinding.instance.keyboard.removeHandler(_handleKeyEvent);
     _emailController.dispose();
     _passwordController.dispose();
     _pinController.dispose();
@@ -607,6 +634,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
           const SizedBox(height: 14),
+        ] else if (!_sessionLocked) ...[
+          _buildDemoPersonas(context, isDark, primary),
         ],
 
         // Input fields with soft filled styling matching the design system
@@ -735,6 +764,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             },
             onSubmitted: (_) => _submitLogin(),
           ),
+          if (_isCapsLockOn) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.keyboard_capslock,
+                    size: 15,
+                    color: Color(0xFFD97706),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Caps Lock is active',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFD97706),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (_sessionLocked && !_pinLoginAvailable) ...[
             const SizedBox(height: 8),
             Text(
@@ -1023,7 +1084,163 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               label: const Text('Sign in as a different user'),
             ),
         ],
+
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.elevatedSurface : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.shield_outlined,
+                size: 13,
+                color: isDark ? AppColors.textSecondary : Colors.black45,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'DOH Healthcare Standards • RA 10173 • AES-256 Offline',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textSecondary : Colors.black54,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildDemoPersonas(BuildContext context, bool isDark, Color primary) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: primary.withValues(alpha: isDark ? 0.08 : 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: primary.withValues(alpha: isDark ? 0.22 : 0.16),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.flash_on_rounded, size: 15, color: primary),
+              const SizedBox(width: 6),
+              Text(
+                'QUICK DEMO PERSONAS',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                  color: primary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '1-Click Fill',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.textSecondary : Colors.black45,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildPersonaChip(
+                icon: Icons.admin_panel_settings_rounded,
+                label: 'Super Admin',
+                sub: 'Provincial Health',
+                color: const Color(0xFF6366F1),
+                onTap: () => _quickFillDemo('superadmin@gmail.com'),
+              ),
+              _buildPersonaChip(
+                icon: Icons.medical_services_rounded,
+                label: 'Dr. Elena Ramos',
+                sub: 'RHU Head / Admin',
+                color: AppColors.primaryEmerald,
+                onTap: () => _quickFillDemo('admin@gmail.com'),
+              ),
+              _buildPersonaChip(
+                icon: Icons.assignment_ind_rounded,
+                label: 'Joy Fernandez, RN',
+                sub: 'Staff / Triage',
+                color: const Color(0xFFF97316),
+                onTap: () => _quickFillDemo('staff@gmail.com'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonaChip({
+    required IconData icon,
+    required String label,
+    required String sub,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: color.withValues(alpha: isDark ? 0.15 : 0.1),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  Text(
+                    sub,
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? AppColors.textSecondary : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
