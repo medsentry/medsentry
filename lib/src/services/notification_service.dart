@@ -25,6 +25,8 @@ class NotificationService {
             '$pendingSync record${pendingSync == 1 ? '' : 's'} waiting to synchronize with cloud storage.',
         actionRoute: '/sync',
       );
+    } else {
+      await _db.deleteNotification('sync_pending');
     }
 
     if (failedLogins > 0) {
@@ -38,6 +40,8 @@ class NotificationService {
             '$failedLogins failed login attempt${failedLogins == 1 ? '' : 's'} detected in the last 24 hours.',
         actionRoute: '/audit-logs',
       );
+    } else {
+      await _db.deleteNotification('failed_logins');
     }
   }
 
@@ -70,8 +74,7 @@ class NotificationService {
       final current = existing.first;
       if (current.title == title &&
           current.message == message &&
-          current.priority == priority &&
-          !current.isRead) {
+          current.priority == priority) {
         return;
       }
       await _db.insertNotification(

@@ -19,6 +19,7 @@ class ReportService {
     required DateTime startDate,
     required DateTime endDate,
     required ReportGrouping grouping,
+    String? clinicId,
   }) async {
     if (reportType != 'Patient Statistics') {
       throw ArgumentError.value(reportType, 'reportType', 'Unsupported report');
@@ -37,11 +38,14 @@ class ReportService {
     bool inRange(DateTime? value) =>
         isWithinReportInterval(value, start, endExclusive);
 
-    final allPatients = await _db.getAllPatients(includeArchived: true);
+    final allPatients = await _db.getAllPatients(
+      includeArchived: true,
+      clinicId: clinicId,
+    );
     final patients = allPatients
         .where((patient) => !patient.isArchived && inRange(patient.createdAt))
         .toList();
-    final documents = (await _db.getDocuments())
+    final documents = (await _db.getDocuments(clinicId: clinicId))
         .where((document) => inRange(document.createdAt))
         .toList();
 

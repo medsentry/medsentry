@@ -22,6 +22,7 @@ class Clinic {
   });
 
   bool get isActive => status.toLowerCase() == 'active';
+  String? get municipality => address;
 
   Clinic copyWith({
     String? id,

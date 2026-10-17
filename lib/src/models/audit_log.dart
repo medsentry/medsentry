@@ -17,49 +17,9 @@ enum AuditAction {
   other,
 }
 
-class AuditLog {
-  final String id;
-  final String userId;
-  final String? userName;
-  final String? userRole;
-  final AuditAction action;
-  final String entityType;
-  final String? entityId;
-  final String? patientId;
-  final String? patientName;
-  final String? description;
-  final String? oldValues;
-  final String? newValues;
-  final String? ipAddress;
-  final String? deviceInfo;
-  final DateTime timestamp;
-  final bool isSynced;
-  final DateTime? syncedAt;
-  final int? syncStatus;
-
-  AuditLog({
-    required this.id,
-    required this.userId,
-    this.userName,
-    this.userRole,
-    required this.action,
-    required this.entityType,
-    this.entityId,
-    this.patientId,
-    this.patientName,
-    this.description,
-    this.oldValues,
-    this.newValues,
-    this.ipAddress,
-    this.deviceInfo,
-    required this.timestamp,
-    this.isSynced = false,
-    this.syncedAt,
-    this.syncStatus,
-  });
-
-  String get actionDisplay {
-    switch (action) {
+extension AuditActionExtension on AuditAction {
+  String get displayName {
+    switch (this) {
       case AuditAction.create:
         return 'Create';
       case AuditAction.read:
@@ -94,9 +54,70 @@ class AuditLog {
         return 'Other';
     }
   }
+}
+
+abstract final class AuditEntityTypes {
+  static const String patient = 'patient';
+  static const String document = 'document';
+  static const String certificate = 'certificate';
+  static const String report = 'report';
+  static const String user = 'user';
+  static const String clinic = 'clinic';
+  static const String settings = 'system_settings';
+  static const String database = 'database';
+  static const String sync = 'sync';
+}
+
+class AuditLog {
+  final String id;
+  final String? clinicId;
+  final String userId;
+  final String? userName;
+  final String? userRole;
+  final AuditAction action;
+  final String entityType;
+  final String? entityId;
+  final String? patientId;
+  final String? patientName;
+  final String? description;
+  final String? oldValues;
+  final String? newValues;
+  final String? ipAddress;
+  final String? deviceInfo;
+  final DateTime timestamp;
+  final bool isSynced;
+  final DateTime? syncedAt;
+  final int? syncStatus;
+
+  AuditLog({
+    required this.id,
+    this.clinicId,
+    required this.userId,
+    this.userName,
+    this.userRole,
+    required this.action,
+    required this.entityType,
+    this.entityId,
+    this.patientId,
+    this.patientName,
+    this.description,
+    this.oldValues,
+    this.newValues,
+    this.ipAddress,
+    this.deviceInfo,
+    required this.timestamp,
+    this.isSynced = false,
+    this.syncedAt,
+    this.syncStatus,
+  });
+
+  String? get details => description;
+
+  String get actionDisplay => action.displayName;
 
   AuditLog copyWith({
     String? id,
+    String? clinicId,
     String? userId,
     String? userName,
     String? userRole,
@@ -117,6 +138,7 @@ class AuditLog {
   }) {
     return AuditLog(
       id: id ?? this.id,
+      clinicId: clinicId ?? this.clinicId,
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
       userRole: userRole ?? this.userRole,
@@ -140,6 +162,7 @@ class AuditLog {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      if (clinicId != null) 'clinic_id': clinicId,
       'user_id': userId,
       'user_name': userName,
       'user_role': userRole,
@@ -165,6 +188,7 @@ class AuditLog {
 
     return AuditLog(
       id: json['id'] as String,
+      clinicId: json['clinic_id'] as String?,
       userId: json['user_id'] as String,
       userName: json['user_name'] as String?,
       userRole: json['user_role'] as String?,

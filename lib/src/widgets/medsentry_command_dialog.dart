@@ -14,6 +14,7 @@ Future<void> showMedsentryCommandPalette(
   WidgetRef ref,
 ) async {
   final user = ref.read(currentUserProvider);
+  final settings = ref.read(systemSettingsProvider).valueOrNull;
 
   await shad.showCommandDialog<void>(
     context: context,
@@ -72,6 +73,12 @@ Future<void> showMedsentryCommandPalette(
           allowed: true,
         ),
         (
+          label: 'RHU Units Management',
+          path: '/rhus',
+          icon: Icons.domain_outlined,
+          allowed: user?.isSuperAdmin == true,
+        ),
+        (
           label: 'Patients Directory',
           path: '/patients',
           icon: Icons.people_outline,
@@ -87,7 +94,9 @@ Future<void> showMedsentryCommandPalette(
           label: 'Medical Certificates Issuance',
           path: '/certificates',
           icon: Icons.description_outlined,
-          allowed: user?.canConsult == true || user?.isAdmin == true,
+          allowed:
+              user?.canGenerateCertificates == true &&
+              (settings?.certificatesModuleEnabled ?? true),
         ),
         (
           label: 'Reports & Analytics',
@@ -96,10 +105,24 @@ Future<void> showMedsentryCommandPalette(
           allowed: user?.canGenerateReports == true,
         ),
         (
+          label: 'Archived Patient Records',
+          path: '/archive',
+          icon: Icons.inventory_2_outlined,
+          allowed: user?.canManageArchive == true,
+        ),
+        (
+          label: 'Staff Accounts & Roles',
+          path: '/staff',
+          icon: Icons.manage_accounts_outlined,
+          allowed: user?.canManageStaffAccounts == true,
+        ),
+        (
           label: 'Cloud & LAN Sync',
           path: '/sync',
           icon: Icons.cloud_sync_outlined,
-          allowed: user?.canManageSystemData == true,
+          allowed:
+              user?.canSyncRecords == true &&
+              (settings?.syncModuleEnabled ?? true),
         ),
         (
           label: 'Audit Logs & Compliance',
@@ -111,7 +134,7 @@ Future<void> showMedsentryCommandPalette(
           label: 'Settings & Administration',
           path: '/settings',
           icon: Icons.settings_outlined,
-          allowed: true,
+          allowed: user?.canAccessSettings == true,
         ),
         (
           label: 'My User Profile',
@@ -156,7 +179,7 @@ Future<void> showMedsentryCommandPalette(
             icon: Icons.person_add_outlined,
             execute: () {
               Navigator.of(ctx).pop();
-              context.go('/patients');
+              context.go('/patients?action=add-patient');
             },
           ),
         (

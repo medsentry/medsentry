@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import '../models/models.dart';
-import '../models/generated_report.dart';
 import 'storage/database_storage.dart';
 
 class SimpleDatabase {
@@ -15,16 +15,14 @@ class SimpleDatabase {
   final Map<String, Patient> _patients = {};
   final Map<String, User> _users = {};
   final Map<String, Clinic> _clinics = {};
-  final Map<String, Consultation> _consultations = {};
-  final Map<String, Prescription> _prescriptions = {};
-  final Map<String, LabOrder> _labOrders = {};
   final Map<String, MedicalDocument> _documents = {};
   final Map<String, AuditLog> _auditLogs = {};
   final Map<String, GeneratedReport> _generatedReports = {};
+  final Map<String, IssuedCertificate> _certificates = {};
   final Map<String, String> _userPasswordHashes = {};
   final Map<String, DateTime> _syncDeletes = {};
-  final Map<String, dynamic> _medicalSnippets = {};
   final Map<String, SystemNotification> _notifications = {};
+  final Map<String, dynamic> _preferences = {};
   SystemSettings _systemSettings = const SystemSettings();
   String? _lastUserId;
 
@@ -46,6 +44,11 @@ class SimpleDatabase {
     onRevisionChanged?.call(next);
   }
 
+  bool _matchesClinic(String? recordClinicId, String? filterClinicId) {
+    if (filterClinicId == null || filterClinicId.isEmpty) return true;
+    return recordClinicId == null || recordClinicId == filterClinicId;
+  }
+
   Future<void> useStoreFileForTesting(dynamic file) async {
     _storage.setCustomStoreFile(file);
     _loadFuture = null;
@@ -53,17 +56,16 @@ class SimpleDatabase {
     _users.clear();
     _clinics.clear();
     _legacyRetiredClinicalDataPresent = false;
-    _consultations.clear();
-    _prescriptions.clear();
-    _labOrders.clear();
     _documents.clear();
     _auditLogs.clear();
     _generatedReports.clear();
+    _certificates.clear();
     _userPasswordHashes.clear();
     _syncDeletes.clear();
-    _medicalSnippets.clear();
     _notifications.clear();
+    _preferences.clear();
     _systemSettings = const SystemSettings();
+    _lastUserId = null;
     await _ensureLoaded();
   }
 
@@ -102,12 +104,24 @@ class SimpleDatabase {
       _generatedReports,
       GeneratedReport.fromJson,
     );
+    _restoreMap(
+      decoded['issued_certificates'],
+      _certificates,
+      IssuedCertificate.fromJson,
+    );
 
     final hashes = decoded['user_password_hashes'];
     if (hashes is Map) {
       _userPasswordHashes
         ..clear()
         ..addAll(hashes.cast<String, String>());
+    }
+
+    final prefs = decoded['preferences'];
+    if (prefs is Map) {
+      _preferences
+        ..clear()
+        ..addAll(prefs.cast<String, dynamic>());
     }
 
     // last logged in user id (for PIN login fallback)
@@ -170,7 +184,10 @@ class SimpleDatabase {
       ..addEntries(
         raw
             .whereType<Map>()
-            .where((item) => item['id'] is String && (item['id'] as String).isNotEmpty)
+            .where(
+              (item) =>
+                  item['id'] is String && (item['id'] as String).isNotEmpty,
+            )
             .map((item) {
               final entity = fromJson(item.cast<String, dynamic>());
               final id = item['id'] as String;
@@ -211,9 +228,8 @@ class SimpleDatabase {
     }
   }
 
-  Future<void> _saveToDisk() async {
-    await _ensureLoaded();
-    final data = {
+  Map<String, dynamic> _serializeStore() {
+    return {
       'version': 1,
       'patients': _patients.values.map((e) => e.toJson()).toList(),
       'users': _users.values.map((e) => e.toJson()).toList(),
@@ -223,37 +239,40 @@ class SimpleDatabase {
       'generated_reports': _generatedReports.values
           .map((e) => e.toJson())
           .toList(),
+      'issued_certificates': _certificates.values
+          .map((e) => e.toJson())
+          .toList(),
       'user_password_hashes': _userPasswordHashes,
+      'preferences': _preferences,
       'last_user_id': _lastUserId,
       'system_settings': _systemSettings.toJson(),
       'notifications': _notifications.values.map((e) => e.toJson()).toList(),
       'sync_deletes': _syncDeleteJson(),
     };
+  }
 
+  Future<void> _saveToDisk() async {
+    await _ensureLoaded();
+    final data = _serializeStore();
     notifyChanges();
     await _storage.writeStore(jsonEncode(data));
   }
 
   Future<String> createBackup() async {
     await _ensureLoaded();
-    final data = {
-      'version': 1,
-      'patients': _patients.values.map((e) => e.toJson()).toList(),
-      'users': _users.values.map((e) => e.toJson()).toList(),
-      'clinics': _clinics.values.map((e) => e.toJson()).toList(),
-      'documents': _documents.values.map((e) => e.toJson()).toList(),
-      'audit_logs': _auditLogs.values.map((e) => e.toJson()).toList(),
-      'generated_reports': _generatedReports.values
-          .map((e) => e.toJson())
-          .toList(),
-      'user_password_hashes': _userPasswordHashes,
-      'last_user_id': _lastUserId,
-      'system_settings': _systemSettings.toJson(),
-      'notifications': _notifications.values.map((e) => e.toJson()).toList(),
-      'sync_deletes': _syncDeleteJson(),
-    };
-
+    _preferences['last_backup_at'] = DateTime.now().toIso8601String();
+    final data = _serializeStore();
+    notifyChanges();
     return await _storage.createBackup(jsonEncode(data));
+  }
+
+  Future<DateTime?> getLastBackupAt() async {
+    await _ensureLoaded();
+    final raw = _preferences['last_backup_at'];
+    if (raw is String && raw.isNotEmpty) {
+      return DateTime.tryParse(raw);
+    }
+    return null;
   }
 
   Future<void> importSeedSnapshot(Map<String, dynamic> decoded) async {
@@ -265,16 +284,14 @@ class SimpleDatabase {
     _patients.clear();
     _users.clear();
     _clinics.clear();
-    _consultations.clear();
-    _prescriptions.clear();
-    _labOrders.clear();
     _documents.clear();
     _auditLogs.clear();
     _generatedReports.clear();
+    _certificates.clear();
     _userPasswordHashes.clear();
     _syncDeletes.clear();
-    _medicalSnippets.clear();
     _notifications.clear();
+    _preferences.clear();
 
     _restoreMap(decoded['patients'], _patients, Patient.fromJson);
     _restoreMap(decoded['users'], _users, User.fromJson);
@@ -286,10 +303,20 @@ class SimpleDatabase {
       _generatedReports,
       GeneratedReport.fromJson,
     );
+    _restoreMap(
+      decoded['issued_certificates'],
+      _certificates,
+      IssuedCertificate.fromJson,
+    );
 
     final hashes = decoded['user_password_hashes'];
     if (hashes is Map) {
       _userPasswordHashes.addAll(hashes.cast<String, String>());
+    }
+
+    final prefs = decoded['preferences'];
+    if (prefs is Map) {
+      _preferences.addAll(prefs.cast<String, dynamic>());
     }
 
     final lastId = decoded['last_user_id'];
@@ -319,6 +346,8 @@ class SimpleDatabase {
     final String raw;
     if (backupFile is String) {
       raw = backupFile;
+    } else if (backupFile is Uint8List) {
+      raw = utf8.decode(backupFile);
     } else {
       raw = await (backupFile as dynamic).readAsString();
     }
@@ -339,12 +368,58 @@ class SimpleDatabase {
     _documents.clear();
     _auditLogs.clear();
     _generatedReports.clear();
+    _certificates.clear();
     _userPasswordHashes.clear();
     _syncDeletes.clear();
-    _medicalSnippets.clear();
     _notifications.clear();
+    _preferences.clear();
     _systemSettings = const SystemSettings();
     await _ensureLoaded();
+    notifyChanges();
+  }
+
+  Future<bool> getRememberMe() async {
+    await _ensureLoaded();
+    return _preferences['remember_me'] as bool? ?? true;
+  }
+
+  Future<void> setRememberMe(bool value) async {
+    await _ensureLoaded();
+    if (_preferences['remember_me'] == value) return;
+    _preferences['remember_me'] = value;
+    await _saveToDisk();
+  }
+
+  Future<String?> getRememberedEmail() async {
+    await _ensureLoaded();
+    final raw = _preferences['remembered_email'];
+    return raw is String && raw.isNotEmpty ? raw : null;
+  }
+
+  Future<void> setRememberedEmail(String? email) async {
+    await _ensureLoaded();
+    if (email == null || email.trim().isEmpty) {
+      if (_preferences.remove('remembered_email') != null) {
+        await _saveToDisk();
+      }
+      return;
+    }
+    final normalized = email.trim();
+    if (_preferences['remembered_email'] == normalized) return;
+    _preferences['remembered_email'] = normalized;
+    await _saveToDisk();
+  }
+
+  Future<bool> isClinicsSeeded() async {
+    await _ensureLoaded();
+    return _preferences['clinics_seeded'] as bool? ?? false;
+  }
+
+  Future<void> setClinicsSeeded(bool value) async {
+    await _ensureLoaded();
+    if (_preferences['clinics_seeded'] == value) return;
+    _preferences['clinics_seeded'] = value;
+    await _saveToDisk();
   }
 
   // Persist the last logged in user id (used for PIN quick-login fallback)
@@ -370,16 +445,29 @@ class SimpleDatabase {
     return _patients[id];
   }
 
-  Future<List<Patient>> getAllPatients({bool includeArchived = false}) async {
+  Future<List<Patient>> getAllPatients({
+    bool includeArchived = false,
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
     return _patients.values
-        .where((p) => includeArchived || !p.isArchived)
+        .where(
+          (p) =>
+              (includeArchived || !p.isArchived) &&
+              _matchesClinic(p.clinicId, clinicId),
+        )
         .toList();
   }
 
-  Future<List<Patient>> getPatientsPaginated(int limit, int offset) async {
+  Future<List<Patient>> getPatientsPaginated(
+    int limit,
+    int offset, {
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
-    final allPatients = _patients.values.where((p) => !p.isArchived).toList();
+    final allPatients = _patients.values
+        .where((p) => !p.isArchived && _matchesClinic(p.clinicId, clinicId))
+        .toList();
     allPatients.sort((a, b) {
       final bDate = b.updatedAt ?? b.createdAt;
       final aDate = a.updatedAt ?? a.createdAt;
@@ -408,16 +496,27 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
-  Future<int> getPatientCount({bool includeArchived = false}) async {
+  Future<int> getPatientCount({
+    bool includeArchived = false,
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
-    if (includeArchived) return _patients.length;
-    return _patients.values.where((p) => !p.isArchived).length;
+    return _patients.values
+        .where(
+          (p) =>
+              (includeArchived || !p.isArchived) &&
+              _matchesClinic(p.clinicId, clinicId),
+        )
+        .length;
   }
 
-  Future<List<Patient>> searchPatients(String query) async {
+  Future<List<Patient>> searchPatients(
+    String query, {
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
     final lowerQuery = query.trim().toLowerCase();
-    if (lowerQuery.isEmpty) return getAllPatients();
+    if (lowerQuery.isEmpty) return getAllPatients(clinicId: clinicId);
     final normalizedQuery = lowerQuery.replaceAll(RegExp(r'[^a-z0-9]'), '');
 
     bool containsSearchTerm(String? value) {
@@ -432,6 +531,7 @@ class SimpleDatabase {
 
     return _patients.values.where((p) {
       if (p.isArchived) return false;
+      if (!_matchesClinic(p.clinicId, clinicId)) return false;
       return containsSearchTerm(p.fullName) ||
           containsSearchTerm(p.id) ||
           containsSearchTerm(p.localLguIdNumber) ||
@@ -440,16 +540,29 @@ class SimpleDatabase {
     }).toList();
   }
 
-  Future<List<Patient>> getPatientsByBarangay(String barangay) async {
+  Future<List<Patient>> getPatientsByBarangay(
+    String barangay, {
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
     return _patients.values
-        .where((p) => p.barangay?.toLowerCase() == barangay.toLowerCase())
+        .where(
+          (p) =>
+              !p.isArchived &&
+              _matchesClinic(p.clinicId, clinicId) &&
+              p.barangay?.toLowerCase() == barangay.toLowerCase(),
+        )
         .toList();
   }
 
-  Future<List<Patient>> getRecentPatients(int limit) async {
+  Future<List<Patient>> getRecentPatients(
+    int limit, {
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
-    final allPatients = _patients.values.where((p) => !p.isArchived).toList();
+    final allPatients = _patients.values
+        .where((p) => !p.isArchived && _matchesClinic(p.clinicId, clinicId))
+        .toList();
     allPatients.sort((a, b) {
       if (b.createdAt == null && a.createdAt == null) return 0;
       if (b.createdAt == null) return -1;
@@ -659,103 +772,7 @@ class SimpleDatabase {
       changed = true;
     }
 
-    if (_consultations.isNotEmpty ||
-        _prescriptions.isNotEmpty ||
-        _labOrders.isNotEmpty) {
-      changed = true;
-    }
-    _consultations.clear();
-    _prescriptions.clear();
-    _labOrders.clear();
-
     if (changed) await _saveToDisk();
-  }
-
-  Future<void> insertConsultation(Consultation consultation) async {
-    await _ensureLoaded();
-    _consultations[consultation.id] = consultation;
-    await _saveToDisk();
-  }
-
-  Future<Consultation?> getConsultationById(String id) async {
-    await _ensureLoaded();
-    return _consultations[id];
-  }
-
-  Future<List<Consultation>> getConsultationsForPatient(
-    String patientId,
-  ) async {
-    await _ensureLoaded();
-    return _consultations.values
-        .where((c) => c.patientId == patientId)
-        .toList();
-  }
-
-  Future<List<Consultation>> getAllConsultations() async {
-    await _ensureLoaded();
-    return _consultations.values.toList();
-  }
-
-  Future<void> updateConsultation(Consultation consultation) async {
-    await _ensureLoaded();
-    _consultations[consultation.id] = consultation;
-    await _saveToDisk();
-  }
-
-  Future<void> deleteConsultation(String id) async {
-    await _ensureLoaded();
-    if (_consultations.containsKey(id)) _recordSyncDelete('consultations', id);
-    _consultations.remove(id);
-    for (final prescription
-        in _prescriptions.values
-            .where((item) => item.consultationId == id)
-            .toList()) {
-      _recordSyncDelete('prescriptions', prescription.id);
-      _prescriptions.remove(prescription.id);
-    }
-    for (final labOrder
-        in _labOrders.values
-            .where((item) => item.consultationId == id)
-            .toList()) {
-      _recordSyncDelete('lab_orders', labOrder.id);
-      _labOrders.remove(labOrder.id);
-    }
-    await _saveToDisk();
-  }
-
-  Future<void> insertPrescription(Prescription prescription) async {
-    await _ensureLoaded();
-    _prescriptions[prescription.id] = prescription;
-    await _saveToDisk();
-  }
-
-  Future<List<Prescription>> getPrescriptionsForConsultation(
-    String consultationId,
-  ) async {
-    await _ensureLoaded();
-    return _prescriptions.values
-        .where((p) => p.consultationId == consultationId)
-        .toList();
-  }
-
-  Future<List<Prescription>> getAllPrescriptions() async {
-    await _ensureLoaded();
-    return _prescriptions.values.toList();
-  }
-
-  Future<void> insertLabOrder(LabOrder labOrder) async {
-    await _ensureLoaded();
-    _labOrders[labOrder.id] = labOrder;
-    await _saveToDisk();
-  }
-
-  Future<List<LabOrder>> getLabOrdersForConsultation(
-    String consultationId,
-  ) async {
-    await _ensureLoaded();
-    return _labOrders.values
-        .where((l) => l.consultationId == consultationId)
-        .toList();
   }
 
   Future<void> insertDocument(MedicalDocument document) async {
@@ -769,9 +786,11 @@ class SimpleDatabase {
     return _documents[id];
   }
 
-  Future<List<MedicalDocument>> getDocuments() async {
+  Future<List<MedicalDocument>> getDocuments({String? clinicId}) async {
     await _ensureLoaded();
-    return _documents.values.toList();
+    return _documents.values
+        .where((d) => _matchesClinic(d.clinicId, clinicId))
+        .toList();
   }
 
   Future<List<MedicalDocument>> getDocumentsForPatient(String patientId) async {
@@ -792,9 +811,35 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
-  Future<List<GeneratedReport>> getGeneratedReports() async {
+  Future<List<IssuedCertificate>> getIssuedCertificates({
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
-    final reports = _generatedReports.values.toList()
+    final certs = _certificates.values
+        .where((c) => _matchesClinic(c.clinicId, clinicId))
+        .toList()
+      ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+    return certs;
+  }
+
+  Future<void> insertIssuedCertificate(IssuedCertificate certificate) async {
+    await _ensureLoaded();
+    _certificates[certificate.id] = certificate;
+    await _saveToDisk();
+  }
+
+  Future<void> deleteIssuedCertificate(String id) async {
+    await _ensureLoaded();
+    if (_certificates.remove(id) != null) {
+      await _saveToDisk();
+    }
+  }
+
+  Future<List<GeneratedReport>> getGeneratedReports({String? clinicId}) async {
+    await _ensureLoaded();
+    final reports = _generatedReports.values
+        .where((r) => _matchesClinic(r.clinicId, clinicId))
+        .toList()
       ..sort((a, b) => b.generatedAt.compareTo(a.generatedAt));
     return reports;
   }
@@ -820,9 +865,14 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
-  Future<List<AuditLog>> getRecentAuditLogs(int limit) async {
+  Future<List<AuditLog>> getRecentAuditLogs(
+    int limit, {
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
-    final allLogs = _auditLogs.values.toList();
+    final allLogs = _auditLogs.values
+        .where((l) => _matchesClinic(l.clinicId, clinicId))
+        .toList();
     allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return allLogs.take(limit).toList();
   }
@@ -844,52 +894,29 @@ class SimpleDatabase {
     }
   }
 
-  Future<void> insertMedicalSnippet(dynamic snippet) async {
-    await _ensureLoaded();
-    _medicalSnippets[snippet.id] = snippet;
-  }
-
-  Future<dynamic> getMedicalSnippetById(String id) async {
-    await _ensureLoaded();
-    return _medicalSnippets[id];
-  }
-
-  Future<List<dynamic>> getMedicalSnippets() async {
-    await _ensureLoaded();
-    return _medicalSnippets.values.toList();
-  }
-
-  Future<void> updateMedicalSnippet(dynamic snippet) async {
-    await _ensureLoaded();
-    _medicalSnippets[snippet.id] = snippet;
-  }
-
-  Future<void> deleteMedicalSnippet(String id) async {
-    await _ensureLoaded();
-    _medicalSnippets.remove(id);
-  }
-
   Future<void> clearAll() async {
     await _ensureLoaded();
     _patients.clear();
     _users.clear();
     _clinics.clear();
-    _consultations.clear();
-    _prescriptions.clear();
-    _labOrders.clear();
     _documents.clear();
     _auditLogs.clear();
     _generatedReports.clear();
+    _certificates.clear();
     _userPasswordHashes.clear();
     _syncDeletes.clear();
-    _medicalSnippets.clear();
+    _notifications.clear();
+    _preferences.clear();
+    _systemSettings = const SystemSettings();
+    _lastUserId = null;
     await _saveToDisk();
   }
 
-  Future<int> getTodayPatientCount() async {
+  Future<int> getTodayPatientCount({String? clinicId}) async {
     await _ensureLoaded();
     final now = DateTime.now();
     return _patients.values.where((p) {
+      if (!_matchesClinic(p.clinicId, clinicId)) return false;
       final createdAt = p.createdAt;
       if (createdAt == null) return false;
       return createdAt.year == now.year &&
@@ -898,27 +925,18 @@ class SimpleDatabase {
     }).length;
   }
 
-  Future<int> getTodayConsultationCount() async {
+  Future<int> getDocumentCount({String? clinicId}) async {
     await _ensureLoaded();
-    final now = DateTime.now();
-    return _consultations.values.where((c) {
-      final createdAt = c.createdAt;
-      if (createdAt == null) return false;
-      return createdAt.year == now.year &&
-          createdAt.month == now.month &&
-          createdAt.day == now.day;
-    }).length;
+    return _documents.values
+        .where((d) => _matchesClinic(d.clinicId, clinicId))
+        .length;
   }
 
-  Future<int> getDocumentCount() async {
-    await _ensureLoaded();
-    return _documents.length;
-  }
-
-  Future<int> getTodayDocumentCount() async {
+  Future<int> getTodayDocumentCount({String? clinicId}) async {
     await _ensureLoaded();
     final now = DateTime.now();
     return _documents.values.where((d) {
+      if (!_matchesClinic(d.clinicId, clinicId)) return false;
       final createdAt = d.createdAt;
       if (createdAt == null) return false;
       return createdAt.year == now.year &&
@@ -927,9 +945,11 @@ class SimpleDatabase {
     }).length;
   }
 
-  Future<List<Patient>> getArchivedPatients() async {
+  Future<List<Patient>> getArchivedPatients({String? clinicId}) async {
     await _ensureLoaded();
-    return _patients.values.where((p) => p.isArchived).toList();
+    return _patients.values
+        .where((p) => p.isArchived && _matchesClinic(p.clinicId, clinicId))
+        .toList();
   }
 
   Future<void> archivePatient(String id) async {
@@ -960,21 +980,30 @@ class SimpleDatabase {
     }
   }
 
-  Future<int> getArchivedPatientCount() async {
+  Future<int> getArchivedPatientCount({String? clinicId}) async {
     await _ensureLoaded();
-    return _patients.values.where((p) => p.isArchived).length;
-  }
-
-  Future<int> getActiveStaffCount() async {
-    await _ensureLoaded();
-    return _users.values
-        .where((u) => u.isActive && u.role != UserRole.admin)
+    return _patients.values
+        .where((p) => p.isArchived && _matchesClinic(p.clinicId, clinicId))
         .length;
   }
 
-  Future<List<AuditLog>> getAllAuditLogs() async {
+  Future<int> getActiveStaffCount({String? clinicId}) async {
     await _ensureLoaded();
-    final logs = _auditLogs.values.toList();
+    return _users.values
+        .where(
+          (u) =>
+              u.isActive &&
+              u.role != UserRole.superAdmin &&
+              _matchesClinic(u.clinicId, clinicId),
+        )
+        .length;
+  }
+
+  Future<List<AuditLog>> getAllAuditLogs({String? clinicId}) async {
+    await _ensureLoaded();
+    final logs = _auditLogs.values
+        .where((l) => _matchesClinic(l.clinicId, clinicId))
+        .toList();
     logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     return logs;
   }
@@ -984,9 +1013,11 @@ class SimpleDatabase {
     String? userId,
     DateTime? from,
     DateTime? to,
+    String? clinicId,
   }) async {
     await _ensureLoaded();
     return _auditLogs.values.where((log) {
+      if (!_matchesClinic(log.clinicId, clinicId)) return false;
       if (action != null && log.action != action) return false;
       if (userId != null && log.userId != userId) return false;
       if (from != null && log.timestamp.isBefore(from)) return false;
@@ -995,21 +1026,27 @@ class SimpleDatabase {
     }).toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 
-  Future<int> getFailedLoginCount({Duration? within}) async {
+  Future<int> getFailedLoginCount({Duration? within, String? clinicId}) async {
     await _ensureLoaded();
     final cutoff = within != null
         ? DateTime.now().subtract(within)
         : DateTime.now().subtract(const Duration(days: 7));
     return _auditLogs.values.where((log) {
+      if (!_matchesClinic(log.clinicId, clinicId)) return false;
       return log.action == AuditAction.login &&
           log.description?.toLowerCase().contains('failed') == true &&
           log.timestamp.isAfter(cutoff);
     }).length;
   }
 
-  Future<List<Patient>> getRecentlyUpdatedPatients(int limit) async {
+  Future<List<Patient>> getRecentlyUpdatedPatients(
+    int limit, {
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
-    final active = _patients.values.where((p) => !p.isArchived).toList();
+    final active = _patients.values
+        .where((p) => !p.isArchived && _matchesClinic(p.clinicId, clinicId))
+        .toList();
     active.sort((a, b) {
       final bDate = b.updatedAt ?? b.createdAt;
       final aDate = a.updatedAt ?? a.createdAt;
@@ -1029,7 +1066,13 @@ class SimpleDatabase {
     final pendingDocumentSyncCount = _documents.values
         .where((d) => (d.syncStatus ?? 0) != 0)
         .length;
-    return pendingPatients + pendingDocumentSyncCount + _syncDeletes.length;
+    final pendingUsers = _users.values
+        .where((u) => (u.syncStatus ?? 0) != 0)
+        .length;
+    return pendingPatients +
+        pendingDocumentSyncCount +
+        pendingUsers +
+        _syncDeletes.length;
   }
 
   Future<List<Map<String, String>>> getPendingSyncDeletes() async {
@@ -1073,8 +1116,6 @@ class SimpleDatabase {
         _notifications.remove(id);
       case 'generated_reports':
         _generatedReports.remove(id);
-      case 'medical_snippets':
-        _medicalSnippets.remove(id);
       default:
         return null;
     }
@@ -1139,21 +1180,36 @@ class SimpleDatabase {
         _auditLogs[log.id] = log;
       case 'notifications':
         final target = raw['target'] == 'super_admin' ? 'admin' : raw['target'];
-        final notification = SystemNotification.fromJson({
+        var notification = SystemNotification.fromJson({
           ...raw,
           'target': target,
         });
+        final existing = _notifications[notification.id];
+        if (existing != null) {
+          if (existing.isRead && !notification.isRead) {
+            notification = notification.copyWith(isRead: true);
+          }
+          if (jsonEncode(existing.toJson()) ==
+              jsonEncode(notification.toJson())) {
+            return;
+          }
+        }
         _notifications[notification.id] = notification;
       case 'generated_reports':
         final reportId = raw['id'] as String;
         if (raw['deleted_at'] != null) {
-          _generatedReports.remove(reportId);
+          if (_generatedReports.remove(reportId) == null) return;
           break;
         }
         final report = GeneratedReport.fromJson({
           ...raw,
           'file_path': _generatedReports[reportId]?.filePath,
         });
+        final existing = _generatedReports[report.id];
+        if (existing != null &&
+            jsonEncode(existing.toJson()) == jsonEncode(report.toJson())) {
+          return;
+        }
         _generatedReports[report.id] = report;
       case 'system_settings':
         final value = raw['value'];
@@ -1162,10 +1218,15 @@ class SimpleDatabase {
             'Realtime system_settings row has no JSON value object.',
           );
         }
-        _systemSettings = SystemSettings.fromJson({
+        final nextSettings = SystemSettings.fromJson({
           ...Map<String, dynamic>.from(value),
           'updated_at': raw['updated_at'] ?? value['updated_at'],
         });
+        if (jsonEncode(_systemSettings.toJson()) ==
+            jsonEncode(nextSettings.toJson())) {
+          return;
+        }
+        _systemSettings = nextSettings;
       case 'sync_tombstones':
         final entityType = raw['entity_type'] as String?;
         final recordId = raw['record_id'] as String?;
@@ -1236,6 +1297,7 @@ class SimpleDatabase {
 
     return AuditLog(
       id: raw['id'] as String,
+      clinicId: raw['clinic_id'] as String?,
       userId: userId,
       userName: user?.fullName,
       userRole: user?.roleDisplay,
@@ -1269,6 +1331,10 @@ class SimpleDatabase {
 
   Future<void> replaceSyncedSystemSettings(SystemSettings settings) async {
     await _ensureLoaded();
+    if (jsonEncode(_systemSettings.toJson()) ==
+        jsonEncode(settings.toJson())) {
+      return;
+    }
     _systemSettings = settings;
     await _saveToDisk();
   }
@@ -1286,6 +1352,11 @@ class SimpleDatabase {
 
   Future<void> insertNotification(SystemNotification notification) async {
     await _ensureLoaded();
+    final existing = _notifications[notification.id];
+    if (existing != null &&
+        jsonEncode(existing.toJson()) == jsonEncode(notification.toJson())) {
+      return;
+    }
     _notifications[notification.id] = notification;
     await _saveToDisk();
   }
@@ -1293,19 +1364,25 @@ class SimpleDatabase {
   Future<List<SystemNotification>> getNotifications({
     NotificationTarget? target,
     bool unreadOnly = false,
+    String? clinicId,
   }) async {
     await _ensureLoaded();
     return _notifications.values.where((n) {
+      if (!_matchesClinic(n.clinicId, clinicId)) return false;
       if (unreadOnly && n.isRead) return false;
       if (target == null) return true;
       return n.target == target || n.target == NotificationTarget.all;
     }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
-  Future<int> getUnreadNotificationCount(NotificationTarget target) async {
+  Future<int> getUnreadNotificationCount(
+    NotificationTarget target, {
+    String? clinicId,
+  }) async {
     final notifications = await getNotifications(
       target: target,
       unreadOnly: true,
+      clinicId: clinicId,
     );
     return notifications.length;
   }
@@ -1313,7 +1390,7 @@ class SimpleDatabase {
   Future<void> markNotificationRead(String id) async {
     await _ensureLoaded();
     final notification = _notifications[id];
-    if (notification != null) {
+    if (notification != null && !notification.isRead) {
       _notifications[id] = notification.copyWith(isRead: true);
       await _saveToDisk();
     }
@@ -1321,13 +1398,18 @@ class SimpleDatabase {
 
   Future<void> markAllNotificationsRead(NotificationTarget target) async {
     await _ensureLoaded();
+    var changed = false;
     for (final entry in _notifications.entries) {
-      if (entry.value.target == target ||
-          entry.value.target == NotificationTarget.all) {
+      if (!entry.value.isRead &&
+          (entry.value.target == target ||
+              entry.value.target == NotificationTarget.all)) {
         _notifications[entry.key] = entry.value.copyWith(isRead: true);
+        changed = true;
       }
     }
-    await _saveToDisk();
+    if (changed) {
+      await _saveToDisk();
+    }
   }
 
   Future<void> deleteNotification(String id) async {
@@ -1335,12 +1417,17 @@ class SimpleDatabase {
     if (_notifications.remove(id) != null) await _saveToDisk();
   }
 
-  Future<List<AuditLog>> getStaffActivityLogs(int limit) async {
+  Future<List<AuditLog>> getStaffActivityLogs(
+    int limit, {
+    String? clinicId,
+  }) async {
     await _ensureLoaded();
     final logs = _auditLogs.values
         .where(
           (l) =>
-              l.action != AuditAction.login && l.action != AuditAction.logout,
+              _matchesClinic(l.clinicId, clinicId) &&
+              l.action != AuditAction.login &&
+              l.action != AuditAction.logout,
         )
         .toList();
     logs.sort((a, b) => b.timestamp.compareTo(a.timestamp));

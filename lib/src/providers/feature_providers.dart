@@ -41,6 +41,7 @@ final extendedDashboardStatsProvider = FutureProvider<ExtendedDashboardStats>((
   ref.watch(databaseChangesProvider);
   final db = ref.watch(databaseProvider);
   final user = ref.watch(currentUserProvider);
+  final clinicId = ref.watch(activeClinicIdProvider);
   final notificationTarget = user?.canManageSystemData == true
       ? NotificationTarget.admin
       : NotificationTarget.staff;
@@ -48,16 +49,19 @@ final extendedDashboardStatsProvider = FutureProvider<ExtendedDashboardStats>((
   await ref.read(notificationServiceProvider).refreshSystemNotifications();
 
   final results = await Future.wait([
-    db.getPatientCount(),
-    db.getTodayPatientCount(),
-    db.getTodayDocumentCount(),
+    db.getPatientCount(clinicId: clinicId),
+    db.getTodayPatientCount(clinicId: clinicId),
+    db.getTodayDocumentCount(clinicId: clinicId),
     db.getPendingSyncCount(),
-    db.getActiveStaffCount(),
-    db.getFailedLoginCount(within: const Duration(days: 1)),
-    db.getArchivedPatientCount(),
-    db.getUnreadNotificationCount(notificationTarget),
-    db.getRecentlyUpdatedPatients(5),
-    db.getStaffActivityLogs(8),
+    db.getActiveStaffCount(clinicId: clinicId),
+    db.getFailedLoginCount(
+      within: const Duration(days: 1),
+      clinicId: clinicId,
+    ),
+    db.getArchivedPatientCount(clinicId: clinicId),
+    db.getUnreadNotificationCount(notificationTarget, clinicId: clinicId),
+    db.getRecentlyUpdatedPatients(5, clinicId: clinicId),
+    db.getStaffActivityLogs(8, clinicId: clinicId),
   ]);
 
   return ExtendedDashboardStats(
@@ -90,17 +94,31 @@ final notificationsProvider =
       target,
     ) async {
       ref.watch(databaseChangesProvider);
-      return ref.watch(databaseProvider).getNotifications(target: target);
+      final clinicId = ref.watch(activeClinicIdProvider);
+      return ref.watch(databaseProvider).getNotifications(
+        target: target,
+        clinicId: clinicId,
+      );
     });
 
 final archivedPatientsProvider = FutureProvider<List<Patient>>((ref) async {
   ref.watch(databaseChangesProvider);
-  return ref.watch(databaseProvider).getArchivedPatients();
+  final clinicId = ref.watch(activeClinicIdProvider);
+  return ref.watch(databaseProvider).getArchivedPatients(clinicId: clinicId);
 });
 
 final auditLogsProvider = FutureProvider<List<AuditLog>>((ref) async {
   ref.watch(databaseChangesProvider);
-  return ref.watch(databaseProvider).getAllAuditLogs();
+  final clinicId = ref.watch(activeClinicIdProvider);
+  return ref.watch(databaseProvider).getAllAuditLogs(clinicId: clinicId);
+});
+
+final issuedCertificatesProvider = FutureProvider<List<IssuedCertificate>>((
+  ref,
+) async {
+  ref.watch(databaseChangesProvider);
+  final clinicId = ref.watch(activeClinicIdProvider);
+  return ref.watch(databaseProvider).getIssuedCertificates(clinicId: clinicId);
 });
 
 final certificateServiceProvider = Provider<CertificateService>((ref) {

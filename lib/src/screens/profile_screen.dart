@@ -24,6 +24,10 @@ class ProfileScreen extends ConsumerWidget {
     }
 
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final secondaryTextColor = isDark
+        ? AppColors.textSecondary
+        : AppColors.lightTextSecondary;
 
     return ResponsiveContentContainer(
       maxWidth: 800,
@@ -45,9 +49,9 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Personal credentials, contact details, and clinical specialization.',
+                      'Personal credentials, PRC license, contact details, and clinical specialization.',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
+                        color: secondaryTextColor,
                       ),
                     ),
                   ],
@@ -99,7 +103,7 @@ class ProfileScreen extends ConsumerWidget {
                       Text(
                         user.email,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
+                          color: secondaryTextColor,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -109,10 +113,12 @@ class ProfileScreen extends ConsumerWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.elevatedSurface,
+                          color: isDark
+                              ? AppColors.elevatedSurface
+                              : AppColors.lightElevatedSurface,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: AppColors.border,
+                            color: isDark ? AppColors.border : AppColors.lightBorder,
                             width: 0.5,
                           ),
                         ),
@@ -121,7 +127,7 @@ class ProfileScreen extends ConsumerWidget {
                           style: theme.textTheme.labelSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.5,
-                            color: AppColors.textSecondary,
+                            color: secondaryTextColor,
                           ),
                         ),
                       ),
@@ -176,6 +182,16 @@ class ProfileScreen extends ConsumerWidget {
                 const Divider(height: 24),
                 _buildProfileDetailRow(
                   context,
+                  icon: Icons.credit_card_outlined,
+                  label: 'PRC License No.',
+                  value: (user.licenseNumber != null &&
+                          user.licenseNumber!.trim().isNotEmpty)
+                      ? user.licenseNumber!
+                      : 'Not provided',
+                ),
+                const Divider(height: 24),
+                _buildProfileDetailRow(
+                  context,
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Role & Permissions',
                   value: user.roleDisplay,
@@ -194,17 +210,21 @@ class ProfileScreen extends ConsumerWidget {
     required String label,
     required String value,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryColor = isDark
+        ? AppColors.textSecondary
+        : AppColors.lightTextSecondary;
     return Row(
       children: [
-        Icon(icon, size: 20, color: AppColors.textSecondary),
+        Icon(icon, size: 20, color: secondaryColor),
         const SizedBox(width: 14),
         SizedBox(
           width: 140,
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: AppColors.textSecondary,
+              color: secondaryColor,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -246,6 +266,7 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
   late final TextEditingController _lastNameController;
   late final TextEditingController _contactController;
   late final TextEditingController _specializationController;
+  late final TextEditingController _licenseController;
   String? _profileImageUrl;
 
   bool _isSaving = false;
@@ -287,12 +308,14 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
     _specializationController = TextEditingController(
       text: user.specialization ?? '',
     );
+    _licenseController = TextEditingController(text: user.licenseNumber ?? '');
     _profileImageUrl = user.profileImageUrl;
 
     _firstNameController.addListener(_markDirty);
     _lastNameController.addListener(_markDirty);
     _contactController.addListener(_markDirty);
     _specializationController.addListener(_markDirty);
+    _licenseController.addListener(_markDirty);
   }
 
   @override
@@ -301,6 +324,7 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
     _lastNameController.dispose();
     _contactController.dispose();
     _specializationController.dispose();
+    _licenseController.dispose();
     super.dispose();
   }
 
@@ -333,6 +357,9 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
             contactNumber: normalizedContact,
+            licenseNumber: _licenseController.text.trim().isEmpty
+                ? null
+                : _licenseController.text.trim(),
             specialization: _specializationController.text.trim().isEmpty
                 ? null
                 : _specializationController.text.trim(),
@@ -340,6 +367,7 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
             updatedByUserId: user.id,
           );
       ref.read(currentUserProvider.notifier).state = updated;
+      ref.invalidate(usersProvider);
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -372,7 +400,7 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
         icon: Icons.person_outline,
         title: 'Edit Profile',
         subtitle:
-            'Update your personal name, contact details, and clinical specialization',
+            'Update your personal name, contact details, PRC license, and clinical specialization',
         maxWidth: 520,
         isLoading: _isSaving,
         loadingText: 'Saving changes...',
@@ -470,6 +498,13 @@ class _EditProfileDialogState extends ConsumerState<_EditProfileDialog> {
                 label: 'Specialization / Role Description',
                 hint: 'e.g. Municipal Health Officer, Registered Nurse',
                 icon: Icons.medical_services_outlined,
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                controller: _licenseController,
+                label: 'Professional PRC License Number',
+                hint: 'e.g. PRC-0123456',
+                icon: Icons.credit_card_outlined,
               ),
             ],
           ),

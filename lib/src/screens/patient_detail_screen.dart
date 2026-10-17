@@ -31,8 +31,18 @@ class PatientDetailScreen extends ConsumerWidget {
         }
 
         final currentUser = ref.watch(currentUserProvider);
+        final settings = ref.watch(systemSettingsProvider).valueOrNull;
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
+
+        final canEdit = currentUser?.canEditPatients ?? false;
+        final canUpload = currentUser?.canManageDocuments ?? false;
+        final canIssueCert =
+            (currentUser?.canGenerateCertificates ?? false) &&
+            (settings?.enableCertificates ?? true);
+        final canViewAudit =
+            (currentUser?.canViewAuditLogs ?? false) &&
+            (settings?.enableAuditLogs ?? true);
 
         return ResponsiveContentContainer(
           child: Column(
@@ -47,10 +57,18 @@ class PatientDetailScreen extends ConsumerWidget {
               ),
               _PatientActionsBar(
                 patient: patient,
-                onUploadDocuments: () => _handleUploadDocuments(context, ref, patient),
-                onAuditHistory: () => _handleAuditHistory(context, ref, patient),
-                onCreateRecord: () => _handleCreateRecord(context, ref, patient),
-                onEditDetails: () => _handleEditDetails(context, ref, patient),
+                onUploadDocuments: canUpload
+                    ? () => _handleUploadDocuments(context, ref, patient)
+                    : null,
+                onAuditHistory: canViewAudit
+                    ? () => _handleAuditHistory(context, ref, patient)
+                    : null,
+                onIssueCertificate: canIssueCert
+                    ? () => context.go('/certificates')
+                    : null,
+                onEditDetails: canEdit
+                    ? () => _handleEditDetails(context, ref, patient)
+                    : null,
                 onPrintRecord: () => _handlePrintRecord(context, ref, patient),
                 onArchive:
                     currentUser?.canManageArchive == true && !patient.isArchived
@@ -63,7 +81,7 @@ class PatientDetailScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               Expanded(
                 child: DefaultTabController(
-                  length: 4,
+                  length: 3,
                   child: Column(
                     children: [
                       Container(
@@ -82,7 +100,6 @@ class PatientDetailScreen extends ConsumerWidget {
                           unselectedLabelColor: isDark ? AppColors.textSecondary : theme.colorScheme.onSurfaceVariant,
                           tabs: const [
                             Tab(icon: Icon(Icons.badge_outlined, size: 18), text: 'Demographics & Info'),
-                            Tab(icon: Icon(Icons.medical_services_outlined, size: 18), text: 'Clinical Records (SOAP)'),
                             Tab(icon: Icon(Icons.attach_file_outlined, size: 18), text: 'Attached Documents'),
                             Tab(icon: Icon(Icons.history_outlined, size: 18), text: 'Audit Trail'),
                           ],
@@ -93,13 +110,11 @@ class PatientDetailScreen extends ConsumerWidget {
                         child: TabBarView(
                           children: [
                             _OverviewTab(patient: patient),
-                            _PatientConsultationsList(
-                              patient: patient,
-                              onCreateRecord: () => _handleCreateRecord(context, ref, patient),
-                            ),
                             _PatientDocumentsList(
                               patient: patient,
-                              onUploadDocument: () => _handleUploadDocuments(context, ref, patient),
+                              onUploadDocument: canUpload
+                                  ? () => _handleUploadDocuments(context, ref, patient)
+                                  : null,
                             ),
                             _PatientAuditTrailList(patient: patient),
                           ],
@@ -144,21 +159,6 @@ class PatientDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleCreateRecord(
-    BuildContext context,
-    WidgetRef ref,
-    Patient patient,
-  ) async {
-    final created = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => _CreateConsultationDialog(patient: patient),
-    );
-    if (created == true) {
-      ref.invalidate(patientConsultationsProvider(patient.id));
-      ref.invalidate(patientAuditLogsProvider(patient.id));
-    }
-  }
-
   Future<void> _handleEditDetails(
     BuildContext context,
     WidgetRef ref,
@@ -179,6 +179,14 @@ class PatientDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Patient patient,
   ) {
+    final userId = ref.read(currentUserProvider)?.id ?? 'system';
+    ref.read(auditServiceProvider).logAction(
+          userId: userId,
+          action: AuditAction.print,
+          entityType: 'patient',
+          entityId: patient.id,
+          description: 'Opened printable health summary record for ${patient.fullName}',
+        );
     showDialog(
       context: context,
       builder: (ctx) => _PatientPrintRecordDialog(patient: patient),
@@ -193,9 +201,9 @@ class PatientDetailScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Patient Record'),
+        title: const Text('Permanently Delete Patient Record'),
         content: Text(
-          'Are you sure you want to permanently delete the record for ${patient.fullName}? This action is recorded in the audit trail.',
+          'Are you sure you want to permanently delete the record for ${patient.fullName}? This action cannot be undone and is recorded in the audit trail.',
         ),
         actions: [
           TextButton(
@@ -205,7 +213,7 @@ class PatientDetailScreen extends ConsumerWidget {
           FilledButton.tonalIcon(
             onPressed: () => Navigator.pop(dialogContext, true),
             icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
+            label: const Text('Delete Permanently'),
           ),
         ],
       ),
@@ -214,15 +222,18 @@ class PatientDetailScreen extends ConsumerWidget {
     if (confirmed != true || !context.mounted) return;
 
     final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    await ref.read(patientRepositoryProvider).deletePatient(patient.id, userId);
+    await ref
+        .read(patientRepositoryProvider)
+        .permanentlyDeletePatient(patient.id, userId);
     ref.invalidate(patientsProvider);
+    ref.invalidate(archivedPatientsProvider);
     ref.invalidate(patientProvider(patient.id));
     ref.invalidate(auditLogsProvider);
 
     if (context.mounted) {
       context.go('/patients');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Patient record deleted successfully')),
+        const SnackBar(content: Text('Patient record permanently deleted')),
       );
     }
   }
@@ -475,20 +486,20 @@ class _PatientIdentity extends StatelessWidget {
 
 class _PatientActionsBar extends StatelessWidget {
   final Patient patient;
-  final VoidCallback onUploadDocuments;
-  final VoidCallback onAuditHistory;
-  final VoidCallback onCreateRecord;
-  final VoidCallback onEditDetails;
+  final VoidCallback? onUploadDocuments;
+  final VoidCallback? onAuditHistory;
+  final VoidCallback? onIssueCertificate;
+  final VoidCallback? onEditDetails;
   final VoidCallback onPrintRecord;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
 
   const _PatientActionsBar({
     required this.patient,
-    required this.onUploadDocuments,
-    required this.onAuditHistory,
-    required this.onCreateRecord,
-    required this.onEditDetails,
+    this.onUploadDocuments,
+    this.onAuditHistory,
+    this.onIssueCertificate,
+    this.onEditDetails,
     required this.onPrintRecord,
     this.onArchive,
     this.onDelete,
@@ -526,48 +537,51 @@ class _PatientActionsBar extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: isDark
-                          ? AppColors.primaryEmerald
-                          : theme.colorScheme.primary,
-                      foregroundColor: isDark
-                          ? const Color(0xFF080909)
-                          : theme.colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
+                  if (onIssueCertificate != null)
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: isDark
+                            ? AppColors.primaryEmerald
+                            : theme.colorScheme.primary,
+                        foregroundColor: isDark
+                            ? const Color(0xFF080909)
+                            : theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                      onPressed: onIssueCertificate,
+                      icon: const Icon(Icons.workspace_premium_outlined, size: 18),
+                      label: const Text(
+                        'Issue Certificate',
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
-                    onPressed: onCreateRecord,
-                    icon: const Icon(Icons.add_circle_outline, size: 18),
-                    label: const Text(
-                      'Create / New Record',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                  if (onUploadDocuments != null)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                       ),
+                      onPressed: onUploadDocuments,
+                      icon: const Icon(Icons.upload_file_outlined, size: 18),
+                      label: const Text('Upload Documents'),
                     ),
-                    onPressed: onUploadDocuments,
-                    icon: const Icon(Icons.upload_file_outlined, size: 18),
-                    label: const Text('Upload Documents'),
-                  ),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                  if (onEditDetails != null)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                       ),
+                      onPressed: onEditDetails,
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit Details'),
                     ),
-                    onPressed: onEditDetails,
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Edit Details'),
-                  ),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -579,17 +593,18 @@ class _PatientActionsBar extends StatelessWidget {
                     icon: const Icon(Icons.print_outlined, size: 18),
                     label: const Text('Print Record'),
                   ),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                  if (onAuditHistory != null)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                       ),
+                      onPressed: onAuditHistory,
+                      icon: const Icon(Icons.history_outlined, size: 18),
+                      label: const Text('History / Audit Log'),
                     ),
-                    onPressed: onAuditHistory,
-                    icon: const Icon(Icons.history_outlined, size: 18),
-                    label: const Text('History / Audit Log'),
-                  ),
                 ],
               ),
               if (onArchive != null || onDelete != null)
@@ -1778,274 +1793,13 @@ String _shortDate(DateTime? date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
-class _PatientConsultationsList extends ConsumerWidget {
-  final Patient patient;
-  final VoidCallback onCreateRecord;
-
-  const _PatientConsultationsList({
-    required this.patient,
-    required this.onCreateRecord,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final consultationsAsync = ref.watch(
-      patientConsultationsProvider(patient.id),
-    );
-
-    return consultationsAsync.when(
-      data: (consultations) {
-        if (consultations.isEmpty) {
-          return Center(
-            child: AppCard(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.assignment_outlined,
-                    size: 48,
-                    color: isDark ? AppColors.textSecondary : Colors.grey,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No clinical records recorded yet',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Create a SOAP consultation record for clinical observations, vitals, and diagnosis.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: isDark ? AppColors.textSecondary : Colors.grey[700],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: isDark
-                          ? AppColors.primaryEmerald
-                          : theme.colorScheme.primary,
-                      foregroundColor: isDark
-                          ? const Color(0xFF080909)
-                          : theme.colorScheme.onPrimary,
-                    ),
-                    onPressed: onCreateRecord,
-                    icon: const Icon(Icons.add_circle_outline, size: 18),
-                    label: const Text('Create First Clinical Record'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        final sorted = List<Consultation>.from(consultations)
-          ..sort((a, b) => (b.consultationDate ?? b.createdAt ?? DateTime.now())
-              .compareTo(a.consultationDate ?? a.createdAt ?? DateTime.now()));
-
-        return ListView.separated(
-          padding: const EdgeInsets.only(top: 4, bottom: 24),
-          itemCount: sorted.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final c = sorted[index];
-            final date = c.consultationDate ?? c.createdAt;
-            final dateStr =
-                date != null ? DateFormat('yyyy-MM-dd').format(date) : 'N/A';
-
-            return AppCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.primaryEmeraldSubtle
-                              : theme.colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: isDark
-                                ? AppColors.primaryEmerald.withValues(alpha: 0.3)
-                                : theme.colorScheme.primary.withValues(
-                                    alpha: 0.3,
-                                  ),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 13,
-                              color: isDark
-                                  ? AppColors.primaryEmerald
-                                  : theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              dateStr,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: isDark
-                                    ? AppColors.primaryEmerald
-                                    : theme.colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (c.icd10Code != null && c.icd10Code!.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.elevatedSurface
-                                : Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: isDark
-                                  ? AppColors.border
-                                  : Colors.grey.shade300,
-                            ),
-                          ),
-                          child: Text(
-                            'ICD-10: ${c.icd10Code}${c.icd10Description != null ? " - ${c.icd10Description}" : ""}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: isDark
-                                  ? AppColors.textPrimary
-                                  : Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (c.isFollowUp) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.pending.withValues(
-                              alpha: 0.15,
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Follow-up',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.pending,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (c.assessment != null && c.assessment!.isNotEmpty) ...[
-                    Text(
-                      'Diagnosis: ${c.assessment}',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.textPrimary : null,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  _buildSoapRow(
-                    'Subjective (S)',
-                    c.subjective ?? 'None recorded',
-                    isDark,
-                  ),
-                  const SizedBox(height: 6),
-                  _buildSoapRow(
-                    'Objective (O)',
-                    c.objective ?? 'None recorded',
-                    isDark,
-                  ),
-                  const SizedBox(height: 6),
-                  _buildSoapRow(
-                    'Plan (P)',
-                    c.plan ?? 'None recorded',
-                    isDark,
-                  ),
-                  if (c.followUpInstructions != null &&
-                      c.followUpInstructions!.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    _buildSoapRow(
-                      'Follow-up Instructions',
-                      c.followUpInstructions!,
-                      isDark,
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-        );
-      },
-      loading: () => const LoadingState(),
-      error: (e, _) => Center(child: Text('Failed to load clinical records: $e')),
-    );
-  }
-
-  Widget _buildSoapRow(String title, String content, bool isDark) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 140,
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textSecondary : Colors.grey[700],
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            content,
-            style: TextStyle(
-              fontSize: 13,
-              color: isDark ? AppColors.textPrimary : Colors.black87,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _PatientDocumentsList extends ConsumerWidget {
   final Patient patient;
-  final VoidCallback onUploadDocument;
+  final VoidCallback? onUploadDocument;
 
   const _PatientDocumentsList({
     required this.patient,
-    required this.onUploadDocument,
+    this.onUploadDocument,
   });
 
   @override
@@ -2083,20 +1837,22 @@ class _PatientDocumentsList extends ConsumerWidget {
                       color: isDark ? AppColors.textSecondary : Colors.grey[700],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: isDark
-                          ? AppColors.primaryEmerald
-                          : theme.colorScheme.primary,
-                      foregroundColor: isDark
-                          ? const Color(0xFF080909)
-                          : theme.colorScheme.onPrimary,
+                  if (onUploadDocument != null) ...[
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: isDark
+                            ? AppColors.primaryEmerald
+                            : theme.colorScheme.primary,
+                        foregroundColor: isDark
+                            ? const Color(0xFF080909)
+                            : theme.colorScheme.onPrimary,
+                      ),
+                      onPressed: onUploadDocument,
+                      icon: const Icon(Icons.upload_file_outlined, size: 18),
+                      label: const Text('Upload First Document'),
                     ),
-                    onPressed: onUploadDocument,
-                    icon: const Icon(Icons.upload_file_outlined, size: 18),
-                    label: const Text('Upload First Document'),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -2404,759 +2160,6 @@ class _PatientAuditTrailList extends ConsumerWidget {
   }
 }
 
-class _CreateConsultationDialog extends ConsumerStatefulWidget {
-  final Patient patient;
-
-  const _CreateConsultationDialog({required this.patient});
-
-  @override
-  ConsumerState<_CreateConsultationDialog> createState() =>
-      _CreateConsultationDialogState();
-}
-
-class _CreateConsultationDialogState
-    extends ConsumerState<_CreateConsultationDialog> {
-  final _formKey = GlobalKey<FormState>();
-  DateTime _consultationDate = DateTime.now();
-  late final TextEditingController _subjectiveController;
-  late final TextEditingController _objectiveController;
-  late final TextEditingController _assessmentController;
-  late final TextEditingController _planController;
-  late final TextEditingController _icd10Controller;
-  late final TextEditingController _icd10DescController;
-  late final TextEditingController _followUpNotesController;
-
-  // Structured Vitals Controllers
-  late final TextEditingController _systolicController;
-  late final TextEditingController _diastolicController;
-  late final TextEditingController _heartRateController;
-  late final TextEditingController _tempController;
-  late final TextEditingController _respRateController;
-  late final TextEditingController _spo2Controller;
-  late final TextEditingController _weightController;
-  late final TextEditingController _heightController;
-
-  bool _isFollowUp = false;
-  bool _isSaving = false;
-
-  static const _commonIcd10 = [
-    ('J06.9', 'Acute upper respiratory infection, unspecified', 'Acute URTI'),
-    ('I10', 'Essential (primary) hypertension', 'Hypertension'),
-    ('E11.9', 'Type 2 diabetes mellitus without complications', 'Type 2 DM'),
-    ('A09', 'Infectious gastroenteritis and colitis, unspecified', 'Gastroenteritis'),
-    ('J18.9', 'Pneumonia, unspecified organism', 'Pneumonia'),
-    ('Z34.9', 'Supervision of normal pregnancy, unspecified', 'Prenatal Care'),
-    ('J45.9', 'Asthma, unspecified', 'Bronchial Asthma'),
-    ('K21.9', 'Gastro-esophageal reflux disease without esophagitis', 'GERD / Dyspepsia'),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _subjectiveController = TextEditingController();
-    _objectiveController = TextEditingController();
-    _assessmentController = TextEditingController();
-    _planController = TextEditingController();
-    _icd10Controller = TextEditingController();
-    _icd10DescController = TextEditingController();
-    _followUpNotesController = TextEditingController();
-
-    _systolicController = TextEditingController()..addListener(_onVitalsChanged);
-    _diastolicController = TextEditingController()..addListener(_onVitalsChanged);
-    _heartRateController = TextEditingController();
-    _tempController = TextEditingController();
-    _respRateController = TextEditingController();
-    _spo2Controller = TextEditingController();
-    _weightController = TextEditingController()..addListener(_onVitalsChanged);
-    _heightController = TextEditingController()..addListener(_onVitalsChanged);
-  }
-
-  void _onVitalsChanged() {
-    setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _subjectiveController.dispose();
-    _objectiveController.dispose();
-    _assessmentController.dispose();
-    _planController.dispose();
-    _icd10Controller.dispose();
-    _icd10DescController.dispose();
-    _followUpNotesController.dispose();
-
-    _systolicController.dispose();
-    _diastolicController.dispose();
-    _heartRateController.dispose();
-    _tempController.dispose();
-    _respRateController.dispose();
-    _spo2Controller.dispose();
-    _weightController.dispose();
-    _heightController.dispose();
-    super.dispose();
-  }
-
-  double? get _computedBmi {
-    final w = double.tryParse(_weightController.text.trim());
-    final h = double.tryParse(_heightController.text.trim());
-    if (w != null && h != null && h > 0) {
-      final hm = h / 100.0;
-      return double.parse((w / (hm * hm)).toStringAsFixed(1));
-    }
-    return null;
-  }
-
-  String get _bmiClassification {
-    final bmi = _computedBmi;
-    if (bmi == null) return '';
-    if (bmi < 18.5) return 'Underweight (<18.5)';
-    if (bmi < 25.0) return 'Normal weight (18.5–24.9)';
-    if (bmi < 30.0) return 'Overweight (25.0–29.9)';
-    return 'Obese (≥30.0)';
-  }
-
-  String get _bpClassification {
-    final sys = int.tryParse(_systolicController.text.trim());
-    final dia = int.tryParse(_diastolicController.text.trim());
-    if (sys == null && dia == null) return '';
-    final s = sys ?? 120;
-    final d = dia ?? 80;
-    if (s >= 180 || d >= 120) return 'Hypertensive Crisis (Urgent)';
-    if (s >= 140 || d >= 90) return 'Stage 2 Hypertension';
-    if ((s >= 130 && s <= 139) || (d >= 80 && d <= 89)) return 'Stage 1 Hypertension';
-    if (s >= 120 && s <= 129 && d < 80) return 'Elevated BP';
-    if (s < 120 && d < 80) return 'Normal BP (<120/<80)';
-    return '';
-  }
-
-  void _injectVitalsIntoObjective() {
-    final parts = <String>[];
-    final sys = _systolicController.text.trim();
-    final dia = _diastolicController.text.trim();
-    if (sys.isNotEmpty || dia.isNotEmpty) {
-      final bpCat = _bpClassification;
-      parts.add('BP: ${sys.isEmpty ? "—" : sys}/${dia.isEmpty ? "—" : dia} mmHg${bpCat.isNotEmpty ? " ($bpCat)" : ""}');
-    }
-    if (_heartRateController.text.trim().isNotEmpty) {
-      parts.add('HR: ${_heartRateController.text.trim()} bpm');
-    }
-    if (_tempController.text.trim().isNotEmpty) {
-      parts.add('Temp: ${_tempController.text.trim()} °C');
-    }
-    if (_respRateController.text.trim().isNotEmpty) {
-      parts.add('RR: ${_respRateController.text.trim()} cpm');
-    }
-    if (_spo2Controller.text.trim().isNotEmpty) {
-      parts.add('SpO2: ${_spo2Controller.text.trim()}%');
-    }
-    if (_weightController.text.trim().isNotEmpty) {
-      parts.add('Weight: ${_weightController.text.trim()} kg');
-    }
-    if (_heightController.text.trim().isNotEmpty) {
-      parts.add('Height: ${_heightController.text.trim()} cm');
-    }
-    if (_computedBmi != null) {
-      parts.add('BMI: $_computedBmi ($_bmiClassification)');
-    }
-
-    if (parts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter at least one vital sign first.')),
-      );
-      return;
-    }
-
-    final vitalsBlock = 'VITALS: ${parts.join(" | ")}';
-    if (_objectiveController.text.trim().isEmpty) {
-      _objectiveController.text = vitalsBlock;
-    } else {
-      _objectiveController.text = '$vitalsBlock\n${_objectiveController.text.trim()}';
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Vitals injected into Objective (O) note!')),
-    );
-  }
-
-  void _applyTemplate({
-    required String subjective,
-    required String objective,
-    required String assessment,
-    required String icd10,
-    required String icd10Desc,
-    required String plan,
-  }) {
-    _subjectiveController.text = subjective;
-    _objectiveController.text = objective;
-    _assessmentController.text = assessment;
-    _icd10Controller.text = icd10;
-    _icd10DescController.text = icd10Desc;
-    _planController.text = plan;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Applied clinical template: $assessment')),
-    );
-  }
-
-  Widget _buildTemplateChip({
-    required String label,
-    required String subjective,
-    required String objective,
-    required String assessment,
-    required String icd10,
-    required String icd10Desc,
-    required String plan,
-  }) {
-    return ActionChip(
-      avatar: const Icon(Icons.bolt, size: 14, color: Colors.amber),
-      label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-      onPressed: () => _applyTemplate(
-        subjective: subjective,
-        objective: objective,
-        assessment: assessment,
-        icd10: icd10,
-        icd10Desc: icd10Desc,
-        plan: plan,
-      ),
-    );
-  }
-
-  Future<void> _handleSave() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isSaving = true);
-    try {
-      final currentUser = ref.read(currentUserProvider);
-      final userId = currentUser?.id ?? 'system';
-
-      await ref.read(consultationRepositoryProvider).createConsultation(
-            patientId: widget.patient.id,
-            subjective: _subjectiveController.text.trim(),
-            objective: _objectiveController.text.trim(),
-            assessment: _assessmentController.text.trim(),
-            plan: _planController.text.trim(),
-            icd10Code: _icd10Controller.text.trim().isEmpty
-                ? 'R69'
-                : _icd10Controller.text.trim(),
-            icd10Description: _icd10DescController.text.trim().isEmpty
-                ? null
-                : _icd10DescController.text.trim(),
-            consultationDate: _consultationDate,
-            isFollowUp: _isFollowUp,
-            followUpInstructions: _isFollowUp &&
-                    _followUpNotesController.text.trim().isNotEmpty
-                ? _followUpNotesController.text.trim()
-                : null,
-            createdBy: userId,
-          );
-
-      ref.invalidate(patientConsultationsProvider(widget.patient.id));
-      ref.invalidate(patientAuditLogsProvider(widget.patient.id));
-
-      if (mounted) {
-        Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Clinical consultation record created successfully.'),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save record: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return AppFormDialog(
-      icon: Icons.note_add_outlined,
-      title: 'New Clinical Record (SOAP)',
-      subtitle:
-          'Add consultation diagnosis, observations, and care plan for ${widget.patient.fullName}',
-      maxWidth: 820,
-      isLoading: _isSaving,
-      loadingText: 'Saving consultation record...',
-      onClose: _isSaving ? null : () => Navigator.pop(context),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1-Click DOH Clinical Templates Strip
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.inputSurface : Colors.blue.shade50.withValues(alpha: 0.4),
-                  borderRadius: AppRadius.roundedMd,
-                  border: Border.all(
-                    color: isDark ? AppColors.borderSubtle : Colors.blue.shade200,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.bolt, size: 16, color: Colors.amber),
-                        const SizedBox(width: 6),
-                        const Text(
-                          '1-Click DOH Clinical Templates',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                        ),
-                        const Spacer(),
-                        Text(
-                          'Tap to auto-fill SOAP note',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _buildTemplateChip(
-                          label: 'Acute URTI',
-                          subjective:
-                              'Patient reports 3-day history of productive cough, clear rhinorrhea, and mild sore throat. Low-grade fever noted. Denies shortness of breath, chest pain, or hemoptysis.',
-                          objective:
-                              'Temp: 37.8 C, BP: 110/70 mmHg, HR: 82 bpm, RR: 18 cpm. HEENT: mildly erythematous pharyngeal wall, turbinate congestion. Lungs: clear breath sounds bilaterally, no rales or wheezes.',
-                          assessment:
-                              'Acute Upper Respiratory Tract Infection (URTI)',
-                          icd10: 'J06.9',
-                          icd10Desc:
-                              'Acute upper respiratory infection, unspecified',
-                          plan:
-                              'Paracetamol 500mg tab 1 tab q4h PRN for fever. Cetirizine 10mg tab 1 tab OD at bedtime x 5 days. Increase fluid intake to >2L/day. Saline gargle. Advise to return if fever persists >3 days or dyspnea develops.',
-                        ),
-                        _buildTemplateChip(
-                          label: 'Hypertension',
-                          subjective:
-                              'Scheduled routine follow-up for essential hypertension. Compliant with prescribed medications. Denies occipital headache, dizziness, visual blurring, palpitation, or chest tightness.',
-                          objective:
-                              'BP: 130/80 mmHg, HR: 74 bpm, RR: 16 cpm, Temp: 36.6 C. Chest: clear breath sounds. Heart: normal S1/S2, regular rhythm, no murmurs. Extremities: no pretibial edema.',
-                          assessment:
-                              'Essential (primary) hypertension - controlled',
-                          icd10: 'I10',
-                          icd10Desc: 'Essential (primary) hypertension',
-                          plan:
-                              'Continue Losartan 50mg tab 1 tab OD in AM. Low-salt, low-fat diet. Daily 30-minute brisk walking. Home BP diary log. Follow-up in 1 month or sooner if BP >140/90 mmHg.',
-                        ),
-                        _buildTemplateChip(
-                          label: 'Type 2 DM',
-                          subjective:
-                              'Routine chronic care check-up for Type 2 Diabetes Mellitus. Reports good medication compliance. Denies polyuria, polydipsia, paresthesia, or non-healing foot wounds.',
-                          objective:
-                              'RBS: 128 mg/dL. BP: 120/80 mmHg, HR: 76 bpm, Temp: 36.5 C. Lower extremities: bilateral pedal pulses palpable, monofilament sensation intact, no ulcers or calluses.',
-                          assessment:
-                              'Type 2 diabetes mellitus without complications',
-                          icd10: 'E11.9',
-                          icd10Desc:
-                              'Type 2 diabetes mellitus without complications',
-                          plan:
-                              'Continue Metformin 500mg tab 1 tab BID after meals. Low-glycemic index diet, regular physical exercise. Daily self foot inspection. Request routine HbA1c, FBS, Lipid profile. Return in 1 month.',
-                        ),
-                        _buildTemplateChip(
-                          label: 'Gastroenteritis',
-                          subjective:
-                              'Patient reports 4-5 episodes of watery loose stools since yesterday, accompanied by crampy abdominal pain and mild nausea. No hematochezia or melena. Able to drink fluids.',
-                          objective:
-                              'BP: 110/70 mmHg, HR: 86 bpm, RR: 18 cpm, Temp: 37.3 C. Abdomen: soft, normoactive to hyperactive bowel sounds, mild diffuse tenderness, no guarding or rigidity. Fair skin turgor.',
-                          assessment:
-                              'Acute Gastroenteritis with mild dehydration',
-                          icd10: 'A09',
-                          icd10Desc:
-                              'Infectious gastroenteritis and colitis, unspecified',
-                          plan:
-                              'Oral Rehydration Salts (ORS) 1 sachet in 1 liter clean water, drink after every loose stool. Zinc sulfate 20mg tab 1 tab OD x 14 days. Paracetamol 500mg tab PRN for fever/cramps. BRAT diet. Return if lethargy or persistent vomiting occurs.',
-                        ),
-                        _buildTemplateChip(
-                          label: 'Prenatal Routine',
-                          subjective:
-                              'Routine antenatal check-up. Reports regular fetal movements. Denies vaginal spotting or watery discharge, headache, visual changes, or epigastric pain.',
-                          objective:
-                              'BP: 110/70 mmHg, HR: 80 bpm, Temp: 36.6 C, RR: 18 cpm. Fundic height congruent with gestational age. FHT: 140 bpm, regular. Abdomen: gravid. No bipedal edema.',
-                          assessment:
-                              'Supervision of normal pregnancy, routine visit',
-                          icd10: 'Z34.9',
-                          icd10Desc:
-                              'Supervision of normal pregnancy, unspecified',
-                          plan:
-                              'Continue Ferrous Sulfate + Folic Acid 1 tab OD. Calcium Carbonate 500mg tab 1 tab OD. Review DOH danger signs of pregnancy. Schedule next antenatal visit in 4 weeks.',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppDatePickerField(
-                label: 'Consultation Date',
-                selectedDate: _consultationDate,
-                onDateSelected: (d) {
-                  if (d != null) setState(() => _consultationDate = d);
-                },
-              ),
-              const SizedBox(height: 16),
-              AppFormSection(
-                icon: Icons.chat_bubble_outline,
-                title: 'Subjective (S)',
-                subtitle:
-                    'Chief complaint, history of present illness, and symptoms reported by patient',
-                child: AppTextField(
-                  controller: _subjectiveController,
-                  label: 'Subjective Findings / Chief Complaint',
-                  hint:
-                      'e.g. Patient reports intermittent fever for 3 days accompanied by productive cough.',
-                  required: true,
-                  maxLines: 3,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Subjective note is required.' : null,
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppFormSection(
-                icon: Icons.monitor_heart_outlined,
-                title: 'Objective (O)',
-                subtitle:
-                    'Vital signs, physical examination, laboratory or imaging findings',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Structured Vitals & Biometrics Box
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.inputSurface : Colors.grey.shade50,
-                        borderRadius: AppRadius.roundedMd,
-                        border: Border.all(
-                          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.speed, size: 16, color: AppColors.primaryEmerald),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Structured Vitals & Biometrics',
-                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                              ),
-                              const Spacer(),
-                              TextButton.icon(
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                                icon: const Icon(Icons.arrow_downward, size: 14),
-                                label: const Text('Insert Vitals into Note', style: TextStyle(fontSize: 12)),
-                                onPressed: _injectVitalsIntoObjective,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          // Row 1: Sys, Dia, HR, Temp
-                          Row(
-                            children: [
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _systolicController,
-                                  label: 'Sys (mmHg)',
-                                  hint: '120',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _diastolicController,
-                                  label: 'Dia (mmHg)',
-                                  hint: '80',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _heartRateController,
-                                  label: 'HR (bpm)',
-                                  hint: '75',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _tempController,
-                                  label: 'Temp (°C)',
-                                  hint: '36.5',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          // Row 2: RR, SpO2, Weight, Height
-                          Row(
-                            children: [
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _respRateController,
-                                  label: 'RR (cpm)',
-                                  hint: '18',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _spo2Controller,
-                                  label: 'SpO2 (%)',
-                                  hint: '98',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _weightController,
-                                  label: 'Wt (kg)',
-                                  hint: '65',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: AppTextField(
-                                  controller: _heightController,
-                                  label: 'Ht (cm)',
-                                  hint: '168',
-                                  keyboardType: TextInputType.number,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (_bpClassification.isNotEmpty || _computedBmi != null) ...[
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              children: [
-                                if (_bpClassification.isNotEmpty)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: _bpClassification.contains('Crisis') || _bpClassification.contains('Stage 2')
-                                          ? Colors.red.withValues(alpha: 0.12)
-                                          : (_bpClassification.contains('Stage 1') || _bpClassification.contains('Elevated')
-                                              ? Colors.orange.withValues(alpha: 0.12)
-                                              : Colors.green.withValues(alpha: 0.12)),
-                                      borderRadius: AppRadius.roundedSm,
-                                      border: Border.all(
-                                        color: _bpClassification.contains('Crisis') || _bpClassification.contains('Stage 2')
-                                            ? Colors.red
-                                            : (_bpClassification.contains('Stage 1') || _bpClassification.contains('Elevated')
-                                                ? Colors.orange
-                                                : Colors.green),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'BP: $_bpClassification',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: _bpClassification.contains('Crisis') || _bpClassification.contains('Stage 2')
-                                            ? Colors.red
-                                            : (_bpClassification.contains('Stage 1') || _bpClassification.contains('Elevated')
-                                                ? Colors.orange
-                                                : Colors.green),
-                                      ),
-                                    ),
-                                  ),
-                                if (_computedBmi != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.withValues(alpha: 0.12),
-                                      borderRadius: AppRadius.roundedSm,
-                                      border: Border.all(color: Colors.blue),
-                                    ),
-                                    child: Text(
-                                      'BMI: $_computedBmi kg/m² • $_bmiClassification',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    AppTextField(
-                      controller: _objectiveController,
-                      label: 'Objective Findings & Physical Exam',
-                      hint:
-                          'e.g. Chest: clear breath sounds. Abdomen: soft, nontender. Vitals as above.',
-                      required: true,
-                      maxLines: 3,
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Objective findings are required.' : null,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppFormSection(
-                icon: Icons.assignment_outlined,
-                title: 'Assessment (A)',
-                subtitle:
-                    'Clinical impression, primary diagnosis, and ICD-10 classification',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppTextField(
-                      controller: _assessmentController,
-                      label: 'Clinical Assessment / Impression',
-                      hint: 'e.g. Community-Acquired Pneumonia (Low Risk)',
-                      required: true,
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Assessment is required.' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: AppTextField(
-                            controller: _icd10Controller,
-                            label: 'ICD-10 Code',
-                            hint: 'e.g. J18.9',
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 3,
-                          child: AppTextField(
-                            controller: _icd10DescController,
-                            label: 'ICD-10 Description',
-                            hint: 'e.g. Pneumonia, unspecified organism',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Common Primary Care ICD-10 Codes:',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: _commonIcd10.map((entry) {
-                        return ActionChip(
-                          avatar: const Icon(Icons.local_offer_outlined, size: 13),
-                          label: Text(
-                            '${entry.$1} (${entry.$3})',
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () {
-                            _icd10Controller.text = entry.$1;
-                            _icd10DescController.text = entry.$2;
-                            if (_assessmentController.text.trim().isEmpty) {
-                              _assessmentController.text = entry.$2;
-                            }
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppFormSection(
-                icon: Icons.medication_outlined,
-                title: 'Plan (P)',
-                subtitle:
-                    'Medications prescribed, diagnostic orders, patient education, follow-up',
-                child: Column(
-                  children: [
-                    AppTextField(
-                      controller: _planController,
-                      label: 'Treatment Plan & Prescriptions',
-                      hint:
-                          'e.g. Amoxicillin 500mg TID for 7 days. Paracetamol 500mg PRN. Increase oral fluid intake.',
-                      required: true,
-                      maxLines: 3,
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Treatment plan is required.' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _isFollowUp,
-                      title: const Text('Schedule Follow-up Visit'),
-                      subtitle: const Text(
-                        'Patient requires re-evaluation or monitoring',
-                      ),
-                      onChanged: (val) =>
-                          setState(() => _isFollowUp = val ?? false),
-                    ),
-                    if (_isFollowUp) ...[
-                      const SizedBox(height: 8),
-                      AppTextField(
-                        controller: _followUpNotesController,
-                        label: 'Follow-up Instructions & Return Date',
-                        hint:
-                            'e.g. Return in 5 days or immediately if dyspnea worsens.',
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton.icon(
-          onPressed: _isSaving ? null : _handleSave,
-          icon: const Icon(Icons.check, size: 18),
-          label: const Text('Save Record'),
-        ),
-      ],
-    );
-  }
-}
-
 class _PatientAuditHistoryDialog extends ConsumerWidget {
   final Patient patient;
 
@@ -3395,8 +2398,6 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
     final currentUser = ref.watch(currentUserProvider);
     final settingsAsync = ref.watch(systemSettingsProvider);
-    final consultations =
-        ref.watch(patientConsultationsProvider(patient.id)).valueOrNull ?? [];
     final documents =
         ref.watch(patientDocumentsProvider(patient.id)).valueOrNull ?? [];
 
@@ -3455,7 +2456,7 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
                           ),
                         ),
                         Text(
-                          'Comprehensive medical profile, history, consultations, and document registry for ${patient.fullName}',
+                          'Comprehensive medical profile, history, and document registry for ${patient.fullName}',
                           style: TextStyle(
                             fontSize: 12,
                             color: isDark
@@ -3486,7 +2487,10 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
                       preparedByName:
                           currentUser?.fullName ?? 'Healthcare Staff',
                       preparedByRole: currentUser?.role.displayName ?? 'Staff',
-                      consultations: consultations,
+                      approvedByName:
+                          currentUser?.fullName ?? 'RHU Physician / Administrator',
+                      approvedByRole:
+                          currentUser?.role.displayName ?? 'RHU Physician / Administrator',
                       documents: documents,
                     ),
                     canChangeOrientation: false,

@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../models/audit_log.dart';
 import '../models/clinic.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
@@ -590,9 +591,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     ).whenComplete(() {
-      currentPinController.dispose();
-      newPinController.dispose();
-      confirmPinController.dispose();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        currentPinController.dispose();
+        newPinController.dispose();
+        confirmPinController.dispose();
+      });
     });
   }
 
@@ -616,7 +619,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               icon: Icons.dataset_outlined,
               label: 'Backup Contents',
               value:
-                  'Patients, users, documents metadata, audit logs, and generated reports.',
+                  'Patients, users, documents metadata, certificates, audit logs, and generated reports.',
             ),
           ],
         ),
@@ -632,6 +635,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onPressed: () async {
               try {
                 final path = await ref.read(databaseProvider).createBackup();
+                final currentUser = ref.read(currentUserProvider);
+                await ref.read(auditServiceProvider).log(
+                      userId: currentUser?.id ?? 'system',
+                      clinicId: currentUser?.clinicId,
+                      action: AuditAction.backup,
+                      entityType: 'database',
+                      description: 'Created full system database backup ($path)',
+                    );
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -684,16 +695,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 type: FileType.custom,
                 allowedExtensions: ['json'],
                 allowMultiple: false,
+                withData: true,
               );
-              final path = result?.files.single.path;
-              if (path == null) return;
+              final file = result?.files.singleOrNull;
+              final bytes = file?.bytes;
+              if (bytes == null || bytes.isEmpty) return;
 
               if (!context.mounted) return;
               final confirmed = await _confirmRestore(context);
               if (!confirmed) return;
 
               try {
-                await ref.read(databaseProvider).restoreFromBackup(path);
+                await ref.read(databaseProvider).restoreFromBackup(bytes);
+                final currentUser = ref.read(currentUserProvider);
+                await ref.read(auditServiceProvider).log(
+                      userId: currentUser?.id ?? 'system',
+                      clinicId: currentUser?.clinicId,
+                      action: AuditAction.restore,
+                      entityType: 'database',
+                      description:
+                          'Restored system database from backup (${file?.name ?? 'backup.json'})',
+                    );
                 await _refreshAfterRestore(ref);
                 if (context.mounted) {
                   Navigator.pop(context);
@@ -746,6 +768,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     ref.invalidate(usersProvider);
     ref.invalidate(patientsProvider);
     ref.invalidate(documentsProvider);
+    ref.invalidate(issuedCertificatesProvider);
     ref.invalidate(reportStatsProvider);
     ref.invalidate(generatedReportsProvider);
   }
@@ -762,73 +785,84 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showStatisticsDialog(BuildContext context, WidgetRef ref) {
-    final settingsAsync = ref.read(settingsDataProvider);
-
-    settingsAsync.when(
-      data: (settings) {
-        showDialog(
-          context: context,
-          builder: (context) => AppFormDialog(
-            icon: Icons.storage_outlined,
-            title: 'Database Statistics',
-            subtitle: 'Overview of your EMR database',
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppInfoCard(
-                  icon: Icons.people_outline,
-                  label: 'Total Patients',
-                  value: settings.databaseStats.patientCount.toString(),
-                  iconColor: context.semanticColors.info,
-                ),
-                const SizedBox(height: 12),
-                AppInfoCard(
-                  icon: Icons.folder_outlined,
-                  label: 'Total Documents',
-                  value: settings.databaseStats.documentCount.toString(),
-                  iconColor: context.semanticColors.warning,
-                ),
-                const SizedBox(height: 12),
-                AppInfoCard(
-                  icon: Icons.data_usage_outlined,
-                  label: 'Database Size',
-                  value: settings.databaseStats.databaseSize,
-                  iconColor: context.theme.colorScheme.tertiary,
-                ),
-                const SizedBox(height: 12),
-                AppInfoCard(
-                  icon: Icons.backup_outlined,
-                  label: 'Last Backup',
-                  value: settings.databaseStats.lastBackup != null
-                      ? _formatDateTime(settings.databaseStats.lastBackup!)
-                      : 'Never',
-                  iconColor: context.theme.colorScheme.secondary,
+    showDialog(
+      context: context,
+      builder: (context) => Consumer(
+        builder: (context, dialogRef, _) {
+          final settingsAsync = dialogRef.watch(settingsDataProvider);
+          return settingsAsync.when(
+            data: (settings) => AppFormDialog(
+              icon: Icons.storage_outlined,
+              title: 'Database Statistics',
+              subtitle: 'Overview of your EMR database',
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppInfoCard(
+                    icon: Icons.people_outline,
+                    label: 'Total Patients',
+                    value: settings.databaseStats.patientCount.toString(),
+                    iconColor: context.semanticColors.info,
+                  ),
+                  const SizedBox(height: 12),
+                  AppInfoCard(
+                    icon: Icons.folder_outlined,
+                    label: 'Total Documents',
+                    value: settings.databaseStats.documentCount.toString(),
+                    iconColor: context.semanticColors.warning,
+                  ),
+                  const SizedBox(height: 12),
+                  AppInfoCard(
+                    icon: Icons.data_usage_outlined,
+                    label: 'Database Size',
+                    value: settings.databaseStats.databaseSize,
+                    iconColor: context.theme.colorScheme.tertiary,
+                  ),
+                  const SizedBox(height: 12),
+                  AppInfoCard(
+                    icon: Icons.backup_outlined,
+                    label: 'Last Backup',
+                    value: settings.databaseStats.lastBackup != null
+                        ? _formatDateTime(settings.databaseStats.lastBackup!)
+                        : 'Never',
+                    iconColor: context.theme.colorScheme.secondary,
+                  ),
+                ],
+              ),
+              actions: [
+                AppDialogAction(
+                  label: 'Close',
+                  isPrimary: true,
+                  icon: Icons.check,
+                  onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
-            actions: [
-              AppDialogAction(
-                label: 'Close',
-                isPrimary: true,
-                icon: Icons.check,
-                onPressed: () => Navigator.pop(context),
+            loading: () => const AppFormDialog(
+              icon: Icons.storage_outlined,
+              title: 'Database Statistics',
+              isLoading: true,
+              loadingText: 'Loading statistics...',
+              content: SizedBox.shrink(),
+            ),
+            error: (error, _) => AppFormDialog(
+              icon: Icons.storage_outlined,
+              title: 'Database Statistics',
+              content: AppErrorState(
+                title: 'System statistics could not be loaded',
+                error: error,
+                onRetry: () => dialogRef.invalidate(settingsDataProvider),
               ),
-            ],
-          ),
-        );
-      },
-      loading: () => _showSettingsLoadFeedback(
-        context,
-        message: 'System statistics are still loading. Try again shortly.',
+              actions: [
+                AppDialogAction(
+                  label: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          );
+        },
       ),
-      error: (error, _) {
-        debugPrint('Failed to load system statistics: $error');
-        _showSettingsLoadFeedback(
-          context,
-          message: 'System statistics could not be loaded.',
-          onRetry: () => _showStatisticsDialog(context, ref),
-        );
-      },
     );
   }
 
@@ -1192,30 +1226,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   label: 'Save',
                   isPrimary: true,
                   onPressed: () async {
+                    final nextSettings = settings.copyWith(
+                      clinicName: clinicNameController.text.trim(),
+                      clinicType: clinicTypeController.text.trim(),
+                      clinicCode: clinicCodeController.text.trim(),
+                      clinicAddress: clinicAddressController.text.trim(),
+                      clinicContact: clinicContactController.text.trim(),
+                      municipality: municipalityController.text.trim(),
+                      province: provinceController.text.trim(),
+                      operatingHours: operatingHoursController.text.trim(),
+                      patientIdPrefix: idPrefixController.text.trim(),
+                      serviceTypes: _commaSeparatedValues(
+                        servicesController.text,
+                      ),
+                      patientCategories: _commaSeparatedValues(
+                        categoriesController.text,
+                      ),
+                      certificatesModuleEnabled: certificatesEnabled,
+                      syncModuleEnabled: syncEnabled,
+                      logoDataUri: logoDataUri,
+                    );
                     await ref
                         .read(databaseProvider)
-                        .updateSystemSettings(
-                          settings.copyWith(
-                            clinicName: clinicNameController.text.trim(),
-                            clinicType: clinicTypeController.text.trim(),
-                            clinicCode: clinicCodeController.text.trim(),
-                            clinicAddress: clinicAddressController.text.trim(),
-                            clinicContact: clinicContactController.text.trim(),
-                            municipality: municipalityController.text.trim(),
-                            province: provinceController.text.trim(),
-                            operatingHours: operatingHoursController.text
-                                .trim(),
-                            patientIdPrefix: idPrefixController.text.trim(),
-                            serviceTypes: _commaSeparatedValues(
-                              servicesController.text,
-                            ),
-                            patientCategories: _commaSeparatedValues(
-                              categoriesController.text,
-                            ),
-                            certificatesModuleEnabled: certificatesEnabled,
-                            syncModuleEnabled: syncEnabled,
-                            logoDataUri: logoDataUri,
-                          ),
+                        .updateSystemSettings(nextSettings);
+                    final currentUser = ref.read(currentUserProvider);
+                    await ref.read(auditServiceProvider).log(
+                          userId: currentUser?.id ?? 'system',
+                          clinicId: currentUser?.clinicId,
+                          action: AuditAction.settingsChange,
+                          entityType: 'system_settings',
+                          entityId: 'clinic_profile',
+                          description:
+                              'Updated clinic configuration (${nextSettings.clinicName})',
                         );
                     ref.invalidate(systemSettingsProvider);
                     final syncResult = await ref
@@ -1239,17 +1281,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ).whenComplete(() {
-          clinicNameController.dispose();
-          clinicTypeController.dispose();
-          clinicCodeController.dispose();
-          clinicAddressController.dispose();
-          clinicContactController.dispose();
-          municipalityController.dispose();
-          provinceController.dispose();
-          operatingHoursController.dispose();
-          idPrefixController.dispose();
-          servicesController.dispose();
-          categoriesController.dispose();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            clinicNameController.dispose();
+            clinicTypeController.dispose();
+            clinicCodeController.dispose();
+            clinicAddressController.dispose();
+            clinicContactController.dispose();
+            municipalityController.dispose();
+            provinceController.dispose();
+            operatingHoursController.dispose();
+            idPrefixController.dispose();
+            servicesController.dispose();
+            categoriesController.dispose();
+          });
         });
       },
       loading: () => _showSettingsLoadFeedback(
@@ -1331,7 +1375,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
-    ).whenComplete(confirmationController.dispose);
+    ).whenComplete(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        confirmationController.dispose();
+      });
+    });
   }
 
   void _confirmClearData(BuildContext context, WidgetRef ref) {
@@ -2332,7 +2380,6 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                             controller: _licenseController,
                             label: 'Professional PRC License Number',
                             icon: Icons.credit_card_outlined,
-                            enabled: !_isEdit,
                           ),
                         ],
                       ),
@@ -2693,6 +2740,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
           contactNumber: _phoneOrNull(_contactController.text),
+          licenseNumber: _emptyToNull(_licenseController.text),
           specialization: _emptyToNull(_specializationController.text),
           role: _role,
           isActive: _isActive,

@@ -70,6 +70,10 @@ class SystemSettings {
     this.updatedAt,
   });
 
+  bool get enableCertificates => certificatesModuleEnabled;
+  bool get enableReports => true;
+  bool get enableAuditLogs => true;
+
   SystemSettings copyWith({
     String? clinicName,
     String? clinicType,

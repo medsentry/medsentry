@@ -126,29 +126,17 @@ class AuthRepository {
   Future<User> _ensureSeedAccount(SeedAccount account) async {
     final existingUser = await _db.getUserByEmail(account.email);
     if (existingUser != null) {
-      final needsUpdate = existingUser.clinicId != account.clinicId ||
-          existingUser.role != account.role ||
-          existingUser.firstName != account.firstName ||
-          existingUser.lastName != account.lastName ||
-          existingUser.licenseNumber != account.licenseNumber ||
-          existingUser.specialization != account.specialization ||
-          existingUser.contactNumber != account.contactNumber;
-
-      if (needsUpdate) {
+      if (existingUser.clinicId == null && account.clinicId != null) {
         final updatedUser = existingUser.copyWith(
           clinicId: account.clinicId,
-          clearClinicId: account.clinicId == null,
-          role: account.role,
-          firstName: account.firstName,
-          lastName: account.lastName,
-          licenseNumber: account.licenseNumber,
-          specialization: account.specialization,
-          contactNumber: account.contactNumber,
           updatedAt: DateTime.now(),
         );
-        final passwordHash = _getSeedPasswordHash();
-        await _db.updateUser(updatedUser, newPasswordHash: passwordHash);
+        await _db.updateUser(updatedUser);
         return updatedUser;
+      }
+      final existingHash = await _db.getUserPasswordHash(existingUser.id);
+      if (existingHash == null) {
+        await _db.updateUserPassword(existingUser.id, _getSeedPasswordHash());
       }
       return existingUser;
     }
@@ -342,6 +330,10 @@ class AuthRepository {
           'AuthRepository: failed to set clinic_id on remote user: $e',
         );
       }
+    }
+
+    if (pinEnabled && pin != null && pin.isNotEmpty && provisionedOnline) {
+      await _setPinOnline(id, pin, enabled: true);
     }
 
     await _db.insertUser(user, passwordHash: passwordHash);
@@ -557,7 +549,11 @@ class AuthRepository {
       'medsentry_verify_user_pin',
       params: {'target_user_id': userId, 'requested_pin': pin},
     );
-    return result == 'verified';
+    if (result == 'verified') {
+      await _db.updateUserPin(userId, _hashPassword(pin), true);
+      return true;
+    }
+    return false;
   }
 
   // Get user by ID
@@ -576,6 +572,7 @@ class AuthRepository {
     String? clinicId,
     String? firstName,
     String? lastName,
+    String? licenseNumber,
     String? contactNumber,
     String? specialization,
     String? profileImageUrl,
@@ -651,6 +648,7 @@ class AuthRepository {
       clinicId: clinicId ?? existing.clinicId,
       firstName: firstName ?? existing.firstName,
       lastName: lastName ?? existing.lastName,
+      licenseNumber: licenseNumber ?? existing.licenseNumber,
       contactNumber: contactNumber ?? existing.contactNumber,
       specialization: specialization ?? existing.specialization,
       profileImageUrl: profileImageUrl ?? existing.profileImageUrl,
@@ -681,6 +679,7 @@ class AuthRepository {
     final accountChanged =
         updated.firstName != existing.firstName ||
         updated.lastName != existing.lastName ||
+        updated.licenseNumber != existing.licenseNumber ||
         updated.contactNumber != existing.contactNumber ||
         updated.specialization != existing.specialization ||
         updated.role != existing.role ||
@@ -1156,7 +1155,7 @@ class AuthRepository {
         final profile = await _supabase
             .from('users')
             .select(
-              'id,email,first_name,last_name,role,license_number,specialization,'
+              'id,clinic_id,email,first_name,last_name,role,license_number,specialization,'
               'contact_number,profile_image_url,is_active,pin_enabled,'
               'last_login_at,created_at,updated_at',
             )
@@ -1177,6 +1176,7 @@ class AuthRepository {
           }
 
           final currentUser = remoteUser.copyWith(
+            clinicId: remoteUser.clinicId ?? candidateUser?.clinicId,
             pinHash: candidateUser?.pinHash,
           );
           await _db.updateUser(currentUser);

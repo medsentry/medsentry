@@ -3,21 +3,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 
-import '../models/generated_report.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
-import '../services/app_notification.dart';
-import '../services/report_pdf_service.dart';
 import '../services/report_service.dart';
-import '../widgets/app_card.dart';
-import '../widgets/loading_state.dart';
-import '../widgets/report_export_dialog.dart';
-import '../widgets/layout/responsive_layout.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 import '../utils/report_date_filter.dart';
+import '../widgets/app_card.dart';
+import '../widgets/layout/responsive_layout.dart';
+import '../widgets/loading_state.dart';
+import '../widgets/report_export_dialog.dart';
 
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
@@ -28,13 +24,12 @@ class ReportsScreen extends ConsumerStatefulWidget {
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   late ReportFilters _draftFilters;
-  String _activeTab = 'reports'; // 'reports', 'visits', or 'logs'
+  String _activeTab = 'reports'; // 'reports' or 'logs'
   String _reportSearchQuery = '';
   String _reportTypeFilter = 'all';
   String _reportSortOrder = 'newest';
   String _auditSearchQuery = '';
   String _auditActionFilter = 'all';
-  bool _isExportingConsultations = false;
   late final TextEditingController _reportSearchController;
   late final TextEditingController _auditSearchController;
 
@@ -60,12 +55,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final filters = ref.watch(reportFiltersProvider);
     final reportStatsAsync = ref.watch(reportStatsProvider);
     final generatedReportsAsync = ref.watch(generatedReportsProvider);
-    final consultationEntriesAsync = _activeTab == 'visits'
-        ? ref.watch(consultationReportEntriesProvider)
-        : const AsyncValue<List<ConsultationReportEntry>>.loading();
 
     return SingleChildScrollView(
       padding: ResponsiveLayout.pagePadding(context),
@@ -88,10 +79,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
             _buildRangeSelector(context),
             const SizedBox(height: 12),
-
             reportStatsAsync.when(
               skipLoadingOnReload: true,
               data: (stats) => Column(
@@ -116,15 +105,23 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               ),
             ),
             const SizedBox(height: 20),
-
-            _buildSection(context, 'Patient Reports', [
+            _buildSection(context, 'Official DOH / RHU Reports', [
               _buildReportCard(
                 context,
                 'Patient Statistics',
-                'Patient demographics and visit statistics',
+                'Patient demographics, barangay distribution, and registration trends',
                 Icons.people_outline,
                 context.semanticColors.normal,
                 () => _showDateRangeDialog(context, 'Patient Statistics'),
+              ),
+              _buildReportCard(
+                context,
+                'Document & Registry Summary',
+                'Clinical document uploads, verification metrics, and registry audit',
+                Icons.folder_copy_outlined,
+                context.semanticColors.info,
+                () =>
+                    _showDateRangeDialog(context, 'Document & Registry Summary'),
               ),
             ]),
             const SizedBox(height: 24),
@@ -132,12 +129,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             const SizedBox(height: 16),
             if (_activeTab == 'reports')
               _buildGeneratedReportsSection(context, generatedReportsAsync)
-            else if (_activeTab == 'visits')
-              _buildConsultationReport(
-                context,
-                consultationEntriesAsync,
-                filters,
-              )
             else
               _buildHistoricalAuditLogsSection(context),
           ],
@@ -151,7 +142,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget _buildRangeSelector(BuildContext context) {
     final canApply =
         !_draftFilters.endDate.isBefore(_draftFilters.startDate) &&
-        !_draftFilters.endDate.isAfter(DateTime.now());
+            !_draftFilters.endDate.isAfter(DateTime.now());
 
     return SizedBox(
       width: double.infinity,
@@ -379,15 +370,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         icon: Icons.person_add_alt_1,
         color: AppColors.primaryEmerald,
       ),
+      _KpiMetric(
+        title: 'Clinical Documents',
+        subtitle: 'Uploaded in period',
+        value: stats.documentsInRange.toString(),
+        delta: stats.documentsDelta,
+        icon: Icons.folder_copy_outlined,
+        color: AppColors.info,
+      ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth > 1050
-            ? 3
-            : constraints.maxWidth > 700
-            ? 2
-            : 1;
+        final columns = constraints.maxWidth > 700 ? 2 : 1;
 
         return Wrap(
           alignment: WrapAlignment.start,
@@ -418,24 +413,31 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         children: [
                           Text(
                             kpi.title,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textSecondary,
+                                    ),
                           ),
                           if (kpi.subtitle != null)
                             Text(
                               kpi.subtitle!,
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: AppColors.textTertiary,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: AppColors.textTertiary,
+                                  ),
                             ),
                           const SizedBox(height: 4),
                           Text(
                             kpi.value,
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.5,
+                                ),
                           ),
                           const SizedBox(height: 4),
                           Row(
@@ -557,14 +559,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleMedium
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
                           ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     Text(
                       '$subtitle · avg ${average.toStringAsFixed(1)} per period',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                            color: AppColors.textSecondary,
+                          ),
                     ),
                   ],
                 ),
@@ -621,14 +625,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Text(
                   startLabel,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
+                        color: AppColors.textTertiary,
+                      ),
                 ),
                 Text(
                   endLabel,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
+                        color: AppColors.textTertiary,
+                      ),
                 ),
               ],
             ),
@@ -692,9 +696,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Expanded(
                           child: Text(
                             metric.label,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.textPrimary,
+                                    ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -705,7 +710,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         const SizedBox(width: 6),
                         Text(
                           '${metric.percentage.toStringAsFixed(0)}%',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textTertiary,
                           ),
@@ -802,7 +807,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.zero,
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         leading: Container(
           width: 38,
           height: 38,
@@ -826,7 +833,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             color: AppColors.textSecondary,
           ),
         ),
-        trailing: Icon(
+        trailing: const Icon(
           Icons.arrow_forward_ios,
           size: 13,
           color: AppColors.textTertiary,
@@ -848,7 +855,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.zero,
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         leading: Icon(icon, color: context.semanticColors.neutral),
         title: Text(report.title),
         subtitle: Text(
@@ -936,11 +945,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   void _showDateRangeDialog(BuildContext context, String reportType) {
+    final appliedFilters = ref.read(reportFiltersProvider);
     ReportExportDialog.show(
       context,
       reportType: reportType,
-      startDate: _draftFilters.startDate,
-      endDate: _draftFilters.endDate,
+      startDate: appliedFilters.startDate,
+      endDate: appliedFilters.endDate,
     );
   }
 
@@ -957,6 +967,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final coverage = report.startDate == null || report.endDate == null
         ? 'Not specified'
         : '${_formatDate(report.startDate!)} to ${_formatDate(report.endDate!)}';
+    final appliedFilters = ref.read(reportFiltersProvider);
 
     showDialog(
       context: context,
@@ -978,10 +989,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Text(
                   'Saved location: ${report.filePath}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
                 ),
               ],
             ],
@@ -1003,8 +1014,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               ReportExportDialog.show(
                 context,
                 reportType: report.type,
-                startDate: report.startDate ?? _draftFilters.startDate,
-                endDate: report.endDate ?? _draftFilters.endDate,
+                startDate: report.startDate ?? appliedFilters.startDate,
+                endDate: report.endDate ?? appliedFilters.endDate,
               );
             },
             icon: const Icon(Icons.picture_as_pdf_outlined),
@@ -1024,7 +1035,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Report'),
         content: const Text(
-          'Are you sure you want to delete this information?',
+          'Are you sure you want to delete this report from the archive?',
         ),
         actions: [
           TextButton(
@@ -1043,6 +1054,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     if (confirmed != true) return;
 
     await ref.read(databaseProvider).deleteGeneratedReport(report.id);
+    await ref.read(auditServiceProvider).logAction(
+          action: AuditAction.delete,
+          entityType: AuditEntityTypes.report,
+          entityId: report.id,
+          details: 'Deleted generated report "${report.title}"',
+        );
     ref.invalidate(generatedReportsProvider);
 
     if (context.mounted) {
@@ -1057,12 +1074,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     GeneratedReport report,
   ) async {
     final filePath = report.filePath;
+    final appliedFilters = ref.read(reportFiltersProvider);
     if (filePath == null || filePath.trim().isEmpty) {
       ReportExportDialog.show(
         context,
         reportType: report.type,
-        startDate: report.startDate ?? _draftFilters.startDate,
-        endDate: report.endDate ?? _draftFilters.endDate,
+        startDate: report.startDate ?? appliedFilters.startDate,
+        endDate: report.endDate ?? appliedFilters.endDate,
       );
       return;
     }
@@ -1084,241 +1102,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           SnackBar(content: Text('Unable to open or share report: $e')),
         );
       }
-    }
-  }
-
-  Widget _buildConsultationReport(
-    BuildContext context,
-    AsyncValue<List<ConsultationReportEntry>> entriesAsync,
-    ReportFilters filters,
-  ) {
-    final theme = Theme.of(context);
-    final dateRange =
-        '${DateFormat('MMM d, yyyy').format(filters.startDate)} – '
-        '${DateFormat('MMM d, yyyy').format(filters.endDate)}';
-
-    return AppCard(
-      padding: const EdgeInsets.all(16),
-      child: entriesAsync.when(
-        loading: () => const Center(
-          child: Padding(
-            padding: EdgeInsets.all(28),
-            child: CircularProgressIndicator(),
-          ),
-        ),
-        error: (error, stackTrace) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Unable to load patient visits.'),
-            const SizedBox(height: 8),
-            Text('$error'),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () =>
-                    ref.invalidate(consultationReportEntriesProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ),
-          ],
-        ),
-        data: (entries) {
-          final visits = filterConsultationReportEntries(
-            entries: entries,
-            startDate: filters.startDate,
-            endDate: filters.endDate,
-          );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Patient Visits & Consultations',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$dateRange · ${visits.length} visit${visits.length == 1 ? '' : 's'}',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                  FilledButton.icon(
-                    onPressed: visits.isEmpty || _isExportingConsultations
-                        ? null
-                        : () => _exportConsultationReport(
-                            context,
-                            visits,
-                            filters,
-                          ),
-                    icon: _isExportingConsultations
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.picture_as_pdf_outlined),
-                    label: Text(
-                      _isExportingConsultations
-                          ? 'Exporting...'
-                          : 'Export PDF',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (visits.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.event_busy_outlined,
-                        size: 36,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.45,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      const Text('No visits in this reporting period'),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Choose a different date range to view consultation records.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                )
-              else
-                for (final entry in visits)
-                  _ConsultationReportTile(entry: entry),
-              const SizedBox(height: 8),
-              Text(
-                'Patient details are confidential. Exported PDFs are recorded in the audit log.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Future<void> _exportConsultationReport(
-    BuildContext context,
-    List<ConsultationReportEntry> visits,
-    ReportFilters filters,
-  ) async {
-    final user = ref.read(currentUserProvider);
-    if (user == null ||
-        !user.canAccessPatientRecords ||
-        !user.canGenerateReports) {
-      AppNotification.error(
-        title: 'Access Denied',
-        message: 'You are not authorized to export patient visit reports.',
-      );
-      return;
-    }
-
-    setState(() => _isExportingConsultations = true);
-    try {
-      final db = ref.read(databaseProvider);
-      final settings = await db.getSystemSettings();
-      final rows = visits.map((entry) {
-        final consultation = entry.consultation;
-        return [
-          entry.patient?.fullName ?? 'Unknown patient',
-          entry.visitDate == null
-              ? 'Unknown'
-              : DateFormat('MMM d, yyyy').format(entry.visitDate!),
-          entry.provider?.fullName ?? 'Not recorded',
-          consultation.assessment?.trim().isNotEmpty == true
-              ? consultation.assessment!.trim()
-              : 'Not recorded',
-          consultation.plan?.trim().isNotEmpty == true
-              ? consultation.plan!.trim()
-              : 'Not recorded',
-        ];
-      }).toList();
-      final bytes = await const ReportPdfService()
-          .generateConsultationHistoryPdf(
-            startDate: filters.startDate,
-            endDate: filters.endDate,
-            visitRows: rows,
-            settings: settings,
-            preparedByName: user.fullName,
-            preparedByRole: user.role.displayName,
-          );
-      final filename =
-          'MedSentry_Patient_Visits_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf';
-      final savedPath = await ReportService(db).exportReportToPdf(
-        pdfBytes: bytes,
-        filename: filename,
-        dialogTitle: 'Save Patient Visits Report',
-      );
-      if (savedPath == null) return;
-
-      final now = DateTime.now();
-      final reportId = const Uuid().v4();
-      await db.insertGeneratedReport(
-        GeneratedReport(
-          id: reportId,
-          title: 'Patient Visits - ${DateFormat('yyyy-MM-dd').format(now)}',
-          type: 'Patient Visits & Consultations',
-          generatedAt: now,
-          startDate: filters.startDate,
-          endDate: filters.endDate,
-          filePath: savedPath,
-        ),
-      );
-      ref.invalidate(generatedReportsProvider);
-
-      try {
-        await ref.read(auditServiceProvider).logAction(
-          userId: user.id,
-          userName: user.fullName,
-          userRole: user.role.displayName,
-          action: AuditAction.export,
-          entityType: 'consultation_report',
-          entityId: reportId,
-          description:
-              'Exported patient visits report for ${DateFormat('yyyy-MM-dd').format(filters.startDate)} to ${DateFormat('yyyy-MM-dd').format(filters.endDate)}',
-          details: '${visits.length} consultation records; file: $filename',
-        );
-      } catch (error) {
-        AppNotification.error(
-          title: 'Audit Logging Error',
-          message:
-              'The PDF was saved, but the export could not be recorded in the audit log: $error',
-        );
-        return;
-      }
-
-      AppNotification.success(
-        title: 'Report Exported',
-        message: '${visits.length} visit records saved as $filename.',
-      );
-    } catch (error) {
-      AppNotification.error(
-        title: 'Report Export Error',
-        message: 'Could not export patient visits: $error',
-      );
-    } finally {
-      if (mounted) setState(() => _isExportingConsultations = false);
     }
   }
 
@@ -1344,13 +1127,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             icon: Icons.description_outlined,
             isActive: _activeTab == 'reports',
             onTap: () => setState(() => _activeTab = 'reports'),
-          ),
-          _buildTabButton(
-            context,
-            title: 'Patient Visits',
-            icon: Icons.medical_information_outlined,
-            isActive: _activeTab == 'visits',
-            onTap: () => setState(() => _activeTab = 'visits'),
           ),
           _buildTabButton(
             context,
@@ -1438,13 +1214,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         if (allReports.isEmpty) {
           return _buildEmptyReportsSection(context);
         }
+        final distinctTypes = allReports.map((r) => r.type).toSet().toList();
+        final activeTypeFilter =
+            (_reportTypeFilter == 'all' || distinctTypes.contains(_reportTypeFilter))
+                ? _reportTypeFilter
+                : 'all';
+
         final query = _reportSearchQuery.trim().toLowerCase();
         var filtered = allReports.where((r) {
           final matchQuery = query.isEmpty ||
               r.title.toLowerCase().contains(query) ||
               r.type.toLowerCase().contains(query);
-          final matchType = _reportTypeFilter == 'all' ||
-              r.type.toLowerCase() == _reportTypeFilter.toLowerCase();
+          final matchType = activeTypeFilter == 'all' ||
+              r.type.toLowerCase() == activeTypeFilter.toLowerCase();
           return matchQuery && matchType;
         }).toList();
 
@@ -1454,8 +1236,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           filtered.sort((a, b) => a.generatedAt.compareTo(b.generatedAt));
         }
 
-        final distinctTypes = allReports.map((r) => r.type).toSet().toList();
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1464,6 +1244,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               totalCount: allReports.length,
               filteredCount: filtered.length,
               types: distinctTypes,
+              activeTypeFilter: activeTypeFilter,
             ),
             const SizedBox(height: 12),
             if (filtered.isEmpty)
@@ -1493,6 +1274,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required int totalCount,
     required int filteredCount,
     required List<String> types,
+    required String activeTypeFilter,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -1549,10 +1331,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             children: [
               if (types.isNotEmpty)
                 DropdownButton<String>(
-                  value: _reportTypeFilter,
+                  value: activeTypeFilter,
                   underline: const SizedBox.shrink(),
                   items: [
-                    const DropdownMenuItem(value: 'all', child: Text('All Types')),
+                    const DropdownMenuItem(
+                      value: 'all',
+                      child: Text('All Types'),
+                    ),
                     ...types.map(
                       (t) => DropdownMenuItem(value: t, child: Text(t)),
                     ),
@@ -1565,8 +1350,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 value: _reportSortOrder,
                 underline: const SizedBox.shrink(),
                 items: const [
-                  DropdownMenuItem(value: 'newest', child: Text('Newest First')),
-                  DropdownMenuItem(value: 'oldest', child: Text('Oldest First')),
+                  DropdownMenuItem(
+                    value: 'newest',
+                    child: Text('Newest First'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'oldest',
+                    child: Text('Oldest First'),
+                  ),
                 ],
                 onChanged: (val) {
                   if (val != null) setState(() => _reportSortOrder = val);
@@ -1577,7 +1368,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppColors.elevatedSurface
-                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                      : theme.colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.3,
+                        ),
                   borderRadius: AppRadius.roundedSm,
                 ),
                 child: Text(
@@ -1609,6 +1402,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         var filtered = allLogs.where((l) {
           final matchQuery = query.isEmpty ||
               (l.description?.toLowerCase().contains(query) ?? false) ||
+              (l.details?.toLowerCase().contains(query) ?? false) ||
+              (l.userName?.toLowerCase().contains(query) ?? false) ||
               l.userId.toLowerCase().contains(query) ||
               (l.patientId?.toLowerCase().contains(query) ?? false) ||
               l.entityType.toLowerCase().contains(query);
@@ -1637,7 +1432,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       controller: _auditSearchController,
                       decoration: InputDecoration(
                         isDense: true,
-                        hintText: 'Search audit logs (actor, entity, patient ID)...',
+                        hintText:
+                            'Search audit logs (actor, entity, patient ID)...',
                         hintStyle: TextStyle(
                           fontSize: 13,
                           color: isDark ? AppColors.textSecondary : Colors.grey,
@@ -1677,17 +1473,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       DropdownButton<String>(
                         value: _auditActionFilter,
                         underline: const SizedBox.shrink(),
-                        items: const [
-                          DropdownMenuItem(value: 'all', child: Text('All Actions')),
-                          DropdownMenuItem(value: 'create', child: Text('Create')),
-                          DropdownMenuItem(value: 'update', child: Text('Update')),
-                          DropdownMenuItem(value: 'delete', child: Text('Delete')),
-                          DropdownMenuItem(value: 'export', child: Text('Export')),
-                          DropdownMenuItem(value: 'login', child: Text('Login')),
-                          DropdownMenuItem(value: 'sync', child: Text('Sync')),
+                        items: [
+                          const DropdownMenuItem(
+                            value: 'all',
+                            child: Text('All Actions'),
+                          ),
+                          ...AuditAction.values.map(
+                            (action) => DropdownMenuItem(
+                              value: action.name,
+                              child: Text(action.displayName),
+                            ),
+                          ),
                         ],
                         onChanged: (val) {
-                          if (val != null) setState(() => _auditActionFilter = val);
+                          if (val != null) {
+                            setState(() => _auditActionFilter = val);
+                          }
                         },
                       ),
                       IconButton(
@@ -1703,7 +1504,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         decoration: BoxDecoration(
                           color: isDark
                               ? AppColors.elevatedSurface
-                              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                              : theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.3),
                           borderRadius: AppRadius.roundedSm,
                         ),
                         child: Text(
@@ -1758,11 +1560,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   Color actionColor;
                   switch (log.action.name.toLowerCase()) {
                     case 'create':
-                    case 'register':
+                    case 'restore':
                       actionColor = AppColors.primaryEmerald;
                       break;
                     case 'update':
-                    case 'edit':
                       actionColor = AppColors.info;
                       break;
                     case 'delete':
@@ -1775,6 +1576,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
                   final dateStr =
                       DateFormat('yyyy-MM-dd HH:mm:ss').format(log.timestamp);
+                  final actorLabel = log.userName?.isNotEmpty == true
+                      ? '${log.userName} (${log.userRole ?? log.userId})'
+                      : log.userId;
 
                   return AppCard(
                     padding: const EdgeInsets.all(12),
@@ -1842,7 +1646,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          log.description ?? 'Activity recorded',
+                          log.description ?? log.details ?? 'Activity recorded',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -1850,10 +1654,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                 isDark ? AppColors.textPrimary : Colors.black87,
                           ),
                         ),
-                        if (log.userId.isNotEmpty) ...[
+                        if (actorLabel.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
-                            'Actor: ${log.userId}',
+                            'Actor: $actorLabel',
                             style: TextStyle(
                               fontSize: 11,
                               color: isDark
@@ -1911,87 +1715,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ConsultationReportTile extends StatelessWidget {
-  final ConsultationReportEntry entry;
-
-  const _ConsultationReportTile({required this.entry});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final consultation = entry.consultation;
-    final visitDate = entry.visitDate;
-
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 4,
-            children: [
-              Text(
-                entry.patient?.fullName ?? 'Unknown patient',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                visitDate == null
-                    ? 'Date not recorded'
-                    : DateFormat('MMM d, yyyy').format(visitDate),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            entry.provider?.fullName ?? 'Provider not recorded',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-            ),
-          ),
-          if (consultation.assessment?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: 10),
-            Text(
-              'Assessment',
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(consultation.assessment!.trim()),
-          ],
-          if (consultation.plan?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Plan',
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(consultation.plan!.trim()),
-          ],
-        ],
       ),
     );
   }

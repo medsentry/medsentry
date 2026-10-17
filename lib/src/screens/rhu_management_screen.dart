@@ -610,10 +610,10 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
     Clinic clinic,
     List<User> assignedStaff,
   ) async {
-    return _showDeleteClinicConfirmDialog(context, ref, clinic, assignedStaff);
+    await _showDeleteClinicConfirmDialog(context, ref, clinic, assignedStaff);
   }
 
-  static Future<void> _showDeleteClinicConfirmDialog(
+  static Future<bool> _showDeleteClinicConfirmDialog(
     BuildContext context,
     WidgetRef ref,
     Clinic clinic,
@@ -624,193 +624,215 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
     final codeController = TextEditingController();
     var isDeleting = false;
 
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final enteredCode = codeController.text.trim().toUpperCase();
-            final isCodeMatched = enteredCode == clinic.code.toUpperCase();
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              final enteredCode = codeController.text.trim().toUpperCase();
+              final isCodeMatched = enteredCode == clinic.code.toUpperCase();
 
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: context.semanticColors.criticalBg,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.warning_amber_rounded,
-                      color: context.semanticColors.critical,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Delete Rural Health Unit',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-                    ),
-                  ),
-                ],
-              ),
-              content: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Row(
                   children: [
-                    RichText(
-                      text: TextSpan(
-                        style: theme.textTheme.bodyMedium,
-                        children: [
-                          const TextSpan(
-                            text: 'Are you sure you want to permanently delete ',
-                          ),
-                          TextSpan(
-                            text: clinic.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          TextSpan(
-                            text: ' (${clinic.code})? This will remove the facility from the provincial system.',
-                          ),
-                        ],
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: context.semanticColors.criticalBg,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.warning_amber_rounded,
+                        color: context.semanticColors.critical,
+                        size: 24,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    if (assignedStaff.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: context.semanticColors.warningBg,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: context.semanticColors.warning.withValues(alpha: 0.3),
-                          ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Delete Rural Health Unit',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                    ),
+                  ],
+                ),
+                content: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          style: theme.textTheme.bodyMedium,
                           children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 18,
-                              color: context.semanticColors.warning,
+                            const TextSpan(
+                              text:
+                                  'Are you sure you want to permanently delete ',
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${assignedStaff.length} staff member(s) are currently assigned to this facility. Deleting will unassign these staff members.',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: context.semanticColors.warning,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                            TextSpan(
+                              text: clinic.name,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            TextSpan(
+                              text:
+                                  ' (${clinic.code})? This will remove the facility from the provincial system.',
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 16),
-                    ],
-                    Text(
-                      'To confirm deletion, please type the facility code "${clinic.code}":',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurface.withValues(alpha: 0.75),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: codeController,
-                      autofocus: true,
-                      textCapitalization: TextCapitalization.characters,
-                      decoration: InputDecoration(
-                        hintText: clinic.code,
-                        prefixIcon: const Icon(Icons.shield_outlined, size: 20),
-                        border: const OutlineInputBorder(),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                      ),
-                      onChanged: (_) => setDialogState(() {}),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isDeleting ? null : () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton.icon(
-                  onPressed: (!isCodeMatched || isDeleting)
-                      ? null
-                      : () async {
-                          setDialogState(() => isDeleting = true);
-                          final currentUserId =
-                              ref.read(currentUserProvider)?.id;
-
-                          try {
-                            await ref
-                                .read(clinicRepositoryProvider)
-                                .deleteClinic(
-                                  clinic.id,
-                                  actorUserId: currentUserId,
-                                );
-
-                            ref.invalidate(clinicsProvider);
-                            ref.invalidate(usersProvider);
-
-                            if (context.mounted) {
-                              Navigator.pop(dialogContext);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Facility "${clinic.name}" deleted successfully',
+                      if (assignedStaff.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: context.semanticColors.warningBg,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: context.semanticColors.warning
+                                  .withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 18,
+                                color: context.semanticColors.warning,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${assignedStaff.length} staff member(s) are currently assigned to this facility. Deleting will unassign these staff members.',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: context.semanticColors.warning,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              );
-                            }
-                          } catch (e) {
-                            setDialogState(() => isDeleting = false);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor:
-                                      context.semanticColors.critical,
-                                  content: Text('Error deleting facility: $e'),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: context.semanticColors.critical,
-                    foregroundColor: Colors.white,
-                  ),
-                  icon: isDeleting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                              ),
+                            ],
                           ),
-                        )
-                      : const Icon(Icons.delete_forever, size: 18),
-                  label: Text(isDeleting ? 'Deleting...' : 'Delete Facility'),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      Text(
+                        'To confirm deletion, please type the facility code "${clinic.code}":',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.75),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: codeController,
+                        autofocus: true,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          hintText: clinic.code,
+                          prefixIcon:
+                              const Icon(Icons.shield_outlined, size: 20),
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            );
-          },
-        );
-      },
-    );
+                actions: [
+                  TextButton(
+                    onPressed: isDeleting
+                        ? null
+                        : () => Navigator.pop(dialogContext, false),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: (!isCodeMatched || isDeleting)
+                        ? null
+                        : () async {
+                            setDialogState(() => isDeleting = true);
+                            final currentUserId =
+                                ref.read(currentUserProvider)?.id;
+
+                            try {
+                              await ref
+                                  .read(clinicRepositoryProvider)
+                                  .deleteClinic(
+                                    clinic.id,
+                                    actorUserId: currentUserId,
+                                  );
+
+                              ref.invalidate(clinicsProvider);
+                              ref.invalidate(usersProvider);
+
+                              if (dialogContext.mounted) {
+                                Navigator.pop(dialogContext, true);
+                              }
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Facility "${clinic.name}" deleted successfully',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              setDialogState(() => isDeleting = false);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor:
+                                        context.semanticColors.critical,
+                                    content:
+                                        Text('Error deleting facility: $e'),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: context.semanticColors.critical,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: isDeleting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.delete_forever, size: 18),
+                    label:
+                        Text(isDeleting ? 'Deleting...' : 'Delete Facility'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+      return result ?? false;
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        codeController.dispose();
+      });
+    }
   }
 
   Future<void> _toggleClinicStatus(Clinic clinic) async {
@@ -1190,19 +1212,22 @@ class _ClinicFormModalState extends ConsumerState<_ClinicFormModal> {
               icon: Icons.delete_outline,
               onPressed: _isSaving
                   ? null
-                  : () {
-                      Navigator.pop(context);
+                  : () async {
                       final allUsers =
                           ref.read(usersProvider).valueOrNull ?? [];
                       final assigned = allUsers
                           .where((u) => u.clinicId == existing.id)
                           .toList();
-                      _RhuManagementScreenState._showDeleteClinicConfirmDialog(
-                        context,
-                        ref,
-                        existing,
-                        assigned,
-                      );
+                      final deleted = await _RhuManagementScreenState
+                          ._showDeleteClinicConfirmDialog(
+                            context,
+                            ref,
+                            existing,
+                            assigned,
+                          );
+                      if (deleted && context.mounted) {
+                        Navigator.pop(context);
+                      }
                     },
             ),
           ],

@@ -72,8 +72,9 @@ class ClinicRepository {
     var list = await _db.getAllClinics();
     unawaited(_refreshRemoteClinics());
 
-    // Seed a first-run offline installation with usable RHU data.
-    if (list.isEmpty) {
+    // Seed a first-run offline installation with usable RHU data once.
+    if (list.isEmpty && !(await _db.isClinicsSeeded())) {
+      await _db.setClinicsSeeded(true);
       for (final def in defaultInitialClinics) {
         await _db.insertClinic(def);
         list.add(def);
@@ -106,7 +107,21 @@ class ClinicRepository {
             .map((item) => Clinic.fromJson(Map<String, dynamic>.from(item)))
             .toList();
 
+        if (remote.isNotEmpty) {
+          await _db.setClinicsSeeded(true);
+        }
+
+        final existing = await _db.getAllClinics();
         for (final clinic in remote) {
+          final duplicateByName = existing.where(
+            (c) =>
+                c.id != clinic.id &&
+                (c.name.toLowerCase() == clinic.name.toLowerCase() ||
+                    c.code.toLowerCase() == clinic.code.toLowerCase()),
+          );
+          if (duplicateByName.isNotEmpty) {
+            continue;
+          }
           await _db.insertClinic(clinic);
         }
       }
@@ -171,6 +186,7 @@ class ClinicRepository {
       debugPrint('ClinicRepository: createClinic remote insert error: $e');
     }
 
+    await _db.setClinicsSeeded(true);
     await _db.insertClinic(clinic);
 
     if (actorUserId != null) {
@@ -238,28 +254,22 @@ class ClinicRepository {
     final client = _supabase;
     if (client != null && client.auth.currentSession != null) {
       try {
-        // 1. Unassign all users from this clinic in Supabase
-        await client
-            .from('users')
-            .update({'clinic_id': null})
-            .eq('clinic_id', id);
-
-        // 2. Cascade delete dependent clinic operational records
-        try {
-          await client.from('documents').delete().eq('clinic_id', id);
-          await client.from('generated_reports').delete().eq('clinic_id', id);
-          await client.from('patients').delete().eq('clinic_id', id);
-        } catch (childErr) {
-          debugPrint(
-            'ClinicRepository: child records cascade cleanup notice: $childErr',
-          );
-        }
-
-        // 3. Delete the clinic itself from Supabase
         await client.from('clinics').delete().eq('id', id);
       } catch (e) {
-        debugPrint('ClinicRepository: deleteClinic remote delete error: $e');
-        rethrow;
+        debugPrint(
+          'ClinicRepository: remote clinic hard-delete restricted (archiving instead): $e',
+        );
+        try {
+          await client
+              .from('clinics')
+              .update({
+                'status': 'inactive',
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', id);
+        } catch (softErr) {
+          debugPrint('ClinicRepository: remote soft-deactivate notice: $softErr');
+        }
       }
     }
 

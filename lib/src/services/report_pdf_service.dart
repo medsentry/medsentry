@@ -12,158 +12,6 @@ import '../utils/logo_utils.dart';
 class ReportPdfService {
   const ReportPdfService();
 
-  Future<Uint8List> generateConsultationHistoryPdf({
-    required DateTime startDate,
-    required DateTime endDate,
-    required List<List<String>> visitRows,
-    required SystemSettings settings,
-    required String preparedByName,
-    required String preparedByRole,
-  }) async {
-    final logoBytes = decodeLogoDataUri(settings.logoDataUri);
-    final pdf = pw.Document(
-      title: 'MedSentry - Patient Visits and Consultations',
-      author: 'MedSentry RHU Healthcare System',
-      subject: 'Confidential patient consultation report',
-    );
-    final generatedAt = DateTime.now();
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.all(32),
-        header: (context) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Row(
-              children: [
-                if (logoBytes != null) ...[
-                  pw.SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: pw.Image(
-                      pw.MemoryImage(logoBytes),
-                      fit: pw.BoxFit.contain,
-                    ),
-                  ),
-                  pw.SizedBox(width: 8),
-                ],
-                pw.Expanded(
-                  child: pw.Text(
-                    settings.clinicName,
-                    style: pw.TextStyle(
-                      fontSize: 15,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.teal900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 3),
-            pw.Text(
-              'PATIENT VISITS & CONSULTATIONS',
-              style: pw.TextStyle(
-                fontSize: 10,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.blueGrey800,
-              ),
-            ),
-            pw.SizedBox(height: 6),
-            pw.Text(
-              'Period: ${DateFormat('MMM d, yyyy').format(startDate)} - '
-              '${DateFormat('MMM d, yyyy').format(endDate)}'
-              '    |    Generated: ${DateFormat('MMM d, yyyy h:mm a').format(generatedAt)}',
-              style: const pw.TextStyle(
-                fontSize: 8,
-                color: PdfColors.blueGrey700,
-              ),
-            ),
-            pw.SizedBox(height: 5),
-            pw.Divider(color: PdfColors.blueGrey300),
-            pw.SizedBox(height: 8),
-          ],
-        ),
-        footer: (context) => pw.Container(
-          alignment: pw.Alignment.centerRight,
-          margin: const pw.EdgeInsets.only(top: 8),
-          child: pw.Text(
-            'CONFIDENTIAL | Prepared by $preparedByName ($preparedByRole) | '
-            'Page ${context.pageNumber} of ${context.pagesCount}',
-            style: const pw.TextStyle(
-              fontSize: 7,
-              color: PdfColors.blueGrey600,
-            ),
-          ),
-        ),
-        build: (context) => [
-          pw.Text(
-            '${visitRows.length} visit${visitRows.length == 1 ? '' : 's'} in this reporting period.',
-            style: pw.TextStyle(
-              fontSize: 8,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 8),
-          if (visitRows.isEmpty)
-            pw.Padding(
-              padding: const pw.EdgeInsets.all(20),
-              child: pw.Text(
-                'No consultations were recorded in the selected period.',
-                style: const pw.TextStyle(fontSize: 9),
-              ),
-            )
-          else
-            pw.TableHelper.fromTextArray(
-              headers: const [
-                'Patient',
-                'Visit date',
-                'Provider',
-                'Assessment',
-                'Plan',
-              ],
-              data: visitRows,
-              border: pw.TableBorder.all(
-                color: PdfColors.grey300,
-                width: 0.5,
-              ),
-              headerDecoration: const pw.BoxDecoration(
-                color: PdfColors.teal900,
-              ),
-              headerStyle: pw.TextStyle(
-                color: PdfColors.white,
-                fontSize: 8,
-                fontWeight: pw.FontWeight.bold,
-              ),
-              cellStyle: const pw.TextStyle(
-                fontSize: 7,
-                color: PdfColors.blueGrey900,
-              ),
-              cellAlignment: pw.Alignment.topLeft,
-              cellPadding: const pw.EdgeInsets.all(5),
-              columnWidths: {
-                0: const pw.FlexColumnWidth(1.3),
-                1: const pw.FlexColumnWidth(0.85),
-                2: const pw.FlexColumnWidth(1.1),
-                3: const pw.FlexColumnWidth(1.8),
-                4: const pw.FlexColumnWidth(1.8),
-              },
-            ),
-          pw.SizedBox(height: 10),
-          pw.Text(
-            'This report contains confidential patient health information. '
-            'Handle and share it only in accordance with applicable privacy policies.',
-            style: const pw.TextStyle(
-              fontSize: 7,
-              color: PdfColors.blueGrey700,
-            ),
-          ),
-        ],
-      ),
-    );
-    return pdf.save();
-  }
-
   /// Generates the complete official PDF document bytes completely offline.
   Future<Uint8List> generateReportPdf({
     required String reportType,
@@ -272,7 +120,7 @@ class ReportPdfService {
         : 'Surigao del Sur';
     final municipality = settings.municipality.isNotEmpty
         ? settings.municipality
-        : 'Cantilan';
+        : 'Municipality';
 
     return pw.Column(
       children: [
@@ -1112,9 +960,8 @@ class ReportPdfService {
     required SystemSettings settings,
     required String preparedByName,
     required String preparedByRole,
-    String approvedByName = 'Dr. Maria Santos, MD',
+    String? approvedByName,
     String approvedByRole = 'Municipal Health Officer (MHO) / Medical Officer IV',
-    List<Consultation> consultations = const [],
     List<MedicalDocument> documents = const [],
   }) async {
     final logoBytes = decodeLogoDataUri(settings.logoDataUri);
@@ -1126,6 +973,16 @@ class ReportPdfService {
     );
 
     final generatedAt = DateTime.now();
+    final effectiveApprovedByName =
+        (approvedByName != null && approvedByName.trim().isNotEmpty)
+        ? approvedByName.trim()
+        : preparedByName;
+    final defaultMunicipality = settings.municipality.isNotEmpty
+        ? settings.municipality
+        : 'N/A';
+    final defaultProvince = settings.province.isNotEmpty
+        ? settings.province
+        : 'N/A';
 
     pdf.addPage(
       pw.MultiPage(
@@ -1240,8 +1097,8 @@ class ReportPdfService {
               cellStyle: const pw.TextStyle(fontSize: 7.5, color: PdfColors.blueGrey900),
               data: [
                 ['Street / House No.', patient.address?.isNotEmpty == true ? patient.address! : 'N/A', 'Barangay', patient.barangay ?? 'N/A'],
-                ['Purok / Sitio', patient.purokSitio ?? 'N/A', 'Municipality / City', patient.city ?? 'Cantilan'],
-                ['Province', patient.province ?? 'Surigao del Sur', 'ZIP Code', patient.zipCode ?? '8317'],
+                ['Purok / Sitio', patient.purokSitio ?? 'N/A', 'Municipality / City', patient.city ?? defaultMunicipality],
+                ['Province', patient.province ?? defaultProvince, 'ZIP Code', patient.zipCode ?? 'N/A'],
                 ['Mobile / Contact', patient.contactNumber ?? 'None', 'Email Address', patient.email ?? 'None'],
                 ['Emergency Contact', patient.emergencyContactName ?? 'None', 'Relationship / Number', '${patient.emergencyContactRelation ?? 'N/A'} / ${patient.emergencyContactNumber ?? 'None'}'],
               ],
@@ -1312,44 +1169,8 @@ class ReportPdfService {
             ),
             pw.SizedBox(height: 14),
 
-            // Section 5: Clinical Encounters & Consultations
-            _buildSectionTitle('5. CLINICAL ENCOUNTERS & CONSULTATIONS HISTORY'),
-            pw.SizedBox(height: 6),
-            if (consultations.isEmpty)
-              _buildEmptyState('No clinical consultation encounters recorded for this patient.')
-            else
-              pw.TableHelper.fromTextArray(
-                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-                headerStyle: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                headerDecoration: const pw.BoxDecoration(color: PdfColors.teal800),
-                headerHeight: 20,
-                cellHeight: 18,
-                cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
-                oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
-                headers: ['Date', 'Attending Doctor', 'Chief Complaint / Subjective', 'Assessment / Diagnosis', 'Plan / Rx'],
-                columnWidths: {
-                  0: const pw.FixedColumnWidth(65),
-                  1: const pw.FlexColumnWidth(2),
-                  2: const pw.FlexColumnWidth(2.5),
-                  3: const pw.FlexColumnWidth(2.5),
-                  4: const pw.FlexColumnWidth(2.5),
-                },
-                data: consultations.map((c) {
-                  final date = c.consultationDate ?? c.createdAt;
-                  final dateStr = date != null ? DateFormat('MM/dd/yyyy').format(date) : '-';
-                  return [
-                    dateStr,
-                    c.doctorId ?? 'RHU Clinician',
-                    c.subjective ?? '-',
-                    c.assessment ?? c.icd10Description ?? '-',
-                    c.plan ?? '-',
-                  ];
-                }).toList(),
-              ),
-            pw.SizedBox(height: 14),
-
-            // Section 6: Attached Medical Documents & Files
-            _buildSectionTitle('6. ATTACHED MEDICAL DOCUMENTS & FILES'),
+            // Section 5: Attached Medical Documents & Files
+            _buildSectionTitle('5. ATTACHED MEDICAL DOCUMENTS & FILES'),
             pw.SizedBox(height: 6),
             if (documents.isEmpty)
               _buildEmptyState('No external medical documents attached to this record.')
@@ -1386,11 +1207,11 @@ class ReportPdfService {
               ),
             pw.SizedBox(height: 24),
 
-            // Section 7: Official Sign-off Block
+            // Section 6: Official Sign-off Block
             _buildSignOffBlock(
               preparedByName: preparedByName,
               preparedByRole: preparedByRole,
-              approvedByName: approvedByName,
+              approvedByName: effectiveApprovedByName,
               approvedByRole: approvedByRole,
               clinicName: settings.clinicName,
               date: generatedAt,

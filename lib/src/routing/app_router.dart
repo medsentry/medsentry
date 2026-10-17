@@ -24,7 +24,7 @@ bool _canAccessRoute(User user, String path) {
   if (path == '/profile') return true;
   if (path == '/dashboard') return true;
   if (path.startsWith('/rhus')) return user.isSuperAdmin;
-  if (path.startsWith('/settings')) return user.canManageSystemData;
+  if (path.startsWith('/settings')) return user.canAccessSettings;
   if (path.startsWith('/staff')) return user.canManageStaffAccounts;
   if (path.startsWith('/audit-logs')) return user.canViewAuditLogs;
   if (path.startsWith('/archive')) return user.canManageArchive;
@@ -36,6 +36,10 @@ bool _canAccessRoute(User user, String path) {
   return true;
 }
 
+class _RouterRefreshListenable extends ChangeNotifier {
+  void trigger() => notifyListeners();
+}
+
 Page<void> _noTransitionPage({
   required GoRouterState state,
   required Widget child,
@@ -45,8 +49,14 @@ Page<void> _noTransitionPage({
 
 // Router provider
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final refreshListenable = _RouterRefreshListenable();
+  ref.listen<User?>(currentUserProvider, (_, _) => refreshListenable.trigger());
+  ref.listen(systemSettingsProvider, (_, _) => refreshListenable.trigger());
+  ref.onDispose(refreshListenable.dispose);
+
   return GoRouter(
     initialLocation: '/login',
+    refreshListenable: refreshListenable,
     redirect: (context, state) async {
       try {
         var currentUser = ref.read(currentUserProvider);
@@ -60,6 +70,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           if (currentUser != null) {
             ref.read(currentUserProvider.notifier).state = currentUser;
           }
+        }
+
+        if (currentUser != null && !currentUser.isActive) {
+          await ref.read(authRepositoryProvider).logout();
+          ref.read(currentUserProvider.notifier).state = null;
+          currentUser = null;
         }
 
         if (currentUser == null && !isLoginRoute) {

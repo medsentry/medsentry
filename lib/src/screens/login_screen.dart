@@ -84,7 +84,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _checkPinLoginAvailability() async {
     final authRepo = ref.read(authRepositoryProvider);
+    final db = ref.read(databaseProvider);
     final locked = widget.locked || await authRepo.isSessionLocked();
+    final rememberMe = await db.getRememberMe();
+    final rememberedEmail = rememberMe ? await db.getRememberedEmail() : null;
 
     if (!mounted) return;
 
@@ -96,6 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _lastUserEmail = email;
         _sessionLocked = true;
         _isPinLogin = available;
+        _rememberMe = rememberMe;
         if (email != null) {
           _emailController.text = email;
         }
@@ -103,13 +107,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    // Fresh login (logout or first launch) — no saved account shortcuts.
     setState(() {
       _pinLoginAvailable = false;
       _lastUserEmail = null;
       _sessionLocked = false;
       _isPinLogin = false;
-      _emailController.clear();
+      _rememberMe = rememberMe;
+      _emailController.text = rememberedEmail ?? '';
       _passwordController.clear();
       _pinController.clear();
     });
@@ -209,6 +213,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } else {
         final user = await authRepo.login(email, password);
         if (user != null) {
+          final db = ref.read(databaseProvider);
+          await db.setRememberMe(_rememberMe);
+          await db.setRememberedEmail(_rememberMe ? user.email : null);
           AppNotification.success(
             title: 'Welcome Back!',
             message: 'Login successful.',
@@ -921,10 +928,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     activeColor: primary,
                     checkColor: Colors.white,
                     side: const BorderSide(color: borderColor, width: 1.5),
-                    onChanged: (val) {
+                    onChanged: (val) async {
+                      final next = val ?? false;
                       setState(() {
-                        _rememberMe = val ?? false;
+                        _rememberMe = next;
                       });
+                      final db = ref.read(databaseProvider);
+                      await db.setRememberMe(next);
+                      if (!next) {
+                        await db.setRememberedEmail(null);
+                      }
                     },
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),

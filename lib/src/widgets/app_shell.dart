@@ -30,8 +30,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     icon: Icons.people_outline_rounded,
     selectedIcon: Icons.people_rounded,
     group: 'OVERVIEW',
-    badgeCount: 24,
-    badgeColor: Color(0xFFF97316),
   );
 
   static const _documentsNavigationItem = AppNavigationItem(
@@ -64,8 +62,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     icon: Icons.shield_outlined,
     selectedIcon: Icons.shield_rounded,
     group: 'ANALYTICS',
-    badgeCount: 3,
-    badgeColor: Color(0xFFA78BFA),
   );
 
   static const _archiveNavigationItem = AppNavigationItem(
@@ -73,6 +69,14 @@ class _AppShellState extends ConsumerState<AppShell> {
     path: '/archive',
     icon: Icons.inventory_2_outlined,
     selectedIcon: Icons.inventory_2_rounded,
+    group: 'OPERATIONS',
+  );
+
+  static const _syncNavigationItem = AppNavigationItem(
+    label: 'Cloud Sync',
+    path: '/sync',
+    icon: Icons.cloud_sync_outlined,
+    selectedIcon: Icons.cloud_sync_rounded,
     group: 'OPERATIONS',
   );
 
@@ -102,35 +106,40 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   static const _fallbackNavigationItems = [_dashboardNavigationItem];
 
-  /// Super Admin: Dashboard, RHUs, Staff, Reports, Audit Logs, Settings
+  /// Super Admin: Dashboard, RHUs, Staff, Reports, Audit Logs, Cloud Sync, Settings
   static const _superAdminNavigationItems = [
     _dashboardNavigationItem,
     _rhuNavigationItem,
     _staffNavigationItem,
     _reportsNavigationItem,
     _auditNavigationItem,
+    _syncNavigationItem,
     _settingsNavigationItem,
   ];
 
-  /// Admin: Dashboard, Patients, Documents, Reports, Audit, Archive, Staff, Settings
+  /// Admin: Dashboard, Patients, Certificates, Documents, Reports, Audit, Archive, Staff, Cloud Sync, Settings
   static const _adminNavigationItems = [
     _dashboardNavigationItem,
     _patientsNavigationItem,
+    _certificatesNavigationItem,
     _documentsNavigationItem,
     _reportsNavigationItem,
     _auditNavigationItem,
     _archiveNavigationItem,
     _staffNavigationItem,
+    _syncNavigationItem,
     _settingsNavigationItem,
   ];
 
-  /// Staff: Dashboard, Patients, Documents, Certificates, Reports
+  /// Staff: Dashboard, Patients, Certificates, Documents, Reports, Cloud Sync, Settings
   static const _staffNavigationItems = [
     _dashboardNavigationItem,
     _patientsNavigationItem,
-    _documentsNavigationItem,
     _certificatesNavigationItem,
+    _documentsNavigationItem,
     _reportsNavigationItem,
+    _syncNavigationItem,
+    _settingsNavigationItem,
   ];
 
   List<AppNavigationItem> _navigationItems(User? user) {
@@ -151,13 +160,15 @@ class _AppShellState extends ConsumerState<AppShell> {
       if (item.path == '/certificates') {
         return settings.certificatesModuleEnabled;
       }
+      if (item.path == '/sync') {
+        return settings.syncModuleEnabled;
+      }
       return true;
     }).toList();
   }
 
   int _getTabIndexFromPath(String path, List<AppNavigationItem> items) {
-    final index = items.indexWhere((item) => path.startsWith(item.path));
-    return index == -1 ? 0 : index;
+    return items.indexWhere((item) => path.startsWith(item.path));
   }
 
   /// Maps sidebar destinations to [StatefulShellRoute] branch indices.
@@ -187,7 +198,13 @@ class _AppShellState extends ConsumerState<AppShell> {
     final currentPath = GoRouter.of(context).state.uri.path;
     final currentIndex = _getTabIndexFromPath(currentPath, navigationItems);
 
-    final title = navigationItems[currentIndex].label;
+    final title = currentIndex >= 0 && currentIndex < navigationItems.length
+        ? navigationItems[currentIndex].label
+        : currentPath.startsWith('/profile')
+        ? 'My Profile'
+        : currentPath.startsWith('/sync')
+        ? 'Cloud Sync'
+        : 'Dashboard';
 
     return AppScaffold(
       title: title,

@@ -162,6 +162,7 @@ PatientCategory patientCategoryFromAge(int age) {
 class Patient {
   // Basic Identifiers
   final String id;
+  final String? clinicId;
   final String firstName;
   final String lastName;
   final String? middleName;
@@ -185,6 +186,7 @@ class Patient {
 
   // Government IDs & Insurance
   final String? philHealthNumber;
+  String? get philhealthNumber => philHealthNumber;
   final PhilHealthCategory? philHealthCategory;
   final String? localLguIdNumber; // Local government ID
 
@@ -226,6 +228,7 @@ class Patient {
 
   Patient({
     required this.id,
+    this.clinicId,
     required this.firstName,
     required this.lastName,
     this.middleName,
@@ -303,6 +306,7 @@ class Patient {
 
   Patient copyWith({
     String? id,
+    String? clinicId,
     String? firstName,
     String? lastName,
     String? middleName,
@@ -351,6 +355,7 @@ class Patient {
   }) {
     return Patient(
       id: id ?? this.id,
+      clinicId: clinicId ?? this.clinicId,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       middleName: middleName ?? this.middleName,
@@ -405,6 +410,7 @@ class Patient {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      if (clinicId != null) 'clinic_id': clinicId,
       'first_name': firstName,
       'last_name': lastName,
       'middle_name': middleName,
@@ -465,6 +471,7 @@ class Patient {
   factory Patient.fromJson(Map<String, dynamic> json) {
     return Patient(
       id: json['id'] as String,
+      clinicId: json['clinic_id'] as String?,
       firstName: json['first_name'] as String,
       lastName: json['last_name'] as String,
       middleName: json['middle_name'] as String?,
@@ -545,11 +552,4 @@ class Patient {
 
   @override
   int get hashCode => id.hashCode;
-}
-
-class PatientSearchResult {
-  final Patient patient;
-  final double relevanceScore;
-
-  PatientSearchResult({required this.patient, required this.relevanceScore});
 }

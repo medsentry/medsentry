@@ -76,8 +76,6 @@ class DatabaseSeedService {
       'version': 1,
       'patients': <Map<String, dynamic>>[],
       'users': users.map((e) => e.toJson()).toList(),
-      'prescriptions': <Map<String, dynamic>>[],
-      'lab_orders': <Map<String, dynamic>>[],
       'documents': <Map<String, dynamic>>[],
       'audit_logs': <Map<String, dynamic>>[],
       'generated_reports': <Map<String, dynamic>>[],

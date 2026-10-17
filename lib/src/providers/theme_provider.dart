@@ -513,13 +513,3 @@ ThemeData buildMedSentryTheme(
     ),
   );
 }
-
-/// Theme provider that returns the current theme with active accent
-final themeProvider = Provider<ThemeData>((ref) {
-  final themeMode = ref.watch(themeModeProvider);
-  final accent = ref.watch(accentThemeProvider);
-  final brightness = themeMode == ThemeMode.dark
-      ? Brightness.dark
-      : Brightness.light;
-  return buildMedSentryTheme(brightness, accentTheme: accent);
-});

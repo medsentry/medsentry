@@ -189,6 +189,17 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     final isDetailRoute =
         currentPath.startsWith('/patients/') && currentPath != '/patients';
 
+    final notificationTarget = user?.canManageSystemData == true
+        ? NotificationTarget.admin
+        : NotificationTarget.staff;
+    final unreadCount =
+        ref
+            .watch(notificationsProvider(notificationTarget))
+            .valueOrNull
+            ?.where((notification) => !notification.isRead)
+            .length ??
+        0;
+
     return AppBar(
       elevation: 0,
       backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
@@ -251,6 +262,39 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           ),
           onPressed: () => showMedsentryCommandPalette(context, ref),
         ),
+        IconButton(
+          tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+          icon: Icon(
+            isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+            size: 20,
+            color: isDark
+                ? const Color(0xFFFBBF24)
+                : AppColors.lightTextSecondary,
+          ),
+          onPressed: () {
+            ref
+                .read(themeModeProvider.notifier)
+                .setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+          },
+        ),
+        if (user != null)
+          IconButton(
+            tooltip: 'Notifications',
+            icon: Badge(
+              isLabelVisible: unreadCount > 0,
+              label: Text(unreadCount > 9 ? '9+' : '$unreadCount'),
+              child: Icon(
+                unreadCount > 0
+                    ? Icons.notifications_active_outlined
+                    : Icons.notifications_none_rounded,
+                size: 20,
+                color: isDark
+                    ? AppColors.textSecondary
+                    : AppColors.lightTextSecondary,
+              ),
+            ),
+            onPressed: () => _showNotifications(context, notificationTarget),
+          ),
         _SyncStatusDropdown(status: syncStatus),
         if (user != null) ...[
           Padding(
@@ -719,15 +763,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   }
 
   String _getUserGreetingName(User? user) {
-    if (user == null) return 'Dr. Rivera';
-    if (user.displayName.isNotEmpty) {
-      if (user.displayName.toLowerCase().startsWith('dr.') ||
-          user.displayName.toLowerCase().startsWith('dr ')) {
-        return user.displayName;
-      }
-      return 'Dr. ${user.lastName.isNotEmpty ? user.lastName : user.displayName}';
-    }
-    return 'Dr. Rivera';
+    if (user == null) return 'User';
+    if (user.displayName.isNotEmpty) return user.displayName;
+    return user.email;
   }
 
   Widget _buildGreetingZone(BuildContext context, User? user) {
@@ -735,6 +773,13 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     final isDark = theme.brightness == Brightness.dark;
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
+    final clinics = ref.watch(clinicsProvider).valueOrNull ?? const [];
+    final assignedClinicName = user?.clinicId == null
+        ? null
+        : clinics
+              .where((c) => c.id == user!.clinicId)
+              .map((c) => c.name)
+              .firstOrNull;
 
     final isDashboard = widget.title == 'Dashboard' || widget.title.isEmpty;
     final timeGreeting = _getTimeGreeting();
@@ -746,9 +791,11 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
     final timeStr = DateFormat('h:mm a').format(_currentTime);
     final dateStr = DateFormat('EEEE, d MMMM y').format(_currentTime);
-    final facility = settings.clinicName.isNotEmpty
-        ? settings.clinicName
-        : 'Madrid Rural Health Unit';
+    final facility = (assignedClinicName != null && assignedClinicName.isNotEmpty)
+        ? assignedClinicName
+        : (settings.clinicName.isNotEmpty
+              ? settings.clinicName
+              : settings.appName);
     final subtitle = '$timeStr PHT · $dateStr · $facility';
 
     return Column(
@@ -851,7 +898,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         // Pill Search Bar (Ctrl+K)
         InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: user?.canAccessPatientRecords == true
+          onTap: user != null
               ? () => showMedsentryCommandPalette(context, ref)
               : null,
           child: Container(
@@ -880,7 +927,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Search patients, reports...',
+                    'Search patients, modules...',
                     style: TextStyle(
                       color: isDark
                           ? AppColors.textSecondary
@@ -1520,7 +1567,7 @@ class _SyncStatusDropdown extends ConsumerWidget {
             ref.read(syncServiceProvider).startSync();
             break;
           case 'sync_settings':
-            context.push('/settings?tab=sync');
+            context.go('/sync');
             break;
         }
       },

@@ -94,34 +94,73 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   // QUICK ACTIONS STRIP
   // ==========================================
   Widget _buildQuickActionStrip(BuildContext context, bool isDark) {
+    final user = ref.watch(currentUserProvider);
+    final settings = ref.watch(systemSettingsProvider).valueOrNull;
+    final canAccessPatients = user?.permissions.canAccessPatientRecords ?? false;
+    final canRegister = user?.permissions.canRegisterPatients ?? false;
+    final canGenerateCerts =
+        (user?.permissions.canGenerateCertificates ?? false) &&
+        (settings?.enableCertificates ?? true);
+    final canManageDocs = user?.permissions.canManageDocuments ?? false;
+    final canViewReports =
+        (user?.permissions.canViewReports ?? false) &&
+        (settings?.enableReports ?? true);
+    final canViewAudit =
+        (user?.permissions.canViewAuditLogs ?? false) &&
+        (settings?.enableAuditLogs ?? true);
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildQuickActionPill(
-            context,
-            icon: Icons.person_add_outlined,
-            label: 'Register Patient',
-            color: AppColors.primaryEmerald,
-            onTap: () => context.go('/patients'),
-          ),
-          const SizedBox(width: 8),
-          _buildQuickActionPill(
-            context,
-            icon: Icons.edit_document,
-            label: 'Issue Certificate',
-            color: Colors.blue,
-            onTap: () => context.go('/certificates'),
-          ),
-          const SizedBox(width: 8),
-          _buildQuickActionPill(
-            context,
-            icon: Icons.upload_file_outlined,
-            label: 'Upload Document',
-            color: Colors.amber.shade700,
-            onTap: () => context.go('/documents'),
-          ),
-          const SizedBox(width: 8),
+          if (canAccessPatients && canRegister) ...[
+            _buildQuickActionPill(
+              context,
+              icon: Icons.person_add_outlined,
+              label: 'Register Patient',
+              color: AppColors.primaryEmerald,
+              onTap: () => context.go('/patients?action=add-patient'),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (canAccessPatients && canGenerateCerts) ...[
+            _buildQuickActionPill(
+              context,
+              icon: Icons.edit_document,
+              label: 'Issue Certificate',
+              color: Colors.blue,
+              onTap: () => context.go('/certificates'),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (canAccessPatients && canManageDocs) ...[
+            _buildQuickActionPill(
+              context,
+              icon: Icons.upload_file_outlined,
+              label: 'Upload Document',
+              color: Colors.amber.shade700,
+              onTap: () => context.go('/documents'),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (user?.isSuperAdmin == true) ...[
+            _buildQuickActionPill(
+              context,
+              icon: Icons.domain_rounded,
+              label: 'Manage RHU Units',
+              color: AppColors.primaryEmerald,
+              onTap: () => context.go('/rhus'),
+            ),
+            const SizedBox(width: 8),
+            _buildQuickActionPill(
+              context,
+              icon: Icons.badge_outlined,
+              label: 'Staff Accounts',
+              color: Colors.blue,
+              onTap: () => context.go('/staff'),
+            ),
+            const SizedBox(width: 8),
+          ],
           _buildQuickActionPill(
             context,
             icon: Icons.sync,
@@ -152,14 +191,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             color: Colors.purple,
             onTap: () => showMedsentryCommandPalette(context, ref),
           ),
-          const SizedBox(width: 8),
-          _buildQuickActionPill(
-            context,
-            icon: Icons.bar_chart_outlined,
-            label: 'FHSIS & DOH Reports',
-            color: Colors.teal,
-            onTap: () => context.go('/reports'),
-          ),
+          if (canViewReports) ...[
+            const SizedBox(width: 8),
+            _buildQuickActionPill(
+              context,
+              icon: Icons.bar_chart_outlined,
+              label: 'FHSIS & DOH Reports',
+              color: Colors.teal,
+              onTap: () => context.go('/reports'),
+            ),
+          ] else if (canViewAudit) ...[
+            const SizedBox(width: 8),
+            _buildQuickActionPill(
+              context,
+              icon: Icons.history_edu_outlined,
+              label: 'Audit Trail',
+              color: Colors.teal,
+              onTap: () => context.go('/audit-logs'),
+            ),
+          ],
         ],
       ),
     );
@@ -207,61 +257,74 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // ==========================================
-  // EPIDEMIOLOGICAL SURVEILLANCE & MORBIDITY
+  // EPIDEMIOLOGICAL SURVEILLANCE & CATCHMENT DISTRIBUTION
   // ==========================================
   Widget _buildEpidemiologicalSurveillanceCard(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final allPatients = ref.watch(patientsProvider).valueOrNull ?? [];
+    final settings = ref.watch(systemSettingsProvider).valueOrNull;
+    final user = ref.watch(currentUserProvider);
+    final clinics = ref.watch(clinicsProvider).valueOrNull ?? [];
+    final activeClinicId = ref.watch(activeClinicIdProvider);
 
-    final surveillanceData = [
-      (
-        'Acute Respiratory Infections (URTI / Bronchitis)',
-        '42 cases',
-        0.42,
-        'Normal Baseline',
-        Colors.blue,
-        Icons.air_outlined,
-      ),
-      (
-        'Essential (Primary) Hypertension',
-        '28 cases',
-        0.28,
-        'Chronic Registry',
-        Colors.orange,
-        Icons.monitor_heart_outlined,
-      ),
-      (
-        'Type 2 Diabetes Mellitus',
-        '19 cases',
-        0.19,
-        'Stable',
-        Colors.purple,
-        Icons.water_drop_outlined,
-      ),
-      (
-        'Acute Gastroenteritis & Waterborne',
-        '11 cases',
-        0.11,
-        'Active Monitoring',
-        Colors.teal,
-        Icons.sanitizer_outlined,
-      ),
-      (
-        'Dengue Fever Surveillance',
-        '2 cases',
-        0.02,
-        'Low / Alert Level: Green',
-        Colors.green,
-        Icons.shield_outlined,
-      ),
-      (
-        'Animal Bite / Rabies Post-Exposure',
-        '4 cases',
-        0.04,
-        'PEP Dose Complete',
-        Colors.indigo,
-        Icons.pets_outlined,
-      ),
+    String catchmentName = settings?.organizationName ?? 'RHU Catchment Area';
+    if (activeClinicId != null) {
+      final matched = clinics.where((c) => c.id == activeClinicId).firstOrNull;
+      if (matched != null) {
+        catchmentName = '${matched.name} Catchment';
+      }
+    }
+
+    // Compute live Barangay & Clinical Category distribution from real patients
+    final barangayCounts = <String, int>{};
+    for (final p in allPatients) {
+      final brgy = (p.barangay != null && p.barangay!.trim().isNotEmpty)
+          ? p.barangay!.trim()
+          : 'Unassigned Barangay';
+      barangayCounts[brgy] = (barangayCounts[brgy] ?? 0) + 1;
+    }
+
+    final sortedEntries = barangayCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final palette = <Color>[
+      Colors.blue,
+      Colors.orange,
+      Colors.purple,
+      Colors.teal,
+      Colors.green,
+      Colors.indigo,
     ];
+    final icons = <IconData>[
+      Icons.location_on_outlined,
+      Icons.people_alt_outlined,
+      Icons.health_and_safety_outlined,
+      Icons.medical_services_outlined,
+      Icons.shield_outlined,
+      Icons.home_work_outlined,
+    ];
+
+    final totalCount = math.max(1, allPatients.length);
+    final surveillanceData = sortedEntries.take(6).indexed.map((entry) {
+      final idx = entry.$1;
+      final e = entry.$2;
+      final ratio = (e.value / totalCount).clamp(0.0, 1.0);
+      final statusLabel = ratio >= 0.35
+          ? 'High Volume Cluster'
+          : (ratio >= 0.15 ? 'Active Catchment' : 'Monitored');
+      return (
+        'Barangay ${e.key}',
+        '${e.value} ${e.value == 1 ? 'patient' : 'patients'}',
+        ratio,
+        statusLabel,
+        palette[idx % palette.length],
+        icons[idx % icons.length],
+      );
+    }).toList();
+
+    final canViewReports =
+        (user?.permissions.canViewReports ?? false) &&
+        (settings?.enableReports ?? true);
 
     return AppCard(
       padding: const EdgeInsets.all(20),
@@ -288,12 +351,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Epidemiological Disease Surveillance & Morbidity Radar',
+                      'Catchment Barangay & Population Surveillance',
                       style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Real-time municipal health surveillance aligned with DOH Field Health Services Information System (FHSIS)',
+                      'Real-time barangay distribution from registered patient records ($catchmentName)',
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
@@ -302,108 +365,121 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
               ),
-              OutlinedButton.icon(
-                onPressed: () => context.go('/reports'),
-                icon: const Icon(Icons.assessment_outlined, size: 14),
-                label: const Text('Export FHSIS Report', style: TextStyle(fontSize: 12)),
-              ),
+              if (canViewReports)
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/reports'),
+                  icon: const Icon(Icons.assessment_outlined, size: 14),
+                  label: const Text('Export FHSIS Report', style: TextStyle(fontSize: 12)),
+                ),
             ],
           ),
           const SizedBox(height: 18),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 700;
-              return Wrap(
-                spacing: 16,
-                runSpacing: 14,
-                children: surveillanceData.map((item) {
-                  final width = isWide
-                      ? (constraints.maxWidth - 16) / 2
-                      : constraints.maxWidth;
-                  return SizedBox(
-                    width: width,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.inputSurface : Colors.grey.shade50,
-                        borderRadius: AppRadius.roundedMd,
-                        border: Border.all(
-                          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+          if (surveillanceData.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'No patient catchment records registered yet. Add patients to view live barangay distribution.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                ),
+              ),
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 700;
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 14,
+                  children: surveillanceData.map((item) {
+                    final width = isWide
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth;
+                    return SizedBox(
+                      width: width,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.inputSurface : Colors.grey.shade50,
+                          borderRadius: AppRadius.roundedMd,
+                          border: Border.all(
+                            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(item.$6, size: 16, color: item.$5),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  item.$1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(item.$6, size: 16, color: item.$5),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    item.$1,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  item.$2,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                item.$2,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          LinearProgressIndicator(
-                            value: item.$3,
-                            backgroundColor: isDark
-                                ? AppColors.borderSubtle
-                                : Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(item.$5),
-                            borderRadius: BorderRadius.circular(4),
-                            minHeight: 6,
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Madrid RHU Catchment Area',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: item.$5.withValues(alpha: 0.12),
-                                  borderRadius: AppRadius.roundedSm,
-                                ),
-                                child: Text(
-                                  item.$4,
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            LinearProgressIndicator(
+                              value: item.$3,
+                              backgroundColor: isDark
+                                  ? AppColors.borderSubtle
+                                  : Colors.grey.shade200,
+                              valueColor: AlwaysStoppedAnimation<Color>(item.$5),
+                              borderRadius: BorderRadius.circular(4),
+                              minHeight: 6,
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '$catchmentName · ${(item.$3 * 100).toStringAsFixed(0)}% of cohort',
                                   style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                    color: item.$5,
+                                    fontSize: 10,
+                                    color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: item.$5.withValues(alpha: 0.12),
+                                    borderRadius: AppRadius.roundedSm,
+                                  ),
+                                  child: Text(
+                                    item.$4,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                      color: item.$5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -474,30 +550,86 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   // ==========================================
   // TIER 1: 4 TOP KPI CARDS
   // ==========================================
+  List<double> _computeSparkline(List<DateTime?> dates) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final counts = List<int>.filled(6, 0);
+    for (final dt in dates) {
+      if (dt == null) continue;
+      final d = DateTime(dt.year, dt.month, dt.day);
+      final diffDays = today.difference(d).inDays;
+      if (diffDays >= 0 && diffDays < 6) {
+        counts[5 - diffDays]++;
+      }
+    }
+    final maxCount = counts.fold<int>(0, math.max);
+    if (maxCount == 0) {
+      return const [0.18, 0.18, 0.18, 0.18, 0.18, 0.18];
+    }
+    return counts.map((c) => (0.2 + 0.8 * (c / maxCount)).clamp(0.2, 1.0)).toList();
+  }
+
   Widget _buildKpiCardsRow(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
     final extendedStatsAsync = ref.watch(extendedDashboardStatsProvider);
     final allPatients = ref.watch(patientsProvider).valueOrNull ?? [];
+    final allDocuments = ref.watch(documentsProvider).valueOrNull ?? [];
+    final allCertificates = ref.watch(issuedCertificatesProvider).valueOrNull ?? [];
 
     final totalPatients = statsAsync.valueOrNull?.totalPatients ?? allPatients.length;
+    final todayPatients = statsAsync.valueOrNull?.todayPatients ?? 0;
     final totalPatientsDisplay = _formatThousands(totalPatients);
 
-    final alertsCount = extendedStatsAsync.valueOrNull?.unreadNotifications ?? 0;
-    final alertsDisplay = alertsCount.toString();
+    final totalDocs = allDocuments.length;
+    final docsToday = extendedStatsAsync.valueOrNull?.documentsToday ?? 0;
+    final totalDocsDisplay = _formatThousands(totalDocs);
 
+    final totalCerts = allCertificates.length;
+    final now = DateTime.now();
+    final certsToday = allCertificates
+        .where(
+          (c) =>
+              c.issuedAt.year == now.year &&
+              c.issuedAt.month == now.month &&
+              c.issuedAt.day == now.day,
+        )
+        .length;
+    final totalCertsDisplay = _formatThousands(totalCerts);
+
+    final alertsCount = extendedStatsAsync.valueOrNull?.unreadNotifications ?? 0;
     final riskCount = allPatients
         .where((p) =>
             p.isPwd ||
             p.category == PatientCategory.senior ||
+            p.category == PatientCategory.seniorCitizen ||
             (p.allergies != null && p.allergies!.isNotEmpty))
         .length;
-    final aiRiskDisplay = riskCount.toString();
+    final priorityDisplay = _formatThousands(riskCount);
 
-    final recoveryScore = allPatients.isEmpty
-        ? '84.6'
-        : (78.0 + (allPatients.length % 15) * 1.1)
-            .clamp(70.0, 96.0)
-            .toStringAsFixed(1);
+    final canAccessPatients = user?.permissions.canAccessPatientRecords ?? false;
+    final canManageDocs = user?.permissions.canManageDocuments ?? false;
+    final canGenerateCerts = user?.permissions.canGenerateCertificates ?? false;
+
+    final patientSparkline = _computeSparkline(
+      allPatients.map((p) => p.createdAt ?? p.updatedAt).toList(),
+    );
+    final docSparkline = _computeSparkline(
+      allDocuments.map((d) => d.createdAt).toList(),
+    );
+    final certSparkline = _computeSparkline(
+      allCertificates.map((c) => c.issuedAt).toList(),
+    );
+    final prioritySparkline = _computeSparkline(
+      allPatients
+          .where((p) =>
+              p.isPwd ||
+              p.category == PatientCategory.senior ||
+              p.category == PatientCategory.seniorCitizen ||
+              (p.allergies != null && p.allergies!.isNotEmpty))
+          .map((p) => p.updatedAt ?? p.createdAt)
+          .toList(),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -517,43 +649,54 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             accentColor: AppColors.primaryEmerald,
             title: 'Active Patients',
             value: totalPatientsDisplay,
-            subtext: totalPatients > 0 ? '▲ Active in RHU' : '● Ready for records',
+            subtext: todayPatients > 0
+                ? '▲ +$todayPatients registered today'
+                : (totalPatients > 0 ? '● Active in RHU' : '● Ready for records'),
             subtextColor: AppColors.primaryEmerald,
-            sparklineBars: const [0.35, 0.65, 0.50, 0.85, 0.70, 0.95],
-            onTap: () => context.go('/patients'),
+            sparklineBars: patientSparkline,
+            onTap: () => context.go(canAccessPatients ? '/patients' : '/rhus'),
+          ),
+          _buildKpiCard(
+            context,
+            icon: Icons.folder_special_rounded,
+            accentColor: const Color(0xFF38BDF8),
+            title: 'Medical Documents',
+            value: totalDocsDisplay,
+            subtext: docsToday > 0
+                ? '▲ +$docsToday uploaded today'
+                : '● Digital repository',
+            subtextColor: const Color(0xFF38BDF8),
+            sparklineBars: docSparkline,
+            onTap: () =>
+                context.go(canManageDocs ? '/documents' : '/audit-logs'),
+          ),
+          _buildKpiCard(
+            context,
+            icon: Icons.workspace_premium_rounded,
+            accentColor: const Color(0xFFFBBF24),
+            title: 'Certificates Issued',
+            value: totalCertsDisplay,
+            subtext: certsToday > 0
+                ? '▲ +$certsToday issued today'
+                : '● Official RHU registry',
+            subtextColor: const Color(0xFFFBBF24),
+            sparklineBars: certSparkline,
+            onTap: () =>
+                context.go(canGenerateCerts ? '/certificates' : '/staff'),
           ),
           _buildKpiCard(
             context,
             icon: Icons.warning_amber_rounded,
-            accentColor: const Color(0xFFF97316),
-            title: 'Critical Alerts',
-            value: alertsDisplay,
-            subtext: alertsCount > 0 ? '▲ $alertsDisplay pending action' : '● System status normal',
-            subtextColor: const Color(0xFFF97316),
-            sparklineBars: const [0.55, 0.40, 0.80, 0.60, 0.75, 0.90],
-            onTap: () => context.go('/audit-logs'),
-          ),
-          _buildKpiCard(
-            context,
-            icon: Icons.favorite_border_rounded,
-            accentColor: const Color(0xFFFBBF24),
-            title: 'Avg Recovery Score',
-            value: recoveryScore,
-            subtext: '▲ 1.8 pts this month',
-            subtextColor: const Color(0xFFFBBF24),
-            sparklineBars: const [0.45, 0.55, 0.70, 0.65, 0.80, 0.88],
-            onTap: () => context.go('/reports'),
-          ),
-          _buildKpiCard(
-            context,
-            icon: Icons.auto_awesome,
             accentColor: const Color(0xFFA78BFA),
-            title: 'AI Risk Flags',
-            value: aiRiskDisplay,
-            subtext: riskCount > 0 ? '● $riskCount high-priority' : '● No active alerts',
+            title: 'Priority & Alerts',
+            value: priorityDisplay,
+            subtext: alertsCount > 0
+                ? '▲ $alertsCount unread system alerts'
+                : '● $riskCount priority patients',
             subtextColor: const Color(0xFFA78BFA),
-            sparklineBars: const [0.30, 0.50, 0.75, 0.45, 0.60, 0.92],
-            onTap: () => context.go('/reports'),
+            sparklineBars: prioritySparkline,
+            onTap: () =>
+                context.go(canAccessPatients ? '/patients' : '/audit-logs'),
           ),
         ];
 
@@ -784,13 +927,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final allPatients = ref.watch(patientsProvider).valueOrNull ?? [];
 
+    final daysWindow = _diagnosisTimeframe == 'Last 7 days'
+        ? 7
+        : (_diagnosisTimeframe == 'Last 90 days' ? 90 : 30);
+    final cutoff = DateTime.now().subtract(Duration(days: daysWindow));
+
+    final windowedPatients = allPatients.where((p) {
+      final dt = p.updatedAt ?? p.createdAt;
+      return dt == null || !dt.isBefore(cutoff);
+    }).toList();
+
+    final cohort = windowedPatients.isNotEmpty ? windowedPatients : allPatients;
+
     int cardiovascular = 0;
     int hypertension = 0;
     int diabetes = 0;
     int respiratory = 0;
     int general = 0;
 
-    for (final p in allPatients) {
+    for (final p in cohort) {
       final med = (p.medicalHistory ?? '').toLowerCase();
       if (med.contains('hyper') || med.contains('bp') || med.contains('pressure')) {
         hypertension++;
@@ -813,7 +968,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
     }
 
-    final total = allPatients.length;
+    final total = cohort.length;
     final rawSlices = <_DiagnosisSlice>[
       if (cardiovascular > 0)
         _DiagnosisSlice('Cardiovascular', cardiovascular / total, const Color(0xFFF97316)),
@@ -833,6 +988,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ]
         : rawSlices;
 
+    final chronicCount = cardiovascular + hypertension + diabetes + respiratory;
+    final barangaySet = cohort
+        .map((p) => p.barangay?.trim() ?? '')
+        .where((b) => b.isNotEmpty)
+        .toSet();
+    final insightSummary = cohort.isEmpty
+        ? 'No patient records registered yet. Register patients with medical history to populate live cohort analytics.'
+        : 'Out of ${cohort.length} active patients in this cohort, $chronicCount have recorded chronic or respiratory conditions across ${math.max(1, barangaySet.length)} ${barangaySet.length == 1 ? 'barangay' : 'barangays'}.';
+
     return AppCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -845,7 +1009,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Diagnosis Mix',
+                    'Clinical Condition Mix',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -856,7 +1020,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Current patient cohort',
+                    'Active patient medical history',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
@@ -942,7 +1106,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _formatThousands(allPatients.length),
+                          _formatThousands(cohort.length),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -999,7 +1163,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ),
                           Text(
-                            '${(s.ratio * 100).toInt()}%',
+                            '${(s.ratio * 100).round()}%',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -1035,16 +1199,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
-                  Icons.lightbulb_outline_rounded,
+                  Icons.insights_rounded,
                   size: 16,
-                  color: isDark
-                      ? AppColors.textMuted
-                      : AppColors.lightTextMuted,
+                  color: AppColors.primaryEmerald,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'In the coming months, we anticipate a significant shift in health schedules as more people prioritize wellness. With the rise of telehealth services, individuals will have greater access to healthcare professionals, leading to timely interventions.',
+                    insightSummary,
                     style: TextStyle(
                       fontSize: 11,
                       height: 1.45,
@@ -1063,10 +1225,49 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // ==========================================
-  // TIER 3: CARDIAC VITALS 30-DAY TREND
+  // TIER 3: RHU CLINICAL & DOCUMENT ACTIVITY TREND
   // ==========================================
   Widget _buildCardiacVitalsCard(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final allPatients = ref.watch(patientsProvider).valueOrNull ?? [];
+    final allDocuments = ref.watch(documentsProvider).valueOrNull ?? [];
+    final allCertificates = ref.watch(issuedCertificatesProvider).valueOrNull ?? [];
+
+    final intervalDays = _vitalsTimeframe == '7D'
+        ? 1
+        : (_vitalsTimeframe == '90D' ? 15 : 5);
+    final now = DateTime.now();
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    final dates = <String>[];
+    final patientSeries = <double>[];
+    final docSeries = <double>[];
+    final certSeries = <double>[];
+
+    for (int i = 0; i < 6; i++) {
+      final bucketEnd = todayEnd.subtract(Duration(days: (5 - i) * intervalDays));
+      final bucketStart = bucketEnd.subtract(Duration(days: intervalDays));
+      dates.add(DateFormat('MMM d').format(bucketEnd));
+
+      final pCount = allPatients.where((p) {
+        final dt = p.createdAt ?? p.updatedAt;
+        return dt != null && !dt.isBefore(bucketStart) && !dt.isAfter(bucketEnd);
+      }).length;
+
+      final dCount = allDocuments.where((d) {
+        final dt = d.createdAt;
+        return dt != null && !dt.isBefore(bucketStart) && !dt.isAfter(bucketEnd);
+      }).length;
+
+      final cCount = allCertificates.where((c) {
+        final dt = c.issuedAt;
+        return !dt.isBefore(bucketStart) && !dt.isAfter(bucketEnd);
+      }).length;
+
+      patientSeries.add(pCount.toDouble());
+      docSeries.add(dCount.toDouble());
+      certSeries.add(cCount.toDouble());
+    }
 
     return AppCard(
       padding: const EdgeInsets.all(20),
@@ -1080,7 +1281,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Cardiac Vitals — $_vitalsTimeframe Trend',
+                    'RHU Records Activity — $_vitalsTimeframe Trend',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -1091,7 +1292,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Averaged across monitored patients',
+                    'Registrations, uploaded documents & issued certificates',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
@@ -1160,19 +1361,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           SizedBox(
             height: 180,
             child: CustomPaint(
-              painter: _CardiacVitalsPainter(
-                dates: List.generate(6, (i) {
-                  final interval = _vitalsTimeframe == '7D'
-                      ? 1
-                      : (_vitalsTimeframe == '90D' ? 15 : 5);
-                  final d = DateTime.now().subtract(
-                    Duration(days: (5 - i) * interval),
-                  );
-                  return DateFormat('MMM d').format(d);
-                }),
-                heartRate: const [74, 76, 73, 75, 78, 76],
-                bpSystolic: const [122, 126, 120, 128, 124, 125],
-                spo2Scaled: const [98, 97, 98, 99, 98, 99],
+              painter: _ActivityTrendPainter(
+                dates: dates,
+                patientSeries: patientSeries,
+                documentSeries: docSeries,
+                certificateSeries: certSeries,
                 gridColor: isDark
                     ? Colors.white.withValues(alpha: 0.05)
                     : Colors.black.withValues(alpha: 0.06),
@@ -1191,19 +1384,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               _buildLegendItem(
                 color: AppColors.primaryEmerald,
-                label: 'Heart Rate',
+                label: 'Patients',
                 isDark: isDark,
               ),
               const SizedBox(width: 20),
               _buildLegendItem(
                 color: const Color(0xFFA78BFA),
-                label: 'BP Systolic',
+                label: 'Documents',
                 isDark: isDark,
               ),
               const SizedBox(width: 20),
               _buildLegendItem(
                 color: const Color(0xFFF97316),
-                label: 'SpO2',
+                label: 'Certificates',
                 isDark: isDark,
               ),
             ],
@@ -1214,55 +1407,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // ==========================================
-  // TIER 3: PRIORITY PATIENT QUEUE
+  // TIER 3: PRIORITY PATIENT REGISTRY
   // ==========================================
   Widget _buildPriorityPatientQueueCard(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final user = ref.watch(currentUserProvider);
+    final canAccessPatients = user?.permissions.canAccessPatientRecords ?? false;
     final allPatients = ref.watch(patientsProvider).valueOrNull ?? [];
+    final allDocuments = ref.watch(documentsProvider).valueOrNull ?? [];
+
+    final docCountByPatient = <String, int>{};
+    for (final d in allDocuments) {
+      docCountByPatient[d.patientId] = (docCountByPatient[d.patientId] ?? 0) + 1;
+    }
 
     final allQueueItems = allPatients.map((p) {
       final isCritical = p.isPwd ||
           (p.allergies?.isNotEmpty == true &&
               p.medicalHistory?.isNotEmpty == true);
-      final isSenior = p.category == PatientCategory.senior ||
-          p.category == PatientCategory.seniorCitizen;
+      final isMonitored = p.category == PatientCategory.senior ||
+          p.category == PatientCategory.seniorCitizen ||
+          p.allergies?.isNotEmpty == true ||
+          p.medicalHistory?.isNotEmpty == true;
 
       final String status;
       final Color statusColor;
-      final int riskScore;
-      final Color riskColor;
+      final int priorityWeight;
 
       if (isCritical) {
         status = 'Critical';
         statusColor = const Color(0xFFF43F5E);
-        riskScore = 85 + (p.id.hashCode.abs() % 12);
-        riskColor = const Color(0xFFF43F5E);
-      } else if (isSenior || p.allergies?.isNotEmpty == true) {
+        priorityWeight = 3;
+      } else if (isMonitored) {
         status = 'Monitored';
         statusColor = const Color(0xFFF59E0B);
-        riskScore = 65 + (p.id.hashCode.abs() % 15);
-        riskColor = const Color(0xFFF59E0B);
+        priorityWeight = 2;
       } else {
-        status = 'Improving';
-        statusColor = const Color(0xFFA78BFA);
-        riskScore = 35 + (p.id.hashCode.abs() % 25);
-        riskColor = const Color(0xFF34D399);
+        status = 'Active';
+        statusColor = AppColors.primaryEmerald;
+        priorityWeight = 1;
       }
 
       final shortId = '#P-${p.id.length >= 5 ? p.id.substring(p.id.length - 5).toUpperCase() : p.id}';
-      final diagnosis = p.medicalHistory?.isNotEmpty == true
+      final clinicalAlert = p.medicalHistory?.isNotEmpty == true
           ? p.medicalHistory!
           : (p.allergies?.isNotEmpty == true
               ? 'Allergy: ${p.allergies}'
-              : (p.category?.displayName ?? 'General Clinical'));
+              : (p.category?.displayName ?? 'General Care'));
 
-      final hrBase = isCritical ? 98 : (isSenior ? 82 : 72);
-      final hr = '${hrBase + (p.id.hashCode.abs() % 14)} bpm';
-      final bp = isCritical ? '146 / 92' : (isSenior ? '134 / 84' : '120 / 80');
+      final barangay = (p.barangay != null && p.barangay!.trim().isNotEmpty)
+          ? p.barangay!.trim()
+          : 'Unassigned';
+      final philhealth = (p.philhealthNumber != null &&
+              p.philhealthNumber!.trim().isNotEmpty)
+          ? p.philhealthNumber!.trim()
+          : 'None on file';
+      final docCount = docCountByPatient[p.id] ?? 0;
 
-      final updatedDiff = DateTime.now().difference(
-        p.updatedAt ?? p.createdAt ?? DateTime.now(),
-      );
+      final updatedAt = p.updatedAt ?? p.createdAt ?? DateTime.now();
+      final updatedDiff = DateTime.now().difference(updatedAt);
       final String updatedStr;
       if (updatedDiff.inMinutes < 60) {
         updatedStr = '${math.max(1, updatedDiff.inMinutes)} min ago';
@@ -1276,18 +1479,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         id: shortId,
         patientId: p.id,
         name: p.fullName,
-        diagnosis: diagnosis,
+        diagnosis: clinicalAlert,
         status: status,
         statusColor: statusColor,
-        heartRate: hr,
-        isHeartRateAlert: isCritical,
-        bp: bp,
-        riskScore: riskScore.clamp(10, 99),
-        riskColor: riskColor,
+        barangay: barangay,
+        philhealth: philhealth,
+        documentCount: docCount,
+        priorityWeight: priorityWeight,
+        updatedAt: updatedAt,
         updated: updatedStr,
       );
     }).toList()
-      ..sort((a, b) => b.riskScore.compareTo(a.riskScore));
+      ..sort((a, b) {
+        final cmp = b.priorityWeight.compareTo(a.priorityWeight);
+        if (cmp != 0) return cmp;
+        return b.updatedAt.compareTo(a.updatedAt);
+      });
 
     final filteredItems = allQueueItems.where((item) {
       if (_queueFilter == 'all') return true;
@@ -1295,7 +1502,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         return item.status.toLowerCase() == 'critical';
       }
       if (_queueFilter == 'improving') {
-        return item.status.toLowerCase() == 'improving';
+        return item.status.toLowerCase() == 'monitored' ||
+            item.status.toLowerCase() == 'active';
       }
       return true;
     }).toList();
@@ -1312,7 +1520,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Priority Patient Queue',
+                    'Priority Patient Registry',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -1323,7 +1531,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Sorted by AI risk score · ${filteredItems.length} monitored patients',
+                    'Sorted by clinical priority · ${filteredItems.length} patients',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
@@ -1334,14 +1542,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
 
-              // Filter pills: All, Critical, Improving
+              // Filter pills
               Row(
                 children: [
                   _buildQueueFilterPill('All', 'all', isDark),
                   const SizedBox(width: 6),
-                  _buildQueueFilterPill('Critical', 'critical', isDark),
+                  _buildQueueFilterPill('Priority', 'critical', isDark),
                   const SizedBox(width: 6),
-                  _buildQueueFilterPill('Improving', 'improving', isDark),
+                  _buildQueueFilterPill('Monitored', 'improving', isDark),
                 ],
               ),
             ],
@@ -1366,8 +1574,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     const SizedBox(height: 12),
                     Text(
                       allPatients.isEmpty
-                          ? 'No registered patients in queue'
-                          : 'No patients matching "$_queueFilter"',
+                          ? 'No registered patients in registry'
+                          : 'No patients matching selected filter',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -1379,7 +1587,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     const SizedBox(height: 6),
                     Text(
                       allPatients.isEmpty
-                          ? 'Register a patient to automatically monitor triage and clinical priority.'
+                          ? 'Register a patient to view real-time clinical status and documents.'
                           : 'Try selecting a different filter pill above.',
                       style: TextStyle(
                         fontSize: 12,
@@ -1388,7 +1596,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             : AppColors.lightTextSecondary,
                       ),
                     ),
-                    if (allPatients.isEmpty) ...[
+                    if (allPatients.isEmpty && canAccessPatients) ...[
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: () =>
@@ -1412,15 +1620,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 520),
+                constraints: const BoxConstraints(minWidth: 540),
                 child: Table(
                   columnWidths: const {
                     0: FlexColumnWidth(2.2), // PATIENT
-                    1: FlexColumnWidth(2.0), // DIAGNOSIS
-                    2: FlexColumnWidth(1.4), // STATUS
-                    3: FlexColumnWidth(1.2), // HEART RATE
-                    4: FlexColumnWidth(1.2), // BP
-                    5: FlexColumnWidth(1.8), // AI RISK SCORE
+                    1: FlexColumnWidth(2.1), // CLINICAL ALERTS / CATEGORY
+                    2: FlexColumnWidth(1.3), // STATUS
+                    3: FlexColumnWidth(1.4), // BARANGAY
+                    4: FlexColumnWidth(1.5), // PHILHEALTH
+                    5: FlexColumnWidth(1.2), // DOCUMENTS
                     6: FlexColumnWidth(1.3), // UPDATED
                   },
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -1439,17 +1647,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                       children: [
                         _buildTableHeaderCell('PATIENT', isDark),
-                        _buildTableHeaderCell('DIAGNOSIS', isDark),
+                        _buildTableHeaderCell('CLINICAL / ALERTS', isDark),
                         _buildTableHeaderCell('STATUS', isDark),
-                        _buildTableHeaderCell('HEART RATE', isDark),
-                        _buildTableHeaderCell('BP', isDark),
-                        _buildTableHeaderCell('AI RISK SCORE', isDark),
+                        _buildTableHeaderCell('BARANGAY', isDark),
+                        _buildTableHeaderCell('PHILHEALTH', isDark),
+                        _buildTableHeaderCell('DOCUMENTS', isDark),
                         _buildTableHeaderCell('UPDATED', isDark),
                       ],
                     ),
 
                     // Table Rows
-                    ...filteredItems.map((item) {
+                    ...filteredItems.take(10).map((item) {
                       return TableRow(
                         decoration: BoxDecoration(
                           border: Border(
@@ -1466,7 +1674,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             child: InkWell(
-                              onTap: item.patientId != null
+                              onTap: (canAccessPatients && item.patientId != null)
                                   ? () => context.push(
                                         '/patients/${item.patientId}',
                                       )
@@ -1496,14 +1704,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
-                                        const SizedBox(width: 4),
-                                        Icon(
-                                          Icons.open_in_new_rounded,
-                                          size: 11,
-                                          color: isDark
-                                              ? AppColors.textMuted
-                                              : AppColors.lightTextMuted,
-                                        ),
+                                        if (canAccessPatients) ...[
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            Icons.open_in_new_rounded,
+                                            size: 11,
+                                            color: isDark
+                                                ? AppColors.textMuted
+                                                : AppColors.lightTextMuted,
+                                          ),
+                                        ],
                                       ],
                                     ),
                                     Text(
@@ -1521,11 +1731,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ),
 
-                          // DIAGNOSIS
+                          // CLINICAL / ALERTS
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             child: Text(
                               item.diagnosis,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isDark
@@ -1561,30 +1773,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ),
 
-                          // HEART RATE
+                          // BARANGAY
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             child: Text(
-                              item.heartRate,
+                              item.barangay,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: item.isHeartRateAlert
-                                    ? const Color(0xFFF43F5E)
-                                    : (isDark
-                                          ? AppColors.primaryEmerald
-                                          : AppColors.primaryEmeraldDark),
-                              ),
-                            ),
-                          ),
-
-                          // BP
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Text(
-                              item.bp,
-                              style: TextStyle(
-                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
                                 color: isDark
                                     ? AppColors.textPrimary
                                     : AppColors.lightTextPrimary,
@@ -1592,37 +1789,35 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             ),
                           ),
 
-                          // AI RISK SCORE
+                          // PHILHEALTH
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: Row(
-                              children: [
-                                Text(
-                                  '${item.riskScore}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: item.riskColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: LinearProgressIndicator(
-                                      value: item.riskScore / 100.0,
-                                      minHeight: 5,
-                                      backgroundColor:
-                                          item.riskColor.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        item.riskColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              item.philhealth,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : AppColors.lightTextSecondary,
+                              ),
+                            ),
+                          ),
+
+                          // DOCUMENTS
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Text(
+                              '${item.documentCount} ${item.documentCount == 1 ? 'file' : 'files'}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: item.documentCount > 0
+                                    ? AppColors.primaryEmerald
+                                    : (isDark
+                                          ? AppColors.textMuted
+                                          : AppColors.lightTextMuted),
+                              ),
                             ),
                           ),
 
@@ -1659,9 +1854,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark
-                    ? AppColors.primaryEmerald.withValues(alpha: 0.15)
-                    : AppColors.primaryEmerald.withValues(alpha: 0.15))
+              ? AppColors.primaryEmerald.withValues(alpha: 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
@@ -1755,11 +1948,11 @@ class _QueueItem {
   final String diagnosis;
   final String status;
   final Color statusColor;
-  final String heartRate;
-  final bool isHeartRateAlert;
-  final String bp;
-  final int riskScore;
-  final Color riskColor;
+  final String barangay;
+  final String philhealth;
+  final int documentCount;
+  final int priorityWeight;
+  final DateTime updatedAt;
   final String updated;
 
   const _QueueItem({
@@ -1769,11 +1962,11 @@ class _QueueItem {
     required this.diagnosis,
     required this.status,
     required this.statusColor,
-    required this.heartRate,
-    required this.isHeartRateAlert,
-    required this.bp,
-    required this.riskScore,
-    required this.riskColor,
+    required this.barangay,
+    required this.philhealth,
+    required this.documentCount,
+    required this.priorityWeight,
+    required this.updatedAt,
     required this.updated,
   });
 }
@@ -1999,19 +2192,19 @@ class _DiagnosisDonutPainter extends CustomPainter {
   bool shouldRepaint(covariant _DiagnosisDonutPainter oldDelegate) => true;
 }
 
-class _CardiacVitalsPainter extends CustomPainter {
+class _ActivityTrendPainter extends CustomPainter {
   final List<String> dates;
-  final List<double> heartRate;
-  final List<double> bpSystolic;
-  final List<double> spo2Scaled;
+  final List<double> patientSeries;
+  final List<double> documentSeries;
+  final List<double> certificateSeries;
   final Color gridColor;
   final Color textColor;
 
-  _CardiacVitalsPainter({
+  _ActivityTrendPainter({
     required this.dates,
-    required this.heartRate,
-    required this.bpSystolic,
-    required this.spo2Scaled,
+    required this.patientSeries,
+    required this.documentSeries,
+    required this.certificateSeries,
     required this.gridColor,
     required this.textColor,
   });
@@ -2022,11 +2215,19 @@ class _CardiacVitalsPainter extends CustomPainter {
     const bottomMargin = 24.0;
     final chartWidth = size.width - leftMargin;
     final chartHeight = size.height - bottomMargin;
-    const minY = 20.0;
-    const maxY = 140.0;
 
-    // Draw horizontal grid lines (20, 60, 100, 140)
-    final gridSteps = [20, 60, 100, 140];
+    final maxVal = [
+      ...patientSeries,
+      ...documentSeries,
+      ...certificateSeries,
+    ].fold<double>(0.0, math.max);
+
+    final double maxY = maxVal <= 4
+        ? 4.0
+        : (maxVal <= 12 ? 12.0 : ((maxVal / 4).ceil() * 4).toDouble());
+    const minY = 0.0;
+
+    final gridSteps = [0.0, maxY * 0.25, maxY * 0.5, maxY * 0.75, maxY];
     final linePaint = Paint()
       ..color = gridColor
       ..strokeWidth = 1.0;
@@ -2036,7 +2237,7 @@ class _CardiacVitalsPainter extends CustomPainter {
       canvas.drawLine(Offset(leftMargin, y), Offset(size.width, y), linePaint);
 
       final textSpan = TextSpan(
-        text: '$step',
+        text: '${step.round()}',
         style: TextStyle(color: textColor, fontSize: 10.5),
       );
       final textPainter = TextPainter(
@@ -2049,8 +2250,7 @@ class _CardiacVitalsPainter extends CustomPainter {
       );
     }
 
-    // Calculate points for lines
-    final stepX = chartWidth / (dates.length - 1);
+    final stepX = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
 
     List<Offset> toOffsets(List<double> values) {
       return List.generate(values.length, (i) {
@@ -2061,7 +2261,6 @@ class _CardiacVitalsPainter extends CustomPainter {
       });
     }
 
-    // Draw lines with smooth bezier curves
     void drawSmoothLine(List<Offset> points, Color color) {
       if (points.isEmpty) return;
       final path = Path()..moveTo(points[0].dx, points[0].dy);
@@ -2081,23 +2280,15 @@ class _CardiacVitalsPainter extends CustomPainter {
 
       canvas.drawPath(path, strokePaint);
 
-      // Draw endpoint dot
       final last = points.last;
       final dotPaint = Paint()..color = color;
       canvas.drawCircle(last, 3.5, dotPaint);
     }
 
-    // BP Systolic (Purple)
-    drawSmoothLine(toOffsets(bpSystolic), const Color(0xFFA78BFA));
+    drawSmoothLine(toOffsets(documentSeries), const Color(0xFFA78BFA));
+    drawSmoothLine(toOffsets(certificateSeries), const Color(0xFFF97316));
+    drawSmoothLine(toOffsets(patientSeries), AppColors.primaryEmerald);
 
-    // SpO2 (Orange, map 90-100 to scale around 100-110)
-    final mappedSpo2 = spo2Scaled.map((v) => (v * 1.05)).toList();
-    drawSmoothLine(toOffsets(mappedSpo2), const Color(0xFFF97316));
-
-    // Heart Rate (Emerald)
-    drawSmoothLine(toOffsets(heartRate), AppColors.primaryEmerald);
-
-    // X-Axis Date Labels
     for (int i = 0; i < dates.length; i++) {
       final x = leftMargin + (i * stepX);
       final span = TextSpan(
@@ -2111,5 +2302,5 @@ class _CardiacVitalsPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CardiacVitalsPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _ActivityTrendPainter oldDelegate) => true;
 }

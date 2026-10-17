@@ -2,82 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/patient.dart';
 import '../models/generated_report.dart';
-import '../models/consultation.dart';
-import '../models/user.dart';
 import '../utils/report_date_filter.dart';
 import 'providers.dart';
 
 final reportFiltersProvider = StateProvider<ReportFilters>(
   (ref) => ReportFilters.forPreset(ReportDatePreset.thisMonth),
 );
-
-class ConsultationReportEntry {
-  final Consultation consultation;
-  final Patient? patient;
-  final User? provider;
-
-  const ConsultationReportEntry({
-    required this.consultation,
-    required this.patient,
-    required this.provider,
-  });
-
-  DateTime? get visitDate =>
-      consultation.consultationDate ?? consultation.createdAt;
-}
-
-final consultationReportEntriesProvider =
-    FutureProvider<List<ConsultationReportEntry>>((ref) async {
-      ref.watch(databaseChangesProvider);
-      final db = ref.watch(databaseProvider);
-      final results = await Future.wait([
-        db.getAllConsultations(),
-        db.getAllPatients(includeArchived: true),
-        db.getAllUsers(),
-      ]);
-      final consultations = results[0] as List<Consultation>;
-      final patients = {
-        for (final patient in results[1] as List<Patient>) patient.id: patient,
-      };
-      final users = {
-        for (final user in results[2] as List<User>) user.id: user,
-      };
-
-      final entries = consultations
-          .map(
-            (consultation) => ConsultationReportEntry(
-              consultation: consultation,
-              patient: patients[consultation.patientId],
-              provider: users[consultation.doctorId ?? consultation.createdBy],
-            ),
-          )
-          .toList();
-      entries.sort((a, b) {
-        final aDate = a.visitDate;
-        final bDate = b.visitDate;
-        if (aDate == null) return bDate == null ? 0 : 1;
-        if (bDate == null) return -1;
-        return bDate.compareTo(aDate);
-      });
-      return entries;
-    });
-
-List<ConsultationReportEntry> filterConsultationReportEntries({
-  required List<ConsultationReportEntry> entries,
-  required DateTime startDate,
-  required DateTime endDate,
-}) {
-  final start = DateTime(startDate.year, startDate.month, startDate.day);
-  final endExclusive = DateTime(
-    endDate.year,
-    endDate.month,
-    endDate.day,
-  ).add(const Duration(days: 1));
-  return entries.where((entry) {
-    final date = entry.visitDate?.toLocal();
-    return date != null && !date.isBefore(start) && date.isBefore(endExclusive);
-  }).toList();
-}
 
 /// Report statistics model
 class ReportStats {
@@ -89,6 +19,7 @@ class ReportStats {
   final List<DistributionMetric> patientsByBarangay;
   final List<DistributionMetric> patientsByCategory;
   final MetricDelta newPatientsDelta;
+  final MetricDelta documentsDelta;
   final DateTime timestamp;
 
   ReportStats({
@@ -100,8 +31,9 @@ class ReportStats {
     required this.patientsByBarangay,
     required this.patientsByCategory,
     required this.newPatientsDelta,
+    MetricDelta? documentsDelta,
     required this.timestamp,
-  });
+  }) : documentsDelta = documentsDelta ?? MetricDelta.empty();
 
   factory ReportStats.empty() => ReportStats(
     rangeDays: 30,
@@ -112,6 +44,7 @@ class ReportStats {
     patientsByBarangay: [],
     patientsByCategory: [],
     newPatientsDelta: MetricDelta.empty(),
+    documentsDelta: MetricDelta.empty(),
     timestamp: DateTime.now(),
   );
 }
@@ -242,9 +175,10 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
   ref.watch(databaseChangesProvider);
   final filters = ref.watch(reportFiltersProvider);
   final db = ref.watch(databaseProvider);
+  final clinicId = ref.watch(activeClinicIdProvider);
 
-  final patients = await db.getAllPatients();
-  final documents = await db.getDocuments();
+  final patients = await db.getAllPatients(clinicId: clinicId);
+  final documents = await db.getDocuments(clinicId: clinicId);
 
   final start = _startOfDay(filters.startDate);
   final end = _startOfDay(filters.endDate);
@@ -263,6 +197,9 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
 
   final documentsInRange = documents
       .where((d) => _isInRange(d.createdAt, start, endExclusive))
+      .length;
+  final documentsPrevRange = documents
+      .where((d) => _isInRange(d.createdAt, prevStart, prevEndExclusive))
       .length;
 
   final activePatients = patientsInRange.where((p) => !p.isArchived);
@@ -298,6 +235,11 @@ final reportStatsProvider = FutureProvider<ReportStats>((ref) async {
       previous: newPatientsPrevRange,
       lowerIsBetter: false,
     ),
+    documentsDelta: _buildDelta(
+      current: documentsInRange,
+      previous: documentsPrevRange,
+      lowerIsBetter: false,
+    ),
     timestamp: DateTime.now(),
   );
 });
@@ -308,5 +250,6 @@ final generatedReportsProvider = FutureProvider<List<GeneratedReport>>((
 ) async {
   ref.watch(databaseChangesProvider);
   final db = ref.watch(databaseProvider);
-  return db.getGeneratedReports();
+  final clinicId = ref.watch(activeClinicIdProvider);
+  return db.getGeneratedReports(clinicId: clinicId);
 });

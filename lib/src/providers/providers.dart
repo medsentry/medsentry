@@ -3,18 +3,15 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../database/drift_database.dart';
 import '../database/simple_database.dart';
 import '../services/audit_service.dart';
 import '../services/database_seed_service.dart';
 import '../repositories/auth_repository.dart';
-import '../repositories/consultation_repository.dart';
 import '../repositories/patient_repository.dart';
 import '../repositories/clinic_repository.dart';
 import '../models/user.dart';
 import '../models/patient.dart';
 import '../models/document.dart';
-import '../models/consultation.dart';
 import '../models/audit_log.dart';
 import '../models/clinic.dart';
 
@@ -31,12 +28,7 @@ import '../utils/pwa/pwa_installer.dart';
 
 part 'providers.g.dart';
 
-// Database instances
-@Riverpod(keepAlive: true)
-MedSentryDatabase driftDatabase(Ref ref) {
-  return MedSentryDatabase();
-}
-
+// Database instance
 @Riverpod(keepAlive: true)
 SimpleDatabase database(Ref ref) {
   return SimpleDatabase();
@@ -49,9 +41,6 @@ class DatabaseChangesNotifier extends StateNotifier<int> {
   StreamSubscription<int>? _subscription;
 
   DatabaseChangesNotifier(this._db) : super(_db.revision) {
-    _db.onRevisionChanged = (newRev) {
-      if (mounted) state = newRev;
-    };
     _subscription = _db.changes.listen((newRevision) {
       if (mounted) state = newRevision;
     });
@@ -64,9 +53,6 @@ class DatabaseChangesNotifier extends StateNotifier<int> {
   @override
   void dispose() {
     _subscription?.cancel();
-    if (_db.onRevisionChanged != null) {
-      _db.onRevisionChanged = null;
-    }
     super.dispose();
   }
 }
@@ -98,17 +84,7 @@ final databaseSeedServiceProvider = Provider<DatabaseSeedService>((ref) {
 PatientRepository patientRepository(Ref ref) {
   final db = ref.watch(databaseProvider);
   final audit = ref.watch(auditServiceProvider);
-
-  // NOTE: Repository initialized with simple local state for writes,
-  // but reads are provided via Drift below to eliminate flickering!
   return PatientRepository(db, audit);
-}
-
-@Riverpod(keepAlive: true)
-ConsultationRepository consultationRepository(Ref ref) {
-  final db = ref.watch(databaseProvider);
-  final audit = ref.watch(auditServiceProvider);
-  return ConsultationRepository(db, audit);
 }
 
 final clinicRepositoryProvider = Provider<ClinicRepository>((ref) {
@@ -125,6 +101,13 @@ final clinicsProvider = FutureProvider<List<Clinic>>((ref) async {
 // Auth State
 final currentUserProvider = StateProvider<User?>((ref) => null);
 
+/// Active clinic ID for scoping RHU Admin and Staff queries (null for Super Admin).
+final activeClinicIdProvider = Provider<String?>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null || user.isSuperAdmin) return null;
+  return user.clinicId;
+});
+
 @Riverpod(keepAlive: true)
 Future<List<User>> users(Ref ref) async {
   ref.watch(databaseChangesProvider);
@@ -137,10 +120,6 @@ Future<List<User>> users(Ref ref) async {
   return u;
 }
 
-// App State
-final isLoadingProvider = StateProvider<bool>((ref) => false);
-final errorMessageProvider = StateProvider<String?>((ref) => null);
-
 // ==========================================
 // SHARED LOCAL DATA PROVIDERS
 // ==========================================
@@ -148,7 +127,8 @@ final errorMessageProvider = StateProvider<String?>((ref) => null);
 @Riverpod(keepAlive: true)
 Future<List<Patient>> patients(Ref ref) {
   ref.watch(databaseChangesProvider);
-  return ref.watch(databaseProvider).getAllPatients();
+  final clinicId = ref.watch(activeClinicIdProvider);
+  return ref.watch(databaseProvider).getAllPatients(clinicId: clinicId);
 }
 
 final patientSearchProvider = FutureProvider.family<List<Patient>, String>((
@@ -156,7 +136,11 @@ final patientSearchProvider = FutureProvider.family<List<Patient>, String>((
   query,
 ) async {
   ref.watch(databaseChangesProvider);
-  return ref.watch(patientRepositoryProvider).searchPatients(query);
+  final clinicId = ref.watch(activeClinicIdProvider);
+  return ref.watch(patientRepositoryProvider).searchPatients(
+    query,
+    clinicId: clinicId,
+  );
 });
 
 @Riverpod(keepAlive: true)
@@ -168,13 +152,8 @@ Future<Patient?> patient(Ref ref, String patientId) {
 @Riverpod(keepAlive: true)
 Future<List<MedicalDocument>> documents(Ref ref) {
   ref.watch(databaseChangesProvider);
-  return ref.watch(databaseProvider).getDocuments();
-}
-
-@Riverpod(keepAlive: true)
-Future<List<Consultation>> patientConsultations(Ref ref, String patientId) {
-  ref.watch(databaseChangesProvider);
-  return ref.watch(databaseProvider).getConsultationsForPatient(patientId);
+  final clinicId = ref.watch(activeClinicIdProvider);
+  return ref.watch(databaseProvider).getDocuments(clinicId: clinicId);
 }
 
 @Riverpod(keepAlive: true)

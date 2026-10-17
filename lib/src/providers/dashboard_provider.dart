@@ -15,6 +15,8 @@ class DashboardStats {
     required this.timestamp,
   });
 
+  int get todayPatients => newPatientsToday;
+
   /// Empty stats for initial state
   factory DashboardStats.empty() => DashboardStats(
     totalPatients: 0,
@@ -29,11 +31,12 @@ final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
   ref.keepAlive();
   ref.watch(databaseChangesProvider);
   final db = ref.watch(databaseProvider);
+  final clinicId = ref.watch(activeClinicIdProvider);
 
   final results = await Future.wait<int>([
-    db.getPatientCount(),
-    db.getTodayPatientCount(),
-    db.getTodayDocumentCount(),
+    db.getPatientCount(clinicId: clinicId),
+    db.getTodayPatientCount(clinicId: clinicId),
+    db.getTodayDocumentCount(clinicId: clinicId),
   ]);
 
   return DashboardStats(

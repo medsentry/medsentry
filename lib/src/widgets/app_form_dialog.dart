@@ -471,6 +471,7 @@ class AppWarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -501,8 +502,10 @@ class AppWarningCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   message,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
                     fontSize: 12.5,
                     height: 1.4,
                   ),

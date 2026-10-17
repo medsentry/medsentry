@@ -7,21 +7,6 @@ part of 'providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$driftDatabaseHash() => r'f984d73dae1c353030a522e6c99b9fe95be7a3dc';
-
-/// See also [driftDatabase].
-@ProviderFor(driftDatabase)
-final driftDatabaseProvider = Provider<MedSentryDatabase>.internal(
-  driftDatabase,
-  name: r'driftDatabaseProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$driftDatabaseHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef DriftDatabaseRef = ProviderRef<MedSentryDatabase>;
 String _$databaseHash() => r'1c45c031f878333923e84f371a22efa605224660';
 
 /// See also [database].
@@ -80,23 +65,6 @@ final patientRepositoryProvider = Provider<PatientRepository>.internal(
 );
 
 typedef PatientRepositoryRef = ProviderRef<PatientRepository>;
-String _$consultationRepositoryHash() =>
-    r'78082f782ce194f7253a7cb20b999caa762b9d63';
-
-/// See also [consultationRepository].
-@ProviderFor(consultationRepository)
-final consultationRepositoryProvider =
-    Provider<ConsultationRepository>.internal(
-  consultationRepository,
-  name: r'consultationRepositoryProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$consultationRepositoryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef ConsultationRepositoryRef = ProviderRef<ConsultationRepository>;
 String _$usersHash() => r'7c6344a1dd886560c59c83915e4edf0fd31fbcd4';
 
 /// See also [users].
@@ -287,139 +255,6 @@ final documentsProvider = FutureProvider<List<MedicalDocument>>.internal(
 );
 
 typedef DocumentsRef = FutureProviderRef<List<MedicalDocument>>;
-String _$patientConsultationsHash() =>
-    r'71c60d0488e628c53107454d222e7df572739a8f';
-
-/// See also [patientConsultations].
-@ProviderFor(patientConsultations)
-const patientConsultationsProvider = PatientConsultationsFamily();
-
-/// See also [patientConsultations].
-class PatientConsultationsFamily
-    extends Family<AsyncValue<List<Consultation>>> {
-  /// See also [patientConsultations].
-  const PatientConsultationsFamily();
-
-  /// See also [patientConsultations].
-  PatientConsultationsProvider call(
-    String patientId,
-  ) {
-    return PatientConsultationsProvider(
-      patientId,
-    );
-  }
-
-  @override
-  PatientConsultationsProvider getProviderOverride(
-    covariant PatientConsultationsProvider provider,
-  ) {
-    return call(
-      provider.patientId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'patientConsultationsProvider';
-}
-
-/// See also [patientConsultations].
-class PatientConsultationsProvider extends FutureProvider<List<Consultation>> {
-  /// See also [patientConsultations].
-  PatientConsultationsProvider(
-    String patientId,
-  ) : this._internal(
-          (ref) => patientConsultations(
-            ref as PatientConsultationsRef,
-            patientId,
-          ),
-          from: patientConsultationsProvider,
-          name: r'patientConsultationsProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$patientConsultationsHash,
-          dependencies: PatientConsultationsFamily._dependencies,
-          allTransitiveDependencies:
-              PatientConsultationsFamily._allTransitiveDependencies,
-          patientId: patientId,
-        );
-
-  PatientConsultationsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.patientId,
-  }) : super.internal();
-
-  final String patientId;
-
-  @override
-  Override overrideWith(
-    FutureOr<List<Consultation>> Function(PatientConsultationsRef provider)
-        create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: PatientConsultationsProvider._internal(
-        (ref) => create(ref as PatientConsultationsRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        patientId: patientId,
-      ),
-    );
-  }
-
-  @override
-  FutureProviderElement<List<Consultation>> createElement() {
-    return _PatientConsultationsProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is PatientConsultationsProvider &&
-        other.patientId == patientId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, patientId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
-}
-
-mixin PatientConsultationsRef on FutureProviderRef<List<Consultation>> {
-  /// The parameter `patientId` of this provider.
-  String get patientId;
-}
-
-class _PatientConsultationsProviderElement
-    extends FutureProviderElement<List<Consultation>>
-    with PatientConsultationsRef {
-  _PatientConsultationsProviderElement(super.provider);
-
-  @override
-  String get patientId => (origin as PatientConsultationsProvider).patientId;
-}
-
 String _$patientDocumentsHash() => r'e14acccd03ba8be9dd3258f9ab48afdda82f4657';
 
 /// See also [patientDocuments].

@@ -6,8 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models/generated_report.dart';
-import '../models/system_settings.dart';
+import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/app_notification.dart';
 import '../services/report_pdf_service.dart';
@@ -68,30 +67,61 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
   bool _isSaving = false;
   Uint8List? _cachedPdfBytes;
 
-  static const List<String> _availableReportTypes = [
+  static const List<String> _defaultReportTypes = [
     'Patient Statistics',
+    'Document & Registry Summary',
   ];
+
+  List<String> get _availableReportTypes {
+    if (_defaultReportTypes.contains(_selectedReportType)) {
+      return _defaultReportTypes;
+    }
+    return [..._defaultReportTypes, _selectedReportType];
+  }
 
   @override
   void initState() {
     super.initState();
-    _selectedReportType = widget.initialReportType;
+    _selectedReportType = widget.initialReportType.trim().isEmpty
+        ? _defaultReportTypes.first
+        : widget.initialReportType;
 
     final now = DateTime.now();
     _startDate = widget.initialStartDate ?? DateTime(now.year, now.month, 1);
     _endDate = widget.initialEndDate ?? now;
 
     final currentUser = ref.read(currentUserProvider);
-    final staffName = currentUser?.fullName ?? 'RHU Health Staff';
-    final staffRole = currentUser?.roleDisplay ?? 'Public Health Personnel';
+    final allUsers = ref.read(usersProvider).valueOrNull ?? const <User>[];
+    final activeClinicId = ref.read(activeClinicIdProvider);
+
+    User? clinicAdmin;
+    for (final u in allUsers) {
+      if (u.role == UserRole.admin &&
+          (activeClinicId == null || u.clinicId == activeClinicId)) {
+        clinicAdmin = u;
+        break;
+      }
+    }
+
+    final staffName = currentUser?.fullName.isNotEmpty == true
+        ? currentUser!.fullName
+        : 'RHU Health Staff';
+    final staffRole = currentUser?.roleDisplay.isNotEmpty == true
+        ? currentUser!.roleDisplay
+        : 'Public Health Personnel';
+    final approverName = clinicAdmin?.fullName.isNotEmpty == true
+        ? clinicAdmin!.fullName
+        : (currentUser?.isAdmin == true || currentUser?.isSuperAdmin == true
+            ? staffName
+            : 'Municipal Health Officer');
+    final approverRole = clinicAdmin?.roleDisplay.isNotEmpty == true
+        ? clinicAdmin!.roleDisplay
+        : 'Municipal Health Officer (MHO)';
 
     _preparedByNameController = TextEditingController(text: staffName);
     _preparedByRoleController = TextEditingController(text: staffRole);
-    _approvedByNameController =
-        TextEditingController(text: 'Dr. Maria Santos, MD');
-    _approvedByRoleController = TextEditingController(
-      text: 'Municipal Health Officer (MHO) / Medical Officer IV',
-    );
+    _approvedByNameController = TextEditingController(text: approverName);
+    _approvedByRoleController = TextEditingController(text: approverRole);
 
     _filenameController = TextEditingController();
     _updateDefaultFilename();
@@ -110,9 +140,23 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
   void _updateDefaultFilename() {
     final settings = ref.read(systemSettingsProvider).valueOrNull ??
         const SystemSettings();
-    final facility = settings.clinicName.isNotEmpty
-        ? settings.clinicName
-        : 'CantilanRHU';
+    final activeClinicId = ref.read(activeClinicIdProvider);
+    final clinics = ref.read(clinicsProvider).valueOrNull ?? const <Clinic>[];
+    Clinic? matchedClinic;
+    if (activeClinicId != null) {
+      for (final c in clinics) {
+        if (c.id == activeClinicId) {
+          matchedClinic = c;
+          break;
+        }
+      }
+    }
+
+    final facility = matchedClinic?.name.isNotEmpty == true
+        ? matchedClinic!.name
+        : (settings.clinicName.isNotEmpty
+            ? settings.clinicName
+            : 'MedSentry_RHU');
 
     final generatedName = ReportPdfService.buildDefaultFileName(
       reportType: _selectedReportType,
@@ -134,14 +178,15 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
 
     final db = ref.read(databaseProvider);
     final reportService = ReportService(db);
-    final settings =
-        (await db.getSystemSettings());
+    final settings = await db.getSystemSettings();
+    final activeClinicId = ref.read(activeClinicIdProvider);
 
     final reportData = await reportService.generateRangeReport(
       reportType: _selectedReportType,
       startDate: _startDate,
       endDate: _endDate,
       grouping: ReportGrouping.day,
+      clinicId: activeClinicId,
     );
 
     final bytes = await _pdfService.generateReportPdf(
@@ -189,15 +234,15 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
       );
 
       if (savedPath == null) {
-        // User cancelled the native save dialog
         if (mounted) setState(() => _isSaving = false);
         return;
       }
 
-      // Record in generated reports database history
       final now = DateTime.now();
       final reportId = const Uuid().v4();
-      final title = '$_selectedReportType - ${DateFormat('yyyy-MM-dd').format(now)}';
+      final title =
+          '$_selectedReportType - ${DateFormat('yyyy-MM-dd').format(now)}';
+      final activeClinicId = ref.read(activeClinicIdProvider);
       final newReport = GeneratedReport(
         id: reportId,
         title: title,
@@ -206,9 +251,16 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
         startDate: _startDate,
         endDate: _endDate,
         filePath: savedPath,
+        clinicId: activeClinicId,
       );
 
       await ref.read(databaseProvider).insertGeneratedReport(newReport);
+      await ref.read(auditServiceProvider).logAction(
+            action: AuditAction.export,
+            entityType: AuditEntityTypes.report,
+            entityId: reportId,
+            details: 'Exported $_selectedReportType report ($filename)',
+          );
       ref.invalidate(generatedReportsProvider);
 
       if (mounted) {
@@ -254,6 +306,11 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
         onLayout: (_) async => bytes,
         name: filename,
       );
+      await ref.read(auditServiceProvider).logAction(
+            action: AuditAction.print,
+            entityType: AuditEntityTypes.report,
+            details: 'Printed $_selectedReportType report ($filename)',
+          );
     } catch (e) {
       if (mounted) {
         AppNotification.error(
@@ -280,20 +337,13 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
         ),
         child: Column(
           children: [
-            // Modal Header
             _buildModalHeader(context),
-
-            // Mode Selector Tabs (Configuration vs Live Preview)
             _buildModeTabBar(context),
-
-            // Modal Body
             Expanded(
               child: _isPreviewMode
                   ? _buildPreviewTab(context)
                   : _buildConfigurationTab(context, isCompact),
             ),
-
-            // Bottom Action Footer
             _buildModalFooter(context),
           ],
         ),
@@ -400,9 +450,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
           const Spacer(),
           if (_isPreviewMode) ...[
             TextButton.icon(
-              onPressed: () {
-                _invalidatePdfCache();
-              },
+              onPressed: _invalidatePdfCache,
               icon: const Icon(Icons.refresh, size: 16),
               label: const Text('Refresh Preview'),
             ),
@@ -421,7 +469,6 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Report Type Selection
           Text(
             '1. SELECT REPORT TYPE',
             style: theme.textTheme.labelMedium?.copyWith(
@@ -460,8 +507,6 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
             },
           ),
           const SizedBox(height: 18),
-
-          // 2. Reporting Period Date Range
           Text(
             '2. REPORTING PERIOD / DATE RANGE',
             style: theme.textTheme.labelMedium?.copyWith(
@@ -473,8 +518,6 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
           const SizedBox(height: 8),
           _buildDateRangeSelector(context),
           const SizedBox(height: 18),
-
-          // 3. Document Metadata & Signatures
           Text(
             '3. DOCUMENT SIGN-OFFS & OFFICIAL AUDIT BLOCK',
             style: theme.textTheme.labelMedium?.copyWith(
@@ -525,8 +568,6 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
                   ],
                 ),
           const SizedBox(height: 18),
-
-          // 4. File Naming & Target Location Info
           Text(
             '4. FILE NAME & SAVE DESTINATION',
             style: theme.textTheme.labelMedium?.copyWith(
@@ -558,8 +599,6 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
             onChanged: (_) => _invalidatePdfCache(),
           ),
           const SizedBox(height: 10),
-
-          // Interactive native location callout banner
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -639,7 +678,8 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'Start Date',
-                    prefixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
+                    prefixIcon:
+                        const Icon(Icons.calendar_today_outlined, size: 18),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -674,7 +714,8 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'End Date',
-                    prefixIcon: const Icon(Icons.event_available_outlined, size: 18),
+                    prefixIcon:
+                        const Icon(Icons.event_available_outlined, size: 18),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -690,7 +731,6 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
           ],
         ),
         const SizedBox(height: 8),
-        // Quick Presets
         Wrap(
           spacing: 6,
           runSpacing: 4,
@@ -754,7 +794,8 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        color:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: theme.dividerColor.withValues(alpha: 0.15),
@@ -805,7 +846,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
   Widget _buildPreviewTab(BuildContext context) {
     return PdfPreview(
       build: (format) => _generatePdfBytes(),
-      allowPrinting: false, // We provide unified action buttons in modal footer
+      allowPrinting: false,
       allowSharing: false,
       canChangePageFormat: false,
       canChangeOrientation: false,

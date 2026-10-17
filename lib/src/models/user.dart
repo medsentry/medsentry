@@ -82,6 +82,7 @@ class User {
   String get displayName => name;
   String get displayRole => role.name.toUpperCase();
   String get roleDisplay => displayRole;
+  String get roleDisplayName => role.displayName;
 
   String get initials {
     if (firstName.isNotEmpty && lastName.isNotEmpty) {
@@ -98,9 +99,9 @@ class User {
   bool get isAdmin => role == UserRole.admin;
   bool get isStaff => role == UserRole.staff;
 
-  bool get canRegisterPatients => isStaff;
-  bool get canRecordVitals => isStaff;
-  bool get canConsult => isStaff;
+  bool get canRegisterPatients => isAdmin || isStaff;
+  bool get canEditPatients => canRegisterPatients;
+  bool get canDeletePatientRecords => isAdmin;
   bool get canManageDocuments => isAdmin || isStaff;
   bool get canManageSystemData => isSuperAdmin || isAdmin;
   bool get canViewAuditLogs => isSuperAdmin || isAdmin;
@@ -110,14 +111,18 @@ class User {
   bool get canBackupSync => isAdmin;
   bool get canManageBackupSync => isAdmin;
   bool get canSyncRecords => isSuperAdmin || isAdmin || isStaff;
-  bool get canGenerateCertificates => isStaff;
-  bool get canAccessPatientRecords => isSuperAdmin || isAdmin || isStaff;
+  bool get canGenerateCertificates => isAdmin || isStaff;
+  bool get canAccessPatientRecords => isAdmin || isStaff;
   bool get canGenerateReports => isSuperAdmin || isAdmin || isStaff;
+  bool get canViewReports => canGenerateReports;
+  bool get canAccessSettings => true;
 
   // Explicit RBAC capabilities for Admin & Super Admin
   bool get canEditUserProfiles => isSuperAdmin || isAdmin;
   bool get canResetUserPasswords => isSuperAdmin || isAdmin;
   bool get canManageUserRoles => isSuperAdmin || isAdmin;
+
+  RolePermissions get permissions => RolePermissions(this);
 
   String get accountStatusDisplay {
     if (!isActive) return 'Inactive';
@@ -231,35 +236,26 @@ class User {
   int get hashCode => id.hashCode;
 }
 
-class AuthSession {
-  final String userId;
-  final String accessToken;
-  final String refreshToken;
-  final DateTime expiresAt;
+class RolePermissions {
+  final User _user;
 
-  AuthSession({
-    required this.userId,
-    required this.accessToken,
-    required this.refreshToken,
-    required this.expiresAt,
-  });
+  const RolePermissions(this._user);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'user_id': userId,
-      'access_token': accessToken,
-      'refresh_token': refreshToken,
-      'expires_at': expiresAt.toIso8601String(),
-    };
-  }
-
-  factory AuthSession.fromJson(Map<String, dynamic> json) {
-    return AuthSession(
-      userId: json['user_id'] as String,
-      accessToken: json['access_token'] as String,
-      refreshToken: json['refresh_token'] as String,
-      expiresAt: DateTime.tryParse(json['expires_at']?.toString() ?? '') ??
-          DateTime.now().add(const Duration(hours: 1)),
-    );
-  }
+  bool get canRegisterPatients => _user.canRegisterPatients;
+  bool get canEditPatients => _user.canEditPatients;
+  bool get canDeletePatientRecords => _user.canDeletePatientRecords;
+  bool get canManageDocuments => _user.canManageDocuments;
+  bool get canManageSystemData => _user.canManageSystemData;
+  bool get canViewAuditLogs => _user.canViewAuditLogs;
+  bool get canManageArchive => _user.canManageArchive;
+  bool get canManageStaffAccounts => _user.canManageStaffAccounts;
+  bool get canManageSecurity => _user.canManageSecurity;
+  bool get canBackupSync => _user.canBackupSync;
+  bool get canManageBackupSync => _user.canManageBackupSync;
+  bool get canSyncRecords => _user.canSyncRecords;
+  bool get canGenerateCertificates => _user.canGenerateCertificates;
+  bool get canAccessPatientRecords => _user.canAccessPatientRecords;
+  bool get canGenerateReports => _user.canGenerateReports;
+  bool get canViewReports => _user.canViewReports;
+  bool get canAccessSettings => _user.canAccessSettings;
 }

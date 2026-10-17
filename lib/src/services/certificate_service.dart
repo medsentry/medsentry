@@ -33,9 +33,18 @@ class CertificateService {
     String? recommendations,
     int? restDays,
     String? issuedBy,
+    String? issuedByTitle,
+    String? licenseNumber,
+    String? certificateNumber,
+    String? clinicNameOverride,
+    DateTime? issuedAt,
   }) async {
     final logoBytes = decodeLogoDataUri(settings.logoDataUri);
     final pdf = pw.Document();
+    final effectiveSettings =
+        clinicNameOverride != null && clinicNameOverride.trim().isNotEmpty
+        ? settings.copyWith(clinicName: clinicNameOverride.trim())
+        : settings;
 
     pdf.addPage(
       pw.Page(
@@ -46,18 +55,22 @@ class CertificateService {
             case CertificateType.medicalCertificate:
               return _buildMedicalCertificate(
                 patient: patient,
-                settings: settings,
+                settings: effectiveSettings,
                 logoBytes: logoBytes,
                 purpose: purpose ?? 'Medical clearance',
                 findings: findings ?? 'N/A',
                 recommendations: recommendations ?? 'Follow-up as needed',
                 restDays: restDays,
                 issuedBy: issuedBy ?? 'RHU Medical Officer',
+                issuedByTitle: issuedByTitle ?? 'Authorized Signatory',
+                licenseNumber: licenseNumber,
+                certificateNumber: certificateNumber,
+                issuedAt: issuedAt,
               );
             case CertificateType.patientSummary:
               return _buildPatientSummary(
                 patient: patient,
-                settings: settings,
+                settings: effectiveSettings,
                 logoBytes: logoBytes,
               );
           }
@@ -123,14 +136,25 @@ class CertificateService {
     required String findings,
     required String recommendations,
     required String issuedBy,
+    required String issuedByTitle,
+    String? licenseNumber,
+    String? certificateNumber,
+    DateTime? issuedAt,
     int? restDays,
   }) {
-    final dateStr = _formatDate(DateTime.now());
+    final dateStr = _formatDate(issuedAt ?? DateTime.now());
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         _buildHeader(settings, 'MEDICAL CERTIFICATE', logoBytes),
-        pw.Text('Date: $dateStr'),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text('Date: $dateStr'),
+            if (certificateNumber != null && certificateNumber.isNotEmpty)
+              pw.Text('Control No.: $certificateNumber'),
+          ],
+        ),
         pw.SizedBox(height: 16),
         pw.Text(
           'This is to certify that ${patient.fullName}, '
@@ -155,8 +179,13 @@ class CertificateService {
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
               pw.SizedBox(height: 40),
-              pw.Text(issuedBy),
-              pw.Text('Authorized Signatory'),
+              pw.Text(
+                issuedBy,
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              ),
+              pw.Text(issuedByTitle),
+              if (licenseNumber != null && licenseNumber.trim().isNotEmpty)
+                pw.Text('PRC License No. ${licenseNumber.trim()}'),
             ],
           ),
         ),

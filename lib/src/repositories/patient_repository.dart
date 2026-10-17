@@ -24,6 +24,7 @@ class PatientRepository {
 
   // Create new patient
   Future<Patient> createPatient({
+    String? clinicId,
     required String firstName,
     required String lastName,
     String? middleName,
@@ -63,9 +64,12 @@ class PatientRepository {
 
     final id = _generateUuid();
     final now = DateTime.now();
+    final actor = await _db.getUserById(userId);
+    final resolvedClinicId = clinicId ?? actor?.clinicId;
 
     final patient = Patient(
       id: id,
+      clinicId: resolvedClinicId,
       firstName: firstName,
       lastName: lastName,
       middleName: formatMiddleInitial(middleName),
@@ -106,6 +110,7 @@ class PatientRepository {
     // Log audit
     await _auditService.logAction(
       userId: userId,
+      clinicId: resolvedClinicId,
       action: AuditAction.create,
       entityType: 'patient',
       entityId: id,
@@ -123,12 +128,12 @@ class PatientRepository {
     return await _db.getPatientById(id);
   }
 
-  // Search patients using FTS5
-  Future<List<Patient>> searchPatients(String query) async {
+  // Search patients
+  Future<List<Patient>> searchPatients(String query, {String? clinicId}) async {
     if (query.isEmpty) {
-      return await _db.getAllPatients();
+      return await _db.getAllPatients(clinicId: clinicId);
     }
-    return await _db.searchPatients(query);
+    return await _db.searchPatients(query, clinicId: clinicId);
   }
 
   // Get all patients with pagination
@@ -137,13 +142,14 @@ class PatientRepository {
     int offset = 0,
     String? sortBy,
     bool descending = true,
+    String? clinicId,
   }) async {
-    return await _db.getPatientsPaginated(limit, offset);
+    return await _db.getPatientsPaginated(limit, offset, clinicId: clinicId);
   }
 
   // Alias for getAllPatients (used by providers)
-  Future<List<Patient>> getAllPatients() async {
-    return await _db.getAllPatients();
+  Future<List<Patient>> getAllPatients({String? clinicId}) async {
+    return await _db.getAllPatients(clinicId: clinicId);
   }
 
   // Update patient
@@ -199,6 +205,7 @@ class PatientRepository {
 
     final updated = Patient(
       id: existing.id,
+      clinicId: existing.clinicId,
       firstName: firstName ?? existing.firstName,
       lastName: lastName ?? existing.lastName,
       middleName: nullable(
@@ -274,12 +281,15 @@ class PatientRepository {
             nullable('dateOfBirth', dateOfBirth, existing.dateOfBirth),
           ) ??
           nullable('category', category, existing.category),
+      isArchived: existing.isArchived,
+      archivedAt: existing.archivedAt,
     );
 
     await _db.updatePatient(updated);
 
     await _auditService.logAction(
       userId: userId,
+      clinicId: updated.clinicId,
       action: AuditAction.update,
       entityType: 'patient',
       entityId: id,
@@ -293,7 +303,7 @@ class PatientRepository {
     return updated;
   }
 
-  // Delete patient (soft delete)
+  // Delete patient (soft delete / archive)
   Future<void> deletePatient(String id, String userId) async {
     final patient = await _db.getPatientById(id);
     if (patient == null) {
@@ -305,6 +315,7 @@ class PatientRepository {
 
     await _auditService.logAction(
       userId: userId,
+      clinicId: patient.clinicId,
       action: AuditAction.delete,
       entityType: 'patient',
       entityId: id,
@@ -315,9 +326,50 @@ class PatientRepository {
     );
   }
 
+  // Restore archived patient with audit log
+  Future<void> restorePatient(String id, String userId) async {
+    final patient = await _db.getPatientById(id);
+    if (patient == null) {
+      throw ArgumentError('Patient not found');
+    }
+
+    await _db.restoreArchivedPatient(id);
+
+    await _auditService.logAction(
+      userId: userId,
+      clinicId: patient.clinicId,
+      action: AuditAction.restore,
+      entityType: 'patient',
+      entityId: id,
+      description: 'Restored archived patient: ${patient.fullName}',
+      patientId: id,
+      patientName: patient.fullName,
+    );
+  }
+
+  // Permanently delete archived patient with audit log
+  Future<void> permanentlyDeletePatient(String id, String userId) async {
+    final patient = await _db.getPatientById(id);
+    if (patient == null) return;
+
+    await _db.deletePatient(id);
+
+    await _auditService.logAction(
+      userId: userId,
+      clinicId: patient.clinicId,
+      action: AuditAction.delete,
+      entityType: 'patient',
+      entityId: id,
+      description: 'Permanently deleted patient record: ${patient.fullName}',
+      patientId: id,
+      patientName: patient.fullName,
+      oldValues: jsonEncode(patient.toJson()),
+    );
+  }
+
   // Get patient count
-  Future<int> getPatientCount() async {
-    return await _db.getPatientCount();
+  Future<int> getPatientCount({String? clinicId}) async {
+    return await _db.getPatientCount(clinicId: clinicId);
   }
 
   // Validate PhilHealth number (12 digits)
@@ -327,12 +379,18 @@ class PatientRepository {
   }
 
   // Get patients by barangay (for reporting)
-  Future<List<Patient>> getPatientsByBarangay(String barangay) async {
-    return await _db.getPatientsByBarangay(barangay);
+  Future<List<Patient>> getPatientsByBarangay(
+    String barangay, {
+    String? clinicId,
+  }) async {
+    return await _db.getPatientsByBarangay(barangay, clinicId: clinicId);
   }
 
   // Get recent patients
-  Future<List<Patient>> getRecentPatients({int limit = 10}) async {
-    return await _db.getRecentPatients(limit);
+  Future<List<Patient>> getRecentPatients({
+    int limit = 10,
+    String? clinicId,
+  }) async {
+    return await _db.getRecentPatients(limit, clinicId: clinicId);
   }
 }

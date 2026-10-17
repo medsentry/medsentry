@@ -24,11 +24,13 @@ enum SyncStatus { synced, syncing, pending, error, offline }
 class SyncStats {
   final int totalPatients;
   final int totalDocuments;
+  final int totalCertificates;
   final int pendingSync;
 
   const SyncStats({
     required this.totalPatients,
     required this.totalDocuments,
+    this.totalCertificates = 0,
     required this.pendingSync,
   });
 }
@@ -241,7 +243,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
                 );
                 if (_ref.read(currentUserProvider)?.id == updatedUser?.id &&
                     updatedUser != null) {
-                  _ref.read(currentUserProvider.notifier).state = updatedUser;
+                  if (!updatedUser.isActive) {
+                    await _ref.read(authRepositoryProvider).logout();
+                    _ref.read(currentUserProvider.notifier).state = null;
+                  } else {
+                    _ref.read(currentUserProvider.notifier).state = updatedUser;
+                  }
                 }
               }
             }
@@ -394,13 +401,17 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
   Future<SyncStats> getSyncStats() async {
     final db = _ref.read(databaseProvider);
-    final patients = await db.getAllPatients();
-    final documents = await db.getDocuments();
+    final user = _ref.read(currentUserProvider);
+    final clinicId = user?.isSuperAdmin == true ? null : user?.clinicId;
+    final patients = await db.getAllPatients(clinicId: clinicId);
+    final documents = await db.getDocuments(clinicId: clinicId);
+    final certificates = await db.getIssuedCertificates(clinicId: clinicId);
     final pending = await db.getPendingSyncCount();
 
     return SyncStats(
       totalPatients: patients.length,
       totalDocuments: documents.length,
+      totalCertificates: certificates.length,
       pendingSync: pending,
     );
   }
@@ -499,19 +510,28 @@ class SyncService extends StateNotifier<SyncServiceState> {
       for (final patient in await db.getAllPatients(includeArchived: true)) {
         if (patient.syncStatus == _synced) continue;
         try {
-          final now = DateTime.now().toIso8601String();
+          final nowDateTime = DateTime.now();
+          final now = nowDateTime.toIso8601String();
+          final clinicId = await _clinicIdForUpload(
+            'patients',
+            patient.id,
+            profile,
+            recordClinicId: patient.clinicId,
+          );
           final payload = patient.toJson()
             ..remove('sync_status')
             ..remove('sync_error')
             ..['created_at'] ??= now
             ..['updated_at'] = now;
-          payload['clinic_id'] = await _clinicIdForUpload(
-            'patients',
-            patient.id,
-            profile,
-          );
+          payload['clinic_id'] = clinicId;
           await _supabase.from('patients').upsert(payload);
-          await db.updatePatient(patient.copyWith(syncStatus: _synced));
+          await db.updatePatient(
+            patient.copyWith(
+              clinicId: clinicId,
+              updatedAt: nowDateTime,
+              syncStatus: _synced,
+            ),
+          );
           synced++;
         } catch (error, stackTrace) {
           debugPrint(
@@ -532,21 +552,15 @@ class SyncService extends StateNotifier<SyncServiceState> {
             if (hasStoragePath || document.syncStatus == _synced) continue;
             throw StateError('The local document file is missing.');
           }
-          final now = DateTime.now().toIso8601String();
+          final nowDateTime = DateTime.now();
+          final now = nowDateTime.toIso8601String();
           final clinicId = await _clinicIdForUpload(
             'documents',
             document.id,
             profile,
+            recordClinicId: document.clinicId,
           );
           final storagePath = '$clinicId/${document.id}';
-          final payload = document.copyWith(storagePath: storagePath).toJson()
-            ..remove('sync_status')
-            ..remove('file_path')
-            ..remove('file_url')
-            ..['created_at'] ??= now
-            ..['updated_at'] = now;
-          payload['clinic_id'] = clinicId;
-          await _supabase.from('documents').upsert(payload);
           final fileBytes = await DocumentService.readDocumentBytes(
             document.filePath,
           );
@@ -564,8 +578,21 @@ class SyncService extends StateNotifier<SyncServiceState> {
                   contentType: _documentContentType(document),
                 ),
               );
+          final payload = document.copyWith(storagePath: storagePath).toJson()
+            ..remove('sync_status')
+            ..remove('file_path')
+            ..remove('file_url')
+            ..['created_at'] ??= now
+            ..['updated_at'] = now;
+          payload['clinic_id'] = clinicId;
+          await _supabase.from('documents').upsert(payload);
           await db.updateDocument(
-            document.copyWith(storagePath: storagePath, syncStatus: _synced),
+            document.copyWith(
+              clinicId: clinicId,
+              storagePath: storagePath,
+              updatedAt: nowDateTime,
+              syncStatus: _synced,
+            ),
           );
           synced++;
         } catch (error, stackTrace) {
@@ -678,15 +705,21 @@ class SyncService extends StateNotifier<SyncServiceState> {
           (!localFileExists && cloudFileAvailable)) {
         var localFilePath = localFileExists ? local!.filePath : '';
         if (!localFileExists && cloudFileAvailable) {
-          final bytes = await _supabase.storage
-              .from(_documentBucket)
-              .download(remote.storagePath!);
-          localFilePath = await DocumentService.saveDocument(
-            documentId: remote.id,
-            patientId: remote.patientId,
-            bytes: bytes,
-            fileName: DocumentService.fileNameForDocument(remote),
-          );
+          try {
+            final bytes = await _supabase.storage
+                .from(_documentBucket)
+                .download(remote.storagePath!);
+            localFilePath = await DocumentService.saveDocument(
+              documentId: remote.id,
+              patientId: remote.patientId,
+              bytes: bytes,
+              fileName: DocumentService.fileNameForDocument(remote),
+            );
+          } catch (error) {
+            debugPrint(
+              'Document binary download skipped (${remote.id}): $error',
+            );
+          }
         }
 
         final documentToSave = local == null || remoteIsNewer
@@ -740,7 +773,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
         }
         final currentUser = _ref.read(currentUserProvider);
         if (currentUser?.id == remote.id) {
-          _ref.read(currentUserProvider.notifier).state = updated;
+          if (!updated.isActive) {
+            await _ref.read(authRepositoryProvider).logout();
+            _ref.read(currentUserProvider.notifier).state = null;
+          } else {
+            _ref.read(currentUserProvider.notifier).state = updated;
+          }
         }
       }
     }
@@ -772,6 +810,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
       await db.insertAuditLog(
         AuditLog(
           id: id,
+          clinicId: (row['clinic_id'] as String?) ?? user?.clinicId,
           userId: userId,
           userName: user?.fullName,
           userRole: user?.roleDisplay,
@@ -848,12 +887,14 @@ class SyncService extends StateNotifier<SyncServiceState> {
       if (existing == null) {
         // New notification — insert
         await db.insertNotification(remote);
-      } else if (existing.isRead != remote.isRead ||
-          existing.title != remote.title ||
-          existing.message != remote.message ||
-          existing.priority != remote.priority) {
-        // Changed notification — overwrite with authoritative server copy
-        await db.insertNotification(remote);
+      } else {
+        final mergedIsRead = existing.isRead || remote.isRead;
+        if (existing.isRead != mergedIsRead ||
+            existing.title != remote.title ||
+            existing.message != remote.message ||
+            existing.priority != remote.priority) {
+          await db.insertNotification(remote.copyWith(isRead: mergedIsRead));
+        }
       }
     }
   }
@@ -872,8 +913,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
   Future<String> _clinicIdForUpload(
     String table,
     String recordId,
-    Map<String, dynamic> profile,
-  ) async {
+    Map<String, dynamic> profile, {
+    String? recordClinicId,
+  }) async {
+    if (recordClinicId != null && recordClinicId.isNotEmpty) {
+      return recordClinicId;
+    }
     final clinicId = profile['clinic_id'];
     if (clinicId is String && clinicId.isNotEmpty) return clinicId;
 
@@ -995,12 +1040,22 @@ class SyncService extends StateNotifier<SyncServiceState> {
   ) async {
     final localReports =
         await db.getGeneratedReports() as List<GeneratedReport>;
-    final clinicId = profile['clinic_id'];
+    final localClinics = await db.getAllClinics() as List<Clinic>;
+    final fallbackClinicId = localClinics.isNotEmpty
+        ? localClinics.first.id
+        : null;
+    final profileClinicId = profile['clinic_id'] as String?;
     final remoteIds = await _selectAllRows('generated_reports', columns: 'id');
     final remoteReportIds = remoteIds.map((row) => row['id'] as String).toSet();
     for (final report in localReports) {
       if (remoteReportIds.contains(report.id)) continue;
-      if (clinicId is! String || clinicId.isEmpty) {
+      final clinicId =
+          (report.clinicId != null && report.clinicId!.isNotEmpty)
+          ? report.clinicId
+          : (profileClinicId != null && profileClinicId.isNotEmpty)
+          ? profileClinicId
+          : fallbackClinicId;
+      if (clinicId == null || clinicId.isEmpty) {
         debugPrint(
           'Generated report sync skipped (${report.id}): '
           'the signed-in profile has no clinic.',
@@ -1065,4 +1120,11 @@ final syncStatusProvider = Provider<SyncStatus>((ref) {
 
 final lastSyncTimeProvider = Provider<DateTime?>((ref) {
   return ref.watch(syncServiceStateProvider).lastSyncTime;
+});
+
+final syncStatsProvider = FutureProvider<SyncStats>((ref) async {
+  ref.watch(databaseChangesProvider);
+  ref.watch(activeClinicIdProvider);
+  ref.watch(syncServiceStateProvider);
+  return ref.read(syncServiceProvider).getSyncStats();
 });

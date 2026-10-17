@@ -75,13 +75,14 @@ final settingsDataProvider = FutureProvider<SettingsData>((ref) async {
   ref.watch(databaseChangesProvider);
   final lastSync = ref.watch(lastSyncTimeProvider);
   final db = ref.watch(databaseProvider);
+  final clinicId = ref.watch(activeClinicIdProvider);
 
   // Fetch database stats
-  final patientCount = await db.getPatientCount();
-  final documentCount = await db.getDocumentCount();
+  final patientCount = await db.getPatientCount(clinicId: clinicId);
+  final documentCount = await db.getDocumentCount(clinicId: clinicId);
 
   // Get recent audit logs
-  final auditLogs = await db.getRecentAuditLogs(5);
+  final auditLogs = await db.getRecentAuditLogs(5, clinicId: clinicId);
   final recentAuditLogs = auditLogs
       .map(
         (log) => AuditLogEntry(
@@ -99,15 +100,17 @@ final settingsDataProvider = FutureProvider<SettingsData>((ref) async {
       (patientCount * 2 + documentCount * 5);
   final databaseSize = estimatedSize > 0 ? 'Stored on this device' : 'Empty';
 
+  final lastBackup = await db.getLastBackupAt();
+
   return SettingsData(
-    appVersion: '1.0.0+1', // Would use package_info_plus in production
+    appVersion: '1.0.0+1',
     databaseVersion: 'SQLite 3.0',
     lastSync: lastSync,
     databaseStats: DatabaseStats(
       patientCount: patientCount,
       documentCount: documentCount,
       databaseSize: databaseSize,
-      lastBackup: null,
+      lastBackup: lastBackup,
     ),
     recentAuditLogs: recentAuditLogs,
     timestamp: DateTime.now(),

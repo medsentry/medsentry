@@ -14,6 +14,7 @@ enum NotificationPriority { low, normal, high, urgent }
 
 class SystemNotification {
   final String id;
+  final String? clinicId;
   final NotificationType type;
   final NotificationTarget target;
   final NotificationPriority priority;
@@ -25,6 +26,7 @@ class SystemNotification {
 
   const SystemNotification({
     required this.id,
+    this.clinicId,
     required this.type,
     required this.target,
     required this.priority,
@@ -37,6 +39,7 @@ class SystemNotification {
 
   SystemNotification copyWith({
     String? id,
+    String? clinicId,
     NotificationType? type,
     NotificationTarget? target,
     NotificationPriority? priority,
@@ -48,6 +51,7 @@ class SystemNotification {
   }) {
     return SystemNotification(
       id: id ?? this.id,
+      clinicId: clinicId ?? this.clinicId,
       type: type ?? this.type,
       target: target ?? this.target,
       priority: priority ?? this.priority,
@@ -61,6 +65,7 @@ class SystemNotification {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        if (clinicId != null) 'clinic_id': clinicId,
         'type': type.name,
         'target': target.name,
         'priority': priority.name,
@@ -84,6 +89,7 @@ class SystemNotification {
   factory SystemNotification.fromJson(Map<String, dynamic> json) {
     return SystemNotification(
       id: json['id'] as String,
+      clinicId: json['clinic_id'] as String?,
       type: _safeEnumValue(NotificationType.values, json['type'], NotificationType.general),
       target: _safeEnumValue(NotificationTarget.values, json['target'], NotificationTarget.all),
       priority: _safeEnumValue(NotificationPriority.values, json['priority'], NotificationPriority.normal),

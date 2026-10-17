@@ -21,6 +21,7 @@ DocumentStatus documentStatusFromPersistedValue(Object? value) {
 class MedicalDocument {
   final String id;
   final String patientId;
+  final String? clinicId;
   final DocumentType type;
   final String title;
   final String? description;
@@ -40,6 +41,7 @@ class MedicalDocument {
   MedicalDocument({
     required this.id,
     required this.patientId,
+    this.clinicId,
     required this.type,
     required this.title,
     this.description,
@@ -90,6 +92,7 @@ class MedicalDocument {
   MedicalDocument copyWith({
     String? id,
     String? patientId,
+    String? clinicId,
     DocumentType? type,
     String? title,
     String? description,
@@ -109,6 +112,7 @@ class MedicalDocument {
     return MedicalDocument(
       id: id ?? this.id,
       patientId: patientId ?? this.patientId,
+      clinicId: clinicId ?? this.clinicId,
       type: type ?? this.type,
       title: title ?? this.title,
       description: description ?? this.description,
@@ -131,6 +135,7 @@ class MedicalDocument {
     return {
       'id': id,
       'patient_id': patientId,
+      if (clinicId != null) 'clinic_id': clinicId,
       'type': type.name,
       'title': title,
       'description': description,
@@ -154,6 +159,7 @@ class MedicalDocument {
     return MedicalDocument(
       id: json['id'] as String,
       patientId: json['patient_id'] as String,
+      clinicId: json['clinic_id'] as String?,
       type: DocumentType.values.firstWhere(
         (e) => e.name.toLowerCase() == (rawType ?? '').trim().toLowerCase(),
         orElse: () => DocumentType.other,

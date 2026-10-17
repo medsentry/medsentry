@@ -254,4 +254,3 @@ Deno.serve(async (request: Request) => {
 
   return jsonResponse({ id: profile.id });
 });
-});

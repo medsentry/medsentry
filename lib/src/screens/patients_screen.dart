@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../models/patient.dart';
+import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/app_notification.dart';
 import '../utils/file_exporter/file_exporter.dart';
@@ -43,7 +43,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   PatientCategory? _categoryFilter;
   _PatientViewMode _viewMode = _PatientViewMode.list;
   _PatientSortMode _sortMode = _PatientSortMode.byLocation;
-  Patient? _selectedPatient;
+  String? _selectedPatientId;
 
   @override
   void initState() {
@@ -280,13 +280,24 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
         ].join(','));
       }
       final csvContent = rows.join('\r\n');
+      final settings = ref.read(systemSettingsProvider).valueOrNull;
+      final clinicPrefix = (settings?.clinicName.isNotEmpty == true
+              ? settings!.clinicName
+              : 'MedSentry_RHU')
+          .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
       final filename =
-          'RHU_Madrid_Patient_Registry_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
+          '${clinicPrefix}_Patient_Registry_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
       final path = await createFileExporter().exportTextFile(
         filename: filename,
         content: csvContent,
       );
       if (path.isNotEmpty) {
+        await ref.read(auditServiceProvider).logAction(
+              action: AuditAction.export,
+              entityType: AuditEntityTypes.patient,
+              details:
+                  'Exported ${patients.length} patient records to CSV ($filename)',
+            );
         AppNotification.success(
           title: 'Export Successful',
           message: 'Saved ${patients.length} patient records to $filename',
@@ -373,17 +384,26 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     List<Patient> filteredPatients,
   ) {
     final isWide = MediaQuery.sizeOf(context).width >= 1100;
+    Patient? selectedPatient;
+    if (_selectedPatientId != null) {
+      for (final p in filteredPatients) {
+        if (p.id == _selectedPatientId) {
+          selectedPatient = p;
+          break;
+        }
+      }
+    }
 
     final contentView = _PatientsContentView(
       patients: filteredPatients,
       groupedPatients: _groupPatients(filteredPatients),
       viewMode: _viewMode,
       sortMode: _sortMode,
-      selectedPatientId: _selectedPatient?.id,
+      selectedPatientId: selectedPatient?.id,
       onPatientTap: _handlePatientTap,
     );
 
-    if (!isWide || _selectedPatient == null) {
+    if (!isWide || selectedPatient == null) {
       return contentView;
     }
 
@@ -408,9 +428,9 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             child: Stack(
               children: [
                 PatientPreviewPanel(
-                  patient: _selectedPatient!,
+                  patient: selectedPatient,
                   onOpenRecord: () =>
-                      context.push('/patients/${_selectedPatient!.id}'),
+                      context.push('/patients/${selectedPatient!.id}'),
                 ),
                 Positioned(
                   top: 8,
@@ -418,7 +438,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                   child: IconButton(
                     icon: const Icon(Icons.close),
                     tooltip: 'Close preview',
-                    onPressed: () => setState(() => _selectedPatient = null),
+                    onPressed: () =>
+                        setState(() => _selectedPatientId = null),
                   ),
                 ),
               ],
@@ -433,9 +454,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     final isWide = MediaQuery.sizeOf(context).width >= 1100;
     if (isWide) {
       setState(() {
-        _selectedPatient = (_selectedPatient?.id == patient.id)
-            ? null
-            : patient;
+        _selectedPatientId =
+            (_selectedPatientId == patient.id) ? null : patient.id;
       });
     } else {
       context.push('/patients/${patient.id}');
@@ -855,8 +875,9 @@ class _FilterDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeValue = (value != null && items.contains(value)) ? value : null;
     return DropdownButtonFormField<T?>(
-      initialValue: value,
+      initialValue: safeValue,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
@@ -966,6 +987,9 @@ class _PatientsContentView extends StatelessWidget {
   }
 
   List<Patient> _sortedPatients() {
+    if (sortMode == _PatientSortMode.byLocation) {
+      return List<Patient>.from(patients);
+    }
     final sorted = List<Patient>.from(patients)
       ..sort(
         (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
@@ -1432,6 +1456,7 @@ class _PatientRegistrationWizardState
             : null,
         category: patientCategoryFromDateOfBirth(_dateOfBirth),
         userId: currentUser?.id ?? 'system',
+        clinicId: currentUser?.clinicId,
       );
 
       // Notify parent to refresh list

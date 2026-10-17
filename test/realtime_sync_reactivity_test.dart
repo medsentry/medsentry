@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:medsentry/src/database/simple_database.dart';
 import 'package:medsentry/src/models/audit_log.dart';
 import 'package:medsentry/src/models/clinic.dart';
-import 'package:medsentry/src/models/consultation.dart';
 import 'package:medsentry/src/models/document.dart';
 import 'package:medsentry/src/models/generated_report.dart';
 import 'package:medsentry/src/models/system_notification.dart';
@@ -279,61 +278,74 @@ void main() {
     'purgeRetiredClinicalData removes retired records and preserves documents',
     () async {
       final now = DateTime.now();
-      await db.insertConsultation(
-        Consultation(id: 'c-purge', patientId: 'p-purge'),
+      await storeFile.writeAsString(
+        jsonEncode({
+          'patients': [],
+          'users': [],
+          'clinics': [],
+          'consultations': [
+            {'id': 'c-purge', 'patient_id': 'p-purge'},
+          ],
+          'prescriptions': [
+            {
+              'id': 'rx-purge',
+              'consultation_id': 'c-purge',
+              'medication_name': 'Medication',
+            },
+          ],
+          'lab_orders': [
+            {
+              'id': 'lab-purge',
+              'consultation_id': 'c-purge',
+              'test_name': 'Blood test',
+            },
+          ],
+          'documents': [
+            MedicalDocument(
+              id: 'doc-purge',
+              patientId: 'p-purge',
+              type: DocumentType.other,
+              title: 'Patient document',
+              filePath: 'document.pdf',
+              fileSize: 1,
+            ).toJson(),
+          ],
+          'audit_logs': [
+            AuditLog(
+              id: 'audit-consultation',
+              userId: 'u-test',
+              action: AuditAction.create,
+              entityType: 'consultations',
+              timestamp: now,
+            ).toJson(),
+            AuditLog(
+              id: 'audit-patient',
+              userId: 'u-test',
+              action: AuditAction.update,
+              entityType: 'patients',
+              timestamp: now,
+            ).toJson(),
+          ],
+          'generated_reports': [],
+          'notifications': [],
+          'sync_deletes': [
+            {
+              'table': 'consultations',
+              'record_id': 'c-purge',
+              'deleted_at': now.toIso8601String(),
+            },
+          ],
+        }),
       );
-      await db.insertPrescription(
-        Prescription(
-          id: 'rx-purge',
-          consultationId: 'c-purge',
-          medicationName: 'Medication',
-          dosage: '1 tablet',
-          frequency: 'Daily',
-          duration: '5 days',
-          quantity: 5,
-        ),
-      );
-      await db.insertLabOrder(
-        LabOrder(
-          id: 'lab-purge',
-          consultationId: 'c-purge',
-          testName: 'Blood test',
-        ),
-      );
-      await db.insertDocument(
-        MedicalDocument(
-          id: 'doc-purge',
-          patientId: 'p-purge',
-          type: DocumentType.other,
-          title: 'Patient document',
-          filePath: 'document.pdf',
-          fileSize: 1,
-        ),
-      );
-      await db.insertAuditLog(
-        AuditLog(
-          id: 'audit-consultation',
-          userId: 'u-test',
-          action: AuditAction.create,
-          entityType: 'consultations',
-          timestamp: now,
-        ),
-      );
-      await db.insertAuditLog(
-        AuditLog(
-          id: 'audit-patient',
-          userId: 'u-test',
-          action: AuditAction.update,
-          entityType: 'patients',
-          timestamp: now,
-        ),
-      );
+      await db.useStoreFileForTesting(storeFile);
 
       await db.purgeRetiredClinicalData();
 
-      expect(await db.getAllConsultations(), isEmpty);
-      expect(await db.getAllPrescriptions(), isEmpty);
-      expect(await db.getLabOrdersForConsultation('c-purge'), isEmpty);
+      final savedAfterPurge =
+          jsonDecode(await storeFile.readAsString()) as Map<String, dynamic>;
+      expect(savedAfterPurge.containsKey('consultations'), isFalse);
+      expect(savedAfterPurge.containsKey('prescriptions'), isFalse);
+      expect(savedAfterPurge.containsKey('lab_orders'), isFalse);
       final retainedDocument = await db.getDocumentById('doc-purge');
       expect(retainedDocument, isNotNull);
       expect(

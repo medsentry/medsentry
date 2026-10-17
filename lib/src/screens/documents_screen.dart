@@ -5,8 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models/document.dart';
-import '../models/patient.dart';
+import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
 import '../widgets/app_card.dart';
@@ -891,6 +890,13 @@ class _DocumentCard extends ConsumerWidget {
 
     try {
       await ref.read(databaseProvider).deleteDocument(document.id);
+      await ref.read(auditServiceProvider).logAction(
+            action: AuditAction.delete,
+            entityType: AuditEntityTypes.document,
+            entityId: document.id,
+            patientId: document.patientId,
+            details: 'Deleted document "${document.title}"',
+          );
       String? cleanupError;
       try {
         await DocumentService.deleteDocument(document.filePath);
@@ -1403,7 +1409,6 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                       if (widget.canManage) ...[
                         TextButton.icon(
                           onPressed: () async {
-                            Navigator.of(context).pop();
                             final updated = await showDialog<bool>(
                               context: context,
                               builder: (_) => _DocumentEditDialog(
@@ -1412,6 +1417,9 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                             );
                             if (updated == true) {
                               widget.onChanged(widget.document.patientId);
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
                             }
                           },
                           icon: const Icon(Icons.edit_outlined, size: 18),
@@ -1705,9 +1713,18 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
         createdAt: now,
         updatedAt: now,
         syncStatus: 1,
+        clinicId: patient.clinicId ?? currentUser?.clinicId,
       );
 
       await ref.read(databaseProvider).insertDocument(document);
+      await ref.read(auditServiceProvider).logAction(
+            action: AuditAction.create,
+            entityType: AuditEntityTypes.document,
+            entityId: document.id,
+            patientId: patient.id,
+            details:
+                'Uploaded ${_typeDisplay(_selectedType)} "${document.title}" for ${patient.fullName}',
+          );
       savedFilePath = null;
       ref.invalidate(documentsProvider);
       ref.invalidate(patientDocumentsProvider(patient.id));
@@ -2097,10 +2114,18 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
       createdAt: existing.createdAt,
       updatedAt: now,
       syncStatus: existing.syncStatus == 0 ? 2 : existing.syncStatus,
+      clinicId: existing.clinicId,
     );
 
     try {
       await ref.read(databaseProvider).updateDocument(updated);
+      await ref.read(auditServiceProvider).logAction(
+            action: AuditAction.update,
+            entityType: AuditEntityTypes.document,
+            entityId: updated.id,
+            patientId: updated.patientId,
+            details: 'Updated document "${updated.title}"',
+          );
       ref.invalidate(documentsProvider);
       ref.invalidate(patientDocumentsProvider(existing.patientId));
 

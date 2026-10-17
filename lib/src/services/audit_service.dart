@@ -1,6 +1,7 @@
 import 'dart:math';
 import '../database/simple_database.dart';
 import '../models/audit_log.dart';
+import '../models/user.dart';
 
 class AuditService {
   final SimpleDatabase? _db;
@@ -18,13 +19,52 @@ class AuditService {
     return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
   }
 
-  // In-memory storage for audit logs (replace with actual database in production)
   final List<AuditLog> _logs = [];
 
-  Future<void> logAction({
-    required String userId,
+  Future<void> log({
+    String? userId,
+    User? actor,
     required AuditAction action,
     required String entityType,
+    String? clinicId,
+    String? entityId,
+    String? patientId,
+    String? patientName,
+    String? description,
+    String? details,
+    String? oldValues,
+    String? newValues,
+    String? userName,
+    String? userRole,
+    String? ipAddress,
+    String? deviceInfo,
+  }) {
+    return logAction(
+      userId: userId,
+      actor: actor,
+      action: action,
+      entityType: entityType,
+      clinicId: clinicId,
+      entityId: entityId,
+      patientId: patientId,
+      patientName: patientName,
+      description: description,
+      details: details,
+      oldValues: oldValues,
+      newValues: newValues,
+      userName: userName,
+      userRole: userRole,
+      ipAddress: ipAddress,
+      deviceInfo: deviceInfo,
+    );
+  }
+
+  Future<void> logAction({
+    String? userId,
+    User? actor,
+    required AuditAction action,
+    required String entityType,
+    String? clinicId,
     String? entityId,
     String? patientId,
     String? patientName,
@@ -37,11 +77,15 @@ class AuditService {
     String? ipAddress,
     String? deviceInfo,
   }) async {
+    final effectiveUserId = userId ?? actor?.id ?? 'system';
+    final resolvedActor =
+        actor ?? (_db != null ? await _db.getUserById(effectiveUserId) : null);
     final log = AuditLog(
       id: _generateUuid(),
-      userId: userId,
-      userName: userName,
-      userRole: userRole,
+      clinicId: clinicId ?? resolvedActor?.clinicId,
+      userId: effectiveUserId,
+      userName: userName ?? resolvedActor?.fullName,
+      userRole: userRole ?? resolvedActor?.roleDisplay,
       action: action,
       entityType: entityType,
       entityId: entityId ?? patientId,

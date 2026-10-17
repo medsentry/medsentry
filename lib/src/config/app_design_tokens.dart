@@ -87,6 +87,8 @@ abstract final class AppColors {
   static const Color warningBg = pendingBg;
   static const Color warningBorder = pendingBorder;
   static const Color textTertiary = textMuted;
+  static const Color dangerRed = critical;
+  static const Color accentTeal = primaryEmerald;
 }
 
 /// Standardized Glassmorphism Design Tokens.
