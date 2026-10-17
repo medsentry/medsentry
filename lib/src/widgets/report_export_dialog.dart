@@ -112,8 +112,8 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
     final approverName = clinicAdmin?.fullName.isNotEmpty == true
         ? clinicAdmin!.fullName
         : (currentUser?.isAdmin == true || currentUser?.isSuperAdmin == true
-            ? staffName
-            : 'Municipal Health Officer');
+              ? staffName
+              : 'Municipal Health Officer');
     final approverRole = clinicAdmin?.roleDisplay.isNotEmpty == true
         ? clinicAdmin!.roleDisplay
         : 'Municipal Health Officer (MHO)';
@@ -138,8 +138,8 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
   }
 
   void _updateDefaultFilename() {
-    final settings = ref.read(systemSettingsProvider).valueOrNull ??
-        const SystemSettings();
+    final settings =
+        ref.read(systemSettingsProvider).valueOrNull ?? const SystemSettings();
     final activeClinicId = ref.read(activeClinicIdProvider);
     final clinics = ref.read(clinicsProvider).valueOrNull ?? const <Clinic>[];
     Clinic? matchedClinic;
@@ -155,8 +155,8 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
     final facility = matchedClinic?.name.isNotEmpty == true
         ? matchedClinic!.name
         : (settings.clinicName.isNotEmpty
-            ? settings.clinicName
-            : 'MedSentry_RHU');
+              ? settings.clinicName
+              : 'MedSentry_RHU');
 
     final generatedName = ReportPdfService.buildDefaultFileName(
       reportType: _selectedReportType,
@@ -255,7 +255,9 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
       );
 
       await ref.read(databaseProvider).insertGeneratedReport(newReport);
-      await ref.read(auditServiceProvider).logAction(
+      await ref
+          .read(auditServiceProvider)
+          .logAction(
             action: AuditAction.export,
             entityType: AuditEntityTypes.report,
             entityId: reportId,
@@ -302,11 +304,10 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
       if (!filename.toLowerCase().endsWith('.pdf')) {
         filename = '$filename.pdf';
       }
-      await Printing.layoutPdf(
-        onLayout: (_) async => bytes,
-        name: filename,
-      );
-      await ref.read(auditServiceProvider).logAction(
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: filename);
+      await ref
+          .read(auditServiceProvider)
+          .logAction(
             action: AuditAction.print,
             entityType: AuditEntityTypes.report,
             details: 'Printed $_selectedReportType report ($filename)',
@@ -360,9 +361,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         border: Border(
-          bottom: BorderSide(
-            color: theme.dividerColor.withValues(alpha: 0.15),
-          ),
+          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
         ),
       ),
       child: Row(
@@ -417,9 +416,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
       decoration: BoxDecoration(
         color: theme.cardColor,
         border: Border(
-          bottom: BorderSide(
-            color: theme.dividerColor.withValues(alpha: 0.1),
-          ),
+          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.1)),
         ),
       ),
       child: Row(
@@ -491,10 +488,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
               ),
             ),
             items: _availableReportTypes
-                .map((type) => DropdownMenuItem(
-                      value: type,
-                      child: Text(type),
-                    ))
+                .map((type) => DropdownMenuItem(value: type, child: Text(type)))
                 .toList(),
             onChanged: (val) {
               if (val != null) {
@@ -678,8 +672,10 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'Start Date',
-                    prefixIcon:
-                        const Icon(Icons.calendar_today_outlined, size: 18),
+                    prefixIcon: const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 18,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -714,8 +710,10 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
                 child: InputDecorator(
                   decoration: InputDecoration(
                     labelText: 'End Date',
-                    prefixIcon:
-                        const Icon(Icons.event_available_outlined, size: 18),
+                    prefixIcon: const Icon(
+                      Icons.event_available_outlined,
+                      size: 18,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -794,12 +792,9 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color:
-            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.15),
-        ),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -890,9 +885,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
       decoration: BoxDecoration(
         color: theme.cardColor,
         border: Border(
-          top: BorderSide(
-            color: theme.dividerColor.withValues(alpha: 0.15),
-          ),
+          top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
         ),
       ),
       child: Row(
