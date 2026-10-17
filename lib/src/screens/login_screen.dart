@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../config/seed_credentials.dart';
 import '../models/models.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
@@ -60,20 +59,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _isCapsLockOn = capsLockActive);
     }
     return false;
-  }
-
-  void _quickFillDemo(String email, {bool autoLogin = false}) {
-    setState(() {
-      _isPinLogin = false;
-      _emailController.text = email;
-      _passwordController.text = SeedCredentials.defaultPassword;
-      _emailError = null;
-      _passwordFieldError = null;
-      _error = null;
-    });
-    if (autoLogin) {
-      _login();
-    }
   }
 
   Future<void> _ensureDefaultAccounts() async {
@@ -358,25 +343,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: double.infinity,
                             padding: EdgeInsets.all(isTall ? 32 : 24),
                             decoration: BoxDecoration(
-                              color:
-                                  (isDark
-                                          ? AppColors.cardSurface
-                                          : Colors.white)
-                                      .withValues(alpha: isDark ? 0.94 : 0.96),
+                              color: Colors.white.withValues(alpha: 0.98),
                               borderRadius: AppRadius.roundedLg,
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.48),
+                                color: Colors.white,
                                 width: 1.2,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 32,
-                                  offset: const Offset(0, 12),
+                                  color: Colors.black.withValues(alpha: 0.24),
+                                  blurRadius: 36,
+                                  offset: const Offset(0, 14),
                                 ),
                               ],
                             ),
-                            child: _buildAuthForm(context, isTall: isTall),
+                            child: Theme(
+                              data: Theme.of(context).copyWith(
+                                brightness: Brightness.light,
+                                colorScheme:
+                                    Theme.of(context).colorScheme.copyWith(
+                                  brightness: Brightness.light,
+                                  surface: Colors.white,
+                                  onSurface: const Color(0xFF0F172A),
+                                  outline: const Color(0xFFCBD5E1),
+                                ),
+                              ),
+                              child: _buildAuthForm(context, isTall: isTall),
+                            ),
                           ),
                         ),
                       ),
@@ -526,12 +519,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildAuthForm(BuildContext context, {bool isTall = false}) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark
-        ? AppColors.primaryEmerald
-        : theme.colorScheme.primary;
-    final fieldBg = isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC);
-    final borderColor = isDark ? AppColors.border : AppColors.lightBorder;
+    final primary = AppColors.primaryEmeraldDark;
+    const fieldBg = Color(0xFFF8FAFC);
+    const borderColor = Color(0xFFCBD5E1);
+    const cardTextColor = Color(0xFF0F172A);
+    const cardSecondaryTextColor = Color(0xFF475569);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -571,7 +563,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           style: theme.textTheme.headlineSmall?.copyWith(
             fontSize: isTall ? 30 : 26,
             fontWeight: FontWeight.w800,
-            color: theme.colorScheme.onSurface,
+            color: cardTextColor,
             letterSpacing: -0.7,
           ),
         ),
@@ -584,7 +576,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               : 'Sign in to securely access your clinic workspace.',
           textAlign: TextAlign.left,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+            color: cardSecondaryTextColor,
             height: 1.45,
           ),
         ),
@@ -622,6 +614,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Text(
                         _lastUserEmail!,
                         style: const TextStyle(
+                          color: cardTextColor,
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -634,8 +627,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
           const SizedBox(height: 14),
-        ] else if (!_sessionLocked) ...[
-          _buildDemoPersonas(context, isDark, primary),
         ],
 
         // Input fields with soft filled styling matching the design system
@@ -644,26 +635,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             TextField(
               controller: _emailController,
               focusNode: _emailFocusNode,
+              style: const TextStyle(
+                color: cardTextColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              cursorColor: primary,
               decoration: InputDecoration(
                 labelText: 'Email Address',
+                labelStyle: const TextStyle(color: cardSecondaryTextColor),
+                floatingLabelStyle:
+                    TextStyle(color: primary, fontWeight: FontWeight.w600),
                 hintText: 'name@rhu.gov.ph',
+                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 errorText: _emailError,
                 prefixIcon: const Icon(
                   Icons.medical_services_outlined,
                   size: 20,
+                  color: cardSecondaryTextColor,
                 ),
                 filled: true,
                 fillColor: fieldBg,
                 border: OutlineInputBorder(
                   borderRadius: AppRadius.roundedSm,
-                  borderSide: BorderSide(
+                  borderSide: const BorderSide(
                     color: borderColor,
                     width: AppColors.borderWidth,
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: AppRadius.roundedSm,
-                  borderSide: BorderSide(
+                  borderSide: const BorderSide(
                     color: borderColor,
                     width: AppColors.borderWidth,
                   ),
@@ -703,10 +705,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           TextField(
             controller: _passwordController,
             focusNode: _passwordFocusNode,
+            style: const TextStyle(
+              color: cardTextColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            cursorColor: primary,
             decoration: InputDecoration(
               labelText: 'Password',
+              labelStyle: const TextStyle(color: cardSecondaryTextColor),
+              floatingLabelStyle:
+                  TextStyle(color: primary, fontWeight: FontWeight.w600),
               errorText: _passwordFieldError,
-              prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20),
+              prefixIcon: const Icon(
+                Icons.vpn_key_outlined,
+                size: 20,
+                color: cardSecondaryTextColor,
+              ),
               suffixIcon: IconButton(
                 tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                 icon: Icon(
@@ -714,6 +729,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
                   size: 20,
+                  color: cardSecondaryTextColor,
                 ),
                 onPressed: () {
                   setState(() {
@@ -725,14 +741,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fillColor: fieldBg,
               border: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(
+                borderSide: const BorderSide(
                   color: borderColor,
                   width: AppColors.borderWidth,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(
+                borderSide: const BorderSide(
                   color: borderColor,
                   width: AppColors.borderWidth,
                 ),
@@ -798,10 +814,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
           if (_sessionLocked && !_pinLoginAvailable) ...[
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Tip: Enable a PIN in Settings for faster unlock next time.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              style: TextStyle(
+                color: cardSecondaryTextColor,
+                fontSize: 12,
               ),
             ),
           ],
@@ -809,11 +826,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           TextField(
             controller: _pinController,
             focusNode: _pinFocusNode,
+            style: const TextStyle(
+              color: cardTextColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 8,
+            ),
+            cursorColor: primary,
             decoration: InputDecoration(
               labelText: '4-digit PIN',
-              hintText: 'Enter your PIN',
+              labelStyle: const TextStyle(color: cardSecondaryTextColor),
+              hintText: '••••',
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
               errorText: _pinFieldError,
-              prefixIcon: const Icon(Icons.pin_outlined, size: 20),
+              prefixIcon: const Icon(
+                Icons.pin_outlined,
+                size: 20,
+                color: cardSecondaryTextColor,
+              ),
               suffixIcon: IconButton(
                 tooltip: _obscurePin ? 'Show PIN' : 'Hide PIN',
                 icon: Icon(
@@ -821,6 +851,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
                   size: 20,
+                  color: cardSecondaryTextColor,
                 ),
                 onPressed: () {
                   setState(() {
@@ -832,14 +863,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fillColor: fieldBg,
               border: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(
+                borderSide: const BorderSide(
                   color: borderColor,
                   width: AppColors.borderWidth,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(
+                borderSide: const BorderSide(
                   color: borderColor,
                   width: AppColors.borderWidth,
                 ),
@@ -887,6 +918,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   height: 24,
                   child: Checkbox(
                     value: _rememberMe,
+                    activeColor: primary,
+                    checkColor: Colors.white,
+                    side: const BorderSide(color: borderColor, width: 1.5),
                     onChanged: (val) {
                       setState(() {
                         _rememberMe = val ?? false;
@@ -898,9 +932,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
+                const Text(
                   'Remember Me',
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  style: TextStyle(
+                    color: cardTextColor,
                     fontWeight: FontWeight.w500,
                     fontSize: 13,
                   ),
@@ -952,31 +987,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.criticalBg
-                  : theme.colorScheme.error.withValues(alpha: 0.08),
+              color: const Color(0xFFFEF2F2),
               borderRadius: AppRadius.roundedSm,
               border: Border.all(
-                color: isDark
-                    ? AppColors.critical.withValues(alpha: 0.3)
-                    : theme.colorScheme.error.withValues(alpha: 0.25),
+                color: const Color(0xFFFCA5A5),
               ),
             ),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.error_outline_rounded,
-                  color: isDark ? AppColors.critical : theme.colorScheme.error,
+                  color: Color(0xFFDC2626),
                   size: 20,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     _error!,
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColors.critical
-                          : theme.colorScheme.error,
+                    style: const TextStyle(
+                      color: Color(0xFFB91C1C),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -994,7 +1023,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           onPressed: _isLoading ? null : _login,
           style: ElevatedButton.styleFrom(
             backgroundColor: primary,
-            foregroundColor: isDark ? AppColors.textOnEmerald : Colors.white,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: primary.withValues(alpha: 0.6),
+            disabledForegroundColor: Colors.white70,
             minimumSize: Size.fromHeight(isTall ? 54 : 50),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -1003,14 +1034,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             shadowColor: primary.withValues(alpha: 0.25),
           ),
           icon: _isLoading
-              ? SizedBox(
+              ? const SizedBox(
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      isDark ? AppColors.textOnEmerald : Colors.white,
-                    ),
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
               : Icon(
@@ -1025,7 +1054,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 : _sessionLocked
                 ? (_isPinLogin ? 'Unlock with PIN' : 'Unlock session')
                 : (_isPinLogin ? 'Continue with PIN' : 'Sign in securely'),
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: Colors.white,
+            ),
           ),
         ),
 
@@ -1033,19 +1066,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if ((_isPinLogin || _sessionLocked) && _canCheckBiometrics ||
             _sessionLocked) ...[
           SizedBox(height: isTall ? 18 : 12),
-          Row(
+          const Row(
             children: [
               Expanded(
                 child: Divider(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                  color: borderColor,
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
                   'Alternative Login Options',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: TextStyle(
+                    color: cardSecondaryTextColor,
                     fontWeight: FontWeight.w500,
                     fontSize: 12,
                   ),
@@ -1053,7 +1086,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               Expanded(
                 child: Divider(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                  color: borderColor,
                 ),
               ),
             ],
@@ -1062,14 +1095,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (_canCheckBiometrics) ...[
             OutlinedButton.icon(
               onPressed: _isLoading ? null : _loginWithBiometrics,
-              icon: const Icon(Icons.fingerprint_rounded, size: 20),
-              label: const Text('Use Biometrics / Windows Hello'),
+              icon: const Icon(Icons.fingerprint_rounded, size: 20, color: cardTextColor),
+              label: const Text(
+                'Use Biometrics / Windows Hello',
+                style: TextStyle(color: cardTextColor, fontWeight: FontWeight.w600),
+              ),
               style: OutlinedButton.styleFrom(
                 minimumSize: Size.fromHeight(isTall ? 46 : 42),
                 shape: RoundedRectangleBorder(
                   borderRadius: AppRadius.roundedSm,
                 ),
-                side: BorderSide(
+                side: const BorderSide(
                   color: borderColor,
                   width: AppColors.borderWidth,
                 ),
@@ -1080,8 +1116,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (_sessionLocked)
             TextButton.icon(
               onPressed: _isLoading ? null : _switchUser,
-              icon: const Icon(Icons.switch_account_outlined, size: 18),
-              label: const Text('Sign in as a different user'),
+              icon: Icon(Icons.switch_account_outlined, size: 18, color: primary),
+              label: Text(
+                'Sign in as a different user',
+                style: TextStyle(color: primary, fontWeight: FontWeight.w600),
+              ),
             ),
         ],
 
@@ -1089,28 +1128,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.elevatedSurface : const Color(0xFFF1F5F9),
+            color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              color: const Color(0xFFE2E8F0),
             ),
           ),
-          child: Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 Icons.shield_outlined,
                 size: 13,
-                color: isDark ? AppColors.textSecondary : Colors.black45,
+                color: Color(0xFF64748B),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Flexible(
                 child: Text(
                   'DOH Healthcare Standards • RA 10173 • AES-256 Offline',
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textSecondary : Colors.black54,
+                    color: Color(0xFF475569),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1119,128 +1158,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDemoPersonas(BuildContext context, bool isDark, Color primary) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: primary.withValues(alpha: isDark ? 0.08 : 0.04),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: primary.withValues(alpha: isDark ? 0.22 : 0.16),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.flash_on_rounded, size: 15, color: primary),
-              const SizedBox(width: 6),
-              Text(
-                'QUICK DEMO PERSONAS',
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  color: primary,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '1-Click Fill',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.textSecondary : Colors.black45,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildPersonaChip(
-                icon: Icons.admin_panel_settings_rounded,
-                label: 'Super Admin',
-                sub: 'Provincial Health',
-                color: const Color(0xFF6366F1),
-                onTap: () => _quickFillDemo('superadmin@gmail.com'),
-              ),
-              _buildPersonaChip(
-                icon: Icons.medical_services_rounded,
-                label: 'Dr. Elena Ramos',
-                sub: 'RHU Head / Admin',
-                color: AppColors.primaryEmerald,
-                onTap: () => _quickFillDemo('admin@gmail.com'),
-              ),
-              _buildPersonaChip(
-                icon: Icons.assignment_ind_rounded,
-                label: 'Joy Fernandez, RN',
-                sub: 'Staff / Triage',
-                color: const Color(0xFFF97316),
-                onTap: () => _quickFillDemo('staff@gmail.com'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPersonaChip({
-    required IconData icon,
-    required String label,
-    required String sub,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: color.withValues(alpha: isDark ? 0.15 : 0.1),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 6),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                  Text(
-                    sub,
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? AppColors.textSecondary : Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

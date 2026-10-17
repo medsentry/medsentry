@@ -126,6 +126,30 @@ class AuthRepository {
   Future<User> _ensureSeedAccount(SeedAccount account) async {
     final existingUser = await _db.getUserByEmail(account.email);
     if (existingUser != null) {
+      final needsUpdate = existingUser.clinicId != account.clinicId ||
+          existingUser.role != account.role ||
+          existingUser.firstName != account.firstName ||
+          existingUser.lastName != account.lastName ||
+          existingUser.licenseNumber != account.licenseNumber ||
+          existingUser.specialization != account.specialization ||
+          existingUser.contactNumber != account.contactNumber;
+
+      if (needsUpdate) {
+        final updatedUser = existingUser.copyWith(
+          clinicId: account.clinicId,
+          clearClinicId: account.clinicId == null,
+          role: account.role,
+          firstName: account.firstName,
+          lastName: account.lastName,
+          licenseNumber: account.licenseNumber,
+          specialization: account.specialization,
+          contactNumber: account.contactNumber,
+          updatedAt: DateTime.now(),
+        );
+        final passwordHash = _getSeedPasswordHash();
+        await _db.updateUser(updatedUser, newPasswordHash: passwordHash);
+        return updatedUser;
+      }
       return existingUser;
     }
 

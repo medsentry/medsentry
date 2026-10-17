@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../models/clinic.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../services/document_service.dart';
@@ -81,6 +82,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Icons.local_hospital_outlined,
                 () => _showSystemSettingsDialog(context, ref),
               ),
+              if (currentUser?.canManageStaffAccounts == true)
+                _buildListTile(
+                  context,
+                  'Personnel & Staff Directory',
+                  currentUser?.isSuperAdmin == true
+                      ? 'Manage RHU administrators, medical officers, and health workers across facilities'
+                      : 'Manage clinical staff, nurses, and local health facility users',
+                  Icons.badge_outlined,
+                  () => context.go('/staff'),
+                ),
             ]),
           ],
           if (currentUser?.isSuperAdmin != true) ...[
@@ -1398,6 +1409,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
     User? currentUser,
     AsyncValue<List<User>> usersAsync,
   ) {
+    final clinics = ref.watch(clinicsProvider).valueOrNull ?? <Clinic>[];
     final tabView = usersAsync.when(
       data: (users) {
         final query = _searchQuery.trim().toLowerCase();
@@ -1415,9 +1427,18 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
             }
           }
           if (query.isEmpty) return true;
+          final clinic = clinics.where((c) => c.id == u.clinicId).firstOrNull;
+          final clinicMatches = clinic != null &&
+              (clinic.name.toLowerCase().contains(query) ||
+                  clinic.code.toLowerCase().contains(query));
+          final unassignedMatches =
+              u.clinicId == null && 'unassigned'.contains(query);
+
           return u.fullName.toLowerCase().contains(query) ||
               u.email.toLowerCase().contains(query) ||
               u.roleDisplay.toLowerCase().contains(query) ||
+              clinicMatches ||
+              unassignedMatches ||
               (u.contactNumber?.toLowerCase().contains(query) ?? false) ||
               (phoneQuery.isNotEmpty &&
                   (u.contactNumber ?? '')
@@ -1876,6 +1897,108 @@ class _UserManagementTile extends ConsumerWidget {
                   ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
+              if (currentUser?.isSuperAdmin == true) ...[
+                if (user.role == UserRole.superAdmin)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 12,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'All Facilities',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (user.clinicId != null) ...[
+                  Builder(
+                    builder: (context) {
+                      final clinics =
+                          ref.watch(clinicsProvider).valueOrNull ?? <Clinic>[];
+                      final clinic = clinics
+                          .where((c) => c.id == user.clinicId)
+                          .firstOrNull;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.domain_outlined, size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              clinic?.name ?? clinic?.code ?? 'Assigned RHU',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ] else ...[
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.pendingBg,
+                      border: Border.all(color: AppColors.pendingBorder),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 12,
+                          color: AppColors.pending,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Unassigned Facility',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: AppColors.pending,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
               if (user.id == currentUser?.id)
                 StatusBadge.info(text: 'Current User'),
             ],
@@ -2254,7 +2377,9 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                             clinicsAsync.when(
                               data: (clinics) =>
                                   DropdownButtonFormField<String?>(
-                                    initialValue: _clinicId,
+                                    initialValue: clinics.any((c) => c.id == _clinicId)
+                                        ? _clinicId
+                                        : null,
                                     decoration: const InputDecoration(
                                       labelText: 'Assigned RHU Facility *',
                                       border: OutlineInputBorder(),

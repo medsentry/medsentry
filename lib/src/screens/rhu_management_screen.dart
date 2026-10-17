@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
 import '../models/clinic.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
@@ -530,13 +531,11 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
           Row(
             children: [
               InkWell(
-                onTap: assignedStaff.isEmpty
-                    ? null
-                    : () => _showAssignedStaffDialog(
-                        context,
-                        clinic,
-                        assignedStaff,
-                      ),
+                onTap: () => _showAssignedStaffDialog(
+                  context,
+                  clinic,
+                  assignedStaff,
+                ),
                 borderRadius: BorderRadius.circular(4),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -546,16 +545,20 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.groups_outlined,
                         size: 16,
-                        color: AppColors.primaryEmerald,
+                        color: assignedStaff.isEmpty
+                            ? AppColors.textSecondary
+                            : AppColors.primaryEmerald,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         '${assignedStaff.length} Staff',
                         style: theme.textTheme.labelMedium?.copyWith(
-                          color: AppColors.primaryEmerald,
+                          color: assignedStaff.isEmpty
+                              ? AppColors.textSecondary
+                              : AppColors.primaryEmerald,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -848,24 +851,62 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
         ),
         content: SizedBox(
           width: 440,
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: assignedStaff.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, idx) {
-              final staff = assignedStaff[idx];
-              return ListTile(
-                leading: CircleAvatar(child: Text(staff.initials)),
-                title: Text(staff.fullName),
-                subtitle: Text('${staff.roleDisplay} • ${staff.email}'),
-                trailing: staff.isActive
-                    ? StatusBadge.active(text: 'Active')
-                    : StatusBadge.inactive(text: 'Inactive'),
-              );
-            },
-          ),
+          child: assignedStaff.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.people_outline,
+                        size: 48,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No personnel assigned yet',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Use the Staff Directory to assign or add healthcare personnel to this facility.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: assignedStaff.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, idx) {
+                    final staff = assignedStaff[idx];
+                    return ListTile(
+                      leading: CircleAvatar(child: Text(staff.initials)),
+                      title: Text(staff.fullName),
+                      subtitle: Text('${staff.roleDisplay} • ${staff.email}'),
+                      trailing: staff.isActive
+                          ? StatusBadge.active(text: 'Active')
+                          : StatusBadge.inactive(text: 'Inactive'),
+                    );
+                  },
+                ),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.go('/staff');
+            },
+            icon: const Icon(Icons.arrow_forward, size: 16),
+            label: const Text('Manage in Staff Directory'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Close'),
