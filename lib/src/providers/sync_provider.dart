@@ -358,6 +358,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   static const int _synced = 0;
+  bool _isSyncing = false;
 
   Future<void> _refreshDerivedStatus() async {
     final pending = await _ref.read(databaseProvider).getPendingSyncCount();
@@ -417,51 +418,56 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   Future<SyncResult> startSync() async {
-    if (state.status == SyncStatus.syncing) {
+    if (_isSyncing || state.status == SyncStatus.syncing) {
       return const SyncResult(
         message: 'Sync already in progress',
         success: false,
       );
     }
 
-    await _ref.read(databaseProvider).purgeRetiredClinicalData();
-    _retrySyncTimer?.cancel();
-    state = state.copyWith(status: SyncStatus.syncing);
-
-    final online = await _hasNetworkConnection();
-    if (!online) {
-      _wasOffline = true;
-      state = state.copyWith(status: SyncStatus.offline);
-      return const SyncResult(
-        message: 'No internet connection',
-        success: false,
-      );
-    }
-
-    final cloudReady = await _canSyncToCloud();
-    final hasSession = _supabase.auth.currentSession != null;
-    final result = cloudReady
-        ? await _performCloudSync()
-        : hasSession
-        ? const SyncResult(
-            message:
-                'Cloud is unavailable. Changes remain saved locally and will retry automatically.',
-            success: false,
-          )
-        : await _performLocalSync();
-
-    if (result.success) {
-      _retryAttempt = 0;
+    _isSyncing = true;
+    try {
+      await _ref.read(databaseProvider).purgeRetiredClinicalData();
       _retrySyncTimer?.cancel();
-      await _refreshDerivedStatus();
-    } else if (hasSession) {
-      state = state.copyWith(status: SyncStatus.error);
-      _scheduleSyncRetry();
-    } else {
-      await _refreshDerivedStatus();
-    }
+      state = state.copyWith(status: SyncStatus.syncing);
 
-    return result;
+      final online = await _hasNetworkConnection();
+      if (!online) {
+        _wasOffline = true;
+        state = state.copyWith(status: SyncStatus.offline);
+        return const SyncResult(
+          message: 'No internet connection',
+          success: false,
+        );
+      }
+
+      final cloudReady = await _canSyncToCloud();
+      final hasSession = _supabase.auth.currentSession != null;
+      final result = cloudReady
+          ? await _performCloudSync()
+          : hasSession
+          ? const SyncResult(
+              message:
+                  'Cloud is unavailable. Changes remain saved locally and will retry automatically.',
+              success: false,
+            )
+          : await _performLocalSync();
+
+      if (result.success) {
+        _retryAttempt = 0;
+        _retrySyncTimer?.cancel();
+        await _refreshDerivedStatus();
+      } else if (hasSession) {
+        state = state.copyWith(status: SyncStatus.error);
+        _scheduleSyncRetry();
+      } else {
+        await _refreshDerivedStatus();
+      }
+
+      return result;
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   void _scheduleSyncRetry() {
@@ -525,13 +531,16 @@ class SyncService extends StateNotifier<SyncServiceState> {
             ..['updated_at'] = now;
           payload['clinic_id'] = clinicId;
           await _supabase.from('patients').upsert(payload);
-          await db.updatePatient(
-            patient.copyWith(
-              clinicId: clinicId,
-              updatedAt: nowDateTime,
-              syncStatus: _synced,
-            ),
-          );
+          final currentLocal = await db.getPatientById(patient.id);
+          if (currentLocal != null && currentLocal.updatedAt == patient.updatedAt) {
+            await db.updatePatient(
+              currentLocal.copyWith(
+                clinicId: clinicId,
+                updatedAt: nowDateTime,
+                syncStatus: _synced,
+              ),
+            );
+          }
           synced++;
         } catch (error, stackTrace) {
           debugPrint(
@@ -567,6 +576,18 @@ class SyncService extends StateNotifier<SyncServiceState> {
           if (fileBytes == null) {
             throw StateError('The local document file could not be read.');
           }
+
+          // Upsert document metadata in database BEFORE uploading binary
+          // so storage RLS policies verify document record existence.
+          final payload = document.copyWith(storagePath: storagePath).toJson()
+            ..remove('sync_status')
+            ..remove('file_path')
+            ..remove('file_url')
+            ..['created_at'] ??= now
+            ..['updated_at'] = now;
+          payload['clinic_id'] = clinicId;
+          await _supabase.from('documents').upsert(payload);
+
           await _supabase.storage
               .from(_documentBucket)
               .uploadBinary(
@@ -578,22 +599,18 @@ class SyncService extends StateNotifier<SyncServiceState> {
                   contentType: _documentContentType(document),
                 ),
               );
-          final payload = document.copyWith(storagePath: storagePath).toJson()
-            ..remove('sync_status')
-            ..remove('file_path')
-            ..remove('file_url')
-            ..['created_at'] ??= now
-            ..['updated_at'] = now;
-          payload['clinic_id'] = clinicId;
-          await _supabase.from('documents').upsert(payload);
-          await db.updateDocument(
-            document.copyWith(
-              clinicId: clinicId,
-              storagePath: storagePath,
-              updatedAt: nowDateTime,
-              syncStatus: _synced,
-            ),
-          );
+
+          final currentDoc = await db.getDocumentById(document.id);
+          if (currentDoc != null && currentDoc.updatedAt == document.updatedAt) {
+            await db.updateDocument(
+              currentDoc.copyWith(
+                clinicId: clinicId,
+                storagePath: storagePath,
+                updatedAt: nowDateTime,
+                syncStatus: _synced,
+              ),
+            );
+          }
           synced++;
         } catch (error, stackTrace) {
           debugPrint(
@@ -603,18 +620,96 @@ class SyncService extends StateNotifier<SyncServiceState> {
         }
       }
 
+      for (final user in await db.getAllUsers()) {
+        if (user.syncStatus == _synced) continue;
+        try {
+          await _supabase.rpc(
+            'medsentry_update_user_account',
+            params: {
+              'target_user_id': user.id,
+              'requested_role': user.role.dbValue,
+              'requested_active': user.isActive,
+              'requested_first_name': user.firstName,
+              'requested_last_name': user.lastName,
+              'requested_license_number': user.licenseNumber,
+              'requested_specialization': user.specialization,
+              'requested_contact_number': user.contactNumber,
+            },
+          );
+          if (user.clinicId != null && user.clinicId!.isNotEmpty) {
+            await _supabase
+                .from('users')
+                .update({'clinic_id': user.clinicId})
+                .eq('id', user.id);
+          }
+          final current = await db.getUserById(user.id);
+          if (current != null && current.updatedAt == user.updatedAt) {
+            await db.updateUser(current.copyWith(syncStatus: _synced));
+          }
+          synced++;
+        } catch (error, stackTrace) {
+          debugPrint('User sync failed (${user.id}): $error\n$stackTrace');
+          failed++;
+        }
+      }
+
+      for (final log in await db.getUnsyncedAuditLogs()) {
+        try {
+          final payload = <String, dynamic>{
+            'id': log.id,
+            'user_id': log.userId,
+            'action': log.action.name,
+            'entity_type': log.entityType,
+            'entity_id': log.entityId,
+            'patient_id': log.patientId,
+            'occurred_at': log.timestamp.toIso8601String(),
+          };
+          if (log.clinicId != null && log.clinicId!.isNotEmpty) {
+            payload['clinic_id'] = log.clinicId;
+          } else if (profile['clinic_id'] != null) {
+            payload['clinic_id'] = profile['clinic_id'];
+          }
+          if (log.oldValues != null && log.oldValues!.isNotEmpty) {
+            try {
+              payload['old_values'] = jsonDecode(log.oldValues!);
+            } catch (_) {
+              payload['old_values'] = {'raw': log.oldValues};
+            }
+          }
+          if (log.newValues != null && log.newValues!.isNotEmpty) {
+            try {
+              payload['new_values'] = jsonDecode(log.newValues!);
+            } catch (_) {
+              payload['new_values'] = {'raw': log.newValues};
+            }
+          }
+          await _supabase.from('audit_logs').upsert(payload);
+          await db.markAuditLogAsSynced(log.id);
+          synced++;
+        } catch (error, stackTrace) {
+          debugPrint('Audit log sync non-fatal (${log.id}): $error\n$stackTrace');
+        }
+      }
+
       for (final deletion in await db.getPendingSyncDeletes()) {
         try {
           if (deletion['table'] == 'documents') {
             await _removeRemoteDocumentFile(deletion['record_id']!);
           }
-          await _supabase.rpc(
-            'medsentry_apply_sync_delete',
-            params: {
-              'entity': deletion['table'],
-              'target_record_id': deletion['record_id'],
-            },
-          );
+          if (deletion['table'] == 'clinics') {
+            await _supabase
+                .from('clinics')
+                .delete()
+                .eq('id', deletion['record_id']!);
+          } else {
+            await _supabase.rpc(
+              'medsentry_apply_sync_delete',
+              params: {
+                'entity': deletion['table'],
+                'target_record_id': deletion['record_id'],
+              },
+            );
+          }
           await db.markSyncDeleteComplete(
             deletion['table']!,
             deletion['record_id']!,
@@ -857,15 +952,19 @@ class SyncService extends StateNotifier<SyncServiceState> {
   Future<List<Map<String, dynamic>>> _selectAllRows(
     String table, {
     String columns = '*',
+    String? orderBy,
   }) async {
     const pageSize = 500;
     final rows = <Map<String, dynamic>>[];
     var offset = 0;
+    final orderCol =
+        orderBy ?? (table == 'sync_tombstones' ? 'deleted_at' : 'id');
 
     while (true) {
       final page = await _supabase
           .from(table)
           .select(columns)
+          .order(orderCol, ascending: true)
           .range(offset, offset + pageSize - 1);
       rows.addAll(List<Map<String, dynamic>>.from(page));
       if (page.length < pageSize) return rows;
@@ -936,23 +1035,32 @@ class SyncService extends StateNotifier<SyncServiceState> {
       } catch (_) {}
     }
 
-    // Fallback: resolve from local database clinics
-    final db = _ref.read(databaseProvider);
-    final localClinics = await db.getAllClinics();
-    if (localClinics.isNotEmpty) {
-      return localClinics.first.id;
+    final activeClinicId = _ref.read(activeClinicIdProvider);
+    if (activeClinicId != null && activeClinicId.isNotEmpty) {
+      return activeClinicId;
     }
 
-    // Fallback: resolve from remote Supabase clinics table
+    // Resolve from local database clinics
+    final db = _ref.read(databaseProvider);
+    final localClinics = await db.getAllClinics();
+    if (localClinics.length == 1) {
+      return localClinics.first.id;
+    }
+    if (localClinics.length > 1) {
+      throw StateError(
+        'Cannot determine clinic for $table record $recordId in a multi-clinic environment. '
+        'An explicit active clinic must be selected.',
+      );
+    }
+
+    // Fallback: resolve from remote Supabase clinics table if only 1 clinic exists
     try {
-      final remoteClinic = await _supabase
+      final remoteClinics = await _supabase
           .from('clinics')
           .select('id')
-          .limit(1)
-          .maybeSingle();
-      if (remoteClinic != null && remoteClinic['id'] != null) {
-        final rId = remoteClinic['id'] as String;
-        return rId;
+          .limit(2);
+      if (remoteClinics.length == 1 && remoteClinics.first['id'] != null) {
+        return remoteClinics.first['id'] as String;
       }
     } catch (_) {}
 

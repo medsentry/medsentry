@@ -704,6 +704,7 @@ class AuthRepository {
         updated.role != existing.role ||
         updated.isActive != existing.isActive;
 
+    var syncedOnline = false;
     if (accountChanged) {
       await ensureOnlineSession();
       if (_supabase.auth.currentSession != null) {
@@ -721,20 +722,25 @@ class AuthRepository {
               'requested_contact_number': updated.contactNumber,
             },
           );
+          syncedOnline = true;
         } catch (e) {
           debugPrint('Remote account update non-fatal: $e');
         }
       }
     }
 
+    final finalUser = (syncedOnline || (!accountChanged && existing.syncStatus == 0))
+        ? updated.copyWith(syncStatus: 0)
+        : updated;
+
     if (newPinHash != null) {
       await _setPinOnline(id, newPin!, enabled: true);
-      await _db.updateUser(updated, newPinHash: newPinHash);
+      await _db.updateUser(finalUser, newPinHash: newPinHash);
     } else {
       if (pinEnabled == false && existing.pinEnabled) {
         await _setPinOnline(id, null, enabled: false);
       }
-      await _db.updateUser(updated);
+      await _db.updateUser(finalUser);
     }
 
     await _auditService.logAction(
@@ -742,10 +748,10 @@ class AuthRepository {
       action: AuditAction.update,
       entityType: 'user',
       entityId: id,
-      description: 'Updated user: ${updated.email}',
+      description: 'Updated user: ${finalUser.email}',
     );
 
-    return updated;
+    return finalUser;
   }
 
   // Deactivate user
@@ -756,6 +762,7 @@ class AuthRepository {
       throw ArgumentError('User not found');
     }
 
+    var onlineSuccess = false;
     await ensureOnlineSession();
     if (_supabase.auth.currentSession != null) {
       try {
@@ -772,12 +779,19 @@ class AuthRepository {
             'requested_contact_number': user.contactNumber,
           },
         );
+        onlineSuccess = true;
       } catch (e) {
         debugPrint('Remote deactivation warning: $e');
       }
     }
 
-    await _db.deactivateUser(id);
+    await _db.updateUser(
+      user.copyWith(
+        isActive: false,
+        updatedAt: DateTime.now(),
+        syncStatus: onlineSuccess ? 0 : 2,
+      ),
+    );
 
     await _auditService.logAction(
       userId: deactivatedByUserId,

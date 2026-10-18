@@ -251,19 +251,43 @@ class SimpleDatabase {
     };
   }
 
+  Future<void>? _activeSave;
+  bool _hasPendingSave = false;
+
   Future<void> _saveToDisk() async {
     await _ensureLoaded();
-    final data = _serializeStore();
-    notifyChanges();
-    await _storage.writeStore(jsonEncode(data));
+    if (_activeSave != null) {
+      _hasPendingSave = true;
+      await _activeSave;
+      return;
+    }
+
+    final completer = Completer<void>();
+    _activeSave = completer.future;
+
+    try {
+      do {
+        _hasPendingSave = false;
+        final data = _serializeStore();
+        await _storage.writeStore(jsonEncode(data));
+        notifyChanges();
+      } while (_hasPendingSave);
+      completer.complete();
+    } catch (e, st) {
+      completer.completeError(e, st);
+      rethrow;
+    } finally {
+      _activeSave = null;
+    }
   }
 
   Future<String> createBackup() async {
     await _ensureLoaded();
     _preferences['last_backup_at'] = DateTime.now().toIso8601String();
     final data = _serializeStore();
+    final result = await _storage.createBackup(jsonEncode(data));
     notifyChanges();
-    return await _storage.createBackup(jsonEncode(data));
+    return result;
   }
 
   Future<DateTime?> getLastBackupAt() async {
@@ -665,6 +689,9 @@ class SimpleDatabase {
       }
     }
     final clinicRemoved = _clinics.remove(id) != null;
+    if (clinicRemoved) {
+      _recordSyncDelete('clinics', id);
+    }
     if (clinicRemoved || usersChanged) {
       await _saveToDisk();
     }
@@ -708,7 +735,11 @@ class SimpleDatabase {
     await _ensureLoaded();
     final user = _users[id];
     if (user != null) {
-      _users[id] = user.copyWith(isActive: false);
+      _users[id] = user.copyWith(
+        isActive: false,
+        updatedAt: DateTime.now(),
+        syncStatus: user.syncStatus == 0 ? 2 : user.syncStatus,
+      );
       await _saveToDisk();
     }
   }
@@ -900,6 +931,11 @@ class SimpleDatabase {
     return _auditLogs.values.where((l) => l.patientId == patientId).toList();
   }
 
+  Future<List<AuditLog>> getUnsyncedAuditLogs() async {
+    await _ensureLoaded();
+    return _auditLogs.values.where((l) => !l.isSynced).toList();
+  }
+
   Future<void> markAuditLogAsSynced(String logId) async {
     await _ensureLoaded();
     final log = _auditLogs[logId];
@@ -907,6 +943,7 @@ class SimpleDatabase {
       _auditLogs[logId] = log.copyWith(
         isSynced: true,
         syncedAt: DateTime.now(),
+        syncStatus: 0,
       );
       await _saveToDisk();
     }
@@ -1087,9 +1124,13 @@ class SimpleDatabase {
     final pendingUsers = _users.values
         .where((u) => (u.syncStatus ?? 0) != 0)
         .length;
+    final pendingAuditLogs = _auditLogs.values
+        .where((l) => !l.isSynced)
+        .length;
     return pendingPatients +
         pendingDocumentSyncCount +
         pendingUsers +
+        pendingAuditLogs +
         _syncDeletes.length;
   }
 

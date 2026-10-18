@@ -40,17 +40,45 @@ class IoDatabaseStorage implements DatabaseStorage {
   @override
   Future<String?> readStore() async {
     final file = await _resolveStoreFile();
-    if (!await file.exists()) return null;
+    if (await file.exists()) {
+      final raw = await file.readAsString();
+      if (raw.trim().isNotEmpty) return raw;
+    }
 
-    final raw = await file.readAsString();
-    if (raw.trim().isEmpty) return null;
-    return raw;
+    // Fallback recovery if primary store file was interrupted
+    final tempFile = File('${file.path}.tmp');
+    if (await tempFile.exists()) {
+      final raw = await tempFile.readAsString();
+      if (raw.trim().isNotEmpty) {
+        try {
+          await tempFile.copy(file.path);
+        } catch (_) {}
+        return raw;
+      }
+    }
+
+    return null;
   }
 
   @override
   Future<void> writeStore(String jsonString) async {
     final file = await _resolveStoreFile();
-    await file.writeAsString(jsonString, flush: true);
+    final tempFile = File('${file.path}.tmp');
+    await tempFile.writeAsString(jsonString, flush: true);
+    if (await file.exists()) {
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
+    try {
+      await tempFile.rename(file.path);
+    } catch (_) {
+      // Fallback for Windows cross-volume or locked rename
+      await tempFile.copy(file.path);
+      try {
+        await tempFile.delete();
+      } catch (_) {}
+    }
   }
 
   @override

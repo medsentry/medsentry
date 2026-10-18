@@ -1457,7 +1457,7 @@ class _PatientRegistrationDialogState
             : null,
         category: patientCategoryFromDateOfBirth(_dateOfBirth),
         userId: currentUser?.id ?? 'system',
-        clinicId: currentUser?.clinicId,
+        clinicId: currentUser?.clinicId ?? ref.read(activeClinicIdProvider),
       );
 
       // Notify parent to refresh list
