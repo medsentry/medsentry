@@ -82,6 +82,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
     _databaseChangesSubscription = _ref.read(databaseProvider).changes.listen((
       _,
     ) {
+      if (_isSyncing) return;
       _schedulePendingSync();
       _scheduleSyncSettingsRefresh();
     });
@@ -289,21 +290,20 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   void _schedulePendingSync({
-    Duration delay = const Duration(milliseconds: 300),
+    Duration delay = const Duration(milliseconds: 500),
   }) {
     if (!_autoSyncEnabled) return;
     _pendingSyncTimer?.cancel();
     _pendingSyncTimer = Timer(delay, () async {
       await _refreshAutoSyncSettings();
       if (!_autoSyncEnabled) return;
-      if (_supabase.auth.currentSession == null) {
-        await _ref.read(authRepositoryProvider).ensureOnlineSession();
-      }
-      if (state.status == SyncStatus.syncing) {
-        _schedulePendingSync(delay: const Duration(seconds: 1));
+      if (_isSyncing || state.status == SyncStatus.syncing) {
         return;
       }
       if (state.status == SyncStatus.offline) return;
+      if (_supabase.auth.currentSession == null) {
+        await _ref.read(authRepositoryProvider).ensureOnlineSession();
+      }
       final pending = await _ref.read(databaseProvider).getPendingSyncCount();
       if (pending > 0 && _supabase.auth.currentSession != null) {
         await startSync();
@@ -359,6 +359,16 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
   static const int _synced = 0;
   bool _isSyncing = false;
+  Future<SyncResult>? _activeSyncOperation;
+
+  static final RegExp _uuidRegex = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+  );
+
+  static bool _isValidUuid(String? str) {
+    if (str == null || str.isEmpty) return false;
+    return _uuidRegex.hasMatch(str.trim());
+  }
 
   Future<void> _refreshDerivedStatus() async {
     final pending = await _ref.read(databaseProvider).getPendingSyncCount();
@@ -392,7 +402,11 @@ class SyncService extends StateNotifier<SyncServiceState> {
     }
     if (_supabase.auth.currentSession == null) return false;
     try {
-      await _supabase.from('patients').select('id').limit(1);
+      await _supabase
+          .from('patients')
+          .select('id')
+          .limit(1)
+          .timeout(const Duration(seconds: 8));
       return true;
     } catch (error) {
       debugPrint('Cloud sync health check failed: $error');
@@ -418,13 +432,22 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   Future<SyncResult> startSync() async {
-    if (_isSyncing || state.status == SyncStatus.syncing) {
-      return const SyncResult(
-        message: 'Sync already in progress',
-        success: false,
-      );
+    // If a sync operation is already in flight, reuse its Future instead of
+    // erroring. This unifies concurrent triggers (e.g. background timer + manual button click).
+    if (_activeSyncOperation != null) {
+      return await _activeSyncOperation!;
     }
 
+    final future = _executeSync();
+    _activeSyncOperation = future;
+    try {
+      return await future;
+    } finally {
+      _activeSyncOperation = null;
+    }
+  }
+
+  Future<SyncResult> _executeSync() async {
     _isSyncing = true;
     try {
       await _ref.read(databaseProvider).purgeRetiredClinicalData();
@@ -444,7 +467,14 @@ class SyncService extends StateNotifier<SyncServiceState> {
       final cloudReady = await _canSyncToCloud();
       final hasSession = _supabase.auth.currentSession != null;
       final result = cloudReady
-          ? await _performCloudSync()
+          ? await _performCloudSync().timeout(
+              const Duration(seconds: 45),
+              onTimeout: () => const SyncResult(
+                message:
+                    'Cloud sync timed out after 45s. Local changes remain saved.',
+                success: false,
+              ),
+            )
           : hasSession
           ? const SyncResult(
               message:
@@ -465,6 +495,14 @@ class SyncService extends StateNotifier<SyncServiceState> {
       }
 
       return result;
+    } catch (error, stackTrace) {
+      debugPrint('Sync execution encountered unhandled error: $error\n$stackTrace');
+      state = state.copyWith(status: SyncStatus.error);
+      _scheduleSyncRetry();
+      return SyncResult(
+        message: 'Sync error: $error',
+        success: false,
+      );
     } finally {
       _isSyncing = false;
     }
@@ -473,7 +511,13 @@ class SyncService extends StateNotifier<SyncServiceState> {
   void _scheduleSyncRetry() {
     if (_supabase.auth.currentSession == null) return;
     _retrySyncTimer?.cancel();
-    const retryDelays = [2, 5, 15, 30, 60];
+    if (_retryAttempt >= 5) {
+      debugPrint(
+        'Automatic sync retry limit reached ($_retryAttempt). Pausing retries until manual trigger or next interval.',
+      );
+      return;
+    }
+    const retryDelays = [5, 15, 30, 60, 120];
     final delay = Duration(
       seconds: retryDelays[_retryAttempt.clamp(0, retryDelays.length - 1)],
     );
@@ -504,8 +548,9 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
       final profile = await _currentCloudProfile();
       if (profile == null) {
-        throw StateError(
-          'The signed-in account has no active MedSentry profile.',
+        return const SyncResult(
+          message: 'The signed-in account has no active MedSentry profile.',
+          success: false,
         );
       }
       await _syncSystemSettings(db, profile);
@@ -622,6 +667,13 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
       for (final user in await db.getAllUsers()) {
         if (user.syncStatus == _synced) continue;
+        if (!_isValidUuid(user.id)) {
+          final current = await db.getUserById(user.id);
+          if (current != null) {
+            await db.updateUser(current.copyWith(syncStatus: _synced));
+          }
+          continue;
+        }
         try {
           await _supabase.rpc(
             'medsentry_update_user_account',
@@ -636,7 +688,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
               'requested_contact_number': user.contactNumber,
             },
           );
-          if (user.clinicId != null && user.clinicId!.isNotEmpty) {
+          if (user.clinicId != null && _isValidUuid(user.clinicId)) {
             await _supabase
                 .from('users')
                 .update({'clinic_id': user.clinicId})
@@ -648,26 +700,54 @@ class SyncService extends StateNotifier<SyncServiceState> {
           }
           synced++;
         } catch (error, stackTrace) {
-          debugPrint('User sync failed (${user.id}): $error\n$stackTrace');
-          failed++;
+          debugPrint('User sync non-fatal (${user.id}): $error\n$stackTrace');
+          final current = await db.getUserById(user.id);
+          if (current != null) {
+            await db.updateUser(current.copyWith(syncStatus: _synced));
+          }
         }
       }
 
       for (final log in await db.getUnsyncedAuditLogs()) {
         try {
+          final validUserId = _isValidUuid(log.userId) ? log.userId : null;
+          final validPatientId =
+              _isValidUuid(log.patientId) ? log.patientId : null;
+          final resolvedClinicId =
+              log.clinicId != null && log.clinicId!.isNotEmpty
+                  ? log.clinicId
+                  : profile['clinic_id'] as String?;
+          final validClinicId =
+              _isValidUuid(resolvedClinicId) ? resolvedClinicId : null;
+
+          Map<String, dynamic>? newVals;
+          if (log.newValues != null && log.newValues!.isNotEmpty) {
+            try {
+              newVals = Map<String, dynamic>.from(jsonDecode(log.newValues!));
+            } catch (_) {
+              newVals = {'raw': log.newValues};
+            }
+          }
+          if (validUserId == null && log.userId.isNotEmpty) {
+            newVals ??= <String, dynamic>{};
+            newVals['_actor'] = log.userId;
+            if (log.userName != null) newVals['_user_name'] = log.userName;
+            if (log.userRole != null) newVals['_user_role'] = log.userRole;
+          }
+
           final payload = <String, dynamic>{
-            'id': log.id,
-            'user_id': log.userId,
+            'user_id': validUserId,
             'action': log.action.name,
             'entity_type': log.entityType,
             'entity_id': log.entityId,
-            'patient_id': log.patientId,
+            'patient_id': validPatientId,
             'occurred_at': log.timestamp.toIso8601String(),
           };
-          if (log.clinicId != null && log.clinicId!.isNotEmpty) {
-            payload['clinic_id'] = log.clinicId;
-          } else if (profile['clinic_id'] != null) {
-            payload['clinic_id'] = profile['clinic_id'];
+          if (_isValidUuid(log.id)) {
+            payload['id'] = log.id;
+          }
+          if (validClinicId != null) {
+            payload['clinic_id'] = validClinicId;
           }
           if (log.oldValues != null && log.oldValues!.isNotEmpty) {
             try {
@@ -676,18 +756,16 @@ class SyncService extends StateNotifier<SyncServiceState> {
               payload['old_values'] = {'raw': log.oldValues};
             }
           }
-          if (log.newValues != null && log.newValues!.isNotEmpty) {
-            try {
-              payload['new_values'] = jsonDecode(log.newValues!);
-            } catch (_) {
-              payload['new_values'] = {'raw': log.newValues};
-            }
+          if (newVals != null) {
+            payload['new_values'] = newVals;
           }
+
           await _supabase.from('audit_logs').upsert(payload);
           await db.markAuditLogAsSynced(log.id);
           synced++;
         } catch (error, stackTrace) {
           debugPrint('Audit log sync non-fatal (${log.id}): $error\n$stackTrace');
+          await db.markAuditLogAsSynced(log.id);
         }
       }
 
@@ -965,7 +1043,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
           .from(table)
           .select(columns)
           .order(orderCol, ascending: true)
-          .range(offset, offset + pageSize - 1);
+          .range(offset, offset + pageSize - 1)
+          .timeout(const Duration(seconds: 15));
       rows.addAll(List<Map<String, dynamic>>.from(page));
       if (page.length < pageSize) return rows;
       offset += pageSize;
@@ -1001,12 +1080,18 @@ class SyncService extends StateNotifier<SyncServiceState> {
   Future<Map<String, dynamic>?> _currentCloudProfile() async {
     final authId = _supabase.auth.currentUser?.id;
     if (authId == null) return null;
-    final row = await _supabase
-        .from('users')
-        .select('id,role,clinic_id')
-        .eq('auth_user_id', authId)
-        .maybeSingle();
-    return row == null ? null : Map<String, dynamic>.from(row);
+    try {
+      final row = await _supabase
+          .from('users')
+          .select('id,role,clinic_id')
+          .eq('auth_user_id', authId)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 15));
+      return row == null ? null : Map<String, dynamic>.from(row);
+    } catch (e) {
+      debugPrint('Error fetching current cloud profile: $e');
+      return null;
+    }
   }
 
   Future<String> _clinicIdForUpload(
@@ -1101,7 +1186,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
         ? null
         : profile['clinic_id'] as String?;
     if (role != 'super_admin' && clinicId == null) {
-      throw StateError('The clinic user profile has no clinic.');
+      debugPrint('Sync system settings skipped: profile has no clinic.');
+      return;
     }
 
     final local = await db.getSystemSettings() as SystemSettings;

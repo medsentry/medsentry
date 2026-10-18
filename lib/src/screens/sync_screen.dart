@@ -21,7 +21,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
   String? _lastMessage;
 
   Future<void> _startSync() async {
-    if (_isSyncing) return;
+    if (_isSyncing || ref.read(syncStatusProvider) == SyncStatus.syncing) return;
     setState(() {
       _isSyncing = true;
       _lastMessage = null;
@@ -77,6 +77,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     final syncStatus = ref.watch(syncStatusProvider);
     final lastSync = ref.watch(lastSyncTimeProvider);
     final stats = ref.watch(syncStatsProvider).valueOrNull;
+    final isSyncing = _isSyncing || syncStatus == SyncStatus.syncing;
 
     return SingleChildScrollView(
       padding: ResponsiveLayout.pagePadding(context),
@@ -183,15 +184,15 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             ],
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _isSyncing ? null : _startSync,
-              icon: _isSyncing
+              onPressed: isSyncing ? null : _startSync,
+              icon: isSyncing
                   ? const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.cloud_sync_outlined),
-              label: Text(_isSyncing ? 'Synchronizing...' : 'Sync Now'),
+              label: Text(isSyncing ? 'Synchronizing...' : 'Sync Now'),
             ),
             if (_lastMessage != null) ...[
               const SizedBox(height: 12),
