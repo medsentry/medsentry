@@ -99,20 +99,20 @@ class User {
   bool get isAdmin => role == UserRole.admin;
   bool get isStaff => role == UserRole.staff;
 
-  bool get canRegisterPatients => isAdmin || isStaff;
+  bool get canRegisterPatients => isSuperAdmin || isAdmin || isStaff;
   bool get canEditPatients => canRegisterPatients;
-  bool get canDeletePatientRecords => isAdmin;
-  bool get canManageDocuments => isAdmin || isStaff;
+  bool get canDeletePatientRecords => isSuperAdmin || isAdmin;
+  bool get canManageDocuments => isSuperAdmin || isAdmin || isStaff;
   bool get canManageSystemData => isSuperAdmin || isAdmin;
   bool get canViewAuditLogs => isSuperAdmin || isAdmin;
-  bool get canManageArchive => isAdmin;
+  bool get canManageArchive => isSuperAdmin || isAdmin;
   bool get canManageStaffAccounts => isSuperAdmin || isAdmin;
   bool get canManageSecurity => isSuperAdmin || isAdmin;
-  bool get canBackupSync => isAdmin;
-  bool get canManageBackupSync => isAdmin;
+  bool get canBackupSync => isSuperAdmin || isAdmin;
+  bool get canManageBackupSync => isSuperAdmin || isAdmin;
   bool get canSyncRecords => isSuperAdmin || isAdmin || isStaff;
-  bool get canGenerateCertificates => isAdmin || isStaff;
-  bool get canAccessPatientRecords => isAdmin || isStaff;
+  bool get canGenerateCertificates => isSuperAdmin || isAdmin || isStaff;
+  bool get canAccessPatientRecords => isSuperAdmin || isAdmin || isStaff;
   bool get canGenerateReports => isSuperAdmin || isAdmin || isStaff;
   bool get canViewReports => canGenerateReports;
   bool get canAccessSettings => true;

@@ -106,13 +106,17 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   static const _fallbackNavigationItems = [_dashboardNavigationItem];
 
-  /// Super Admin: Dashboard, RHUs, Staff, Reports, Audit Logs, Cloud Sync, Settings
+  /// Super Admin: Dashboard, Patients, RHU Units, Staff, Documents, Certificates, Reports, Audit Logs, Archive, Cloud Sync, Settings
   static const _superAdminNavigationItems = [
     _dashboardNavigationItem,
+    _patientsNavigationItem,
     _rhuNavigationItem,
     _staffNavigationItem,
+    _documentsNavigationItem,
+    _certificatesNavigationItem,
     _reportsNavigationItem,
     _auditNavigationItem,
+    _archiveNavigationItem,
     _syncNavigationItem,
     _settingsNavigationItem,
   ];

@@ -33,6 +33,7 @@ class StaffScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Expanded(
             child: AppCard(
+              expandContent: true,
               padding: const EdgeInsets.all(16),
               child: StaffManagementPanel(
                 embedded: true,

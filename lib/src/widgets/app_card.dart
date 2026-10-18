@@ -27,6 +27,7 @@ class AppCard extends StatelessWidget {
   final BorderSide? borderSide;
   final BorderRadius? borderRadius;
   final AppCardVariant variant;
+  final bool expandContent;
 
   const AppCard({
     super.key,
@@ -43,6 +44,7 @@ class AppCard extends StatelessWidget {
     this.borderSide,
     this.borderRadius,
     this.variant = AppCardVariant.standard,
+    this.expandContent = false,
   });
 
   /// Factory for an elevated card
@@ -153,82 +155,101 @@ class AppCard extends StatelessWidget {
           width: AppColors.borderWidth,
         );
 
-    final cardContent = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (hasHeader) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.md,
-              AppSpacing.lg,
-              AppSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                if (icon != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.xs),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.primaryEmeraldSubtle
-                          : AppColors.primaryEmerald.withValues(alpha: 0.12),
-                      borderRadius: AppRadius.roundedSm,
-                    ),
-                    child: Icon(
-                      icon,
-                      size: AppIconSize.sm,
-                      color: AppColors.primaryEmerald,
-                    ),
+    final Widget paddedChild = Padding(padding: padding, child: child);
+    final Widget cardContent;
+
+    if (hasHeader) {
+      final headerElements = [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.xs),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.primaryEmeraldSubtle
+                        : AppColors.primaryEmerald.withValues(alpha: 0.12),
+                    borderRadius: AppRadius.roundedSm,
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (titleText != null)
-                        Text(
-                          titleText!,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.2,
-                            color: isDark
-                                ? AppColors.textPrimary
-                                : AppColors.lightTextPrimary,
-                          ),
-                        )
-                      else
-                        ?title,
-                      if (subtitle != null) ...[
-                        const SizedBox(height: AppSpacing.xxs),
-                        Text(
-                          subtitle!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: isDark
-                                ? AppColors.textSecondary
-                                : AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
+                  child: Icon(
+                    icon,
+                    size: AppIconSize.sm,
+                    color: AppColors.primaryEmerald,
                   ),
                 ),
-                ?headerAction,
+                const SizedBox(width: AppSpacing.sm),
               ],
-            ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (titleText != null)
+                      Text(
+                        titleText!,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.2,
+                          color: isDark
+                              ? AppColors.textPrimary
+                              : AppColors.lightTextPrimary,
+                        ),
+                      )
+                    else
+                      ?title,
+                    if (subtitle != null) ...[
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        subtitle!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : AppColors.lightTextSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              ?headerAction,
+            ],
           ),
-          Divider(
-            height: 1,
-            color: isDark
-                ? AppColors.borderSubtle
-                : AppColors.lightBorderSubtle,
-          ),
-        ],
-        Padding(padding: padding, child: child),
-      ],
-    );
+        ),
+        Divider(
+          height: 1,
+          color: isDark
+              ? AppColors.borderSubtle
+              : AppColors.lightBorderSubtle,
+        ),
+      ];
+
+      cardContent = expandContent
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ...headerElements,
+                Expanded(child: paddedChild),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ...headerElements,
+                paddedChild,
+              ],
+            );
+    } else {
+      cardContent = expandContent
+          ? SizedBox.expand(child: paddedChild)
+          : paddedChild;
+    }
 
     Widget cardWidget = Container(
       margin: margin,
