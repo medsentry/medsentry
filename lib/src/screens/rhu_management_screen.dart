@@ -110,6 +110,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
 
               // Metrics / KPIs
               clinicsAsync.when(
+                skipLoadingOnReload: true,
                 data: (clinics) {
                   final allUsers = usersAsync.valueOrNull ?? <User>[];
                   final activeCount = clinics.where((c) => c.isActive).length;
@@ -276,6 +277,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
 
               // Facilities Content
               clinicsAsync.when(
+                skipLoadingOnReload: true,
                 data: (clinics) {
                   var filtered = clinics.where((c) {
                     if (_statusFilter == 'active' && !c.isActive) return false;

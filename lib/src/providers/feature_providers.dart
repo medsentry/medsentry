@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../database/simple_database.dart';
 import '../models/models.dart';
 import '../services/certificate_service.dart';
 import '../services/notification_service.dart';
@@ -83,8 +86,35 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService(ref.watch(databaseProvider));
 });
 
+class SettingsChangesNotifier extends StateNotifier<int> {
+  final SimpleDatabase _db;
+  StreamSubscription<int>? _subscription;
+
+  SettingsChangesNotifier(this._db) : super(_db.settingsRevision) {
+    _subscription = _db.settingsChanges.listen((newRevision) {
+      if (mounted) state = newRevision;
+    });
+  }
+
+  void refresh() {
+    state = _db.settingsRevision;
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+}
+
+final settingsChangesProvider =
+    StateNotifierProvider<SettingsChangesNotifier, int>((ref) {
+  final db = ref.watch(databaseProvider);
+  return SettingsChangesNotifier(db);
+});
+
 final systemSettingsProvider = FutureProvider<SystemSettings>((ref) async {
-  ref.watch(databaseChangesProvider);
+  ref.watch(settingsChangesProvider);
   return ref.watch(databaseProvider).getSystemSettings();
 });
 

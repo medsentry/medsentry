@@ -62,21 +62,15 @@ class AppScaffold extends ConsumerStatefulWidget {
 
 class _AppScaffoldState extends ConsumerState<AppScaffold> {
   bool _sidebarExpanded = true;
-  Timer? _clockTimer;
-  DateTime _currentTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     ServicesBinding.instance.keyboard.addHandler(_handleKeyEvent);
-    _clockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      if (mounted) setState(() => _currentTime = DateTime.now());
-    });
   }
 
   @override
   void dispose() {
-    _clockTimer?.cancel();
     ServicesBinding.instance.keyboard.removeHandler(_handleKeyEvent);
     super.dispose();
   }
@@ -96,7 +90,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
-    final syncStatus = ref.watch(syncStatusProvider);
     final isMobile = ResponsiveLayout.isMobile(context);
     final isTablet = ResponsiveLayout.isTablet(context);
     final theme = Theme.of(context);
@@ -105,8 +98,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     if (isMobile) {
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
-        appBar: _buildMobileAppBar(context, user, syncStatus),
-        drawer: _buildDrawer(context, user, syncStatus),
+        appBar: _buildMobileAppBar(context, user),
+        drawer: _buildDrawer(context, user),
         body: SafeArea(top: false, child: widget.body),
         floatingActionButton: widget.floatingActionButton,
       );
@@ -128,7 +121,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildDesktopHeader(context, user, syncStatus),
+                _buildDesktopHeader(context, user),
                 Expanded(child: widget.body),
               ],
             ),
@@ -142,7 +135,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   Widget _buildDesktopHeader(
     BuildContext context,
     User? user,
-    SyncStatus syncStatus,
   ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -169,7 +161,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             const SizedBox(width: 16),
 
             // RIGHT ZONE: Search Pill + Notification Bell + Sync
-            _buildHeaderActionsZone(context, user, syncStatus),
+            _buildHeaderActionsZone(context, user),
           ],
         ),
       ),
@@ -179,7 +171,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   PreferredSizeWidget _buildMobileAppBar(
     BuildContext context,
     User? user,
-    SyncStatus syncStatus,
   ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -306,7 +297,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             onPressed: () => _showNotifications(context, notificationTarget),
           ),
         const SizedBox(width: 4),
-        _SyncStatusDropdown(status: syncStatus),
+        const _SyncStatusDropdown(),
         if (user != null) ...[
           Padding(
             padding: const EdgeInsets.only(right: 8, left: 4),
@@ -480,7 +471,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  Widget _buildDrawer(BuildContext context, User? user, SyncStatus syncStatus) {
+  Widget _buildDrawer(BuildContext context, User? user) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final settings =
@@ -988,14 +979,11 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         ? '$timeGreeting, $userName $greetingIcon'
         : widget.title;
 
-    final timeStr = DateFormat('h:mm a').format(_currentTime);
-    final dateStr = DateFormat('EEEE, d MMMM y').format(_currentTime);
     final facility = (assignedClinicName != null && assignedClinicName.isNotEmpty)
         ? assignedClinicName
         : (settings.clinicName.isNotEmpty
               ? settings.clinicName
               : settings.appName);
-    final subtitle = '$timeStr PHT · $dateStr · $facility';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1022,52 +1010,13 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
               ),
             ),
             const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-              decoration: BoxDecoration(
-                color: AppColors.primaryEmerald.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: AppColors.primaryEmerald.withValues(alpha: 0.25),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryEmerald,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    '$timeStr PHT • Live',
-                    style: const TextStyle(
-                      color: AppColors.primaryEmerald,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const _LiveClockPill(),
           ],
         ),
         const SizedBox(height: 3),
-        Text(
-          subtitle,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-          style: TextStyle(
-            fontSize: 12,
-            color: isDark
-                ? AppColors.textSecondary
-                : AppColors.lightTextSecondary,
-          ),
+        _LiveHeaderClockSubtitle(
+          facility: facility,
+          isDark: isDark,
         ),
       ],
     );
@@ -1076,7 +1025,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   Widget _buildHeaderActionsZone(
     BuildContext context,
     User? user,
-    SyncStatus syncStatus,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final notificationTarget = user?.canManageSystemData == true
@@ -1256,7 +1204,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         const SizedBox(width: 10),
 
         // Sync Status Dropdown
-        _SyncStatusDropdown(status: syncStatus),
+        const _SyncStatusDropdown(),
         if (user != null) ...[
           const SizedBox(width: 8),
           _buildProfileButton(context, user),
@@ -1375,6 +1323,7 @@ class _NotificationsDialog extends ConsumerWidget {
             const Divider(height: 1),
             Flexible(
               child: notificationsAsync.when(
+                skipLoadingOnReload: true,
                 loading: () => const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),
@@ -1655,12 +1604,11 @@ class _SidebarNavItem extends StatelessWidget {
 
 /// Sync status dropdown widget with detailed status info
 class _SyncStatusDropdown extends ConsumerWidget {
-  final SyncStatus status;
-
-  const _SyncStatusDropdown({required this.status});
+  const _SyncStatusDropdown();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(syncStatusProvider);
     Color color;
     String statusText;
     IconData icon;
@@ -1770,6 +1718,128 @@ class _SyncStatusDropdown extends ConsumerWidget {
             break;
         }
       },
+    );
+  }
+}
+
+class _LiveClockPill extends StatefulWidget {
+  const _LiveClockPill();
+
+  @override
+  State<_LiveClockPill> createState() => _LiveClockPillState();
+}
+
+class _LiveClockPillState extends State<_LiveClockPill> {
+  late DateTime _now;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) {
+        setState(() => _now = DateTime.now());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final timeStr = DateFormat('h:mm a').format(_now);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: AppColors.primaryEmerald.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: AppColors.primaryEmerald.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: AppColors.primaryEmerald,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            '$timeStr PHT • Live',
+            style: const TextStyle(
+              color: AppColors.primaryEmerald,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveHeaderClockSubtitle extends StatefulWidget {
+  final String facility;
+  final bool isDark;
+
+  const _LiveHeaderClockSubtitle({
+    required this.facility,
+    required this.isDark,
+  });
+
+  @override
+  State<_LiveHeaderClockSubtitle> createState() =>
+      _LiveHeaderClockSubtitleState();
+}
+
+class _LiveHeaderClockSubtitleState extends State<_LiveHeaderClockSubtitle> {
+  late DateTime _now;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _now = DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) {
+        setState(() => _now = DateTime.now());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final timeStr = DateFormat('h:mm a').format(_now);
+    final dateStr = DateFormat('EEEE, d MMMM y').format(_now);
+    final subtitle = '$timeStr PHT · $dateStr · ${widget.facility}';
+
+    return Text(
+      subtitle,
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+      style: TextStyle(
+        fontSize: 12,
+        color: widget.isDark
+            ? AppColors.textSecondary
+            : AppColors.lightTextSecondary,
+      ),
     );
   }
 }

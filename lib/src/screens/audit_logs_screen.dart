@@ -143,6 +143,7 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
           const SizedBox(height: 12),
           Expanded(
             child: logsAsync.when(
+              skipLoadingOnReload: true,
               data: (logs) {
                 final filtered = logs.where((log) {
                   if (_filterAction != null && log.action != _filterAction) {

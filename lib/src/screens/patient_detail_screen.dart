@@ -25,6 +25,7 @@ class PatientDetailScreen extends ConsumerWidget {
     final patientAsync = ref.watch(patientProvider(patientId));
 
     return patientAsync.when(
+      skipLoadingOnReload: true,
       data: (patient) {
         if (patient == null) {
           return const Center(child: Text('Patient not found'));
@@ -1792,6 +1793,7 @@ class _PatientDocumentsList extends ConsumerWidget {
     final docsAsync = ref.watch(patientDocumentsProvider(patient.id));
 
     return docsAsync.when(
+      skipLoadingOnReload: true,
       data: (docs) {
         if (docs.isEmpty) {
           return Center(
@@ -1995,6 +1997,7 @@ class _PatientAuditTrailList extends ConsumerWidget {
     final auditLogsAsync = ref.watch(patientAuditLogsProvider(patient.id));
 
     return auditLogsAsync.when(
+      skipLoadingOnReload: true,
       data: (logs) {
         if (logs.isEmpty) {
           return Center(
@@ -2223,6 +2226,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
               const SizedBox(height: 16),
               Expanded(
                 child: auditLogsAsync.when(
+                  skipLoadingOnReload: true,
                   data: (logs) {
                     if (logs.isEmpty) {
                       return Center(

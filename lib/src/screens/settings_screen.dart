@@ -161,6 +161,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ]),
           const Divider(),
           settingsAsync.when(
+            skipLoadingOnReload: true,
             data: (settings) => _buildSection(context, 'System Information', [
               _buildInfoTile(context, 'App Version', settings.appVersion),
               _buildInfoTile(
@@ -814,6 +815,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         builder: (context, dialogRef, _) {
           final settingsAsync = dialogRef.watch(settingsDataProvider);
           return settingsAsync.when(
+            skipLoadingOnReload: true,
             data: (settings) => AppFormDialog(
               icon: Icons.storage_outlined,
               title: 'Database Statistics',
@@ -1483,6 +1485,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
   ) {
     final clinics = ref.watch(clinicsProvider).valueOrNull ?? <Clinic>[];
     final tabView = usersAsync.when(
+      skipLoadingOnReload: true,
       data: (users) {
         final query = _searchQuery.trim().toLowerCase();
         final phoneQuery = query.replaceAll(RegExp(r'\D'), '');
@@ -2540,6 +2543,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                     if (isSuperAdmin && _role != UserRole.superAdmin) ...[
                       const SizedBox(height: 16),
                       clinicsAsync.when(
+                        skipLoadingOnReload: true,
                         data: (clinics) => DropdownButtonFormField<String?>(
                           initialValue: clinics.any((c) => c.id == _clinicId)
                               ? _clinicId

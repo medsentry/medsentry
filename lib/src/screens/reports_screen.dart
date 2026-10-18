@@ -1236,6 +1236,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     AsyncValue<List<GeneratedReport>> generatedReportsAsync,
   ) {
     return generatedReportsAsync.when(
+      skipLoadingOnReload: true,
       data: (allReports) {
         if (allReports.isEmpty) {
           return _buildEmptyReportsSection(context);
@@ -1423,6 +1424,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final auditLogsAsync = ref.watch(auditLogsProvider);
 
     return auditLogsAsync.when(
+      skipLoadingOnReload: true,
       data: (allLogs) {
         final query = _auditSearchQuery.trim().toLowerCase();
         var filtered = allLogs.where((l) {

@@ -30,11 +30,17 @@ class SimpleDatabase {
   bool _legacyRetiredClinicalDataPresent = false;
   final StreamController<int> _changes = StreamController<int>.broadcast();
   int _revision = 0;
+  final StreamController<int> _settingsChanges =
+      StreamController<int>.broadcast();
+  int _settingsRevision = 0;
 
   /// Emits after a durable local write. UI providers use this to refresh every
   /// authorized view from the same local source of truth.
   Stream<int> get changes => _changes.stream;
   int get revision => _revision;
+
+  Stream<int> get settingsChanges => _settingsChanges.stream;
+  int get settingsRevision => _settingsRevision;
 
   void Function(int revision)? onRevisionChanged;
 
@@ -42,6 +48,11 @@ class SimpleDatabase {
     final next = ++_revision;
     _changes.add(next);
     onRevisionChanged?.call(next);
+  }
+
+  void notifySettingsChanges() {
+    final next = ++_settingsRevision;
+    _settingsChanges.add(next);
   }
 
   bool _matchesClinic(String? recordClinicId, String? filterClinicId) {
@@ -400,6 +411,7 @@ class SimpleDatabase {
     _systemSettings = const SystemSettings();
     await _ensureLoaded();
     notifyChanges();
+    notifySettingsChanges();
   }
 
   Future<bool> getRememberMe() async {
@@ -1398,6 +1410,7 @@ class SimpleDatabase {
     await _ensureLoaded();
     _systemSettings = settings.copyWith(updatedAt: DateTime.now());
     await _saveToDisk();
+    notifySettingsChanges();
   }
 
   Future<void> replaceSyncedSystemSettings(SystemSettings settings) async {
@@ -1408,6 +1421,7 @@ class SimpleDatabase {
     }
     _systemSettings = settings;
     await _saveToDisk();
+    notifySettingsChanges();
   }
 
   Future<String> generateNextPatientId() async {
@@ -1507,6 +1521,8 @@ class SimpleDatabase {
 
   Future<void> close() async {
     await _saveToDisk();
+    await _changes.close();
+    await _settingsChanges.close();
   }
 }
 

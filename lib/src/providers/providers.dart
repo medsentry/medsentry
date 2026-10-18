@@ -112,7 +112,6 @@ final activeClinicIdProvider = Provider<String?>((ref) {
 Future<List<User>> users(Ref ref) async {
   ref.watch(databaseChangesProvider);
   final repository = ref.watch(authRepositoryProvider);
-  await repository.ensureDefaultAccounts();
   final u = await repository.getAllUsers();
   u.sort(
     (a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),

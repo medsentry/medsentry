@@ -518,6 +518,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                 ),
                 clinicsAsync.when(
+                  skipLoadingOnReload: true,
                   data: (clinics) => Text(
                     '${clinics.length} RHU facilities connected and transmitting telemetric health records',
                     style: TextStyle(

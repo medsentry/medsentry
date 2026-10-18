@@ -54,6 +54,7 @@ class ArchiveScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           Expanded(
             child: archivedAsync.when(
+              skipLoadingOnReload: true,
               data: (patients) {
                 if (patients.isEmpty) {
                   return const Center(

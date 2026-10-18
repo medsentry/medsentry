@@ -1534,6 +1534,7 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
           'Scan physical documents or webcam captures, or attach existing files',
       maxWidth: 680,
       content: patientsAsync.when(
+        skipLoadingOnReload: true,
         data: (patients) => Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -50,8 +50,25 @@ Page<void> _noTransitionPage({
 // Router provider
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshListenable = _RouterRefreshListenable();
-  ref.listen<User?>(currentUserProvider, (_, _) => refreshListenable.trigger());
-  ref.listen(systemSettingsProvider, (_, _) => refreshListenable.trigger());
+  ref.listen<User?>(currentUserProvider, (previous, next) {
+    if (previous?.id == next?.id &&
+        previous?.role == next?.role &&
+        previous?.isActive == next?.isActive) {
+      return;
+    }
+    refreshListenable.trigger();
+  });
+  ref.listen(systemSettingsProvider, (previous, next) {
+    final prev = previous?.valueOrNull;
+    final curr = next.valueOrNull;
+    if (prev != null && curr != null) {
+      if (prev.certificatesModuleEnabled == curr.certificatesModuleEnabled &&
+          prev.syncModuleEnabled == curr.syncModuleEnabled) {
+        return;
+      }
+    }
+    refreshListenable.trigger();
+  });
   ref.onDispose(refreshListenable.dispose);
 
   return GoRouter(

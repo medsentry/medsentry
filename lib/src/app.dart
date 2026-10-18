@@ -25,22 +25,35 @@ void _updateBrowserBrand(String appName, String logoDataUri) {
   );
 }
 
-class MedSentryApp extends ConsumerWidget {
+class MedSentryApp extends ConsumerStatefulWidget {
   const MedSentryApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(syncServiceStateProvider);
+  ConsumerState<MedSentryApp> createState() => _MedSentryAppState();
+}
+
+class _MedSentryAppState extends ConsumerState<MedSentryApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Warm up the background synchronization service once at startup without rebuilding root
+    ref.read(syncServiceProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.listen(systemSettingsProvider, (_, next) {
       next.whenData(
         (settings) =>
             _updateBrowserBrand(settings.appName, settings.logoDataUri),
       );
     });
-    final settings = ref.watch(systemSettingsProvider).valueOrNull;
-    if (settings != null) {
-      _updateBrowserBrand(settings.appName, settings.logoDataUri);
-    }
+
+    final appName = ref.watch(
+      systemSettingsProvider.select(
+        (s) => s.valueOrNull?.appName ?? 'MedSentry',
+      ),
+    );
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
     final accentTheme = ref.watch(accentThemeProvider);
@@ -56,7 +69,7 @@ class MedSentryApp extends ConsumerWidget {
 
     return ToastificationWrapper(
       child: MaterialApp.router(
-        title: settings?.appName ?? 'MedSentry',
+        title: appName,
         debugShowCheckedModeBanner: false,
         theme: buildMedSentryTheme(Brightness.light, accentTheme: accentTheme),
         darkTheme: buildMedSentryTheme(

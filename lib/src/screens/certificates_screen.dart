@@ -370,6 +370,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           ),
           const SizedBox(height: 8),
           patientsAsync.when(
+            skipLoadingOnReload: true,
             data: (patientsList) => AppSearchableDropdown<Patient>(
               label: 'Patient',
               hint: 'Search patient by name, ID, phone, or barangay...',
@@ -944,6 +945,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           const SizedBox(height: 16),
           Expanded(
             child: archiveAsync.when(
+              skipLoadingOnReload: true,
               data: (records) {
                 final filtered = records.where((rec) {
                   if (query.isEmpty) return true;
