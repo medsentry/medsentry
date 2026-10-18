@@ -88,14 +88,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     group: 'OPERATIONS',
   );
 
-  static const _settingsNavigationItem = AppNavigationItem(
-    label: 'Settings',
-    path: '/settings',
-    icon: Icons.settings_outlined,
-    selectedIcon: Icons.settings_rounded,
-    group: 'OPERATIONS',
-  );
-
   static const _rhuNavigationItem = AppNavigationItem(
     label: 'RHU Units',
     path: '/rhus',
@@ -106,7 +98,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   static const _fallbackNavigationItems = [_dashboardNavigationItem];
 
-  /// Super Admin: Dashboard, Patients, RHU Units, Staff, Documents, Certificates, Reports, Audit Logs, Archive, Cloud Sync, Settings
+  /// Super Admin: Dashboard, Patients, RHU Units, Staff, Documents, Certificates, Reports, Audit Logs, Archive, Cloud Sync
   static const _superAdminNavigationItems = [
     _dashboardNavigationItem,
     _patientsNavigationItem,
@@ -118,10 +110,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     _auditNavigationItem,
     _archiveNavigationItem,
     _syncNavigationItem,
-    _settingsNavigationItem,
   ];
 
-  /// Admin: Dashboard, Patients, Certificates, Documents, Reports, Audit, Archive, Staff, Cloud Sync, Settings
+  /// Admin: Dashboard, Patients, Certificates, Documents, Reports, Audit, Archive, Staff, Cloud Sync
   static const _adminNavigationItems = [
     _dashboardNavigationItem,
     _patientsNavigationItem,
@@ -132,10 +123,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     _archiveNavigationItem,
     _staffNavigationItem,
     _syncNavigationItem,
-    _settingsNavigationItem,
   ];
 
-  /// Staff: Dashboard, Patients, Certificates, Documents, Reports, Cloud Sync, Settings
+  /// Staff: Dashboard, Patients, Certificates, Documents, Reports, Cloud Sync
   static const _staffNavigationItems = [
     _dashboardNavigationItem,
     _patientsNavigationItem,
@@ -143,7 +133,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     _documentsNavigationItem,
     _reportsNavigationItem,
     _syncNavigationItem,
-    _settingsNavigationItem,
   ];
 
   List<AppNavigationItem> _navigationItems(User? user) {

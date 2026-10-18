@@ -115,7 +115,7 @@ class User {
   bool get canAccessPatientRecords => isSuperAdmin || isAdmin || isStaff;
   bool get canGenerateReports => isSuperAdmin || isAdmin || isStaff;
   bool get canViewReports => canGenerateReports;
-  bool get canAccessSettings => true;
+  bool get canAccessSettings => isSuperAdmin || isAdmin;
 
   // Explicit RBAC capabilities for Admin & Super Admin
   bool get canEditUserProfiles => isSuperAdmin || isAdmin;

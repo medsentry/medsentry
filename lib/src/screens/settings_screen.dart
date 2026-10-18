@@ -12,6 +12,7 @@ import '../services/document_service.dart';
 import '../providers/providers.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
+import '../widgets/change_pin_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/system_logo.dart';
@@ -39,14 +40,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
         children: [
           Text(
-            'Settings & Administration',
+            currentUser?.isSuperAdmin == true
+                ? 'Platform Settings & System Configuration'
+                : 'Clinic Settings & Facility Administration',
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
-            'Manage account security, backups, compliance, and system configuration.',
+            currentUser?.isSuperAdmin == true
+                ? 'Manage master platform branding, security policies, and system-wide infrastructure.'
+                : 'Manage your local health facility, operational services, and clinic preferences.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(
                 context,
@@ -70,7 +75,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ? 'Update your 4-digit access PIN'
                   : 'Setup a 4-digit access PIN for quick login',
               Icons.pin,
-              () => _showChangePinDialog(context, ref),
+              () => showChangePinDialog(context, ref),
             ),
             _buildListTile(
               context,
@@ -95,25 +100,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ]),
           if (currentUser?.canManageSystemData == true) ...[
             const Divider(),
-            _buildSection(context, 'System Settings', [
-              _buildListTile(
-                context,
-                'Clinic / RHU Information',
-                'Manage clinic details, patient ID format, and system logo',
-                Icons.local_hospital_outlined,
-                () => _showSystemSettingsDialog(context, ref),
-              ),
-              if (currentUser?.canManageStaffAccounts == true)
-                _buildListTile(
-                  context,
-                  'Personnel & Staff Directory',
-                  currentUser?.isSuperAdmin == true
-                      ? 'Manage RHU administrators, medical officers, and health workers across facilities'
-                      : 'Manage clinical staff, nurses, and local health facility users',
-                  Icons.badge_outlined,
-                  () => context.go('/staff'),
-                ),
-            ]),
+            _buildSection(
+              context,
+              currentUser?.isSuperAdmin == true
+                  ? 'Super Admin Configuration'
+                  : 'Clinic Configuration',
+              [
+                if (currentUser?.isSuperAdmin == true) ...[
+                  _buildListTile(
+                    context,
+                    'System Identity & Master Branding',
+                    'Configure platform title, system logo, health authority organization, and global security policies',
+                    Icons.branding_watermark_outlined,
+                    () => _showSuperAdminConfigDialog(context, ref),
+                  ),
+                  _buildListTile(
+                    context,
+                    'RHU Health Facilities Directory',
+                    'Manage rural health units, municipal clinics, and health facility assignments',
+                    Icons.domain_outlined,
+                    () => context.go('/rhus'),
+                  ),
+                ] else ...[
+                  _buildListTile(
+                    context,
+                    'Clinic / RHU Facility Profile',
+                    'Configure clinic name, contact details, operating hours, and patient ID format',
+                    Icons.local_hospital_outlined,
+                    () => _showClinicConfigDialog(context, ref),
+                  ),
+                ],
+                if (currentUser?.canManageStaffAccounts == true)
+                  _buildListTile(
+                    context,
+                    currentUser?.isSuperAdmin == true
+                        ? 'Global Personnel & Administrator Accounts'
+                        : 'Clinic Staff & Personnel Directory',
+                    currentUser?.isSuperAdmin == true
+                        ? 'Manage RHU administrators, medical officers, and health workers across facilities'
+                        : 'Manage clinical staff, nurses, and local health facility users',
+                    Icons.badge_outlined,
+                    () => context.go('/staff'),
+                  ),
+              ],
+            ),
           ],
           if (currentUser?.isSuperAdmin != true) ...[
             const Divider(),
@@ -441,198 +471,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showChangePinDialog(BuildContext context, WidgetRef ref) {
-    final user = ref.read(currentUserProvider);
-    final hasExistingPin =
-        (user?.pinEnabled == true) &&
-        (user?.pinHash != null && user!.pinHash!.isNotEmpty);
-    final isPinSetup = !hasExistingPin;
-    final currentPinController = TextEditingController();
-    final newPinController = TextEditingController();
-    final confirmPinController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AppFormDialog(
-        icon: Icons.pin_outlined,
-        title: isPinSetup ? 'Setup PIN' : 'Change PIN',
-        subtitle: isPinSetup
-            ? 'Setup a 4-digit access PIN for quick and secure login'
-            : 'Update your 4-digit access PIN for secure login',
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!isPinSetup) ...[
-              AppFormField(
-                label: 'Current PIN',
-                hint: 'Enter your existing 4-digit PIN',
-                field: TextField(
-                  controller: currentPinController,
-                  obscureText: true,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.lock_outline),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                required: true,
-              ),
-              const SizedBox(height: 16),
-            ],
-            AppFormField(
-              label: isPinSetup ? 'Create 4-Digit PIN' : 'New PIN',
-              hint: isPinSetup ? 'Enter 4 digits' : 'Create a new 4-digit PIN',
-              field: TextField(
-                controller: newPinController,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              required: true,
-            ),
-            const SizedBox(height: 16),
-            AppFormField(
-              label: 'Confirm PIN',
-              hint: 'Re-enter your 4-digit PIN to confirm',
-              field: TextField(
-                controller: confirmPinController,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              required: true,
-            ),
-          ],
-        ),
-        actions: [
-          AppDialogAction(
-            label: 'Cancel',
-            onPressed: () => Navigator.pop(context),
-          ),
-          AppDialogAction(
-            label: isPinSetup ? 'Setup PIN' : 'Update PIN',
-            isPrimary: true,
-            icon: Icons.check,
-            onPressed: () async {
-              final user = ref.read(currentUserProvider);
-              if (user == null) return;
-
-              final currentPin = currentPinController.text.trim();
-              final newPin = newPinController.text.trim();
-              final confirmPin = confirmPinController.text.trim();
-              final pinRegex = RegExp(r'^\d{4}$');
-
-              if (hasExistingPin) {
-                bool isCurrentPinValid;
-                try {
-                  isCurrentPinValid = await ref
-                      .read(authRepositoryProvider)
-                      .verifyPin(user.id, currentPin);
-                } catch (error) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Could not verify PIN: $error')),
-                    );
-                  }
-                  return;
-                }
-                if (!isCurrentPinValid) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Current PIN is incorrect')),
-                    );
-                  }
-                  return;
-                }
-              }
-
-              if (!context.mounted) return;
-
-              if (!pinRegex.hasMatch(newPin)) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PIN must be exactly 4 digits')),
-                );
-                return;
-              }
-
-              if (newPin != confirmPin) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PINs do not match')),
-                );
-                return;
-              }
-
-              try {
-                await ref
-                    .read(authRepositoryProvider)
-                    .setupPin(user.id, newPin);
-              } catch (error) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Could not save PIN online: $error')),
-                  );
-                }
-                return;
-              }
-              final refreshedUser = await ref
-                  .read(authRepositoryProvider)
-                  .getUserById(user.id);
-              if (refreshedUser != null) {
-                ref.read(currentUserProvider.notifier).state = refreshedUser;
-              } else {
-                ref.read(currentUserProvider.notifier).state = user.copyWith(
-                  pinEnabled: true,
-                  pinHash: 'configured',
-                );
-              }
-
-              if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isPinSetup
-                          ? 'PIN setup successfully'
-                          : 'PIN updated successfully',
-                    ),
-                    action: SnackBarAction(
-                      label: 'Lock Now',
-                      textColor: AppColors.primaryEmerald,
-                      onPressed: () async {
-                        await ref
-                            .read(authRepositoryProvider)
-                            .lockSession(userId: user.id);
-                        ref.read(currentUserProvider.notifier).state = null;
-                        if (context.mounted) {
-                          context.go('/login?locked=1');
-                        }
-                      },
-                    ),
-                  ),
-                );
-              }
-            },
-          ),
-        ],
-      ),
-    ).whenComplete(() {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        currentPinController.dispose();
-        newPinController.dispose();
-        confirmPinController.dispose();
-      });
-    });
-  }
-
   void _showBackupDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -908,7 +746,462 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
   }
 
-  void _showSystemSettingsDialog(BuildContext context, WidgetRef ref) {
+  void _showSuperAdminConfigDialog(BuildContext context, WidgetRef ref) {
+    final settingsAsync = ref.read(systemSettingsProvider);
+
+    settingsAsync.when(
+      data: (settings) {
+        final appNameController =
+            TextEditingController(text: settings.appName);
+        final appTaglineController =
+            TextEditingController(text: settings.appTagline);
+        final orgNameController =
+            TextEditingController(text: settings.organizationName);
+        var logoDataUri = settings.logoDataUri;
+        var sessionTimeout = settings.sessionTimeoutMinutes;
+        var minPasswordLength = settings.passwordMinLength;
+        var requireStrongPassword = settings.requireStrongPassword;
+        var autoSyncEnabled = settings.autoSyncEnabled;
+        var autoSyncInterval = settings.autoSyncIntervalMinutes;
+        var dataRetentionDays = settings.dataRetentionDays;
+
+        Future<void> chooseLogo(
+          BuildContext dialogContext,
+          void Function(void Function()) updateDialog,
+        ) async {
+          try {
+            final result = await FilePicker.platform.pickFiles(
+              type: FileType.custom,
+              allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
+              withData: true,
+            );
+            if (result == null || result.files.isEmpty) return;
+
+            final file = result.files.single;
+            if (file.size > 10 * 1024 * 1024) {
+              throw const FormatException('Choose an image smaller than 10 MB.');
+            }
+            final bytes = file.bytes;
+            if (bytes == null || bytes.isEmpty) {
+              throw const FormatException(
+                'The selected image could not be read.',
+              );
+            }
+
+            final extension = file.extension?.toLowerCase();
+            final mimeType = switch (extension) {
+              'png' => 'image/png',
+              'jpg' || 'jpeg' => 'image/jpeg',
+              'webp' => 'image/webp',
+              _ => throw const FormatException(
+                'Choose a PNG, JPG, or WebP image.',
+              ),
+            };
+            updateDialog(() {
+              logoDataUri = 'data:$mimeType;base64,${base64Encode(bytes)}';
+            });
+          } catch (error, stackTrace) {
+            debugPrint('Could not select logo: $error\n$stackTrace');
+            if (dialogContext.mounted) {
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                SnackBar(content: Text('Could not select logo: $error')),
+              );
+            }
+          }
+        }
+
+        showDialog(
+          context: context,
+          builder: (ctx) => StatefulBuilder(
+            builder: (ctx, setDialogState) => AppFormDialog(
+              icon: Icons.branding_watermark_outlined,
+              title: 'Super Admin Configuration',
+              subtitle:
+                  'System identity, master branding, platform security, and defaults',
+              maxWidth: 700,
+              content: SizedBox(
+                height: 560,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Master Branding & System Identity',
+                        style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      AppFormField(
+                        label: 'Application Name',
+                        hint: 'e.g. MedSentry',
+                        field: TextField(
+                          controller: appNameController,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      AppFormField(
+                        label: 'System Motto / Tagline',
+                        hint: 'e.g. Rural Health Unit Information System',
+                        field: TextField(
+                          controller: appTaglineController,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      AppFormField(
+                        label: 'Managing Health Authority / Ministry',
+                        hint: 'e.g. Department of Health - Caraga Region',
+                        field: TextField(
+                          controller: orgNameController,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Master Platform Logo',
+                        style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          SystemLogo(
+                            dataUri: logoDataUri,
+                            size: 72,
+                            backgroundColor: Theme.of(
+                              ctx,
+                            ).colorScheme.surfaceContainerHighest,
+                            iconColor: Theme.of(ctx).colorScheme.primary,
+                            iconSize: 36,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Displayed on login screens, navigation headers, browser tabs, and official reports across all terminals.',
+                                  style: Theme.of(ctx).textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: () =>
+                                          chooseLogo(ctx, setDialogState),
+                                      icon: const Icon(Icons.upload_outlined),
+                                      label: const Text('Choose Logo'),
+                                    ),
+                                    if (logoDataUri.isNotEmpty)
+                                      TextButton(
+                                        onPressed: () => setDialogState(
+                                          () => logoDataUri = '',
+                                        ),
+                                        child: const Text('Reset to Default'),
+                                      ),
+                                  ],
+                                ),
+                                Text(
+                                  'PNG, JPG, or WebP; maximum 10 MB.',
+                                  style: Theme.of(ctx).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Platform Security & Authentication Policies',
+                        style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppFormField(
+                              label: 'Inactivity Lock Timeout',
+                              field: DropdownButtonFormField<int>(
+                                initialValue: [15, 30, 60, 240, 480]
+                                        .contains(sessionTimeout)
+                                    ? sessionTimeout
+                                    : 480,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 15,
+                                    child: Text('15 Minutes'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 30,
+                                    child: Text('30 Minutes'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 60,
+                                    child: Text('1 Hour'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 240,
+                                    child: Text('4 Hours'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 480,
+                                    child: Text('8 Hours (Shift End)'),
+                                  ),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setDialogState(() => sessionTimeout = val);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AppFormField(
+                              label: 'Min Password Length',
+                              field: DropdownButtonFormField<int>(
+                                initialValue: [8, 10, 12].contains(minPasswordLength)
+                                    ? minPasswordLength
+                                    : 8,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 8,
+                                    child: Text('8 Characters'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 10,
+                                    child: Text('10 Characters'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 12,
+                                    child: Text('12 Characters'),
+                                  ),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setDialogState(
+                                      () => minPasswordLength = val,
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Require Strong Passwords'),
+                        subtitle: const Text(
+                          'Enforce mixed case, numbers, and symbols for all accounts',
+                        ),
+                        value: requireStrongPassword,
+                        onChanged: (val) => setDialogState(
+                          () => requireStrongPassword = val,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Cloud Sync & Gateway Defaults',
+                        style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title:
+                            const Text('Automatic Background Synchronization'),
+                        subtitle: const Text(
+                          'Periodically push changes and pull remote clinic updates',
+                        ),
+                        value: autoSyncEnabled,
+                        onChanged: (val) =>
+                            setDialogState(() => autoSyncEnabled = val),
+                      ),
+                      if (autoSyncEnabled) ...[
+                        const SizedBox(height: 8),
+                        AppFormField(
+                          label: 'Background Sync Interval',
+                          field: DropdownButtonFormField<int>(
+                            initialValue: [15, 30, 60].contains(autoSyncInterval)
+                                ? autoSyncInterval
+                                : 30,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 15,
+                                child: Text('Every 15 Minutes'),
+                              ),
+                              DropdownMenuItem(
+                                value: 30,
+                                child: Text('Every 30 Minutes'),
+                              ),
+                              DropdownMenuItem(
+                                value: 60,
+                                child: Text('Every 60 Minutes'),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setDialogState(() => autoSyncInterval = val);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Compliance & Data Retention',
+                        style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      AppFormField(
+                        label: 'Audit Log Retention Policy',
+                        field: DropdownButtonFormField<int>(
+                          initialValue: [365, 730, 2555].contains(dataRetentionDays)
+                              ? dataRetentionDays
+                              : 365,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 365,
+                              child: Text('1 Year (365 Days)'),
+                            ),
+                            DropdownMenuItem(
+                              value: 730,
+                              child: Text('2 Years (730 Days)'),
+                            ),
+                            DropdownMenuItem(
+                              value: 2555,
+                              child: Text('7 Years (DOH Standard)'),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDialogState(() => dataRetentionDays = val);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                AppDialogAction(
+                  label: 'Cancel',
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+                AppDialogAction(
+                  label: 'Save Super Admin Settings',
+                  isPrimary: true,
+                  onPressed: () async {
+                    final nextSettings = settings.copyWith(
+                      appName: appNameController.text.trim().isEmpty
+                          ? 'MedSentry'
+                          : appNameController.text.trim(),
+                      appTagline: appTaglineController.text.trim(),
+                      organizationName: orgNameController.text.trim(),
+                      logoDataUri: logoDataUri,
+                      sessionTimeoutMinutes: sessionTimeout,
+                      passwordMinLength: minPasswordLength,
+                      requireStrongPassword: requireStrongPassword,
+                      autoSyncEnabled: autoSyncEnabled,
+                      autoSyncIntervalMinutes: autoSyncInterval,
+                      dataRetentionDays: dataRetentionDays,
+                    );
+                    await ref
+                        .read(databaseProvider)
+                        .updateSystemSettings(nextSettings);
+                    final currentUser = ref.read(currentUserProvider);
+                    await ref.read(auditServiceProvider).log(
+                          userId: currentUser?.id ?? 'system',
+                          clinicId: currentUser?.clinicId,
+                          action: AuditAction.settingsChange,
+                          entityType: 'system_settings',
+                          entityId: 'super_admin_config',
+                          description:
+                              'Updated Super Admin system branding & platform settings (${nextSettings.appName})',
+                        );
+                    ref.invalidate(systemSettingsProvider);
+                    final syncResult =
+                        await ref.read(syncServiceProvider).startSync();
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            syncResult.success
+                                ? 'Super Admin configuration saved and synchronized.'
+                                : 'Settings saved locally; cloud sync was not completed: ${syncResult.message}',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ).whenComplete(() {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            appNameController.dispose();
+            appTaglineController.dispose();
+            orgNameController.dispose();
+          });
+        });
+      },
+      loading: () => _showSettingsLoadFeedback(
+        context,
+        message: 'System settings are still loading. Try again shortly.',
+      ),
+      error: (error, _) {
+        debugPrint('Failed to load Super Admin settings: $error');
+        _showSettingsLoadFeedback(
+          context,
+          message: 'Super Admin settings could not be loaded.',
+          onRetry: () => _showSuperAdminConfigDialog(context, ref),
+        );
+      },
+    );
+  }
+
+  void _showClinicConfigDialog(BuildContext context, WidgetRef ref) {
     final settingsAsync = ref.read(systemSettingsProvider);
 
     settingsAsync.when(
@@ -948,60 +1241,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
         var certificatesEnabled = settings.certificatesModuleEnabled;
         var syncEnabled = settings.syncModuleEnabled;
-        var logoDataUri = settings.logoDataUri;
-
-        Future<void> chooseLogo(
-          BuildContext dialogContext,
-          void Function(void Function()) updateDialog,
-        ) async {
-          try {
-            final result = await FilePicker.platform.pickFiles(
-              type: FileType.custom,
-              allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
-              withData: true,
-            );
-            if (result == null || result.files.isEmpty) return;
-
-            final file = result.files.single;
-            if (file.size > 10 * 1024 * 1024) {
-              throw const FormatException('Choose an image smaller than 10 MB.');
-            }
-            final bytes = file.bytes;
-            if (bytes == null || bytes.isEmpty) {
-              throw const FormatException(
-                'The selected image could not be read.',
-              );
-            }
-
-            final extension = file.extension?.toLowerCase();
-            final mimeType = switch (extension) {
-              'png' => 'image/png',
-              'jpg' || 'jpeg' => 'image/jpeg',
-              'webp' => 'image/webp',
-              _ => throw const FormatException(
-                'Choose a PNG, JPG, or WebP image.',
-              ),
-            };
-            updateDialog(() {
-              logoDataUri = 'data:$mimeType;base64,${base64Encode(bytes)}';
-            });
-          } catch (error, stackTrace) {
-            debugPrint('Could not select clinic logo: $error\n$stackTrace');
-            if (dialogContext.mounted) {
-              ScaffoldMessenger.of(dialogContext).showSnackBar(
-                SnackBar(content: Text('Could not select logo: $error')),
-              );
-            }
-          }
-        }
 
         showDialog(
           context: context,
           builder: (ctx) => StatefulBuilder(
             builder: (ctx, setDialogState) => AppFormDialog(
               icon: Icons.local_hospital_outlined,
-              title: 'Clinic Configuration',
-              subtitle: 'Adapt MedSentry to this clinic without changing code',
+              title: 'Clinic / RHU Configuration',
+              subtitle:
+                  'Configure your local facility details, patient ID prefix, and services',
               maxWidth: 680,
               content: SizedBox(
                 height: 540,
@@ -1012,13 +1260,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Organization Profile',
+                          'Facility Profile',
                           style: Theme.of(ctx).textTheme.titleSmall,
                         ),
                       ),
                       const SizedBox(height: 12),
                       AppFormField(
-                        label: 'Clinic Name',
+                        label: 'Clinic / RHU Name',
                         field: TextField(
                           controller: clinicNameController,
                           decoration: const InputDecoration(
@@ -1031,7 +1279,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         children: [
                           Expanded(
                             child: AppFormField(
-                              label: 'Organization Type',
+                              label: 'Facility Type',
                               field: TextField(
                                 controller: clinicTypeController,
                                 decoration: const InputDecoration(
@@ -1056,67 +1304,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'System Logo',
-                          style: Theme.of(ctx).textTheme.titleSmall,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          SystemLogo(
-                            dataUri: logoDataUri,
-                            size: 72,
-                            backgroundColor: Theme.of(
-                              ctx,
-                            ).colorScheme.surfaceContainerHighest,
-                            iconColor: Theme.of(ctx).colorScheme.primary,
-                            iconSize: 36,
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Shown throughout the app, browser tab, and exported PDFs.',
-                                  style: Theme.of(ctx).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    OutlinedButton.icon(
-                                      onPressed: () =>
-                                          chooseLogo(ctx, setDialogState),
-                                      icon: const Icon(Icons.upload_outlined),
-                                      label: const Text('Choose Logo'),
-                                    ),
-                                    if (logoDataUri.isNotEmpty)
-                                      TextButton(
-                                        onPressed: () => setDialogState(
-                                          () => logoDataUri = '',
-                                        ),
-                                        child: const Text('Remove'),
-                                      ),
-                                  ],
-                                ),
-                                Text(
-                                  'PNG, JPG, or WebP; maximum 10 MB.',
-                                  style: Theme.of(ctx).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 12),
                       AppFormField(
-                        label: 'Address',
+                        label: 'Facility Address',
                         field: TextField(
                           controller: clinicAddressController,
                           decoration: const InputDecoration(
@@ -1154,7 +1344,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 12),
                       AppFormField(
-                        label: 'Contact Number',
+                        label: 'Official Contact Number',
                         field: TextField(
                           controller: clinicContactController,
                           decoration: const InputDecoration(
@@ -1208,7 +1398,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Enabled Modules',
+                          'Enabled Facility Modules',
                           style: Theme.of(ctx).textTheme.titleSmall,
                         ),
                       ),
@@ -1248,7 +1438,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onPressed: () => Navigator.pop(ctx),
                 ),
                 AppDialogAction(
-                  label: 'Save',
+                  label: 'Save Clinic Settings',
                   isPrimary: true,
                   onPressed: () async {
                     final nextSettings = settings.copyWith(
@@ -1269,7 +1459,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       certificatesModuleEnabled: certificatesEnabled,
                       syncModuleEnabled: syncEnabled,
-                      logoDataUri: logoDataUri,
                     );
                     await ref
                         .read(databaseProvider)
@@ -1285,16 +1474,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               'Updated clinic configuration (${nextSettings.clinicName})',
                         );
                     ref.invalidate(systemSettingsProvider);
-                    final syncResult = await ref
-                        .read(syncServiceProvider)
-                        .startSync();
+                    final syncResult =
+                        await ref.read(syncServiceProvider).startSync();
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
                             syncResult.success
-                                ? 'System settings saved and synchronized.'
+                                ? 'Clinic settings saved and synchronized.'
                                 : 'Settings saved locally; cloud sync was not completed: ${syncResult.message}',
                           ),
                         ),
@@ -1323,14 +1511,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       },
       loading: () => _showSettingsLoadFeedback(
         context,
-        message: 'System settings are still loading. Try again shortly.',
+        message: 'Clinic settings are still loading. Try again shortly.',
       ),
       error: (error, _) {
         debugPrint('Failed to load clinic details: $error');
         _showSettingsLoadFeedback(
           context,
           message: 'Clinic details could not be loaded.',
-          onRetry: () => _showSystemSettingsDialog(context, ref),
+          onRetry: () => _showClinicConfigDialog(context, ref),
         );
       },
     );

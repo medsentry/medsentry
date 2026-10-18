@@ -408,7 +408,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             value: 'settings',
             child: ListTile(
               leading: Icon(Icons.settings_outlined, size: 20),
-              title: Text('Settings & Security', style: TextStyle(fontSize: 13)),
+              title: Text('Settings', style: TextStyle(fontSize: 13)),
               contentPadding: EdgeInsets.zero,
               dense: true,
             ),
@@ -586,46 +586,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 },
               ),
             ),
-            Divider(
-              height: 1,
-              color: isDark
-                  ? AppColors.borderSubtle
-                  : AppColors.lightBorderSubtle,
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.lock_outline,
-                color: AppColors.primaryEmerald,
-                size: 20,
-              ),
-              title: const Text(
-                'Lock Screen',
-                style: TextStyle(
-                  color: AppColors.primaryEmerald,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onTap: () async {
-                Navigator.of(context).pop();
-                await _lockSession(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.logout,
-                color: AppColors.critical,
-                size: 20,
-              ),
-              title: const Text(
-                'Log Out',
-                style: TextStyle(color: AppColors.critical, fontSize: 14),
-              ),
-              onTap: () async {
-                Navigator.of(context).pop();
-                await _logout(context);
-              },
-            ),
           ],
         ),
       ),
@@ -714,9 +674,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
           ),
 
-          _buildSidebarLock(context, isExpanded),
-          _buildSidebarLogout(context, isExpanded),
-
           if (!forceCollapsed) ...[
             Divider(
               height: 1,
@@ -785,15 +742,19 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 ),
                 if (isExpanded) ...[
                   const SizedBox(width: 12),
-                  Text(
-                    settings.appName,
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColors.textPrimary
-                          : AppColors.lightTextPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
+                  Flexible(
+                    child: Text(
+                      settings.appName,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.lightTextPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
                     ),
                   ),
                 ],
@@ -805,74 +766,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  Widget _buildSidebarLock(BuildContext context, bool isExpanded) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Tooltip(
-      message: 'Lock Screen',
-      child: InkWell(
-        onTap: () => _lockSession(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Row(
-            mainAxisAlignment: isExpanded
-                ? MainAxisAlignment.start
-                : MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.lock_outline,
-                color: AppColors.primaryEmerald,
-                size: 20,
-              ),
-              if (isExpanded) ...[
-                const SizedBox(width: 12),
-                Text(
-                  'Lock Screen',
-                  style: TextStyle(
-                    color: isDark
-                        ? AppColors.textPrimary
-                        : AppColors.lightTextPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildSidebarLogout(BuildContext context, bool isExpanded) {
-    return Tooltip(
-      message: 'Log Out',
-      child: InkWell(
-        onTap: () => _logout(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          child: Row(
-            mainAxisAlignment: isExpanded
-                ? MainAxisAlignment.start
-                : MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.logout, color: AppColors.critical, size: 20),
-              if (isExpanded) ...[
-                const SizedBox(width: 12),
-                const Text(
-                  'Log Out',
-                  style: TextStyle(
-                    color: AppColors.critical,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Future<void> _lockSession(BuildContext context) async {
     try {

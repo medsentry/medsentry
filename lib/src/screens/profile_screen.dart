@@ -9,6 +9,7 @@ import '../providers/providers.dart';
 import '../services/document_service.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
+import '../widgets/change_pin_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/user_avatar.dart';
@@ -276,9 +277,129 @@ class ProfileScreen extends ConsumerWidget {
                     OutlinedButton.icon(
                       icon: const Icon(Icons.pin_outlined, size: 18),
                       label: Text(user.pinEnabled ? 'Change PIN' : 'Setup PIN'),
-                      onPressed: () => context.push('/settings'),
+                      onPressed: () => showChangePinDialog(context, ref),
                     ),
                   ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Workstation Appearance & Theme Card
+          AppCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Workstation Display & Theme',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Personalize your terminal appearance, dark mode, and clinical accent colors.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: secondaryTextColor,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.light,
+                      icon: Icon(Icons.light_mode_outlined, size: 18),
+                      label: Text('Light'),
+                    ),
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.dark,
+                      icon: Icon(Icons.dark_mode_outlined, size: 18),
+                      label: Text('Dark'),
+                    ),
+                    ButtonSegment<ThemeMode>(
+                      value: ThemeMode.system,
+                      icon: Icon(Icons.settings_brightness_outlined, size: 18),
+                      label: Text('System'),
+                    ),
+                  ],
+                  selected: {ref.watch(themeModeProvider)},
+                  onSelectionChanged: (newSelection) {
+                    ref
+                        .read(themeModeProvider.notifier)
+                        .setThemeMode(newSelection.first);
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+                Text(
+                  'Clinical Accent Color',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: AppAccentTheme.values.map((accent) {
+                    final currentAccentTheme = ref.watch(accentThemeProvider);
+                    final isSelected = accent == currentAccentTheme;
+                    return InkWell(
+                      onTap: () {
+                        ref
+                            .read(accentThemeProvider.notifier)
+                            .setAccentTheme(accent);
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: 108,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? accent.primaryColor.withValues(alpha: 0.12)
+                              : theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected
+                                ? accent.primaryColor
+                                : theme.colorScheme.outlineVariant.withValues(
+                                    alpha: 0.7,
+                                  ),
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: accent.primaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              accent.label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
             ),
