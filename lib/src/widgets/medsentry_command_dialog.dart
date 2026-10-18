@@ -60,7 +60,9 @@ class _MedSentryCommandPaletteDialogState
     final isMobile = screenWidth < 640;
     final viewInsets = MediaQuery.of(context).viewInsets;
     final safePadding = MediaQuery.of(context).padding;
-    final dialogWidth = isMobile ? screenWidth : (screenWidth > 640 ? 600.0 : screenWidth - 28);
+    final dialogWidth = isMobile
+        ? screenWidth
+        : (screenWidth > 640 ? 600.0 : screenWidth - 28);
 
     final user = ref.watch(currentUserProvider);
     final settings = ref.watch(systemSettingsProvider).valueOrNull;
@@ -69,13 +71,16 @@ class _MedSentryCommandPaletteDialogState
     List<Patient> matchedPatients = [];
     if (_query.isNotEmpty && user?.canAccessPatientRecords == true) {
       final patients = ref.watch(patientsProvider).valueOrNull ?? <Patient>[];
-      matchedPatients = patients.where((p) {
-        final nameMatch = p.fullName.toLowerCase().contains(_query);
-        final idMatch = p.id.toLowerCase().contains(_query);
-        final brgyMatch = (p.barangay ?? '').toLowerCase().contains(_query);
-        final contactMatch = (p.contactNumber ?? '').contains(_query);
-        return nameMatch || idMatch || brgyMatch || contactMatch;
-      }).take(6).toList();
+      matchedPatients = patients
+          .where((p) {
+            final nameMatch = p.fullName.toLowerCase().contains(_query);
+            final idMatch = p.id.toLowerCase().contains(_query);
+            final brgyMatch = (p.barangay ?? '').toLowerCase().contains(_query);
+            final contactMatch = (p.contactNumber ?? '').contains(_query);
+            return nameMatch || idMatch || brgyMatch || contactMatch;
+          })
+          .take(6)
+          .toList();
     }
 
     // 2. Navigation items
@@ -187,7 +192,9 @@ class _MedSentryCommandPaletteDialogState
           ref
               .read(themeModeProvider.notifier)
               .setThemeMode(
-                currentMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+                currentMode == ThemeMode.dark
+                    ? ThemeMode.light
+                    : ThemeMode.dark,
               );
         },
       ),
@@ -226,7 +233,8 @@ class _MedSentryCommandPaletteDialogState
           a.subtitle.toLowerCase().contains(_query);
     }).toList();
 
-    final hasAnyResults = matchedPatients.isNotEmpty ||
+    final hasAnyResults =
+        matchedPatients.isNotEmpty ||
         filteredNav.isNotEmpty ||
         filteredActions.isNotEmpty;
 
@@ -237,7 +245,9 @@ class _MedSentryCommandPaletteDialogState
     return Dialog(
       backgroundColor: isMobile ? bgColor : Colors.transparent,
       elevation: 0,
-      insetPadding: isMobile ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 14, vertical: 24),
+      insetPadding: isMobile
+          ? EdgeInsets.zero
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 24),
       child: Center(
         child: Container(
           width: dialogWidth,
@@ -247,20 +257,28 @@ class _MedSentryCommandPaletteDialogState
           ),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(16),
-            border: isMobile ? null : Border.all(color: borderColor, width: 1.2),
+            borderRadius: isMobile
+                ? BorderRadius.zero
+                : BorderRadius.circular(16),
+            border: isMobile
+                ? null
+                : Border.all(color: borderColor, width: 1.2),
             boxShadow: isMobile
                 ? null
                 : [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.25),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.6 : 0.25,
+                      ),
                       blurRadius: 32,
                       offset: const Offset(0, 16),
                     ),
                   ],
           ),
           child: ClipRRect(
-            borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(15),
+            borderRadius: isMobile
+                ? BorderRadius.zero
+                : BorderRadius.circular(15),
             child: Column(
               mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
               children: [
@@ -283,9 +301,9 @@ class _MedSentryCommandPaletteDialogState
                           tooltip: 'Back',
                         )
                       else ...[
-                        const Icon(
+                        Icon(
                           Icons.search_rounded,
-                          color: AppColors.primaryEmerald,
+                          color: Theme.of(context).colorScheme.primary,
                           size: 22,
                         ),
                         const SizedBox(width: 10),
@@ -436,15 +454,18 @@ class _MedSentryCommandPaletteDialogState
                             if (matchedPatients.isNotEmpty) ...[
                               _buildSectionHeader('PATIENTS', isDark),
                               ...matchedPatients.map((patient) {
-                                final genderChar = (patient.gender != null &&
+                                final genderChar =
+                                    (patient.gender != null &&
                                         patient.gender!.isNotEmpty)
                                     ? patient.gender![0].toUpperCase()
                                     : 'U';
-                                final ageLabel =
-                                    patient.age != null ? '${patient.age}y' : '';
-                                final subtitle = [genderChar, ageLabel]
-                                    .where((s) => s.isNotEmpty)
-                                    .join(', ');
+                                final ageLabel = patient.age != null
+                                    ? '${patient.age}y'
+                                    : '';
+                                final subtitle = [
+                                  genderChar,
+                                  ageLabel,
+                                ].where((s) => s.isNotEmpty).join(', ');
 
                                 return _buildPaletteItem(
                                   icon: Icons.person_outline_rounded,

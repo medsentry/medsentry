@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../config/app_design_tokens.dart';
 import '../models/patient.dart';
+import '../utils/context_extensions.dart';
 
 class PatientPreviewPanel extends StatelessWidget {
   final Patient patient;
@@ -33,8 +34,8 @@ class PatientPreviewPanel extends StatelessWidget {
                   backgroundColor: AppColors.primaryEmeraldSubtle,
                   child: Text(
                     _initialsFor(patient),
-                    style: const TextStyle(
-                      color: AppColors.primaryEmerald,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
@@ -50,7 +51,9 @@ class PatientPreviewPanel extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                          color: isDark
+                              ? AppColors.textPrimary
+                              : AppColors.lightTextPrimary,
                           letterSpacing: -0.2,
                         ),
                       ),
@@ -59,7 +62,9 @@ class PatientPreviewPanel extends StatelessWidget {
                         'ID: ${patient.id}',
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                          color: isDark
+                              ? AppColors.textMuted
+                              : AppColors.lightTextMuted,
                         ),
                       ),
                     ],
@@ -74,28 +79,42 @@ class PatientPreviewPanel extends StatelessWidget {
               children: [
                 if (patient.category != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primaryEmeraldSubtle,
                       borderRadius: AppRadius.roundedPill,
-                      border: Border.all(color: AppColors.primaryEmerald.withValues(alpha: 0.25)),
+                      border: Border.all(
+                        color: AppColors.primaryEmerald.withValues(alpha: 0.25),
+                      ),
                     ),
                     child: Text(
                       patient.category!.displayName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.primaryEmerald,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ),
                 if (patient.isPwd)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
+                      color: isDark
+                          ? AppColors.elevatedSurface
+                          : AppColors.lightElevatedSurface,
                       borderRadius: AppRadius.roundedPill,
-                      border: Border.all(color: isDark ? AppColors.border : AppColors.lightBorder),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.border
+                            : AppColors.lightBorder,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -103,7 +122,9 @@ class PatientPreviewPanel extends StatelessWidget {
                         Icon(
                           Icons.accessible,
                           size: 13,
-                          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : AppColors.lightTextSecondary,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -111,7 +132,9 @@ class PatientPreviewPanel extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                            color: isDark
+                                ? AppColors.textSecondary
+                                : AppColors.lightTextSecondary,
                           ),
                         ),
                       ],
@@ -119,18 +142,25 @@ class PatientPreviewPanel extends StatelessWidget {
                   ),
                 if (patient.is4PsBeneficiary)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.pendingBg,
-                      borderRadius: AppRadius.roundedPill,
-                      border: Border.all(color: AppColors.pendingBorder),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
                     ),
-                    child: const Text(
+                    decoration: BoxDecoration(
+                      color: context.semanticColors.warningBg,
+                      borderRadius: AppRadius.roundedPill,
+                      border: Border.all(
+                        color: context.semanticColors.warning.withValues(
+                          alpha: 0.35,
+                        ),
+                      ),
+                    ),
+                    child: Text(
                       '4Ps',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.pending,
+                        color: context.semanticColors.warning,
                       ),
                     ),
                   ),
@@ -168,7 +198,9 @@ class PatientPreviewPanel extends StatelessWidget {
                   backgroundColor: AppColors.primaryEmerald,
                   foregroundColor: AppColors.textOnEmerald,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadius.roundedSm,
+                  ),
                 ),
               ),
             ),
@@ -215,7 +247,9 @@ class _PreviewSection extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+              color: isDark
+                  ? AppColors.textPrimary
+                  : AppColors.lightTextPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -231,7 +265,9 @@ class _PreviewSection extends StatelessWidget {
                       row.label,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : AppColors.lightTextSecondary,
                       ),
                     ),
                   ),
@@ -241,7 +277,9 @@ class _PreviewSection extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.lightTextPrimary,
                       ),
                     ),
                   ),

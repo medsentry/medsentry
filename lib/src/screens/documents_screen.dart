@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
+import '../utils/context_extensions.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/document_scanner_dialog.dart';
@@ -236,9 +237,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                 Text(
                   'Scanned records, lab results, referrals, and certificates linked to patients.',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(
-                      alpha: 0.68,
-                    ),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
                   ),
                 ),
               ],
@@ -256,10 +255,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                 children: [
                   titleWidget,
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: uploadButton,
-                  ),
+                  SizedBox(width: double.infinity, child: uploadButton),
                 ],
               );
             }
@@ -282,20 +278,20 @@ class _DocumentsPageHeader extends StatelessWidget {
               icon: Icons.folder_outlined,
               label: 'Total Documents',
               value: '$totalCount',
-              color: AppColors.primaryEmerald,
+              color: Theme.of(context).colorScheme.primary,
             ),
             _StatChip(
               icon: Icons.today_outlined,
               label: 'Uploaded Today',
               value: '$todayCount',
-              color: AppColors.info,
+              color: context.semanticColors.info,
             ),
             if (filteredCount != totalCount)
               _StatChip(
                 icon: Icons.filter_alt_outlined,
                 label: 'Showing',
                 value: '$filteredCount',
-                color: AppColors.analytical,
+                color: context.semanticColors.analytical,
               ),
           ],
         ),
@@ -328,7 +324,9 @@ class _StatChip extends StatelessWidget {
         color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
         borderRadius: AppRadius.roundedSm,
         border: Border.all(
-          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+          color: isDark
+              ? AppColors.border
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
         ),
       ),
       child: Row(
@@ -337,16 +335,15 @@ class _StatChip extends StatelessWidget {
           Container(
             width: 7,
             height: 7,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 7),
           Text(
             '$label: ',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              color: isDark
+                  ? AppColors.textSecondary
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.65),
               fontSize: 12,
             ),
           ),
@@ -405,100 +402,102 @@ class _DocumentsToolbar extends StatelessWidget {
             ),
             onChanged: onSearchChanged,
           ),
-            const SizedBox(height: 12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                final isNarrow = width < 500;
-                final dropdownWidth = isNarrow ? width : 260.0;
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final isNarrow = width < 500;
+              final dropdownWidth = isNarrow ? width : 260.0;
 
-                return Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: dropdownWidth,
-                      child: DropdownButtonFormField<DocumentType?>(
-                        initialValue: typeFilter,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Document Type',
-                          border: OutlineInputBorder(),
-                          isDense: true,
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SizedBox(
+                    width: dropdownWidth,
+                    child: DropdownButtonFormField<DocumentType?>(
+                      initialValue: typeFilter,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Document Type',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: [
+                        const DropdownMenuItem<DocumentType?>(
+                          value: null,
+                          child: Text('All types'),
                         ),
-                        items: [
-                          const DropdownMenuItem<DocumentType?>(
-                            value: null,
-                            child: Text('All types'),
+                        ...DocumentType.values.map(
+                          (type) => DropdownMenuItem<DocumentType?>(
+                            value: type,
+                            child: Text(_typeDisplay(type)),
                           ),
-                          ...DocumentType.values.map(
-                            (type) => DropdownMenuItem<DocumentType?>(
-                              value: type,
-                              child: Text(_typeDisplay(type)),
-                            ),
-                          ),
-                        ],
-                        onChanged: onTypeChanged,
+                        ),
+                      ],
+                      onChanged: onTypeChanged,
+                    ),
+                  ),
+                  if (hasFilters)
+                    ActionChip(
+                      avatar: const Icon(
+                        Icons.filter_alt_off_outlined,
+                        size: 16,
                       ),
+                      label: const Text('Clear filter'),
+                      onPressed: onClearFilters,
                     ),
-                    if (hasFilters)
-                      ActionChip(
-                        avatar:
-                            const Icon(Icons.filter_alt_off_outlined, size: 16),
-                        label: const Text('Clear filter'),
-                        onPressed: onClearFilters,
-                      ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                SegmentedButton<_DocumentSortMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: _DocumentSortMode.newest,
-                      icon: Icon(Icons.schedule, size: 16),
-                      label: Text('Newest'),
-                    ),
-                    ButtonSegment(
-                      value: _DocumentSortMode.oldest,
-                      icon: Icon(Icons.history, size: 16),
-                      label: Text('Oldest'),
-                    ),
-                    ButtonSegment(
-                      value: _DocumentSortMode.title,
-                      icon: Icon(Icons.sort_by_alpha, size: 16),
-                      label: Text('Title'),
-                    ),
-                  ],
-                  selected: {sortMode},
-                  onSelectionChanged: (value) => onSortModeChanged(value.first),
-                ),
-                SegmentedButton<_DocumentViewMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: _DocumentViewMode.list,
-                      icon: Icon(Icons.view_list_outlined, size: 16),
-                      label: Text('List'),
-                    ),
-                    ButtonSegment(
-                      value: _DocumentViewMode.grid,
-                      icon: Icon(Icons.grid_view_outlined, size: 16),
-                      label: Text('Grid'),
-                    ),
-                  ],
-                  selected: {viewMode},
-                  onSelectionChanged: (value) => onViewModeChanged(value.first),
-                ),
-              ],
-            ),
-          ],
-        ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              SegmentedButton<_DocumentSortMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: _DocumentSortMode.newest,
+                    icon: Icon(Icons.schedule, size: 16),
+                    label: Text('Newest'),
+                  ),
+                  ButtonSegment(
+                    value: _DocumentSortMode.oldest,
+                    icon: Icon(Icons.history, size: 16),
+                    label: Text('Oldest'),
+                  ),
+                  ButtonSegment(
+                    value: _DocumentSortMode.title,
+                    icon: Icon(Icons.sort_by_alpha, size: 16),
+                    label: Text('Title'),
+                  ),
+                ],
+                selected: {sortMode},
+                onSelectionChanged: (value) => onSortModeChanged(value.first),
+              ),
+              SegmentedButton<_DocumentViewMode>(
+                segments: const [
+                  ButtonSegment(
+                    value: _DocumentViewMode.list,
+                    icon: Icon(Icons.view_list_outlined, size: 16),
+                    label: Text('List'),
+                  ),
+                  ButtonSegment(
+                    value: _DocumentViewMode.grid,
+                    icon: Icon(Icons.grid_view_outlined, size: 16),
+                    label: Text('Grid'),
+                  ),
+                ],
+                selected: {viewMode},
+                onSelectionChanged: (value) => onViewModeChanged(value.first),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -610,207 +609,202 @@ class _DocumentCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: typeColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: typeColor.withValues(alpha: 0.2)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: typeColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: typeColor.withValues(alpha: 0.2)),
+                ),
+                child: Icon(
+                  _fileIcon(document.mimeType ?? 'unknown'),
+                  color: typeColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      document.title,
+                      maxLines: compact ? 2 : 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    child: Icon(
-                      _fileIcon(document.mimeType ?? 'unknown'),
-                      color: typeColor,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
-                        Text(
-                          document.title,
-                          maxLines: compact ? 2 : 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            _Badge(
-                              label: document.typeDisplay,
-                              color: typeColor,
-                            ),
-                            if (document.status == DocumentStatus.archived)
-                              StatusBadge.fromDocumentStatus(document.status),
-                          ],
-                        ),
+                        _Badge(label: document.typeDisplay, color: typeColor),
+                        if (document.status == DocumentStatus.archived)
+                          StatusBadge.fromDocumentStatus(document.status),
                       ],
                     ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) => _handleAction(context, ref, value),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'preview',
+                    child: ListTile(
+                      leading: Icon(Icons.visibility_outlined),
+                      title: Text('Preview file'),
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
                   ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) => _handleAction(context, ref, value),
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'preview',
-                        child: ListTile(
-                          leading: Icon(Icons.visibility_outlined),
-                          title: Text('Preview file'),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        ),
+                  const PopupMenuItem(
+                    value: 'open',
+                    child: ListTile(
+                      leading: Icon(Icons.open_in_new),
+                      title: Text('Open with system app'),
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
+                  ),
+                  if (canManage)
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: ListTile(
+                        leading: Icon(Icons.edit_outlined),
+                        title: Text('Edit details'),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
                       ),
-                      const PopupMenuItem(
-                        value: 'open',
-                        child: ListTile(
-                          leading: Icon(Icons.open_in_new),
-                          title: Text('Open with system app'),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
+                    ),
+                  if (canManage)
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.delete_outline,
+                          color: Theme.of(context).colorScheme.error,
                         ),
-                      ),
-                      if (canManage)
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: ListTile(
-                            leading: Icon(Icons.edit_outlined),
-                            title: Text('Edit details'),
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
+                        title: Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
                           ),
                         ),
-                      if (canManage)
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.delete_outline,
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                            title: Text(
-                              'Delete',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
-                        ),
-                    ],
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (patient != null)
+            InkWell(
+              onTap: () => context.go('/patients/${patient!.id}'),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.person_outline,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      patient!.fullName,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, size: 18),
+                ],
+              ),
+            )
+          else
+            Text(
+              'Patient ID: ${document.patientId}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          if (!compact &&
+              document.description != null &&
+              document.description!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              document.description!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 14,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    date != null ? _formatDate(date) : 'Unknown date',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.sd_storage_outlined,
+                    size: 14,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    DocumentService.formatFileSize(document.fileSize),
+                    style: theme.textTheme.labelSmall,
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              if (patient != null)
-                InkWell(
-                  onTap: () => context.go('/patients/${patient!.id}'),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.person_outline,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          patient!.fullName,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, size: 18),
-                    ],
-                  ),
-                )
-              else
-                Text(
-                  'Patient ID: ${document.patientId}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              if (!compact &&
-                  document.description != null &&
-                  document.description!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  document.description!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 10),
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 4,
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 14,
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        date != null ? _formatDate(date) : 'Unknown date',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.sd_storage_outlined,
-                        size: 14,
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        DocumentService.formatFileSize(document.fileSize),
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ],
+                  IconButton(
+                    tooltip: 'Preview file',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _previewDocument(context, ref),
+                    icon: const Icon(Icons.visibility_outlined, size: 20),
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Preview file',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => _previewDocument(context, ref),
-                        icon: const Icon(Icons.visibility_outlined, size: 20),
-                      ),
-                      IconButton(
-                        tooltip: 'Open or download document',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => _openDocument(context),
-                        icon: const Icon(Icons.open_in_new, size: 20),
-                      ),
-                    ],
+                  IconButton(
+                    tooltip: 'Open or download document',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _openDocument(context),
+                    icon: const Icon(Icons.open_in_new, size: 20),
                   ),
                 ],
               ),
             ],
           ),
+        ],
+      ),
     );
   }
 
@@ -884,7 +878,9 @@ class _DocumentCard extends ConsumerWidget {
 
     try {
       await ref.read(databaseProvider).deleteDocument(document.id);
-      await ref.read(auditServiceProvider).logAction(
+      await ref
+          .read(auditServiceProvider)
+          .logAction(
             action: AuditAction.delete,
             entityType: AuditEntityTypes.document,
             entityId: document.id,
@@ -1014,16 +1010,22 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
   void _zoomIn() {
     setState(() {
       _zoomLevel = (_zoomLevel + 0.3).clamp(0.5, 4.0);
-      _transformationController.value =
-          Matrix4.diagonal3Values(_zoomLevel, _zoomLevel, 1.0);
+      _transformationController.value = Matrix4.diagonal3Values(
+        _zoomLevel,
+        _zoomLevel,
+        1.0,
+      );
     });
   }
 
   void _zoomOut() {
     setState(() {
       _zoomLevel = (_zoomLevel - 0.3).clamp(0.5, 4.0);
-      _transformationController.value =
-          Matrix4.diagonal3Values(_zoomLevel, _zoomLevel, 1.0);
+      _transformationController.value = Matrix4.diagonal3Values(
+        _zoomLevel,
+        _zoomLevel,
+        1.0,
+      );
     });
   }
 
@@ -1067,8 +1069,9 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
     final date = widget.document.scanDate ?? widget.document.createdAt;
 
     return Dialog(
-      backgroundColor:
-          isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+      backgroundColor: isDark
+          ? AppColors.cardSurface
+          : theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
@@ -1129,7 +1132,8 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                         const SizedBox(height: 2),
                         Text(
                           [
-                            if (widget.patient != null) widget.patient!.fullName,
+                            if (widget.patient != null)
+                              widget.patient!.fullName,
                             if (date != null) _formatDate(date),
                             DocumentService.formatFileSize(
                               widget.document.fileSize,
@@ -1165,9 +1169,9 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                   future: _bytesFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
+                      return Center(
                         child: CircularProgressIndicator(
-                          color: AppColors.primaryEmerald,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       );
                     }
@@ -1181,9 +1185,9 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                             Icon(
                               _fileIcon(widget.document.mimeType ?? 'unknown'),
                               size: 64,
-                              color: isDark
-                                  ? AppColors.textTertiary
-                                  : Colors.grey,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -1297,15 +1301,14 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: AppColors.critical.withValues(
-                                  alpha: 0.12,
-                                ),
+                                color: context.semanticColors.critical
+                                    .withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.picture_as_pdf,
                                 size: 44,
-                                color: AppColors.critical,
+                                color: context.semanticColors.critical,
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -1477,7 +1480,9 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
     _patientSearchController.addListener(_handlePatientSearchChanged);
     if (widget.initialPatient != null) {
       _selectedPatient = widget.initialPatient;
-      _patientSearchController.text = _patientPickerLabel(widget.initialPatient!);
+      _patientSearchController.text = _patientPickerLabel(
+        widget.initialPatient!,
+      );
     }
   }
 
@@ -1743,7 +1748,9 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
       );
 
       await ref.read(databaseProvider).insertDocument(document);
-      await ref.read(auditServiceProvider).logAction(
+      await ref
+          .read(auditServiceProvider)
+          .logAction(
             action: AuditAction.create,
             entityType: AuditEntityTypes.document,
             entityId: document.id,
@@ -1778,9 +1785,7 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
         }
       }
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Unable to save document: $errorMessage')),
         );
       }
@@ -1989,8 +1994,8 @@ class _PickedFilePanel extends StatelessWidget {
           Text(
             'Supported: PDF, JPG, PNG, WEBP (Max 10 MB). Scanned documents are encrypted with AES-GCM and stored securely.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+              color: Theme.of(context).colorScheme.outline,
+            ),
           ),
         ],
       );
@@ -1999,10 +2004,9 @@ class _PickedFilePanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withValues(alpha: 0.35),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.28),
         ),
@@ -2019,7 +2023,7 @@ class _PickedFilePanel extends StatelessWidget {
             child: Icon(
               _fileIcon(pickedFile!.extension),
               size: 26,
-              color: AppColors.primaryEmerald,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(width: 12),
@@ -2201,7 +2205,9 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
 
     try {
       await ref.read(databaseProvider).updateDocument(updated);
-      await ref.read(auditServiceProvider).logAction(
+      await ref
+          .read(auditServiceProvider)
+          .logAction(
             action: AuditAction.update,
             entityType: AuditEntityTypes.document,
             entityId: updated.id,
@@ -2246,14 +2252,18 @@ class _EmptyDocumentsState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.folder_outlined, size: 64, color: Colors.grey),
+          Icon(
+            Icons.folder_outlined,
+            size: 64,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 16),
           Text(
             hasFilters
                 ? 'No documents match the filters'
                 : 'No documents found',
-            style: const TextStyle(
-              color: Colors.grey,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
@@ -2263,7 +2273,9 @@ class _EmptyDocumentsState extends StatelessWidget {
             hasFilters
                 ? 'Try clearing the search or type filter.'
                 : 'Upload scanned records, lab results, or referrals as PDF, JPG, or PNG files.',
-            style: const TextStyle(color: Colors.grey),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           if (!hasFilters) ...[
             const SizedBox(height: 14),
@@ -2297,7 +2309,6 @@ String _typeDisplay(DocumentType type) {
     DocumentType.other => 'Other Document',
   };
 }
-
 
 String _formatDate(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

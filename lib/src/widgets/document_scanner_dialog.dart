@@ -72,7 +72,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
 
   Future<void> _startCamera() async {
     if (_availableCameras.isEmpty) {
-      setState(() => _errorMessage = 'No camera or webcam detected on this device.');
+      setState(
+        () => _errorMessage = 'No camera or webcam detected on this device.',
+      );
       return;
     }
 
@@ -220,7 +222,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
       });
 
       final bytes = await picked.getBytes();
-      final normalized = await ImageProcessing.normalize(Uint8List.fromList(bytes));
+      final normalized = await ImageProcessing.normalize(
+        Uint8List.fromList(bytes),
+      );
 
       if (mounted) {
         setState(() {
@@ -245,7 +249,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
   }
 
   Future<void> _rotateCurrentPage({required bool clockwise}) async {
-    if (_pages.isEmpty || _isCropping || _selectedIndex >= _pages.length) return;
+    if (_pages.isEmpty || _isCropping || _selectedIndex >= _pages.length) {
+      return;
+    }
 
     setState(() {
       _isProcessing = true;
@@ -254,7 +260,10 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
 
     try {
       final current = _pages[_selectedIndex];
-      final rotated = await ImageProcessing.rotate(current, clockwise: clockwise);
+      final rotated = await ImageProcessing.rotate(
+        current,
+        clockwise: clockwise,
+      );
       if (mounted) {
         setState(() {
           _pages[_selectedIndex] = rotated;
@@ -404,7 +413,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                   VerticalDivider(
                     width: 1,
                     thickness: 1,
-                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                    color: isDark
+                        ? AppColors.borderSubtle
+                        : AppColors.lightBorderSubtle,
                   ),
                   Expanded(child: _buildMainArea(isDark)),
                 ],
@@ -421,10 +432,14 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.sidebarBackground : AppColors.lightElevatedSurface,
+        color: isDark
+            ? AppColors.sidebarBackground
+            : AppColors.lightElevatedSurface,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+            color: isDark
+                ? AppColors.borderSubtle
+                : AppColors.lightBorderSubtle,
           ),
         ),
       ),
@@ -440,9 +455,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                 color: AppColors.primaryEmerald.withValues(alpha: 0.25),
               ),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.document_scanner_outlined,
-              color: AppColors.primaryEmerald,
+              color: Theme.of(context).colorScheme.primary,
               size: 22,
             ),
           ),
@@ -456,7 +471,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -465,7 +482,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                   'Scan via flatbed/sheet scanner or webcam, enhance, crop, and attach as encrypted PDF',
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : AppColors.lightTextSecondary,
                   ),
                 ),
               ],
@@ -484,23 +503,31 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
   Widget _buildErrorBanner() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: AppColors.criticalBg,
+      color: Theme.of(context).colorScheme.errorContainer,
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: AppColors.critical, size: 18),
+          Icon(
+            Icons.error_outline,
+            color: Theme.of(context).colorScheme.onErrorContainer,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               _errorMessage!,
-              style: const TextStyle(
-                color: AppColors.critical,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onErrorContainer,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, size: 16, color: AppColors.critical),
+            icon: Icon(
+              Icons.close,
+              size: 16,
+              color: Theme.of(context).colorScheme.onErrorContainer,
+            ),
             onPressed: () => setState(() => _errorMessage = null),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -513,7 +540,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
   Widget _buildSidebar(bool isDark) {
     return Container(
       width: 250,
-      color: isDark ? AppColors.cardSurface : AppColors.lightElevatedSurface.withValues(alpha: 0.5),
+      color: isDark
+          ? AppColors.cardSurface
+          : AppColors.lightElevatedSurface.withValues(alpha: 0.5),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -524,12 +553,17 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 FilledButton.icon(
-                  onPressed: (_isScanning || _isProcessing) ? null : _scanFromHardware,
+                  onPressed: (_isScanning || _isProcessing)
+                      ? null
+                      : _scanFromHardware,
                   icon: _isScanning
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.scanner_outlined, size: 18),
                   label: Text(_isScanning ? 'Scanning...' : 'Scan Page (WIA)'),
@@ -537,7 +571,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                     backgroundColor: AppColors.primaryEmeraldDark,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 11),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -546,20 +582,32 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                       ? null
                       : (_isCameraMode ? _stopCamera : _startCamera),
                   icon: Icon(
-                    _isCameraMode ? Icons.videocam_off_outlined : Icons.photo_camera_outlined,
+                    _isCameraMode
+                        ? Icons.videocam_off_outlined
+                        : Icons.photo_camera_outlined,
                     size: 18,
                   ),
                   label: Text(_isCameraMode ? 'Close Camera' : 'Use Webcam'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
-                  onPressed: (_isScanning || _isProcessing) ? null : _importImageFile,
-                  icon: const Icon(Icons.add_photo_alternate_outlined, size: 17),
-                  label: const Text('Import Image File', style: TextStyle(fontSize: 12.5)),
+                  onPressed: (_isScanning || _isProcessing)
+                      ? null
+                      : _importImageFile,
+                  icon: const Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: 17,
+                  ),
+                  label: const Text(
+                    'Import Image File',
+                    style: TextStyle(fontSize: 12.5),
+                  ),
                 ),
               ],
             ),
@@ -576,16 +624,18 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
-                    color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                    color: isDark
+                        ? AppColors.textMuted
+                        : AppColors.lightTextMuted,
                   ),
                 ),
                 if (_pages.length > 1)
-                  const Text(
+                  Text(
                     'Multi-page PDF',
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.primaryEmerald,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
               ],
@@ -601,18 +651,24 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                          color: isDark
+                              ? AppColors.textMuted
+                              : AppColors.lightTextMuted,
                           height: 1.4,
                         ),
                       ),
                     ),
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     itemCount: _pages.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
-                      final isSelected = _selectedIndex == index && !_isCameraMode;
+                      final isSelected =
+                          _selectedIndex == index && !_isCameraMode;
                       return InkWell(
                         onTap: () {
                           if (_isCameraMode) _stopCamera();
@@ -627,14 +683,20 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? (isDark
-                                    ? AppColors.primaryEmerald.withValues(alpha: 0.15)
-                                    : AppColors.primaryEmerald.withValues(alpha: 0.1))
+                                      ? AppColors.primaryEmerald.withValues(
+                                          alpha: 0.15,
+                                        )
+                                      : AppColors.primaryEmerald.withValues(
+                                          alpha: 0.1,
+                                        ))
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color: isSelected
                                   ? AppColors.primaryEmerald
-                                  : (isDark ? AppColors.border : AppColors.lightBorder),
+                                  : (isDark
+                                        ? AppColors.border
+                                        : AppColors.lightBorder),
                               width: isSelected ? 1.5 : 1,
                             ),
                           ),
@@ -658,7 +720,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                                       'Page ${index + 1}',
                                       style: TextStyle(
                                         fontSize: 13,
-                                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
                                         color: isDark
                                             ? AppColors.textPrimary
                                             : AppColors.lightTextPrimary,
@@ -678,15 +742,20 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 18),
-                                color: AppColors.critical,
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                ),
+                                color: Theme.of(context).colorScheme.error,
                                 tooltip: 'Remove page',
                                 onPressed: () {
                                   setState(() {
                                     _pages.removeAt(index);
                                     _filters.removeAt(index);
                                     if (_selectedIndex >= _pages.length) {
-                                      _selectedIndex = _pages.isNotEmpty ? _pages.length - 1 : 0;
+                                      _selectedIndex = _pages.isNotEmpty
+                                          ? _pages.length - 1
+                                          : 0;
                                     }
                                     _isCropping = false;
                                   });
@@ -715,7 +784,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               height: 44,
               child: CircularProgressIndicator(
                 strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryEmerald),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppColors.primaryEmerald,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -724,7 +795,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.lightTextPrimary,
               ),
             ),
           ],
@@ -752,7 +825,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.lightTextPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -760,7 +835,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               'Connect a document scanner or turn on your webcam to begin scanning.',
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                color: isDark
+                    ? AppColors.textSecondary
+                    : AppColors.lightTextSecondary,
               ),
             ),
             const SizedBox(height: 24),
@@ -771,7 +848,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                   onPressed: _scanFromHardware,
                   icon: const Icon(Icons.scanner_outlined, size: 18),
                   label: const Text('Scan with Scanner'),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryEmeraldDark),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryEmeraldDark,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 OutlinedButton.icon(
@@ -798,7 +877,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                     image: _pages[_selectedIndex],
                     controller: _cropController,
                     onCropped: _onCropped,
-                    baseColor: isDark ? AppColors.modalSurface : AppColors.lightModalSurface,
+                    baseColor: isDark
+                        ? AppColors.modalSurface
+                        : AppColors.lightModalSurface,
                     maskColor: Colors.black.withValues(alpha: 0.6),
                     radius: 8,
                     interactive: true,
@@ -810,7 +891,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                     ),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                        return const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        );
                       }
                       return InteractiveViewer(
                         minScale: 0.8,
@@ -861,11 +944,18 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.videocam_off_outlined, size: 48, color: AppColors.critical),
+            Icon(
+              Icons.videocam_off_outlined,
+              size: 48,
+              color: Theme.of(context).colorScheme.error,
+            ),
             const SizedBox(height: 12),
             const Text('Camera unavailable'),
             const SizedBox(height: 12),
-            OutlinedButton(onPressed: _startCamera, child: const Text('Retry Camera')),
+            OutlinedButton(
+              onPressed: _startCamera,
+              child: const Text('Retry Camera'),
+            ),
           ],
         ),
       );
@@ -907,7 +997,8 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                   icon: const Icon(Icons.switch_camera_outlined),
                   tooltip: 'Switch camera',
                   onPressed: () {
-                    _selectedCameraIndex = (_selectedCameraIndex + 1) % _availableCameras.length;
+                    _selectedCameraIndex =
+                        (_selectedCameraIndex + 1) % _availableCameras.length;
                     _startCamera();
                   },
                 ),
@@ -916,12 +1007,20 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               FilledButton.icon(
                 onPressed: _captureFromCamera,
                 icon: const Icon(Icons.camera_alt, size: 20),
-                label: const Text('Capture Document', style: TextStyle(fontWeight: FontWeight.w700)),
+                label: const Text(
+                  'Capture Document',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primaryEmeraldDark,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 26,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
               const SizedBox(width: 20),
@@ -938,11 +1037,15 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
   }
 
   Widget _buildEditorToolbar(bool isDark) {
-    if (_pages.isEmpty || _selectedIndex >= _pages.length) return const SizedBox.shrink();
+    if (_pages.isEmpty || _selectedIndex >= _pages.length) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: isDark ? AppColors.sidebarBackground : AppColors.lightElevatedSurface,
+      color: isDark
+          ? AppColors.sidebarBackground
+          : AppColors.lightElevatedSurface,
       child: Row(
         children: [
           Text(
@@ -971,7 +1074,15 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
             const SizedBox(width: 6),
             SegmentedButton<ScanFilter>(
               segments: ScanFilter.values
-                  .map((f) => ButtonSegment(value: f, label: Text(f.label, style: const TextStyle(fontSize: 11.5))))
+                  .map(
+                    (f) => ButtonSegment(
+                      value: f,
+                      label: Text(
+                        f.label,
+                        style: const TextStyle(fontSize: 11.5),
+                      ),
+                    ),
+                  )
                   .toList(),
               selected: {_filters[_selectedIndex]},
               onSelectionChanged: (set) {
@@ -1015,10 +1126,14 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.sidebarBackground : AppColors.lightElevatedSurface,
+        color: isDark
+            ? AppColors.sidebarBackground
+            : AppColors.lightElevatedSurface,
         border: Border(
           top: BorderSide(
-            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+            color: isDark
+                ? AppColors.borderSubtle
+                : AppColors.lightBorderSubtle,
           ),
         ),
       ),
@@ -1031,7 +1146,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                color: isDark
+                    ? AppColors.textSecondary
+                    : AppColors.lightTextSecondary,
               ),
             ),
           const Spacer(),
@@ -1041,14 +1158,22 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
           ),
           const SizedBox(width: 12),
           FilledButton.icon(
-            onPressed: (_pages.isEmpty || _isProcessing || _isScanning) ? null : _finishAndAttach,
+            onPressed: (_pages.isEmpty || _isProcessing || _isScanning)
+                ? null
+                : _finishAndAttach,
             icon: const Icon(Icons.attach_file, size: 18),
-            label: Text(_pages.length <= 1 ? 'Attach Scanned Document' : 'Attach ${_pages.length} Pages (PDF)'),
+            label: Text(
+              _pages.length <= 1
+                  ? 'Attach Scanned Document'
+                  : 'Attach ${_pages.length} Pages (PDF)',
+            ),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primaryEmeraldDark,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
         ],

@@ -85,7 +85,8 @@ void main() {
       );
       expect(superAdminConfigFinder, findsOneWidget);
       expect(find.text('System Identity & Master Branding'), findsOneWidget);
-      expect(find.text('RHU Health Facilities Directory'), findsOneWidget);
+      expect(find.text('RHU Health Facilities Directory'), findsNothing);
+      expect(find.text('Global Personnel & Administrator Accounts'), findsNothing);
 
       // Clinic Configuration should NOT be present for Super Admin
       expect(find.text('Clinic / RHU Facility Profile'), findsNothing);

@@ -389,7 +389,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                 Text(
                   title,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -445,16 +445,19 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.elevatedSurface,
+                        color: context.elevatedSurfaceColor,
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: AppColors.border, width: 0.5),
+                        border: Border.all(
+                          color: context.borderColor,
+                          width: 0.5,
+                        ),
                       ),
                       child: Text(
                         clinic.code,
                         style: theme.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.5,
-                          color: AppColors.textSecondary,
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -472,17 +475,17 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
           // Contact / Location info
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.location_on_outlined,
                 size: 16,
-                color: AppColors.textSecondary,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   clinic.address ?? 'No address provided',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -493,17 +496,17 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.phone_outlined,
                 size: 16,
-                color: AppColors.textSecondary,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   clinic.contactNumber ?? 'No contact phone',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -514,17 +517,17 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.email_outlined,
                 size: 16,
-                color: AppColors.textSecondary,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   clinic.email ?? 'No email on record',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -589,10 +592,10 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(
+                icon: Icon(
                   Icons.delete_outline,
                   size: 19,
-                  color: AppColors.critical,
+                  color: context.semanticColors.critical,
                 ),
                 tooltip: 'Delete Facility',
                 onPressed: () =>

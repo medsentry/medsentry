@@ -602,10 +602,7 @@ class SimpleDatabase {
         .length;
   }
 
-  Future<List<Patient>> searchPatients(
-    String query, {
-    String? clinicId,
-  }) async {
+  Future<List<Patient>> searchPatients(String query, {String? clinicId}) async {
     await _ensureLoaded();
     final lowerQuery = query.trim().toLowerCase();
     if (lowerQuery.isEmpty) return getAllPatients(clinicId: clinicId);
@@ -647,10 +644,7 @@ class SimpleDatabase {
         .toList();
   }
 
-  Future<List<Patient>> getRecentPatients(
-    int limit, {
-    String? clinicId,
-  }) async {
+  Future<List<Patient>> getRecentPatients(int limit, {String? clinicId}) async {
     await _ensureLoaded();
     final allPatients = _patients.values
         .where((p) => !p.isArchived && _matchesClinic(p.clinicId, clinicId))
@@ -794,6 +788,18 @@ class SimpleDatabase {
     }
   }
 
+  Future<void> deleteUser(String id) async {
+    await _ensureLoaded();
+    final userRemoved = _users.remove(id) != null;
+    final passwordRemoved = _userPasswordHashes.remove(id) != null;
+    if (_lastUserId == id) {
+      _lastUserId = null;
+    }
+    if (userRemoved || passwordRemoved) {
+      await _saveToDisk();
+    }
+  }
+
   Future<String?> getUserPasswordHash(String userId) async {
     await _ensureLoaded();
     return _userPasswordHashes[userId];
@@ -914,10 +920,11 @@ class SimpleDatabase {
     String? clinicId,
   }) async {
     await _ensureLoaded();
-    final certs = _certificates.values
-        .where((c) => _matchesClinic(c.clinicId, clinicId))
-        .toList()
-      ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+    final certs =
+        _certificates.values
+            .where((c) => _matchesClinic(c.clinicId, clinicId))
+            .toList()
+          ..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
     return certs;
   }
 
@@ -936,10 +943,11 @@ class SimpleDatabase {
 
   Future<List<GeneratedReport>> getGeneratedReports({String? clinicId}) async {
     await _ensureLoaded();
-    final reports = _generatedReports.values
-        .where((r) => _matchesClinic(r.clinicId, clinicId))
-        .toList()
-      ..sort((a, b) => b.generatedAt.compareTo(a.generatedAt));
+    final reports =
+        _generatedReports.values
+            .where((r) => _matchesClinic(r.clinicId, clinicId))
+            .toList()
+          ..sort((a, b) => b.generatedAt.compareTo(a.generatedAt));
     return reports;
   }
 
@@ -1174,9 +1182,7 @@ class SimpleDatabase {
     final pendingUsers = _users.values
         .where((u) => (u.syncStatus ?? 0) != 0)
         .length;
-    final pendingAuditLogs = _auditLogs.values
-        .where((l) => !l.isSynced)
-        .length;
+    final pendingAuditLogs = _auditLogs.values.where((l) => !l.isSynced).length;
     return pendingPatients +
         pendingDocumentSyncCount +
         pendingUsers +
@@ -1437,8 +1443,7 @@ class SimpleDatabase {
 
   Future<void> replaceSyncedSystemSettings(SystemSettings settings) async {
     await _ensureLoaded();
-    if (jsonEncode(_systemSettings.toJson()) ==
-        jsonEncode(settings.toJson())) {
+    if (jsonEncode(_systemSettings.toJson()) == jsonEncode(settings.toJson())) {
       return;
     }
     _systemSettings = settings;

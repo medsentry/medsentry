@@ -9,6 +9,7 @@ import '../models/system_notification.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
+import '../utils/context_extensions.dart';
 import 'package:intl/intl.dart';
 import 'layout/responsive_layout.dart';
 import 'medsentry_command_dialog.dart';
@@ -132,10 +133,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  Widget _buildDesktopHeader(
-    BuildContext context,
-    User? user,
-  ) {
+  Widget _buildDesktopHeader(BuildContext context, User? user) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -168,10 +166,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-  PreferredSizeWidget _buildMobileAppBar(
-    BuildContext context,
-    User? user,
-  ) {
+  PreferredSizeWidget _buildMobileAppBar(BuildContext context, User? user) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final settings =
@@ -361,10 +356,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 ),
                 child: Text(
                   user.roleDisplay,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.primaryEmerald,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
@@ -384,10 +379,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         PopupMenuItem<String>(
           value: 'lock',
           child: ListTile(
-            leading: const Icon(
+            leading: Icon(
               Icons.lock_outline,
               size: 20,
-              color: AppColors.primaryEmerald,
+              color: Theme.of(context).colorScheme.primary,
             ),
             title: const Text(
               'Lock Screen',
@@ -414,16 +409,20 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
           ),
         const PopupMenuDivider(),
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'logout',
           child: ListTile(
-            leading: Icon(Icons.logout, size: 20, color: AppColors.critical),
+            leading: Icon(
+              Icons.logout,
+              size: 20,
+              color: context.semanticColors.critical,
+            ),
             title: Text(
               'Log Out',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.critical,
+                color: context.semanticColors.critical,
               ),
             ),
             contentPadding: EdgeInsets.zero,
@@ -766,8 +765,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
-
-
   Future<void> _lockSession(BuildContext context) async {
     try {
       final user = ref.read(currentUserProvider);
@@ -873,7 +870,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         ? '$timeGreeting, $userName $greetingIcon'
         : widget.title;
 
-    final facility = (assignedClinicName != null && assignedClinicName.isNotEmpty)
+    final facility =
+        (assignedClinicName != null && assignedClinicName.isNotEmpty)
         ? assignedClinicName
         : (settings.clinicName.isNotEmpty
               ? settings.clinicName
@@ -908,18 +906,12 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           ],
         ),
         const SizedBox(height: 3),
-        _LiveHeaderClockSubtitle(
-          facility: facility,
-          isDark: isDark,
-        ),
+        _LiveHeaderClockSubtitle(facility: facility, isDark: isDark),
       ],
     );
   }
 
-  Widget _buildHeaderActionsZone(
-    BuildContext context,
-    User? user,
-  ) {
+  Widget _buildHeaderActionsZone(BuildContext context, User? user) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final notificationTarget = user?.canManageSystemData == true
         ? NotificationTarget.admin
@@ -1106,7 +1098,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       ],
     );
   }
-
 
   Future<void> _showNotifications(
     BuildContext context,
@@ -1413,7 +1404,7 @@ class _SidebarNavItem extends StatelessWidget {
                         height: 18,
                         margin: const EdgeInsets.only(right: 8),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryEmerald,
+                          color: Theme.of(context).colorScheme.primary,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       )
@@ -1663,16 +1654,16 @@ class _LiveClockPillState extends State<_LiveClockPill> {
           Container(
             width: 6,
             height: 6,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryEmerald,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
               shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 5),
           Text(
             '$timeStr PHT • Live',
-            style: const TextStyle(
-              color: AppColors.primaryEmerald,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),

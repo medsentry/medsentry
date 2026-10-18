@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../config/app_design_tokens.dart';
+import '../utils/context_extensions.dart';
 
 export 'app_confirm_dialog.dart';
 export 'forms/app_form_components.dart';
@@ -50,8 +51,8 @@ class AppFormDialog extends StatelessWidget {
     final responsiveMaxWidth = isCompactWidth
         ? screenWidth * 0.95
         : screenWidth <= 1024
-            ? screenWidth * 0.82
-            : (maxWidth ?? 560.0);
+        ? screenWidth * 0.82
+        : (maxWidth ?? 560.0);
 
     final responsiveMaxHeight = isCompactHeight
         ? screenHeight * 0.96
@@ -77,7 +78,9 @@ class AppFormDialog extends StatelessWidget {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.modalSurface : AppColors.lightModalSurface,
+            color: isDark
+                ? AppColors.modalSurface
+                : AppColors.lightModalSurface,
             borderRadius: AppRadius.roundedLg,
             border: Border.all(
               color: isDark ? AppColors.border : AppColors.lightBorder,
@@ -98,7 +101,9 @@ class AppFormDialog extends StatelessWidget {
                       : AppColors.lightElevatedSurface,
                   border: Border(
                     bottom: BorderSide(
-                      color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                      color: isDark
+                          ? AppColors.borderSubtle
+                          : AppColors.lightBorderSubtle,
                       width: AppColors.borderWidth,
                     ),
                   ),
@@ -119,13 +124,15 @@ class AppFormDialog extends StatelessWidget {
                           color: AppColors.primaryEmeraldSubtle,
                           borderRadius: AppRadius.roundedSm,
                           border: Border.all(
-                            color: AppColors.primaryEmerald.withValues(alpha: 0.25),
+                            color: AppColors.primaryEmerald.withValues(
+                              alpha: 0.25,
+                            ),
                             width: AppColors.borderWidth,
                           ),
                         ),
                         child: Icon(
                           icon,
-                          color: AppColors.primaryEmerald,
+                          color: Theme.of(context).colorScheme.primary,
                           size: isCompactHeight ? 18 : 20,
                         ),
                       ),
@@ -138,7 +145,9 @@ class AppFormDialog extends StatelessWidget {
                           Text(
                             title,
                             style: TextStyle(
-                              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                              color: isDark
+                                  ? AppColors.textPrimary
+                                  : AppColors.lightTextPrimary,
                               fontSize: isCompactHeight ? 16 : 18,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.2,
@@ -149,7 +158,9 @@ class AppFormDialog extends StatelessWidget {
                             Text(
                               subtitle!,
                               style: TextStyle(
-                                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                                 fontSize: isCompactHeight ? 11.5 : 12.5,
                                 height: 1.3,
                               ),
@@ -164,7 +175,9 @@ class AppFormDialog extends StatelessWidget {
                         icon: Icon(
                           Icons.close,
                           size: 18,
-                          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : AppColors.lightTextSecondary,
                         ),
                         tooltip: 'Close',
                       ),
@@ -176,7 +189,9 @@ class AppFormDialog extends StatelessWidget {
               if (isLoading)
                 Expanded(
                   child: Container(
-                    color: isDark ? AppColors.modalSurface : AppColors.lightModalSurface,
+                    color: isDark
+                        ? AppColors.modalSurface
+                        : AppColors.lightModalSurface,
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -195,7 +210,9 @@ class AppFormDialog extends StatelessWidget {
                           Text(
                             loadingText ?? 'Processing...',
                             style: TextStyle(
-                              color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                              color: isDark
+                                  ? AppColors.textSecondary
+                                  : AppColors.lightTextSecondary,
                               fontSize: 13,
                             ),
                           ),
@@ -217,10 +234,14 @@ class AppFormDialog extends StatelessWidget {
                 if (actions != null && actions!.isNotEmpty)
                   Container(
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.sidebarBackground : AppColors.lightElevatedSurface,
+                      color: isDark
+                          ? AppColors.sidebarBackground
+                          : AppColors.lightElevatedSurface,
                       border: Border(
                         top: BorderSide(
-                          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
+                          color: isDark
+                              ? AppColors.borderSubtle
+                              : AppColors.lightBorderSubtle,
                           width: AppColors.borderWidth,
                         ),
                       ),
@@ -281,14 +302,16 @@ class AppFormField extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
-                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.lightTextPrimary,
               ),
             ),
             if (required)
-              const Text(
+              Text(
                 ' *',
                 style: TextStyle(
-                  color: AppColors.critical,
+                  color: context.semanticColors.critical,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
@@ -321,8 +344,8 @@ class AppFormField extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             errorText!,
-            style: const TextStyle(
-              color: AppColors.critical,
+            style: TextStyle(
+              color: context.semanticColors.critical,
               fontSize: 11.5,
               fontWeight: FontWeight.w500,
             ),
@@ -358,8 +381,12 @@ class AppDialogAction extends StatelessWidget {
         icon: icon != null ? Icon(icon, size: 16) : const SizedBox.shrink(),
         label: Text(label),
         style: FilledButton.styleFrom(
-          backgroundColor: isDestructive ? AppColors.critical : AppColors.primaryEmerald,
-          foregroundColor: isDestructive ? Colors.white : AppColors.textOnEmerald,
+          backgroundColor: isDestructive
+              ? AppColors.critical
+              : AppColors.primaryEmerald,
+          foregroundColor: isDestructive
+              ? Colors.white
+              : AppColors.textOnEmerald,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
@@ -372,8 +399,12 @@ class AppDialogAction extends StatelessWidget {
       icon: icon != null ? Icon(icon, size: 16) : const SizedBox.shrink(),
       label: Text(label),
       style: OutlinedButton.styleFrom(
-        foregroundColor: isDestructive ? AppColors.critical : null,
-        side: isDestructive ? const BorderSide(color: AppColors.criticalBorder) : null,
+        foregroundColor: isDestructive ? context.semanticColors.critical : null,
+        side: isDestructive
+            ? BorderSide(
+                color: context.semanticColors.critical.withValues(alpha: 0.35),
+              )
+            : null,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
         textStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
@@ -405,7 +436,9 @@ class AppInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface,
+        color: isDark
+            ? AppColors.elevatedSurface
+            : AppColors.lightElevatedSurface,
         borderRadius: AppRadius.roundedMd,
         border: Border.all(
           color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
@@ -421,11 +454,7 @@ class AppInfoCard extends StatelessWidget {
               color: effectiveIconColor.withValues(alpha: 0.12),
               borderRadius: AppRadius.roundedSm,
             ),
-            child: Icon(
-              icon,
-              color: effectiveIconColor,
-              size: 18,
-            ),
+            child: Icon(icon, color: effectiveIconColor, size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -436,7 +465,9 @@ class AppInfoCard extends StatelessWidget {
                   label,
                   style: TextStyle(
                     fontSize: 11.5,
-                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : AppColors.lightTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -445,7 +476,9 @@ class AppInfoCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
                   ),
                 ),
               ],
@@ -472,21 +505,20 @@ class AppWarningCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.criticalBg,
+        color: context.semanticColors.criticalBg,
         borderRadius: AppRadius.roundedMd,
         border: Border.all(
-          color: AppColors.criticalBorder,
+          color: context.semanticColors.critical.withValues(alpha: 0.35),
           width: AppColors.borderWidth,
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.critical, size: 22),
+          Icon(icon, color: context.semanticColors.critical, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -494,9 +526,9 @@ class AppWarningCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.critical,
+                    color: context.semanticColors.critical,
                     fontSize: 13,
                   ),
                 ),
@@ -504,9 +536,7 @@ class AppWarningCard extends StatelessWidget {
                 Text(
                   message,
                   style: TextStyle(
-                    color: isDark
-                        ? AppColors.textPrimary
-                        : AppColors.lightTextPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontSize: 12.5,
                     height: 1.4,
                   ),

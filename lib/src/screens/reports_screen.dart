@@ -121,8 +121,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 'Clinical document uploads, verification metrics, and registry audit',
                 Icons.folder_copy_outlined,
                 context.semanticColors.info,
-                () =>
-                    _showDateRangeDialog(context, 'Document & Registry Summary'),
+                () => _showDateRangeDialog(
+                  context,
+                  'Document & Registry Summary',
+                ),
               ),
             ]),
             const SizedBox(height: 24),
@@ -143,7 +145,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget _buildRangeSelector(BuildContext context) {
     final canApply =
         !_draftFilters.endDate.isBefore(_draftFilters.startDate) &&
-            !_draftFilters.endDate.isAfter(DateTime.now());
+        !_draftFilters.endDate.isAfter(DateTime.now());
 
     return SizedBox(
       width: double.infinity,
@@ -157,13 +159,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             final dropdownWidth = isVeryNarrow
                 ? width
                 : isNarrow
-                    ? (width - 12) / 2
-                    : 180.0;
+                ? (width - 12) / 2
+                : 180.0;
             final groupingWidth = isVeryNarrow
                 ? width
                 : isNarrow
-                    ? (width - 12) / 2
-                    : 150.0;
+                ? (width - 12) / 2
+                : 150.0;
 
             return Wrap(
               spacing: 12,
@@ -335,9 +337,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          const Icon(Icons.info_outline, color: AppColors.info),
+          Icon(Icons.info_outline, color: context.semanticColors.info),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -347,7 +349,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 ),
                 Text(
                   'Try another date range or change the report filters.',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -369,7 +373,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         value: stats.newPatients.toString(),
         delta: stats.newPatientsDelta,
         icon: Icons.person_add_alt_1,
-        color: AppColors.primaryEmerald,
+        color: Theme.of(context).colorScheme.primary,
       ),
       _KpiMetric(
         title: 'Clinical Documents',
@@ -377,7 +381,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         value: stats.documentsInRange.toString(),
         delta: stats.documentsDelta,
         icon: Icons.folder_copy_outlined,
-        color: AppColors.info,
+        color: context.semanticColors.info,
       ),
     ];
 
@@ -414,27 +418,27 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         children: [
                           Text(
                             kpi.title,
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           ),
                           if (kpi.subtitle != null)
                             Text(
                               kpi.subtitle!,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
+                              style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
-                                    color: AppColors.textTertiary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                   ),
                             ),
                           const SizedBox(height: 4),
                           Text(
                             kpi.value,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
+                            style: Theme.of(context).textTheme.headlineSmall
                                 ?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: -0.5,
@@ -560,16 +564,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text(
                       '$subtitle · avg ${average.toStringAsFixed(1)} per period',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -626,14 +629,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Text(
                   startLabel,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 Text(
                   endLabel,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -697,10 +700,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Expanded(
                           child: Text(
                             metric.label,
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppColors.textPrimary,
-                                    ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -711,9 +716,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         const SizedBox(width: 6),
                         Text(
                           '${metric.percentage.toStringAsFixed(0)}%',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.textTertiary,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -831,13 +838,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         subtitle: Text(
           description,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        trailing: const Icon(
+        trailing: Icon(
           Icons.arrow_forward_ios,
           size: 13,
-          color: AppColors.textTertiary,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
         onTap: onTap,
       ),
@@ -984,10 +991,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -995,12 +1006,20 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 children: [
                   _buildReportInfoRow(context, 'Report type', report.type),
                   const Divider(height: 16),
-                  _buildReportInfoRow(context, 'Generated', formatDateTime12h(report.generatedAt)),
+                  _buildReportInfoRow(
+                    context,
+                    'Generated',
+                    formatDateTime12h(report.generatedAt),
+                  ),
                   const Divider(height: 16),
                   _buildReportInfoRow(context, 'Coverage', coverage),
                   if (report.filePath != null) ...[
                     const Divider(height: 16),
-                    _buildReportInfoRow(context, 'Saved location', report.filePath!),
+                    _buildReportInfoRow(
+                      context,
+                      'Saved location',
+                      report.filePath!,
+                    ),
                   ],
                 ],
               ),
@@ -1069,7 +1088,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final confirmed = await AppConfirmDialog.show(
       context,
       title: 'Delete Report',
-      message: 'Are you sure you want to delete "${report.title}" from the archive? This action cannot be undone.',
+      message:
+          'Are you sure you want to delete "${report.title}" from the archive? This action cannot be undone.',
       confirmLabel: 'Delete Report',
       cancelLabel: 'Cancel',
       type: ConfirmDialogType.danger,
@@ -1080,7 +1100,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     if (confirmed != true) return;
 
     await ref.read(databaseProvider).deleteGeneratedReport(report.id);
-    await ref.read(auditServiceProvider).logAction(
+    await ref
+        .read(auditServiceProvider)
+        .logAction(
           action: AuditAction.delete,
           entityType: AuditEntityTypes.report,
           entityId: report.id,
@@ -1184,8 +1206,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         decoration: BoxDecoration(
           color: isActive
               ? (isDark
-                  ? AppColors.primaryEmeraldSubtle
-                  : theme.colorScheme.primary.withValues(alpha: 0.12))
+                    ? AppColors.primaryEmeraldSubtle
+                    : theme.colorScheme.primary.withValues(alpha: 0.12))
               : Colors.transparent,
           borderRadius: AppRadius.roundedSm,
           border: isActive
@@ -1204,11 +1226,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               size: 16,
               color: isActive
                   ? (isDark
-                      ? AppColors.primaryEmerald
-                      : theme.colorScheme.primary)
+                        ? AppColors.primaryEmerald
+                        : theme.colorScheme.primary)
                   : (isDark
-                      ? AppColors.textSecondary
-                      : theme.colorScheme.onSurfaceVariant),
+                        ? AppColors.textSecondary
+                        : theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(width: 8),
             Text(
@@ -1218,11 +1240,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                 color: isActive
                     ? (isDark
-                        ? AppColors.primaryEmerald
-                        : theme.colorScheme.primary)
+                          ? AppColors.primaryEmerald
+                          : theme.colorScheme.primary)
                     : (isDark
-                        ? AppColors.textPrimary
-                        : theme.colorScheme.onSurface),
+                          ? AppColors.textPrimary
+                          : theme.colorScheme.onSurface),
               ),
             ),
           ],
@@ -1243,16 +1265,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         }
         final distinctTypes = allReports.map((r) => r.type).toSet().toList();
         final activeTypeFilter =
-            (_reportTypeFilter == 'all' || distinctTypes.contains(_reportTypeFilter))
-                ? _reportTypeFilter
-                : 'all';
+            (_reportTypeFilter == 'all' ||
+                distinctTypes.contains(_reportTypeFilter))
+            ? _reportTypeFilter
+            : 'all';
 
         final query = _reportSearchQuery.trim().toLowerCase();
         var filtered = allReports.where((r) {
-          final matchQuery = query.isEmpty ||
+          final matchQuery =
+              query.isEmpty ||
               r.title.toLowerCase().contains(query) ||
               r.type.toLowerCase().contains(query);
-          final matchType = activeTypeFilter == 'all' ||
+          final matchType =
+              activeTypeFilter == 'all' ||
               r.type.toLowerCase() == activeTypeFilter.toLowerCase();
           return matchQuery && matchType;
         }).toList();
@@ -1428,14 +1453,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       data: (allLogs) {
         final query = _auditSearchQuery.trim().toLowerCase();
         var filtered = allLogs.where((l) {
-          final matchQuery = query.isEmpty ||
+          final matchQuery =
+              query.isEmpty ||
               (l.description?.toLowerCase().contains(query) ?? false) ||
               (l.details?.toLowerCase().contains(query) ?? false) ||
               (l.userName?.toLowerCase().contains(query) ?? false) ||
               l.userId.toLowerCase().contains(query) ||
               (l.patientId?.toLowerCase().contains(query) ?? false) ||
               l.entityType.toLowerCase().contains(query);
-          final matchAction = _auditActionFilter == 'all' ||
+          final matchAction =
+              _auditActionFilter == 'all' ||
               l.action.name.toLowerCase() == _auditActionFilter.toLowerCase();
           return matchQuery && matchAction;
         }).toList();
@@ -1454,8 +1481,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 alignment: WrapAlignment.spaceBetween,
                 children: [
                   ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(minWidth: 200, maxWidth: 320),
+                    constraints: const BoxConstraints(
+                      minWidth: 200,
+                      maxWidth: 320,
+                    ),
                     child: TextField(
                       controller: _auditSearchController,
                       decoration: InputDecoration(
@@ -1533,7 +1562,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           color: isDark
                               ? AppColors.elevatedSurface
                               : theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.3),
+                                    .withValues(alpha: 0.3),
                           borderRadius: AppRadius.roundedSm,
                         ),
                         child: Text(
@@ -1677,8 +1706,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color:
-                                isDark ? AppColors.textPrimary : Colors.black87,
+                            color: isDark
+                                ? AppColors.textPrimary
+                                : Colors.black87,
                           ),
                         ),
                         if (actorLabel.isNotEmpty) ...[

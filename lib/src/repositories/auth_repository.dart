@@ -39,7 +39,6 @@ class AuthRepository {
   AuthRepository(this._db, this._auditService, {OtpGateway? otpGateway})
     : _otp = otpGateway ?? SupabaseOtpGateway();
 
-
   String _hashPassword(String password) => PasswordCrypto.hash(password);
 
   bool _verifyPassword(String password, String storedHash) =>
@@ -638,20 +637,25 @@ class AuthRepository {
     }
 
     final normalizedEmail = email?.trim().toLowerCase();
-    final emailChanged = normalizedEmail != null &&
+    final emailChanged =
+        normalizedEmail != null &&
         normalizedEmail.isNotEmpty &&
         normalizedEmail != existing.email.toLowerCase();
 
     if (emailChanged) {
       if (!actor.isSuperAdmin) {
-        throw StateError('Only a Super Administrator can change account email addresses');
+        throw StateError(
+          'Only a Super Administrator can change account email addresses',
+        );
       }
       if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(normalizedEmail)) {
         throw ArgumentError('Invalid email address format');
       }
       final other = await _db.getUserByEmail(normalizedEmail);
       if (other != null && other.id != id) {
-        throw StateError('Email $normalizedEmail is already in use by another account');
+        throw StateError(
+          'Email $normalizedEmail is already in use by another account',
+        );
       }
       try {
         await _supabase
@@ -771,7 +775,8 @@ class AuthRepository {
       }
     }
 
-    final finalUser = (syncedOnline || (!accountChanged && existing.syncStatus == 0))
+    final finalUser =
+        (syncedOnline || (!accountChanged && existing.syncStatus == 0))
         ? updated.copyWith(syncStatus: 0)
         : updated;
 
@@ -842,6 +847,57 @@ class AuthRepository {
       entityId: id,
       description: 'Deactivated user: ${user.email}',
     );
+  }
+
+  Future<void> deleteUser(String id, String deletedByUserId) async {
+    await _requireSystemManager(deletedByUserId);
+    final actor = await _db.getUserById(deletedByUserId);
+    final target = await _db.getUserById(id);
+    if (actor == null || !actor.isActive) {
+      throw StateError('An active administrator session is required');
+    }
+    if (target == null) {
+      throw ArgumentError('User not found');
+    }
+    if (actor.id == target.id) {
+      throw StateError('You cannot delete your own account');
+    }
+    if (!actor.isSuperAdmin) {
+      if (target.role == UserRole.superAdmin) {
+        throw StateError('Only a super administrator can delete this account');
+      }
+      if (target.clinicId != actor.clinicId) {
+        throw StateError('User accounts must remain within your RHU');
+      }
+    }
+
+    await ensureOnlineSession();
+    if (_supabase.auth.currentSession == null) {
+      throw StateError(
+        'Connect to the internet to permanently delete this account',
+      );
+    }
+
+    final response = await _supabase.functions.invoke(
+      'provision-user',
+      body: {'action': 'delete', 'target_user_id': target.id},
+    );
+    final result = response.data;
+    if (result is! Map || result['deleted'] != true) {
+      throw StateError('The server did not confirm account deletion');
+    }
+
+    await _db.deleteUser(target.id);
+    if (_lastLoggedInUserId == target.id) {
+      _lastLoggedInUserId = null;
+    }
+    try {
+      if (await _secureStorage.read(key: _lastUserIdKey) == target.id) {
+        await _secureStorage.delete(key: _lastUserIdKey);
+      }
+    } catch (error) {
+      debugPrint('Unable to clear deleted account from PIN login: $error');
+    }
   }
 
   // Change password
@@ -1148,10 +1204,7 @@ class AuthRepository {
       final profile = await _otp.fetchProfile(authUserId);
       if (profile == null) {
         await _otp.signOutLocal();
-        return const OtpRejected(
-          'Account not found.',
-          exhausted: true,
-        );
+        return const OtpRejected('Account not found.', exhausted: true);
       }
       final serverUser = User.fromJson(profile);
       if (!serverUser.isActive || !serverUser.requiresEmailOtp) {

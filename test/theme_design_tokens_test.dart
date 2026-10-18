@@ -98,6 +98,11 @@ void main() {
           darkTheme.colorScheme.primary,
           equals(AppAccentTheme.indigo.darkPrimaryColor),
         );
+        expect(
+          lightTheme.iconTheme.color,
+          equals(AppColors.lightTextSecondary),
+        );
+        expect(darkTheme.iconTheme.color, equals(AppColors.textSecondary));
       },
     );
   });

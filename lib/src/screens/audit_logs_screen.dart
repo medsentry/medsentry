@@ -32,106 +32,104 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                Text(
-                  'Audit Logs & Activity Monitoring',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              Text(
+                'Audit Logs & Activity Monitoring',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Track login history, record changes, staff actions, and suspicious activity.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.68),
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Track login history, record changes, staff actions, and suspicious activity.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.68),
                 ),
-                const SizedBox(height: 16),
-                AppCard(
-                  padding: const EdgeInsets.all(12),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isMobile = constraints.maxWidth < 600;
-                      final searchField = TextField(
-                        decoration: const InputDecoration(
-                          hintText: 'Search by user, patient, or description...',
-                          prefixIcon: Icon(Icons.search),
-                          border: OutlineInputBorder(),
-                          isDense: true,
+              ),
+              const SizedBox(height: 16),
+              AppCard(
+                padding: const EdgeInsets.all(12),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 600;
+                    final searchField = TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search by user, patient, or description...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onChanged: (v) => setState(() => _searchQuery = v),
+                    );
+                    final actionDropdown = DropdownButton<AuditAction?>(
+                      value: _filterAction,
+                      hint: const Text('All Actions'),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('All Actions'),
                         ),
-                        onChanged: (v) => setState(() => _searchQuery = v),
-                      );
-                      final actionDropdown = DropdownButton<AuditAction?>(
-                        value: _filterAction,
-                        hint: const Text('All Actions'),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('All Actions'),
+                        ...AuditAction.values.map(
+                          (a) => DropdownMenuItem(
+                            value: a,
+                            child: Text(_actionLabel(a)),
                           ),
-                          ...AuditAction.values.map(
-                            (a) => DropdownMenuItem(
-                              value: a,
-                              child: Text(_actionLabel(a)),
-                            ),
-                          ),
-                        ],
-                        onChanged: (v) => setState(() => _filterAction = v),
-                      );
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _filterAction = v),
+                    );
 
-                      if (isMobile) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            searchField,
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                ),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<AuditAction?>(
-                                  isExpanded: true,
-                                  value: _filterAction,
-                                  hint: const Text('All Actions'),
-                                  items: [
-                                    const DropdownMenuItem(
-                                      value: null,
-                                      child: Text('All Actions'),
-                                    ),
-                                    ...AuditAction.values.map(
-                                      (a) => DropdownMenuItem(
-                                        value: a,
-                                        child: Text(_actionLabel(a)),
-                                      ),
-                                    ),
-                                  ],
-                                  onChanged: (v) =>
-                                      setState(() => _filterAction = v),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-
-                      return Row(
+                    if (isMobile) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(child: searchField),
-                          const SizedBox(width: 12),
-                          actionDropdown,
+                          searchField,
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(color: context.borderColor),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<AuditAction?>(
+                                isExpanded: true,
+                                value: _filterAction,
+                                hint: const Text('All Actions'),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('All Actions'),
+                                  ),
+                                  ...AuditAction.values.map(
+                                    (a) => DropdownMenuItem(
+                                      value: a,
+                                      child: Text(_actionLabel(a)),
+                                    ),
+                                  ),
+                                ],
+                                onChanged: (v) =>
+                                    setState(() => _filterAction = v),
+                              ),
+                            ),
+                          ),
                         ],
                       );
-                    },
-                  ),
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(child: searchField),
+                        const SizedBox(width: 12),
+                        actionDropdown,
+                      ],
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           logsAsync.when(
             skipLoadingOnReload: true,
@@ -163,65 +161,69 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                 padding: EdgeInsets.zero,
                 itemCount: filtered.length,
                 itemBuilder: (context, index) {
-                    final log = filtered[index];
-                    final color = _actionColor(context, log.action);
-                    return AppCard(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: EdgeInsets.zero,
-                      child: ListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: color.withValues(alpha: 0.25)),
-                          ),
-                          child: Icon(
-                            _actionIcon(log.action),
-                            color: color,
-                            size: 18,
-                          ),
-                        ),
-                        title: Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: [
-                            Text(
-                              '${log.actionDisplay} — ${log.entityType}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            _buildActionBadge(log.action),
-                          ],
-                        ),
-                        subtitle: Text(
-                          '${log.userName ?? log.userId} • ${_formatDateTime(log.timestamp)}'
-                          '${log.patientName != null ? ' • ${log.patientName}' : ''}'
-                          '${log.description != null ? '\n${log.description}' : ''}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        isThreeLine: log.description != null,
+                  final log = filtered[index];
+                  final color = _actionColor(context, log.action);
+                  return AppCard(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: EdgeInsets.zero,
+                    child: ListTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                    );
-                  },
-                );
-              },
-              loading: () => const LoadingState(),
-              error: (error, _) => AppErrorState(
-                title: 'Audit logs could not be loaded',
-                error: error,
-                onRetry: () => ref.invalidate(auditLogsProvider),
-              ),
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: color.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Icon(
+                          _actionIcon(log.action),
+                          color: color,
+                          size: 18,
+                        ),
+                      ),
+                      title: Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          Text(
+                            '${log.actionDisplay} — ${log.entityType}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          _buildActionBadge(log.action),
+                        ],
+                      ),
+                      subtitle: Text(
+                        '${log.userName ?? log.userId} • ${_formatDateTime(log.timestamp)}'
+                        '${log.patientName != null ? ' • ${log.patientName}' : ''}'
+                        '${log.description != null ? '\n${log.description}' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      isThreeLine: log.description != null,
+                    ),
+                  );
+                },
+              );
+            },
+            loading: () => const LoadingState(),
+            error: (error, _) => AppErrorState(
+              title: 'Audit logs could not be loaded',
+              error: error,
+              onRetry: () => ref.invalidate(auditLogsProvider),
             ),
+          ),
         ],
       ),
     );
@@ -237,18 +239,13 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
         text: action.name.toUpperCase(),
         showDot: true,
       ),
-      AuditAction.create || AuditAction.sync || AuditAction.backup => StatusBadge.normal(
-        text: action.name.toUpperCase(),
-        showDot: true,
-      ),
+      AuditAction.create || AuditAction.sync || AuditAction.backup =>
+        StatusBadge.normal(text: action.name.toUpperCase(), showDot: true),
       AuditAction.login || AuditAction.logout => StatusBadge.info(
         text: action.name.toUpperCase(),
         showDot: true,
       ),
-      _ => StatusBadge.neutral(
-        text: action.name.toUpperCase(),
-        showDot: true,
-      ),
+      _ => StatusBadge.neutral(text: action.name.toUpperCase(), showDot: true),
     };
   }
 

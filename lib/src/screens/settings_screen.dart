@@ -114,13 +114,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     Icons.branding_watermark_outlined,
                     () => _showSuperAdminConfigDialog(context, ref),
                   ),
-                  _buildListTile(
-                    context,
-                    'RHU Health Facilities Directory',
-                    'Manage rural health units, municipal clinics, and health facility assignments',
-                    Icons.domain_outlined,
-                    () => context.go('/rhus'),
-                  ),
                 ] else ...[
                   _buildListTile(
                     context,
@@ -130,15 +123,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     () => _showClinicConfigDialog(context, ref),
                   ),
                 ],
-                if (currentUser?.canManageStaffAccounts == true)
+                if (currentUser?.canManageStaffAccounts == true &&
+                    currentUser?.isSuperAdmin != true)
                   _buildListTile(
                     context,
-                    currentUser?.isSuperAdmin == true
-                        ? 'Global Personnel & Administrator Accounts'
-                        : 'Clinic Staff & Personnel Directory',
-                    currentUser?.isSuperAdmin == true
-                        ? 'Manage RHU administrators, medical officers, and health workers across facilities'
-                        : 'Manage clinical staff, nurses, and local health facility users',
+                    'Clinic Staff & Personnel Directory',
+                    'Manage clinical staff, nurses, and local health facility users',
                     Icons.badge_outlined,
                     () => context.go('/staff'),
                   ),
@@ -218,10 +208,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 32),
             Container(
               decoration: BoxDecoration(
-                color: AppColors.critical.withValues(alpha: 0.08),
+                color: context.semanticColors.criticalBg,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(
-                  color: AppColors.critical.withValues(alpha: 0.35),
+                  color: context.semanticColors.critical.withValues(
+                    alpha: 0.35,
+                  ),
                 ),
               ),
               padding: const EdgeInsets.all(16),
@@ -276,148 +268,146 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       AppCard(
         padding: const EdgeInsets.all(16),
         child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Theme Mode',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Theme Mode',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Select your preferred display mode or match your operating system.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.65),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.light,
+                  icon: Icon(Icons.light_mode_outlined, size: 18),
+                  label: Text('Light'),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Select your preferred display mode or match your operating system.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.65),
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.dark,
+                  icon: Icon(Icons.dark_mode_outlined, size: 18),
+                  label: Text('Dark'),
                 ),
-              ),
-              const SizedBox(height: 12),
-              SegmentedButton<ThemeMode>(
-                segments: const [
-                  ButtonSegment<ThemeMode>(
-                    value: ThemeMode.light,
-                    icon: Icon(Icons.light_mode_outlined, size: 18),
-                    label: Text('Light'),
-                  ),
-                  ButtonSegment<ThemeMode>(
-                    value: ThemeMode.dark,
-                    icon: Icon(Icons.dark_mode_outlined, size: 18),
-                    label: Text('Dark'),
-                  ),
-                  ButtonSegment<ThemeMode>(
-                    value: ThemeMode.system,
-                    icon: Icon(Icons.settings_brightness_outlined, size: 18),
-                    label: Text('System'),
-                  ),
-                ],
-                selected: {currentThemeMode},
-                onSelectionChanged: (newSelection) {
-                  ref
-                      .read(themeModeProvider.notifier)
-                      .setThemeMode(newSelection.first);
-                },
-              ),
-              const SizedBox(height: 20),
-              const Divider(),
-              const SizedBox(height: 14),
-              Text(
-                'Clinical Accent Theme',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.system,
+                  icon: Icon(Icons.settings_brightness_outlined, size: 18),
+                  label: Text('System'),
                 ),
+              ],
+              selected: {currentThemeMode},
+              onSelectionChanged: (newSelection) {
+                ref
+                    .read(themeModeProvider.notifier)
+                    .setThemeMode(newSelection.first);
+              },
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 14),
+            Text(
+              'Clinical Accent Theme',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Choose an accent palette for navigation, buttons, and active indicators.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.65),
-                ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Choose an accent palette for navigation, buttons, and active indicators.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurface.withValues(alpha: 0.65),
               ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: AppAccentTheme.values.map((accent) {
-                  final isSelected = accent == currentAccentTheme;
-                  return InkWell(
-                    onTap: () {
-                      ref
-                          .read(accentThemeProvider.notifier)
-                          .setAccentTheme(accent);
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      width: 108,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 8,
-                      ),
-                      decoration: BoxDecoration(
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: AppAccentTheme.values.map((accent) {
+                final isSelected = accent == currentAccentTheme;
+                return InkWell(
+                  onTap: () {
+                    ref
+                        .read(accentThemeProvider.notifier)
+                        .setAccentTheme(accent);
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    width: 108,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? accent.primaryColor.withValues(alpha: 0.12)
+                          : colorScheme.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
                         color: isSelected
-                            ? accent.primaryColor.withValues(alpha: 0.12)
-                            : colorScheme.surface,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isSelected
-                              ? accent.primaryColor
-                              : colorScheme.outlineVariant.withValues(
-                                  alpha: 0.7,
-                                ),
-                          width: isSelected ? 2 : 1,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: accent.primaryColor,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: accent.primaryColor.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: isSelected
-                                ? const Icon(
-                                    Icons.check,
-                                    size: 16,
-                                    color: Colors.white,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            accent.label,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? accent.primaryColor
-                                  : colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
+                            ? accent.primaryColor
+                            : colorScheme.outlineVariant.withValues(alpha: 0.7),
+                        width: isSelected ? 2 : 1,
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: accent.primaryColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: accent.primaryColor.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 16,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          accent.label,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isSelected
+                                ? accent.primaryColor
+                                : colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         ),
-      ]);
+      ),
+    ]);
   }
 
   Widget _buildSection(
@@ -508,12 +498,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               try {
                 final path = await ref.read(databaseProvider).createBackup();
                 final currentUser = ref.read(currentUserProvider);
-                await ref.read(auditServiceProvider).log(
+                await ref
+                    .read(auditServiceProvider)
+                    .log(
                       userId: currentUser?.id ?? 'system',
                       clinicId: currentUser?.clinicId,
                       action: AuditAction.backup,
                       entityType: 'database',
-                      description: 'Created full system database backup ($path)',
+                      description:
+                          'Created full system database backup ($path)',
                     );
                 if (context.mounted) {
                   Navigator.pop(context);
@@ -580,7 +573,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               try {
                 await ref.read(databaseProvider).restoreFromBackup(bytes);
                 final currentUser = ref.read(currentUserProvider);
-                await ref.read(auditServiceProvider).log(
+                await ref
+                    .read(auditServiceProvider)
+                    .log(
                       userId: currentUser?.id ?? 'system',
                       clinicId: currentUser?.clinicId,
                       action: AuditAction.restore,
@@ -751,12 +746,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     settingsAsync.when(
       data: (settings) {
-        final appNameController =
-            TextEditingController(text: settings.appName);
-        final appTaglineController =
-            TextEditingController(text: settings.appTagline);
-        final orgNameController =
-            TextEditingController(text: settings.organizationName);
+        final appNameController = TextEditingController(text: settings.appName);
+        final appTaglineController = TextEditingController(
+          text: settings.appTagline,
+        );
+        final orgNameController = TextEditingController(
+          text: settings.organizationName,
+        );
         var logoDataUri = settings.logoDataUri;
         var sessionTimeout = settings.sessionTimeoutMinutes;
         var minPasswordLength = settings.passwordMinLength;
@@ -779,7 +775,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             final file = result.files.single;
             if (file.size > 10 * 1024 * 1024) {
-              throw const FormatException('Choose an image smaller than 10 MB.');
+              throw const FormatException(
+                'Choose an image smaller than 10 MB.',
+              );
             }
             final bytes = file.bytes;
             if (bytes == null || bytes.isEmpty) {
@@ -829,8 +827,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Text(
                         'Master Branding & System Identity',
                         style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       AppFormField(
@@ -869,8 +867,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Text(
                         'Master Platform Logo',
                         style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -928,8 +926,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Text(
                         'Platform Security & Authentication Policies',
                         style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -938,8 +936,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             child: AppFormField(
                               label: 'Inactivity Lock Timeout',
                               field: DropdownButtonFormField<int>(
-                                initialValue: [15, 30, 60, 240, 480]
-                                        .contains(sessionTimeout)
+                                initialValue:
+                                    [
+                                      15,
+                                      30,
+                                      60,
+                                      240,
+                                      480,
+                                    ].contains(sessionTimeout)
                                     ? sessionTimeout
                                     : 480,
                                 decoration: const InputDecoration(
@@ -980,7 +984,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             child: AppFormField(
                               label: 'Min Password Length',
                               field: DropdownButtonFormField<int>(
-                                initialValue: [8, 10, 12].contains(minPasswordLength)
+                                initialValue:
+                                    [8, 10, 12].contains(minPasswordLength)
                                     ? minPasswordLength
                                     : 8,
                                 decoration: const InputDecoration(
@@ -1020,9 +1025,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           'Enforce mixed case, numbers, and symbols for all accounts',
                         ),
                         value: requireStrongPassword,
-                        onChanged: (val) => setDialogState(
-                          () => requireStrongPassword = val,
-                        ),
+                        onChanged: (val) =>
+                            setDialogState(() => requireStrongPassword = val),
                       ),
                       const SizedBox(height: 16),
                       const Divider(),
@@ -1030,14 +1034,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Text(
                         'Cloud Sync & Gateway Defaults',
                         style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title:
-                            const Text('Automatic Background Synchronization'),
+                        title: const Text(
+                          'Automatic Background Synchronization',
+                        ),
                         subtitle: const Text(
                           'Periodically push changes and pull remote clinic updates',
                         ),
@@ -1050,7 +1055,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         AppFormField(
                           label: 'Background Sync Interval',
                           field: DropdownButtonFormField<int>(
-                            initialValue: [15, 30, 60].contains(autoSyncInterval)
+                            initialValue:
+                                [15, 30, 60].contains(autoSyncInterval)
                                 ? autoSyncInterval
                                 : 30,
                             decoration: const InputDecoration(
@@ -1084,14 +1090,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Text(
                         'Compliance & Data Retention',
                         style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       AppFormField(
                         label: 'Audit Log Retention Policy',
                         field: DropdownButtonFormField<int>(
-                          initialValue: [365, 730, 2555].contains(dataRetentionDays)
+                          initialValue:
+                              [365, 730, 2555].contains(dataRetentionDays)
                               ? dataRetentionDays
                               : 365,
                           decoration: const InputDecoration(
@@ -1149,7 +1156,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         .read(databaseProvider)
                         .updateSystemSettings(nextSettings);
                     final currentUser = ref.read(currentUserProvider);
-                    await ref.read(auditServiceProvider).log(
+                    await ref
+                        .read(auditServiceProvider)
+                        .log(
                           userId: currentUser?.id ?? 'system',
                           clinicId: currentUser?.clinicId,
                           action: AuditAction.settingsChange,
@@ -1159,8 +1168,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               'Updated Super Admin system branding & platform settings (${nextSettings.appName})',
                         );
                     ref.invalidate(systemSettingsProvider);
-                    final syncResult =
-                        await ref.read(syncServiceProvider).startSync();
+                    final syncResult = await ref
+                        .read(syncServiceProvider)
+                        .startSync();
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1464,7 +1474,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         .read(databaseProvider)
                         .updateSystemSettings(nextSettings);
                     final currentUser = ref.read(currentUserProvider);
-                    await ref.read(auditServiceProvider).log(
+                    await ref
+                        .read(auditServiceProvider)
+                        .log(
                           userId: currentUser?.id ?? 'system',
                           clinicId: currentUser?.clinicId,
                           action: AuditAction.settingsChange,
@@ -1474,8 +1486,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               'Updated clinic configuration (${nextSettings.clinicName})',
                         );
                     ref.invalidate(systemSettingsProvider);
-                    final syncResult =
-                        await ref.read(syncServiceProvider).startSync();
+                    final syncResult = await ref
+                        .read(syncServiceProvider)
+                        .startSync();
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1632,6 +1645,7 @@ class StaffManagementPanel extends ConsumerStatefulWidget {
   final VoidCallback onAddUser;
   final void Function(User user) onEditUser;
   final void Function(User user) onDeactivateUser;
+  final void Function(User user) onDeleteUser;
   final bool embedded;
 
   const StaffManagementPanel({
@@ -1639,6 +1653,7 @@ class StaffManagementPanel extends ConsumerStatefulWidget {
     required this.onAddUser,
     required this.onEditUser,
     required this.onDeactivateUser,
+    required this.onDeleteUser,
     this.embedded = false,
   });
 
@@ -1652,7 +1667,8 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
   late final TabController _tabController;
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  String? _selectedClinicFilter; // null = All, '__unassigned__' = Unassigned, or clinicId
+  String?
+  _selectedClinicFilter; // null = All, '__unassigned__' = Unassigned, or clinicId
 
   @override
   void initState() {
@@ -1708,7 +1724,8 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
 
           if (query.isEmpty) return true;
           final clinic = clinics.where((c) => c.id == u.clinicId).firstOrNull;
-          final clinicMatches = clinic != null &&
+          final clinicMatches =
+              clinic != null &&
               (clinic.name.toLowerCase().contains(query) ||
                   clinic.code.toLowerCase().contains(query));
           final unassignedMatches =
@@ -1737,6 +1754,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
               onAddUser: widget.onAddUser,
               onEditUser: widget.onEditUser,
               onDeactivateUser: widget.onDeactivateUser,
+              onDeleteUser: widget.onDeleteUser,
             ),
             _StaffAccountsTab(
               users: scopedUsers.where((u) => !u.isActive).toList(),
@@ -1746,6 +1764,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
               onAddUser: widget.onAddUser,
               onEditUser: widget.onEditUser,
               onDeactivateUser: widget.onDeactivateUser,
+              onDeleteUser: widget.onDeleteUser,
             ),
           ],
         );
@@ -1768,7 +1787,9 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
     );
 
     final isSuperAdmin = currentUser?.isSuperAdmin == true;
-    final allUsersList = usersAsync.valueOrNull ?? <User>[];
+    final activeUsersList = (usersAsync.valueOrNull ?? <User>[])
+        .where((user) => user.isActive)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1823,26 +1844,30 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
               child: Row(
                 children: [
                   ChoiceChip(
-                    label: Text('All Facilities (${allUsersList.length})'),
+                    label: Text('All Facilities (${activeUsersList.length})'),
                     selected: _selectedClinicFilter == null,
                     onSelected: (selected) {
-                      if (selected) setState(() => _selectedClinicFilter = null);
+                      if (selected) {
+                        setState(() => _selectedClinicFilter = null);
+                      }
                     },
                   ),
                   const SizedBox(width: 8),
                   ChoiceChip(
                     label: Text(
-                      'Unassigned (${allUsersList.where((u) => u.clinicId == null).length})',
+                      'Unassigned (${activeUsersList.where((u) => u.clinicId == null).length})',
                     ),
                     selected: _selectedClinicFilter == '__unassigned__',
                     onSelected: (selected) {
                       setState(() {
-                        _selectedClinicFilter = selected ? '__unassigned__' : null;
+                        _selectedClinicFilter = selected
+                            ? '__unassigned__'
+                            : null;
                       });
                     },
                   ),
                   ...clinics.map((clinic) {
-                    final clinicCount = allUsersList
+                    final clinicCount = activeUsersList
                         .where((u) => u.clinicId == clinic.id)
                         .length;
                     return Padding(
@@ -1913,6 +1938,7 @@ class _StaffAccountsTab extends StatelessWidget {
   final VoidCallback onAddUser;
   final void Function(User user) onEditUser;
   final void Function(User user) onDeactivateUser;
+  final void Function(User user) onDeleteUser;
 
   const _StaffAccountsTab({
     required this.users,
@@ -1922,6 +1948,7 @@ class _StaffAccountsTab extends StatelessWidget {
     required this.onAddUser,
     required this.onEditUser,
     required this.onDeactivateUser,
+    required this.onDeleteUser,
   });
 
   @override
@@ -1959,6 +1986,7 @@ class _StaffAccountsTab extends StatelessWidget {
                       onDeactivate: user.isActive
                           ? () => onDeactivateUser(user)
                           : null,
+                      onDelete: () => onDeleteUser(user),
                     );
                   },
                 ),
@@ -2051,8 +2079,9 @@ class _AdminResetPasswordDialogState extends State<_AdminResetPasswordDialog> {
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  tooltip:
-                      _isPasswordVisible ? 'Hide password' : 'Show password',
+                  tooltip: _isPasswordVisible
+                      ? 'Hide password'
+                      : 'Show password',
                   onPressed: () =>
                       setState(() => _isPasswordVisible = !_isPasswordVisible),
                   icon: Icon(
@@ -2115,12 +2144,14 @@ class _UserManagementTile extends ConsumerWidget {
   final User? currentUser;
   final VoidCallback onEdit;
   final VoidCallback? onDeactivate;
+  final VoidCallback onDelete;
 
   const _UserManagementTile({
     required this.user,
     required this.currentUser,
     required this.onEdit,
     required this.onDeactivate,
+    required this.onDelete,
   });
 
   bool get canEdit {
@@ -2159,6 +2190,15 @@ class _UserManagementTile extends ConsumerWidget {
     return true;
   }
 
+  bool get canDelete {
+    if (currentUser == null || user.id == currentUser!.id) return false;
+    if (!currentUser!.canManageStaffAccounts) return false;
+    if (currentUser!.isSuperAdmin) return true;
+    if (user.role == UserRole.superAdmin) return false;
+    return currentUser!.clinicId == null ||
+        user.clinicId == currentUser!.clinicId;
+  }
+
   Future<void> _handleResetPassword(BuildContext context, WidgetRef ref) async {
     final curUser = currentUser;
     if (curUser == null) return;
@@ -2169,11 +2209,13 @@ class _UserManagementTile extends ConsumerWidget {
         user: user,
         currentUser: curUser,
         onConfirmReset: (newPassword) async {
-          await ref.read(authRepositoryProvider).adminResetUserPassword(
-            targetUserId: user.id,
-            newPassword: newPassword,
-            actorUserId: curUser.id,
-          );
+          await ref
+              .read(authRepositoryProvider)
+              .adminResetUserPassword(
+                targetUserId: user.id,
+                newPassword: newPassword,
+                actorUserId: curUser.id,
+              );
           ref.invalidate(usersProvider);
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -2203,11 +2245,7 @@ class _UserManagementTile extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.zero,
       child: ListTile(
-        leading: UserAvatar(
-          user: user,
-          radius: 20,
-          showStatusIndicator: true,
-        ),
+        leading: UserAvatar(user: user, radius: 20, showStatusIndicator: true),
         title: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 8,
@@ -2251,13 +2289,14 @@ class _UserManagementTile extends ConsumerWidget {
               if (currentUser?.isSuperAdmin == true) ...[
                 if (user.role == UserRole.superAdmin)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withValues(alpha: 0.4),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(
@@ -2271,12 +2310,11 @@ class _UserManagementTile extends ConsumerWidget {
                         const SizedBox(width: 4),
                         Text(
                           'All Facilities',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
                     ),
@@ -2295,9 +2333,9 @@ class _UserManagementTile extends ConsumerWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Row(
@@ -2307,12 +2345,8 @@ class _UserManagementTile extends ConsumerWidget {
                             const SizedBox(width: 4),
                             Text(
                               clinic?.name ?? clinic?.code ?? 'Assigned RHU',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
@@ -2321,29 +2355,35 @@ class _UserManagementTile extends ConsumerWidget {
                   ),
                 ] else ...[
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: AppColors.pendingBg,
-                      border: Border.all(color: AppColors.pendingBorder),
+                      color: context.semanticColors.warningBg,
+                      border: Border.all(
+                        color: context.semanticColors.warning.withValues(
+                          alpha: 0.35,
+                        ),
+                      ),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.warning_amber_rounded,
                           size: 12,
-                          color: AppColors.pending,
+                          color: context.semanticColors.warning,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           'Unassigned Facility',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: AppColors.pending,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: context.semanticColors.warning,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
                     ),
@@ -2356,52 +2396,75 @@ class _UserManagementTile extends ConsumerWidget {
           ),
         ),
         trailing: context.isMobile
-            ? (canEdit || canResetPassword || (canDeactivate && user.isActive && onDeactivate != null))
-                ? PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    tooltip: 'User options',
-                    onSelected: (val) {
-                      if (val == 'edit') onEdit();
-                      if (val == 'reset_pwd') _handleResetPassword(context, ref);
-                      if (val == 'deactivate') onDeactivate?.call();
-                    },
-                    itemBuilder: (context) => [
-                      if (canEdit)
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: ListTile(
-                            leading: Icon(Icons.edit_outlined),
-                            title: Text('Edit user'),
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
-                        ),
-                      if (canResetPassword)
-                        const PopupMenuItem(
-                          value: 'reset_pwd',
-                          child: ListTile(
-                            leading: Icon(Icons.lock_reset_outlined),
-                            title: Text('Reset Password'),
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
-                        ),
-                      if (canDeactivate && user.isActive && onDeactivate != null)
-                        PopupMenuItem(
-                          value: 'deactivate',
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.person_off_outlined,
-                              color: context.semanticColors.warning,
+            ? (canEdit ||
+                      canResetPassword ||
+                      (canDeactivate &&
+                          user.isActive &&
+                          onDeactivate != null) ||
+                      canDelete)
+                  ? PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      tooltip: 'User options',
+                      onSelected: (val) {
+                        if (val == 'edit') onEdit();
+                        if (val == 'reset_pwd') {
+                          _handleResetPassword(context, ref);
+                        }
+                        if (val == 'deactivate') onDeactivate?.call();
+                        if (val == 'delete') onDelete();
+                      },
+                      itemBuilder: (context) => [
+                        if (canEdit)
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: ListTile(
+                              leading: Icon(Icons.edit_outlined),
+                              title: Text('Edit user'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
                             ),
-                            title: const Text('Deactivate'),
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
                           ),
-                        ),
-                    ],
-                  )
-                : null
+                        if (canResetPassword)
+                          const PopupMenuItem(
+                            value: 'reset_pwd',
+                            child: ListTile(
+                              leading: Icon(Icons.lock_reset_outlined),
+                              title: Text('Reset Password'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                            ),
+                          ),
+                        if (canDeactivate &&
+                            user.isActive &&
+                            onDeactivate != null)
+                          PopupMenuItem(
+                            value: 'deactivate',
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.person_off_outlined,
+                                color: context.semanticColors.warning,
+                              ),
+                              title: const Text('Deactivate'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                            ),
+                          ),
+                        if (canDelete)
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              leading: Icon(
+                                Icons.delete_outline,
+                                color: context.semanticColors.critical,
+                              ),
+                              title: const Text('Delete permanently'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                            ),
+                          ),
+                      ],
+                    )
+                  : null
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -2422,6 +2485,13 @@ class _UserManagementTile extends ConsumerWidget {
                       tooltip: 'Deactivate user',
                       icon: const Icon(Icons.person_off_outlined),
                       onPressed: onDeactivate,
+                    ),
+                  if (canDelete)
+                    IconButton(
+                      tooltip: 'Delete user permanently',
+                      icon: const Icon(Icons.delete_outline),
+                      color: context.semanticColors.critical,
+                      onPressed: onDelete,
                     ),
                 ],
               ),
@@ -2589,26 +2659,29 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                         child: Stack(
                           children: [
                             UserAvatar(
-                              user: widget.existingUser?.copyWith(
-                                firstName: _firstNameController.text.isNotEmpty
-                                    ? _firstNameController.text
-                                    : 'New',
-                                lastName: _lastNameController.text.isNotEmpty
-                                    ? _lastNameController.text
-                                    : 'User',
-                                profileImageUrl: _profileImageUrl,
-                              ) ??
+                              user:
+                                  widget.existingUser?.copyWith(
+                                    firstName:
+                                        _firstNameController.text.isNotEmpty
+                                        ? _firstNameController.text
+                                        : 'New',
+                                    lastName:
+                                        _lastNameController.text.isNotEmpty
+                                        ? _lastNameController.text
+                                        : 'User',
+                                    profileImageUrl: _profileImageUrl,
+                                  ) ??
                                   User(
                                     id: 'temp',
                                     email: _emailController.text,
                                     firstName:
                                         _firstNameController.text.isNotEmpty
-                                            ? _firstNameController.text
-                                            : 'New',
+                                        ? _firstNameController.text
+                                        : 'New',
                                     lastName:
                                         _lastNameController.text.isNotEmpty
-                                            ? _lastNameController.text
-                                            : 'User',
+                                        ? _lastNameController.text
+                                        : 'User',
                                     role: _role,
                                     profileImageUrl: _profileImageUrl,
                                     isActive: true,
@@ -2700,8 +2773,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
               const SizedBox(height: 16),
               AppFormSection(
                 title: 'Role & Facility Assignment',
-                subtitle:
-                    'Access privileges and RHU clinic facility boundary',
+                subtitle: 'Access privileges and RHU clinic facility boundary',
                 icon: Icons.badge_outlined,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2752,9 +2824,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                             ...clinics.map(
                               (clinic) => DropdownMenuItem<String?>(
                                 value: clinic.id,
-                                child: Text(
-                                  '${clinic.name} (${clinic.code})',
-                                ),
+                                child: Text('${clinic.name} (${clinic.code})'),
                               ),
                             ),
                           ],
@@ -2842,9 +2912,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                     const SizedBox(height: 12),
                     AppInfoCard(
                       icon: Icons.info_outline,
-                      label: _isEdit
-                          ? 'Password Update'
-                          : 'Password Policy',
+                      label: _isEdit ? 'Password Update' : 'Password Policy',
                       value: _isEdit
                           ? 'Leave blank to keep current password. If changed, must be at least 8 characters with letters and numbers.'
                           : 'Must be at least 8 characters with letters and numbers. Share this temporary password securely.',
@@ -3006,7 +3074,9 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
         final user = widget.existingUser!;
         await repository.updateUser(
           id: user.id,
-          email: isSuperAdmin ? _emailController.text.trim().toLowerCase() : null,
+          email: isSuperAdmin
+              ? _emailController.text.trim().toLowerCase()
+              : null,
           clinicId: targetClinicId,
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),

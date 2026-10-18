@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/certificate_service.dart';
+import '../utils/context_extensions.dart';
 import '../utils/file_exporter/file_exporter.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
@@ -113,9 +114,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       children: [
                         Text(
                           'Official Certificates & Medical Clearances',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
+                          style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: isDark ? AppColors.textPrimary : null,
@@ -124,15 +123,13 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         const SizedBox(height: 4),
                         Text(
                           'Generate DOH-compliant medical certificates, return-to-work clearances, and patient summaries.',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: isDark
-                                        ? AppColors.textSecondary
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withValues(alpha: 0.68),
-                                  ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : Theme.of(context).colorScheme.onSurface
+                                          .withValues(alpha: 0.68),
+                              ),
                         ),
                       ],
                     ),
@@ -224,17 +221,17 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.assignment_outlined,
                 size: 20,
-                color: AppColors.primaryEmerald,
+                color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(width: 8),
               Text(
                 'Document Parameters',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -269,7 +266,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.bolt, size: 16, color: Colors.amber),
+                      Icon(
+                        Icons.bolt,
+                        size: 16,
+                        color: context.semanticColors.warning,
+                      ),
                       const SizedBox(width: 6),
                       const Text(
                         '1-Click Clinical Presets',
@@ -339,8 +340,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         ),
                       ),
                       ActionChip(
-                        avatar:
-                            const Icon(Icons.local_hospital_outlined, size: 14),
+                        avatar: const Icon(
+                          Icons.local_hospital_outlined,
+                          size: 14,
+                        ),
                         label: const Text(
                           'Referral Slip',
                           style: TextStyle(fontSize: 12),
@@ -363,9 +366,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           ],
           Text(
             'Target Patient',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           patientsAsync.when(
@@ -380,14 +383,15 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   'Age: ${p.age ?? 'N/A'} • ${p.gender ?? ''} • Brgy. ${p.barangay ?? 'N/A'}',
               itemLeading: (p) => CircleAvatar(
                 radius: 18,
-                backgroundColor:
-                    AppColors.primaryEmerald.withValues(alpha: 0.15),
+                backgroundColor: AppColors.primaryEmerald.withValues(
+                  alpha: 0.15,
+                ),
                 child: Text(
                   p.initials,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryEmerald,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
@@ -427,7 +431,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.person_pin, size: 16, color: Colors.blue),
+                  Icon(
+                    Icons.person_pin,
+                    size: 16,
+                    color: context.semanticColors.info,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -507,11 +515,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 onPressed: _isGenerating || selectedPatient == null
                     ? null
                     : () => _generate(
-                          context,
-                          settings,
-                          selectedPatient,
-                          exportPdf: false,
-                        ),
+                        context,
+                        settings,
+                        selectedPatient,
+                        exportPdf: false,
+                      ),
                 icon: _isGenerating
                     ? const SizedBox(
                         width: 18,
@@ -527,11 +535,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 onPressed: _isGenerating || selectedPatient == null
                     ? null
                     : () => _generate(
-                          context,
-                          settings,
-                          selectedPatient,
-                          exportPdf: true,
-                        ),
+                        context,
+                        settings,
+                        selectedPatient,
+                        exportPdf: true,
+                      ),
                 icon: const Icon(Icons.picture_as_pdf_outlined),
                 label: const Text('Export Official PDF'),
               ),
@@ -567,13 +575,13 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
     final clinicName = matchedClinic?.name.isNotEmpty == true
         ? matchedClinic!.name
         : (settings?.clinicName.isNotEmpty == true
-            ? settings!.clinicName
-            : 'Rural Health Unit');
+              ? settings!.clinicName
+              : 'Rural Health Unit');
     final clinicAddress = matchedClinic?.address?.isNotEmpty == true
         ? matchedClinic!.address!
         : (settings?.clinicAddress.isNotEmpty == true
-            ? settings!.clinicAddress
-            : 'Surigao del Sur');
+              ? settings!.clinicAddress
+              : 'Surigao del Sur');
     final municipalityLabel = matchedClinic?.municipality?.isNotEmpty == true
         ? matchedClinic!.municipality!.toUpperCase()
         : clinicAddress.toUpperCase();
@@ -590,19 +598,19 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.preview_outlined,
                 size: 18,
-                color: AppColors.primaryEmerald,
+                color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'LIVE DOCUMENT PREVIEW',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                   letterSpacing: 1.1,
-                  color: AppColors.primaryEmerald,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const Spacer(),
@@ -852,10 +860,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.verified_user_outlined,
                           size: 14,
-                          color: AppColors.primaryEmerald,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -893,10 +901,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           ),
         ),
         Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 11, height: 1.4),
-          ),
+          child: Text(value, style: const TextStyle(fontSize: 11, height: 1.4)),
         ),
       ],
     );
@@ -987,8 +992,12 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final item = filtered[index];
-                    final isSummary = item.certificateType.toLowerCase().contains('summary');
-                    final badgeColor = isSummary ? Colors.blue : AppColors.primaryEmerald;
+                    final isSummary = item.certificateType
+                        .toLowerCase()
+                        .contains('summary');
+                    final badgeColor = isSummary
+                        ? Colors.blue
+                        : AppColors.primaryEmerald;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -997,12 +1006,16 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         color: isDark ? AppColors.inputSurface : Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
+                          color: isDark
+                              ? AppColors.borderSubtle
+                              : AppColors.lightBorder,
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.2 : 0.04,
+                            ),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -1016,17 +1029,24 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: badgeColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: badgeColor.withValues(alpha: 0.28)),
+                                  border: Border.all(
+                                    color: badgeColor.withValues(alpha: 0.28),
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      isSummary ? Icons.summarize_outlined : Icons.verified_outlined,
+                                      isSummary
+                                          ? Icons.summarize_outlined
+                                          : Icons.verified_outlined,
                                       size: 14,
                                       color: badgeColor,
                                     ),
@@ -1044,12 +1064,19 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isDark ? AppColors.elevatedSurface : Colors.grey.shade100,
+                                  color: isDark
+                                      ? AppColors.elevatedSurface
+                                      : Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                    color: isDark ? AppColors.border : Colors.grey.shade300,
+                                    color: isDark
+                                        ? AppColors.border
+                                        : Colors.grey.shade300,
                                   ),
                                 ),
                                 child: Text(
@@ -1058,7 +1085,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                     fontSize: 11,
                                     fontFamily: 'monospace',
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                    color: isDark
+                                        ? AppColors.textSecondary
+                                        : AppColors.lightTextSecondary,
                                   ),
                                 ),
                               ),
@@ -1070,12 +1099,22 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   item,
                                   exportPdf: false,
                                 ),
-                                icon: const Icon(Icons.print_outlined, size: 16),
-                                label: const Text('Print', style: TextStyle(fontSize: 12)),
+                                icon: const Icon(
+                                  Icons.print_outlined,
+                                  size: 16,
+                                ),
+                                label: const Text(
+                                  'Print',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                                 style: FilledButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1085,12 +1124,22 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   item,
                                   exportPdf: true,
                                 ),
-                                icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
-                                label: const Text('Export PDF', style: TextStyle(fontSize: 12)),
+                                icon: const Icon(
+                                  Icons.picture_as_pdf_outlined,
+                                  size: 16,
+                                ),
+                                label: const Text(
+                                  'Export PDF',
+                                  style: TextStyle(fontSize: 12),
+                                ),
                                 style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                               ),
                               if (canDelete) ...[
@@ -1106,15 +1155,20 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                     await ref
                                         .read(databaseProvider)
                                         .deleteIssuedCertificate(item.id);
-                                    await ref.read(auditServiceProvider).logAction(
+                                    await ref
+                                        .read(auditServiceProvider)
+                                        .logAction(
                                           action: AuditAction.delete,
-                                          entityType: AuditEntityTypes.certificate,
+                                          entityType:
+                                              AuditEntityTypes.certificate,
                                           entityId: item.id,
                                           details:
                                               'Deleted issued certificate record ${item.id} for ${item.patientName}',
                                         );
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         SnackBar(
                                           content: Text(
                                             'Deleted certificate ${item.id}.',
@@ -1136,14 +1190,18 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 radius: 16,
                                 backgroundColor: isDark
                                     ? AppColors.elevatedSurface
-                                    : AppColors.primaryEmerald.withValues(alpha: 0.1),
+                                    : AppColors.primaryEmerald.withValues(
+                                        alpha: 0.1,
+                                      ),
                                 child: Text(
                                   item.patientName.isNotEmpty
                                       ? item.patientName[0].toUpperCase()
                                       : 'P',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    color: isDark ? AppColors.textPrimary : AppColors.primaryEmerald,
+                                    color: isDark
+                                        ? AppColors.textPrimary
+                                        : AppColors.primaryEmerald,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -1181,7 +1239,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                           if (item.purpose != null && item.purpose!.isNotEmpty)
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               margin: const EdgeInsets.only(bottom: 8),
                               decoration: BoxDecoration(
                                 color: isDark
@@ -1200,7 +1261,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   Icon(
                                     Icons.flag_outlined,
                                     size: 14,
-                                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                    color: isDark
+                                        ? AppColors.textSecondary
+                                        : AppColors.lightTextSecondary,
                                   ),
                                   const SizedBox(width: 6),
                                   Expanded(
@@ -1209,7 +1272,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
-                                        color: isDark ? AppColors.textPrimary : Colors.grey.shade800,
+                                        color: isDark
+                                            ? AppColors.textPrimary
+                                            : Colors.grey.shade800,
                                       ),
                                     ),
                                   ),
@@ -1224,23 +1289,32 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                               Icon(
                                 Icons.person_outline,
                                 size: 14,
-                                color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                                color: isDark
+                                    ? AppColors.textMuted
+                                    : AppColors.lightTextMuted,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                item.issuedBy.isNotEmpty ? item.issuedBy : 'Attending Officer',
+                                item.issuedBy.isNotEmpty
+                                    ? item.issuedBy
+                                    : 'Attending Officer',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                  color: isDark
+                                      ? AppColors.textSecondary
+                                      : AppColors.lightTextSecondary,
                                 ),
                               ),
-                              if (item.licenseNumber != null && item.licenseNumber!.isNotEmpty) ...[
+                              if (item.licenseNumber != null &&
+                                  item.licenseNumber!.isNotEmpty) ...[
                                 Text(
                                   ' (PRC #${item.licenseNumber})',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                                    color: isDark
+                                        ? AppColors.textMuted
+                                        : AppColors.lightTextMuted,
                                   ),
                                 ),
                               ],
@@ -1248,15 +1322,21 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                               Icon(
                                 Icons.access_time,
                                 size: 13,
-                                color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                                color: isDark
+                                    ? AppColors.textMuted
+                                    : AppColors.lightTextMuted,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                DateFormat('MMM d, yyyy · h:mm a').format(item.issuedAt),
+                                DateFormat(
+                                  'MMM d, yyyy · h:mm a',
+                                ).format(item.issuedAt),
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
-                                  color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                                  color: isDark
+                                      ? AppColors.textMuted
+                                      : AppColors.lightTextMuted,
                                 ),
                               ),
                             ],
@@ -1314,8 +1394,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
         licenseNumber: item.licenseNumber,
       );
 
-      final filename = '${item.id}_${item.patientName}'
-          .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+      final filename = '${item.id}_${item.patientName}'.replaceAll(
+        RegExp(r'[^A-Za-z0-9_-]'),
+        '_',
+      );
 
       if (exportPdf) {
         final path = await createFileExporter().saveBinaryFile(
@@ -1328,7 +1410,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
         await service.printCertificate(pdfBytes, filename);
       }
 
-      await ref.read(auditServiceProvider).logAction(
+      await ref
+          .read(auditServiceProvider)
+          .logAction(
             action: exportPdf ? AuditAction.export : AuditAction.print,
             entityType: AuditEntityTypes.certificate,
             entityId: item.id,
@@ -1380,10 +1464,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
       final findingsText = _findingsController.text.trim().isEmpty
           ? null
           : _findingsController.text.trim();
-      final recommendationsText =
-          _recommendationsController.text.trim().isEmpty
-              ? null
-              : _recommendationsController.text.trim();
+      final recommendationsText = _recommendationsController.text.trim().isEmpty
+          ? null
+          : _recommendationsController.text.trim();
       final issuerName = user?.fullName.isNotEmpty == true
           ? user!.fullName
           : 'Attending Health Officer';
@@ -1432,7 +1515,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
       );
 
       await ref.read(databaseProvider).insertIssuedCertificate(newRecord);
-      await ref.read(auditServiceProvider).logAction(
+      await ref
+          .read(auditServiceProvider)
+          .logAction(
             action: exportPdf ? AuditAction.export : AuditAction.print,
             entityType: AuditEntityTypes.certificate,
             entityId: certId,

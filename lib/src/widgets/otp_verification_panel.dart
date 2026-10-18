@@ -216,7 +216,7 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
               ? _StatusLine(
                   key: ValueKey(_error),
                   icon: Icons.error_outline,
-                  color: AppColors.critical,
+                  color: Theme.of(context).colorScheme.error,
                   text: _error!,
                 )
               : _info != null
@@ -229,7 +229,7 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
               : _StatusLine(
                   key: ValueKey(expired),
                   icon: Icons.schedule,
-                  color: expired ? AppColors.critical : _muted,
+                  color: expired ? Theme.of(context).colorScheme.error : _muted,
                   text: expired
                       ? 'This code has expired. Request a new one.'
                       : 'Code expires in ${_formatRemaining(remaining)}',

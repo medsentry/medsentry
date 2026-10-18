@@ -13,7 +13,6 @@ import '../utils/biometric_auth/biometric_auth.dart';
 import '../utils/rate_limiter.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/otp_verification_panel.dart';
-import '../widgets/system_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final bool locked;
@@ -387,7 +386,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   : AppColors.lightBackground,
             ),
           ),
-          const ColoredBox(color: Color(0x66001410)),
+          const ColoredBox(color: Color(0x66000000)),
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -399,10 +398,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 final verticalPadding = isMobile ? 8.0 : 12.0;
                 final isTall = !isMobile && constraints.maxHeight >= 820;
                 final cardPadding = isVeryNarrow
-                    ? const EdgeInsets.symmetric(horizontal: 14, vertical: 16)
+                    ? const EdgeInsets.symmetric(horizontal: 16, vertical: 18)
                     : isMobile
                     ? const EdgeInsets.symmetric(horizontal: 20, vertical: 22)
-                    : EdgeInsets.all(isTall ? 32 : 24);
+                    : EdgeInsets.all(isTall ? 32 : 28);
                 final minContentHeight =
                     (constraints.maxHeight - (verticalPadding * 2)).clamp(
                       0.0,
@@ -411,24 +410,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 final card = Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
+                    constraints: BoxConstraints(
+                      maxWidth: isMobile ? double.infinity : 440,
+                    ),
                     child: ClipRRect(
-                      borderRadius: AppRadius.roundedLg,
+                      borderRadius: BorderRadius.circular(22),
                       child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                         child: Container(
                           width: double.infinity,
                           padding: cardPadding,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.98),
-                            borderRadius: AppRadius.roundedLg,
+                            color: Colors.white.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(22),
                             border: Border.all(
-                              color: Colors.white,
-                              width: 1.2,
+                              color: Colors.white.withValues(alpha: 0.75),
+                              width: 1.5,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.24),
+                                color: Colors.black.withValues(alpha: 0.28),
                                 blurRadius: 36,
                                 offset: const Offset(0, 14),
                               ),
@@ -460,34 +461,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 return SingleChildScrollView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: horizontalPadding,
-                    vertical: verticalPadding,
-                  ),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(minHeight: minContentHeight),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _buildTopBar(
-                          context,
-                          compact: true,
-                          isTall: isTall,
-                          isMobile: isMobile,
-                          onBackground: true,
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: horizontalPadding,
+                            vertical: verticalPadding,
+                          ),
+                          child: Align(
+                            alignment: Alignment.topRight,
+                            child: _buildPwaInstallButton(
+                              context,
+                              isMobile: isMobile,
+                            ),
+                          ),
                         ),
                         Padding(
                           padding: EdgeInsets.symmetric(
-                            vertical: isMobile ? 12 : 16,
+                            horizontal: horizontalPadding,
+                            vertical: isMobile ? 10 : 20,
                           ),
                           child: card,
                         ),
-                        _buildBottomBar(
-                          context,
-                          compact: true,
-                          isTall: isTall,
-                          isMobile: isMobile,
-                          onBackground: true,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.only(
+                                left: horizontalPadding,
+                                right: horizontalPadding,
+                                bottom: isMobile ? 12 : 16,
+                              ),
+                              child: _buildRhuBrandSeal(
+                                context,
+                                isMobile: isMobile,
+                              ),
+                            ),
+                            _buildBottomBar(
+                              context,
+                              isMobile: isMobile,
+                              horizontalPadding: horizontalPadding,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -501,66 +521,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildTopBar(
-    BuildContext context, {
-    bool compact = false,
-    double horizontalPadding = 48,
-    bool isTall = false,
-    bool isMobile = false,
-    bool onBackground = false,
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = onBackground
-        ? Colors.white
-        : isDark
-        ? AppColors.primaryEmerald
-        : theme.colorScheme.primary;
-    final settings =
-        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
-
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 0 : horizontalPadding,
-        vertical: isMobile ? 6 : (compact ? 10 : (isTall ? 20 : 12)),
-      ),
-      child: Row(
-        children: [
-          SystemLogo(
-            dataUri: settings.logoDataUri,
-            size: isMobile ? 28 : (isTall ? 36 : 30),
-            backgroundColor: onBackground
-                ? AppColors.primaryEmerald
-                : isDark
-                ? AppColors.primaryEmeraldSubtle
-                : primary,
-            iconColor: isDark && !onBackground
-                ? AppColors.primaryEmerald
-                : Colors.white,
-            iconSize: isMobile ? 16 : (isTall ? 22 : 18),
+  Widget _buildRhuBrandSeal(BuildContext context, {bool isMobile = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: isMobile ? 40 : 48,
+          height: isMobile ? 40 : 48,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+            border: Border.all(
+              color: const Color(0xFF10B981),
+              width: 2.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              settings.appName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: isMobile ? 16 : (isTall ? 20 : 17),
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-                color: onBackground
-                    ? Colors.white
-                    : isDark
-                    ? AppColors.textPrimary
-                    : primary,
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/madrid_seal.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.health_and_safety_rounded,
+                color: Color(0xFF059669),
+                size: 26,
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          _buildPwaInstallButton(context, isMobile: isMobile),
-        ],
-      ),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'MADRID RURAL HEALTH UNIT',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: isMobile ? 13 : 15,
+                  letterSpacing: 0.6,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.85),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                '& FAMILY PLANNING CENTER',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.95),
+                  fontWeight: FontWeight.w800,
+                  fontSize: isMobile ? 11.5 : 13,
+                  letterSpacing: 0.6,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.85),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -629,11 +670,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     final theme = Theme.of(context);
+    final settings =
+        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
     final primary = AppColors.primaryEmeraldDark;
     const fieldBg = Color(0xFFF8FAFC);
     const borderColor = Color(0xFFCBD5E1);
     const cardTextColor = Color(0xFF0F172A);
-    const cardSecondaryTextColor = Color(0xFF475569);
+    const cardSecondaryTextColor = Color(0xFF64748B);
     final fieldPadding = EdgeInsets.symmetric(
       horizontal: isMobile ? 14 : 16,
       vertical: isMobile ? 12 : 14,
@@ -660,48 +703,90 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Container(
             padding: EdgeInsets.symmetric(
               horizontal: isMobile ? 9 : 11,
-              vertical: isMobile ? 4 : 7,
+              vertical: isMobile ? 4 : 5.5,
             ),
             decoration: BoxDecoration(
-              color: primary.withValues(alpha: 0.09),
+              color: const Color(0xFFD1FAE5).withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: primary.withValues(alpha: 0.16)),
+              border: Border.all(
+                color: const Color(0xFF10B981).withValues(alpha: 0.35),
+              ),
             ),
-            child: Row(
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.verified_user_outlined, size: 14, color: primary),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'SECURE CLINIC ACCESS',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 10,
-                      letterSpacing: 0.6,
-                    ),
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 13,
+                  color: Color(0xFF047857),
+                ),
+                SizedBox(width: 5),
+                Text(
+                  'SECURE CLINIC ACCESS',
+                  style: TextStyle(
+                    color: Color(0xFF047857),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10.5,
+                    letterSpacing: 0.6,
                   ),
                 ),
               ],
             ),
           ),
         ),
-        SizedBox(height: isMobile ? 12 : (isTall ? 22 : 16)),
+        SizedBox(height: isMobile ? 12 : 16),
+
+        Row(
+          children: [
+            Container(
+              width: isMobile ? 26 : 28,
+              height: isMobile ? 26 : 28,
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981),
+                borderRadius: BorderRadius.circular(7),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.health_and_safety_rounded,
+                color: Colors.white,
+                size: isMobile ? 17 : 19,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                settings.appName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: isMobile ? 19 : 21,
+                  fontWeight: FontWeight.w800,
+                  color: cardTextColor,
+                  letterSpacing: -0.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: isMobile ? 12 : 14),
 
         Text(
           _sessionLocked ? 'Screen Locked' : 'Welcome back',
           textAlign: TextAlign.left,
           style: theme.textTheme.headlineSmall?.copyWith(
-            fontSize: isMobile ? 22 : (isTall ? 30 : 26),
+            fontSize: isMobile ? 22 : 25,
             fontWeight: FontWeight.w800,
             color: cardTextColor,
-            letterSpacing: -0.7,
+            letterSpacing: -0.6,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 3),
         Text(
           _sessionLocked
               ? (_isPinLogin
@@ -711,11 +796,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           textAlign: TextAlign.left,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: cardSecondaryTextColor,
-            fontSize: isMobile ? 13 : 14,
-            height: 1.45,
+            fontSize: isMobile ? 12.5 : 13.5,
+            height: 1.4,
           ),
         ),
-        SizedBox(height: isMobile ? 16 : (isTall ? 24 : 20)),
+        SizedBox(height: isMobile ? 16 : 20),
 
         // Session locked banner if returning user
         if ((_isPinLogin || _sessionLocked) && _lastUserEmail != null) ...[
@@ -776,43 +861,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
-              cursorColor: primary,
+              cursorColor: const Color(0xFF10B981),
               decoration: InputDecoration(
                 labelText: 'Email Address',
                 labelStyle: const TextStyle(color: cardSecondaryTextColor),
-                floatingLabelStyle: TextStyle(
-                  color: primary,
+                floatingLabelStyle: const TextStyle(
+                  color: Color(0xFF059669),
                   fontWeight: FontWeight.w600,
                 ),
                 hintText: 'name@rhu.gov.ph',
                 hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 errorText: _emailError,
                 prefixIcon: const Icon(
-                  Icons.medical_services_outlined,
+                  Icons.mail_outline_rounded,
                   size: 20,
                   color: cardSecondaryTextColor,
                 ),
                 filled: true,
                 fillColor: fieldBg,
                 border: OutlineInputBorder(
-                  borderRadius: AppRadius.roundedSm,
+                  borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(
                     color: borderColor,
-                    width: AppColors.borderWidth,
+                    width: 1.2,
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: AppRadius.roundedSm,
+                  borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(
                     color: borderColor,
-                    width: AppColors.borderWidth,
+                    width: 1.2,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: AppRadius.roundedSm,
-                  borderSide: BorderSide(
-                    color: primary,
-                    width: AppColors.borderWidthActive,
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF10B981),
+                    width: 1.6,
+                  ),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFEF4444),
+                    width: 1.2,
+                  ),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFEF4444),
+                    width: 1.6,
                   ),
                 ),
                 contentPadding: fieldPadding,
@@ -846,17 +945,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
-            cursorColor: primary,
+            cursorColor: const Color(0xFF10B981),
             decoration: InputDecoration(
               labelText: 'Password',
               labelStyle: const TextStyle(color: cardSecondaryTextColor),
-              floatingLabelStyle: TextStyle(
-                color: primary,
+              floatingLabelStyle: const TextStyle(
+                color: Color(0xFF059669),
                 fontWeight: FontWeight.w600,
               ),
               errorText: _passwordFieldError,
               prefixIcon: const Icon(
-                Icons.vpn_key_outlined,
+                Icons.lock_outline_rounded,
                 size: 20,
                 color: cardSecondaryTextColor,
               ),
@@ -878,24 +977,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               filled: true,
               fillColor: fieldBg,
               border: OutlineInputBorder(
-                borderRadius: AppRadius.roundedSm,
+                borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(
                   color: borderColor,
-                  width: AppColors.borderWidth,
+                  width: 1.2,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: AppRadius.roundedSm,
+                borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(
                   color: borderColor,
-                  width: AppColors.borderWidth,
+                  width: 1.2,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(
-                  color: primary,
-                  width: AppColors.borderWidthActive,
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: Color(0xFF10B981),
+                  width: 1.6,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: Color(0xFFEF4444),
+                  width: 1.2,
+                ),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: Color(0xFFEF4444),
+                  width: 1.6,
                 ),
               ),
               contentPadding: fieldPadding,
@@ -968,10 +1081,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fontWeight: FontWeight.w600,
               letterSpacing: 8,
             ),
-            cursorColor: primary,
+            cursorColor: const Color(0xFF10B981),
             decoration: InputDecoration(
               labelText: '4-digit PIN',
               labelStyle: const TextStyle(color: cardSecondaryTextColor),
+              floatingLabelStyle: const TextStyle(
+                color: Color(0xFF059669),
+                fontWeight: FontWeight.w600,
+              ),
               hintText: '••••',
               hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
               errorText: _pinFieldError,
@@ -998,24 +1115,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               filled: true,
               fillColor: fieldBg,
               border: OutlineInputBorder(
-                borderRadius: AppRadius.roundedSm,
+                borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(
                   color: borderColor,
-                  width: AppColors.borderWidth,
+                  width: 1.2,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: AppRadius.roundedSm,
+                borderRadius: BorderRadius.circular(10),
                 borderSide: const BorderSide(
                   color: borderColor,
-                  width: AppColors.borderWidth,
+                  width: 1.2,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: AppRadius.roundedSm,
-                borderSide: BorderSide(
-                  color: primary,
-                  width: AppColors.borderWidthActive,
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: Color(0xFF10B981),
+                  width: 1.6,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: Color(0xFFEF4444),
+                  width: 1.2,
+                ),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(
+                  color: Color(0xFFEF4444),
+                  width: 1.6,
                 ),
               ),
               contentPadding: fieldPadding,
@@ -1055,13 +1186,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 24,
-                      height: 24,
+                      width: 22,
+                      height: 22,
                       child: Checkbox(
                         value: _rememberMe,
-                        activeColor: primary,
+                        activeColor: const Color(0xFF059669),
                         checkColor: Colors.white,
-                        side: const BorderSide(color: borderColor, width: 1.5),
+                        side: const BorderSide(color: Color(0xFF94A3B8), width: 1.3),
                         onChanged: toggleRememberMe,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(4),
@@ -1081,54 +1212,79 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
             ),
-            if (_pinLoginAvailable)
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _isPinLogin = !_isPinLogin;
-                    _error = null;
-                    _emailError = null;
-                    _passwordFieldError = null;
-                    _pinFieldError = null;
-                  });
-                },
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 4,
+            Wrap(
+              spacing: 6,
+              runSpacing: 2,
+              children: [
+                if (_pinLoginAvailable) ...[
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _isPinLogin = !_isPinLogin;
+                        _error = null;
+                        _emailError = null;
+                        _passwordFieldError = null;
+                        _pinFieldError = null;
+                      });
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      _isPinLogin ? 'Use Password' : 'Use PIN',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF0D9488),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  _isPinLogin ? 'Use Password' : 'Use PIN',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: primary,
-                    fontWeight: FontWeight.w600,
+                ],
+                TextButton(
+                  onPressed: () => _showNeedHelpDialog(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 4,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Need Help?',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF0D9488),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              )
-            else
-              TextButton(
-                onPressed: () => _showNeedHelpDialog(context),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 4,
+                TextButton(
+                  onPressed: () => _showForgotPasswordDialog(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 4,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  'Need Help?',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: primary,
-                    fontWeight: FontWeight.w600,
+                  child: const Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF0D9488),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
+              ],
+            ),
           ],
         ),
 
@@ -1169,46 +1325,70 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         SizedBox(height: isMobile ? 14 : 16),
 
         // Primary Login / Sign In Button
-        ElevatedButton.icon(
-          onPressed: _isLoading ? null : _login,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: primary,
-            foregroundColor: Colors.white,
-            disabledBackgroundColor: primary.withValues(alpha: 0.6),
-            disabledForegroundColor: Colors.white70,
-            minimumSize: Size.fromHeight(isMobile ? 48 : (isTall ? 54 : 50)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        SizedBox(
+          width: double.infinity,
+          height: isMobile ? 46 : 48,
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _login,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF059669),
+              foregroundColor: Colors.white,
+              disabledBackgroundColor:
+                  const Color(0xFF059669).withValues(alpha: 0.6),
+              disabledForegroundColor: Colors.white70,
+              elevation: 1,
+              shadowColor: const Color(0xFF059669).withValues(alpha: 0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            elevation: 2,
-            shadowColor: primary.withValues(alpha: 0.25),
-          ),
-          icon: _isLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            child: _isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 15,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          _isLoading
+                              ? 'Signing in...'
+                              : _sessionLocked
+                              ? (_isPinLogin
+                                  ? 'Unlock with PIN'
+                                  : 'Unlock session')
+                              : (_isPinLogin
+                                  ? 'Continue with PIN'
+                                  : 'Sign in securely'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: isMobile ? 13.5 : 14.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 15,
+                        color: Colors.white,
+                      ),
+                    ],
                   ),
-                )
-              : Icon(
-                  _sessionLocked
-                      ? Icons.lock_open_rounded
-                      : Icons.arrow_forward,
-                  size: 18,
-                ),
-          label: Text(
-            _isLoading
-                ? 'Signing in...'
-                : _sessionLocked
-                ? (_isPinLogin ? 'Unlock with PIN' : 'Unlock session')
-                : (_isPinLogin ? 'Continue with PIN' : 'Sign in securely'),
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: Colors.white,
-            ),
           ),
         ),
 
@@ -1276,45 +1456,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               icon: Icon(
                 Icons.switch_account_outlined,
                 size: 18,
-                color: primary,
+                color: const Color(0xFF059669),
               ),
-              label: Text(
+              label: const Text(
                 'Sign in as a different user',
-                style: TextStyle(color: primary, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Color(0xFF059669),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
         ],
 
         SizedBox(height: isMobile ? 12 : 16),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
+            color: Colors.white.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: const Color(0xFFE2E8F0),
             ),
           ),
-          child: Row(
+          child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.shield_outlined,
-                size: 13,
+              Icon(
+                Icons.favorite_border_rounded,
+                size: 12.5,
                 color: Color(0xFF64748B),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Flexible(
                 child: Text(
                   'DOH Healthcare Standards • RA 10173 • AES-256 Offline',
                   textAlign: TextAlign.center,
-                  maxLines: isMobile ? 2 : 1,
-                  style: const TextStyle(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF475569),
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -1326,104 +1510,96 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildBottomBar(
     BuildContext context, {
-    bool compact = false,
-    double horizontalPadding = 48,
-    bool isTall = false,
     bool isMobile = false,
-    bool onBackground = false,
+    double horizontalPadding = 48,
   }) {
-    final theme = Theme.of(context);
-    final mutedColor = onBackground
-        ? Colors.white.withValues(alpha: 0.85)
-        : theme.colorScheme.onSurface.withValues(alpha: 0.6);
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
-    final textStyle = theme.textTheme.bodySmall?.copyWith(
-      color: mutedColor,
-      fontSize: isMobile ? 10.5 : (isTall ? 12 : 11),
-    );
+    final orgName = settings.organizationName.isNotEmpty
+        ? settings.organizationName
+        : 'Madrid Rural Health Unit';
 
-    if (isMobile) {
-      return Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 0 : horizontalPadding,
-          vertical: 6,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.shield_outlined,
-                  size: 12,
-                  color: mutedColor,
-                ),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: Text(
-                    'Protected access • Activity is audited • ${settings.appName} v1.0.0',
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textStyle,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '(C) 2026 ${settings.organizationName}. All Rights Reserved',
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textStyle,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Padding(
+    return Container(
+      width: double.infinity,
+      color: Colors.black.withValues(alpha: 0.45),
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 0 : horizontalPadding,
-        vertical: compact ? 10 : (isTall ? 18 : 10),
+        horizontal: isMobile ? 14 : horizontalPadding,
+        vertical: isMobile ? 8 : 10,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Flexible(
-            child: Text(
-              '(C) 2026 ${settings.organizationName}. All Rights are Reserved',
-              overflow: TextOverflow.ellipsis,
-              style: textStyle,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Flexible(
-            child: Row(
+      child: isMobile
+          ? Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.shield_outlined,
-                  size: isTall ? 14 : 13,
-                  color: mutedColor,
+                Text(
+                  '(C) 2026 $orgName. All Rights Reserved • ${settings.appName} v1.0.0',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10.5,
+                  ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(height: 3),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 11.5,
+                      color: Colors.white70,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Protected access • Activity is audited',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Flexible(
                   child: Text(
-                    'Protected access • Activity is audited • ${settings.appName} v1.0.0',
+                    '(C) 2026 $orgName. All Rights Reserved • ${settings.appName} v1.0.0',
                     overflow: TextOverflow.ellipsis,
-                    style: textStyle,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11.5,
+                    ),
                   ),
+                ),
+                const SizedBox(width: 16),
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 13,
+                      color: Colors.white70,
+                    ),
+                    SizedBox(width: 5),
+                    Text(
+                      'Protected access • Activity is audited',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1438,6 +1614,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         content: const Text(
           'Contact your Rural Health Unit administrator to create, unlock, or reset an account. '
           'For security, MedSentry does not display account credentials in the application.',
+          style: TextStyle(height: 1.5),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Understood'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showForgotPasswordDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AppFormDialog(
+        title: 'Password Assistance',
+        subtitle: 'Account Recovery',
+        icon: Icons.lock_reset_rounded,
+        maxWidth: 460,
+        content: const Text(
+          'To ensure patient data privacy under RA 10173 and DOH guidelines, '
+          'password resets must be processed through your clinic administrator. '
+          'Please contact your Rural Health Unit administrator to reset your credentials.',
           style: TextStyle(height: 1.5),
         ),
         actions: [

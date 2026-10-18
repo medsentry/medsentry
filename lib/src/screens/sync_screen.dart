@@ -22,7 +22,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
   String? _lastMessage;
 
   Future<void> _startSync() async {
-    if (_isSyncing || ref.read(syncStatusProvider) == SyncStatus.syncing) return;
+    if (_isSyncing || ref.read(syncStatusProvider) == SyncStatus.syncing) {
+      return;
+    }
     final currentUser = ref.read(currentUserProvider);
     final syncKey = currentUser?.id ?? 'sync_user';
     if (!manualSyncRateLimiter.canAttempt(syncKey)) {
@@ -44,7 +46,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     try {
       final result = await ref.read(syncServiceProvider).startSync();
       final currentUser = ref.read(currentUserProvider);
-      await ref.read(auditServiceProvider).log(
+      await ref
+          .read(auditServiceProvider)
+          .log(
             userId: currentUser?.id ?? 'system',
             clinicId: currentUser?.clinicId,
             action: AuditAction.sync,
@@ -157,9 +161,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(
+                      leading: Icon(
                         Icons.people_outlined,
-                        color: AppColors.primaryEmerald,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       title: const Text('Patients'),
                       trailing: Text(
@@ -169,9 +173,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
                     ),
                     const Divider(height: 1),
                     ListTile(
-                      leading: const Icon(
+                      leading: Icon(
                         Icons.folder_outlined,
-                        color: AppColors.info,
+                        color: Theme.of(context).colorScheme.secondary,
                       ),
                       title: const Text('Documents'),
                       trailing: Text(

@@ -176,8 +176,9 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 }
 
-final themeModeProvider =
-    StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>((
+  ref,
+) {
   return ThemeModeNotifier();
 });
 
@@ -210,8 +211,8 @@ class AccentThemeNotifier extends StateNotifier<AppAccentTheme> {
 
 final accentThemeProvider =
     StateNotifierProvider<AccentThemeNotifier, AppAccentTheme>((ref) {
-  return AccentThemeNotifier();
-});
+      return AccentThemeNotifier();
+    });
 
 /// Builds consistent MedSentry ThemeData with semantic clinical design tokens.
 ThemeData buildMedSentryTheme(
@@ -219,23 +220,30 @@ ThemeData buildMedSentryTheme(
   AppAccentTheme accentTheme = AppAccentTheme.emerald,
 }) {
   final isDark = brightness == Brightness.dark;
-  final primary =
-      isDark ? accentTheme.darkPrimaryColor : accentTheme.primaryColor;
+  final primary = isDark
+      ? accentTheme.darkPrimaryColor
+      : accentTheme.primaryColor;
   final secondary = accentTheme.secondaryColor;
 
-  final scaffoldColor =
-      isDark ? AppColors.appBackground : AppColors.lightAppBackground;
-  final surfaceColor =
-      isDark ? AppColors.cardSurface : AppColors.lightCardSurface;
-  final elevatedSurfaceColor =
-      isDark ? AppColors.elevatedSurface : AppColors.lightElevatedSurface;
+  final scaffoldColor = isDark
+      ? AppColors.appBackground
+      : AppColors.lightAppBackground;
+  final surfaceColor = isDark
+      ? AppColors.cardSurface
+      : AppColors.lightCardSurface;
+  final elevatedSurfaceColor = isDark
+      ? AppColors.elevatedSurface
+      : AppColors.lightElevatedSurface;
   final borderColor = isDark ? AppColors.border : AppColors.lightBorder;
-  final borderSubtleColor =
-      isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle;
-  final textPrimaryColor =
-      isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
-  final textSecondaryColor =
-      isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
+  final borderSubtleColor = isDark
+      ? AppColors.borderSubtle
+      : AppColors.lightBorderSubtle;
+  final textPrimaryColor = isDark
+      ? AppColors.textPrimary
+      : AppColors.lightTextPrimary;
+  final textSecondaryColor = isDark
+      ? AppColors.textSecondary
+      : AppColors.lightTextSecondary;
 
   final colorScheme = ColorScheme(
     brightness: brightness,
@@ -280,6 +288,10 @@ ThemeData buildMedSentryTheme(
     colorScheme: colorScheme,
     scaffoldBackgroundColor: scaffoldColor,
     primaryColor: colorScheme.primary,
+    iconTheme: IconThemeData(color: textSecondaryColor),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(foregroundColor: textSecondaryColor),
+    ),
     extensions: [semanticColors],
     appBarTheme: AppBarTheme(
       elevation: 0,
@@ -300,10 +312,7 @@ ThemeData buildMedSentryTheme(
       shadowColor: Colors.black.withValues(alpha: 0.2),
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.roundedCard,
-        side: BorderSide(
-          color: borderColor,
-          width: AppColors.borderWidth,
-        ),
+        side: BorderSide(color: borderColor, width: AppColors.borderWidth),
       ),
       margin: EdgeInsets.zero,
     ),
@@ -432,8 +441,9 @@ ThemeData buildMedSentryTheme(
       ),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor:
-          isDark ? AppColors.modalSurface : AppColors.lightModalSurface,
+      backgroundColor: isDark
+          ? AppColors.modalSurface
+          : AppColors.lightModalSurface,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.roundedLg,
         side: BorderSide(color: borderColor, width: AppColors.borderWidth),
@@ -451,15 +461,11 @@ ThemeData buildMedSentryTheme(
       ),
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor:
-          isDark ? AppColors.sidebarBackground : Colors.white,
+      backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
       elevation: 0,
       minExtendedWidth: AppDimensions.sidebarExpanded,
       selectedIconTheme: IconThemeData(color: colorScheme.primary, size: 20),
-      unselectedIconTheme: IconThemeData(
-        color: textSecondaryColor,
-        size: 20,
-      ),
+      unselectedIconTheme: IconThemeData(color: textSecondaryColor, size: 20),
       selectedLabelTextStyle: TextStyle(
         color: colorScheme.primary,
         fontWeight: FontWeight.w600,
@@ -470,9 +476,7 @@ ThemeData buildMedSentryTheme(
         fontSize: 13,
       ),
       indicatorColor: colorScheme.primary.withValues(alpha: 0.12),
-      indicatorShape: RoundedRectangleBorder(
-        borderRadius: AppRadius.roundedSm,
-      ),
+      indicatorShape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
     ),
     dataTableTheme: DataTableThemeData(
       headingRowHeight: AppDimensions.tableHeaderHeight,
@@ -484,10 +488,7 @@ ThemeData buildMedSentryTheme(
         fontWeight: FontWeight.w600,
         letterSpacing: 0.2,
       ),
-      dataTextStyle: TextStyle(
-        color: textPrimaryColor,
-        fontSize: 13,
-      ),
+      dataTextStyle: TextStyle(color: textPrimaryColor, fontSize: 13),
       dividerThickness: 1,
     ),
     popupMenuTheme: PopupMenuThemeData(
@@ -498,10 +499,7 @@ ThemeData buildMedSentryTheme(
         borderRadius: AppRadius.roundedMd,
         side: BorderSide(color: borderColor, width: AppColors.borderWidth),
       ),
-      textStyle: TextStyle(
-        color: textPrimaryColor,
-        fontSize: 13,
-      ),
+      textStyle: TextStyle(color: textPrimaryColor, fontSize: 13),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: colorScheme.primary,

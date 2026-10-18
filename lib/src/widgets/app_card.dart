@@ -181,7 +181,7 @@ class AppCard extends StatelessWidget {
                   child: Icon(
                     icon,
                     size: AppIconSize.sm,
-                    color: AppColors.primaryEmerald,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -223,9 +223,7 @@ class AppCard extends StatelessWidget {
         ),
         Divider(
           height: 1,
-          color: isDark
-              ? AppColors.borderSubtle
-              : AppColors.lightBorderSubtle,
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderSubtle,
         ),
       ];
 
@@ -240,10 +238,7 @@ class AppCard extends StatelessWidget {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
-              children: [
-                ...headerElements,
-                paddedChild,
-              ],
+              children: [...headerElements, paddedChild],
             );
     } else {
       cardContent = expandContent

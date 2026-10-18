@@ -105,6 +105,67 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: 'Invalid request body' }, 400);
   }
 
+  if (body.action === 'delete') {
+    const targetProfileId = body.target_user_id;
+    if (typeof targetProfileId !== 'string' || !targetProfileId.trim()) {
+      return jsonResponse({ error: 'Invalid user request' }, 400);
+    }
+
+    const { data: target, error: targetError } = await adminClient
+      .from('users')
+      .select('id, auth_user_id, clinic_id, role')
+      .eq('id', targetProfileId)
+      .maybeSingle();
+    if (targetError || !target) {
+      return jsonResponse({ error: 'User not found' }, 404);
+    }
+    if (target.id === actor.id) {
+      return jsonResponse({ error: 'You cannot delete your own account' }, 403);
+    }
+    if (actorRole === 'admin') {
+      if (target.role === 'super_admin') {
+        return jsonResponse({ error: 'Administrator cannot delete super administrators' }, 403);
+      }
+      if (target.clinic_id !== actor.clinic_id) {
+        return jsonResponse({ error: 'Cannot manage users from other clinics' }, 403);
+      }
+    }
+
+    const { error: auditError } = await adminClient.from('audit_logs').insert({
+      clinic_id: target.clinic_id,
+      user_id: actor.id,
+      action: 'DELETE',
+      entity_type: 'user',
+      entity_id: target.id,
+      description: `Permanent deletion requested for user account ${target.id}`,
+    });
+    if (auditError) {
+      console.error('Account deletion audit error:', auditError);
+      return jsonResponse({ error: 'Unable to record the account deletion' }, 500);
+    }
+
+    if (target.auth_user_id) {
+      const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(
+        target.auth_user_id
+      );
+      if (authDeleteError) {
+        console.error('Auth account deletion error:', authDeleteError);
+        return jsonResponse({ error: 'Unable to delete the authentication account' }, 500);
+      }
+    }
+
+    const { error: profileDeleteError } = await adminClient
+      .from('users')
+      .delete()
+      .eq('id', target.id);
+    if (profileDeleteError) {
+      console.error('User profile deletion error:', profileDeleteError);
+      return jsonResponse({ error: 'Unable to delete the user profile' }, 500);
+    }
+
+    return jsonResponse({ deleted: true });
+  }
+
   if (body.action === 'set_password') {
     const targetProfileId = body.target_user_id;
     const password = body.password;

@@ -26,9 +26,9 @@ class StaffScreen extends ConsumerWidget {
           const SizedBox(height: 6),
           Text(
             'Manage administrators and staff accounts for this RHU.',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -42,6 +42,7 @@ class StaffScreen extends ConsumerWidget {
                     _showStaffFormDialog(context, ref, existingUser: user),
                 onDeactivateUser: (user) =>
                     _confirmDeactivateStaff(context, ref, user),
+                onDeleteUser: (user) => _confirmDeleteStaff(context, ref, user),
               ),
             ),
           ),
@@ -114,7 +115,8 @@ class StaffScreen extends ConsumerWidget {
     final confirmed = await AppConfirmDialog.show(
       context,
       title: 'Deactivate User',
-      message: 'Deactivate ${user.fullName}? They will no longer be able to sign in.',
+      message:
+          'Deactivate ${user.fullName}? They will no longer be able to sign in.',
       confirmLabel: 'Deactivate',
       cancelLabel: 'Cancel',
       type: ConfirmDialogType.warning,
@@ -133,6 +135,70 @@ class StaffScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('${user.fullName} deactivated')));
+    }
+  }
+
+  Future<void> _confirmDeleteStaff(
+    BuildContext context,
+    WidgetRef ref,
+    User user,
+  ) async {
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null || !currentUser.canManageStaffAccounts) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You are not allowed to delete accounts.'),
+        ),
+      );
+      return;
+    }
+    if (currentUser.id == user.id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You cannot delete your own account.')),
+      );
+      return;
+    }
+    if (!currentUser.isSuperAdmin &&
+        (user.role == UserRole.superAdmin ||
+            user.clinicId != currentUser.clinicId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You are not allowed to delete this account.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Delete User Permanently',
+      message:
+          'Permanently delete ${user.fullName} (${user.email})? This cannot be undone. Existing clinical records and audit history will be retained.',
+      confirmLabel: 'Delete permanently',
+      cancelLabel: 'Cancel',
+      type: ConfirmDialogType.warning,
+      isDestructive: true,
+      icon: Icons.delete_forever_outlined,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref
+          .read(authRepositoryProvider)
+          .deleteUser(user.id, currentUser.id);
+      ref.invalidate(usersProvider);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${user.fullName} permanently deleted')),
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to delete ${user.fullName}: $error')),
+        );
+      }
     }
   }
 }

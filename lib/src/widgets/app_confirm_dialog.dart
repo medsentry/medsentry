@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../config/app_design_tokens.dart';
+import '../utils/context_extensions.dart';
 
 /// Semantic alert level for [AppConfirmDialog].
-enum ConfirmDialogType {
-  info,
-  warning,
-  danger,
-}
+enum ConfirmDialogType { info, warning, danger }
 
 /// A modern, consistent confirmation dialog widget for MedSentry EMR.
 /// Replaces ad-hoc AlertDialogs for destructive or impactful user actions.
@@ -79,24 +76,26 @@ class AppConfirmDialog extends StatelessWidget {
 
     switch (effectiveType) {
       case ConfirmDialogType.danger:
-        badgeColor = AppColors.critical;
-        badgeBg = AppColors.criticalBg;
-        badgeBorder = AppColors.criticalBorder;
+        badgeColor = context.semanticColors.critical;
+        badgeBg = context.semanticColors.criticalBg;
+        badgeBorder = badgeColor.withValues(alpha: 0.35);
         defaultIcon = Icons.warning_amber_rounded;
       case ConfirmDialogType.warning:
-        badgeColor = AppColors.pending;
-        badgeBg = AppColors.pendingBg;
-        badgeBorder = AppColors.pendingBorder;
+        badgeColor = context.semanticColors.warning;
+        badgeBg = context.semanticColors.warningBg;
+        badgeBorder = badgeColor.withValues(alpha: 0.35);
         defaultIcon = Icons.help_outline_rounded;
       case ConfirmDialogType.info:
-        badgeColor = AppColors.primaryEmerald;
-        badgeBg = AppColors.primaryEmeraldSubtle;
-        badgeBorder = AppColors.primaryEmerald.withValues(alpha: 0.25);
+        badgeColor = theme.colorScheme.primary;
+        badgeBg = theme.colorScheme.primaryContainer;
+        badgeBorder = badgeColor.withValues(alpha: 0.35);
         defaultIcon = Icons.info_outline_rounded;
     }
 
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final responsiveMaxWidth = screenWidth < 520 ? screenWidth * 0.94 : maxWidth;
+    final responsiveMaxWidth = screenWidth < 520
+        ? screenWidth * 0.94
+        : maxWidth;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -105,7 +104,9 @@ class AppConfirmDialog extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: responsiveMaxWidth),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.modalSurface : AppColors.lightModalSurface,
+            color: isDark
+                ? AppColors.modalSurface
+                : AppColors.lightModalSurface,
             borderRadius: AppRadius.roundedLg,
             border: Border.all(
               color: isDark ? AppColors.border : AppColors.lightBorder,
@@ -191,7 +192,10 @@ class AppConfirmDialog extends StatelessWidget {
                     ),
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -213,11 +217,11 @@ class AppConfirmDialog extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(true),
                       style: FilledButton.styleFrom(
                         backgroundColor: isDestructive
-                            ? AppColors.critical
-                            : AppColors.primaryEmerald,
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.primary,
                         foregroundColor: isDestructive
-                            ? Colors.white
-                            : AppColors.textOnEmerald,
+                            ? theme.colorScheme.onError
+                            : theme.colorScheme.onPrimary,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 18,
                           vertical: 10,
@@ -241,4 +245,3 @@ class AppConfirmDialog extends StatelessWidget {
     );
   }
 }
-
