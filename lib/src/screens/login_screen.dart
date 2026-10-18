@@ -386,7 +386,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   : AppColors.lightBackground,
             ),
           ),
-          const ColoredBox(color: Color(0x66000000)),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x8A00120E),
+                  Color(0x6E000000),
+                  Color(0x9E000F0B),
+                ],
+                stops: [0.0, 0.45, 1.0],
+              ),
+            ),
+          ),
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -414,24 +427,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       maxWidth: isMobile ? double.infinity : 440,
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
+                      borderRadius: BorderRadius.circular(24),
                       child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
                         child: Container(
                           width: double.infinity,
                           padding: cardPadding,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            borderRadius: BorderRadius.circular(22),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withValues(alpha: 0.92),
+                                Colors.white.withValues(alpha: 0.82),
+                                Colors.white.withValues(alpha: 0.88),
+                              ],
+                              stops: const [0.0, 0.45, 1.0],
+                            ),
+                            borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.75),
+                              color: Colors.white.withValues(alpha: 0.85),
                               width: 1.5,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.28),
-                                blurRadius: 36,
-                                offset: const Offset(0, 14),
+                                color: Colors.black.withValues(alpha: 0.22),
+                                blurRadius: 40,
+                                offset: const Offset(0, 18),
+                                spreadRadius: 2,
+                              ),
+                              BoxShadow(
+                                color: const Color(0xFF059669).withValues(alpha: 0.08),
+                                blurRadius: 32,
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
@@ -682,6 +710,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       vertical: isMobile ? 12 : 14,
     );
 
+    final fieldBorderRadius = BorderRadius.circular(12);
+
     Future<void> toggleRememberMe([bool? val]) async {
       final next = val ?? !_rememberMe;
       setState(() {
@@ -880,35 +910,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 filled: true,
                 fillColor: fieldBg,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: fieldBorderRadius,
                   borderSide: const BorderSide(
                     color: borderColor,
                     width: 1.2,
                   ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: fieldBorderRadius,
                   borderSide: const BorderSide(
                     color: borderColor,
                     width: 1.2,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: fieldBorderRadius,
                   borderSide: const BorderSide(
                     color: Color(0xFF10B981),
                     width: 1.6,
                   ),
                 ),
                 errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: fieldBorderRadius,
                   borderSide: const BorderSide(
                     color: Color(0xFFEF4444),
                     width: 1.2,
                   ),
                 ),
                 focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: fieldBorderRadius,
                   borderSide: const BorderSide(
                     color: Color(0xFFEF4444),
                     width: 1.6,
@@ -977,35 +1007,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               filled: true,
               fillColor: fieldBg,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: borderColor,
                   width: 1.2,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: borderColor,
                   width: 1.2,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: Color(0xFF10B981),
                   width: 1.6,
                 ),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: Color(0xFFEF4444),
                   width: 1.2,
                 ),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: Color(0xFFEF4444),
                   width: 1.6,
@@ -1115,35 +1145,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               filled: true,
               fillColor: fieldBg,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: borderColor,
                   width: 1.2,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: borderColor,
                   width: 1.2,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: Color(0xFF10B981),
                   width: 1.6,
                 ),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: Color(0xFFEF4444),
                   width: 1.2,
                 ),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: fieldBorderRadius,
                 borderSide: const BorderSide(
                   color: Color(0xFFEF4444),
                   width: 1.6,
@@ -1336,10 +1366,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               disabledBackgroundColor:
                   const Color(0xFF059669).withValues(alpha: 0.6),
               disabledForegroundColor: Colors.white70,
-              elevation: 1,
-              shadowColor: const Color(0xFF059669).withValues(alpha: 0.3),
+              elevation: 2,
+              shadowColor: const Color(0xFF059669).withValues(alpha: 0.4),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
             child: _isLoading
@@ -1473,11 +1503,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(8),
+            color: Colors.white.withValues(alpha: 0.65),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: const Color(0xFFE2E8F0),
+              color: Colors.white.withValues(alpha: 0.9),
+              width: 1.1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1521,7 +1559,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Container(
       width: double.infinity,
-      color: Colors.black.withValues(alpha: 0.45),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        border: Border(
+          top: BorderSide(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 1.0,
+          ),
+        ),
+      ),
       padding: EdgeInsets.symmetric(
         horizontal: isMobile ? 14 : horizontalPadding,
         vertical: isMobile ? 8 : 10,
