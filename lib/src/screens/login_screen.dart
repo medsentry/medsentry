@@ -5,10 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/login_challenge.dart';
 import '../models/models.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/biometric_auth/biometric_auth.dart';
+import '../widgets/otp_verification_panel.dart';
 import '../widgets/system_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -29,6 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _pinFocusNode = FocusNode();
   bool _isPinLogin = false;
   bool _isLoading = false;
+  OtpChallenge? _otpChallenge;
   String? _error;
   String? _lastUserEmail;
   bool _pinLoginAvailable = false;
@@ -145,6 +148,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _login();
   }
 
+  /// Finishes a successful password or OTP login: remembers the email choice,
+  /// publishes the user and navigates to their home.
+  Future<void> _completeLogin(User user) async {
+    final db = ref.read(databaseProvider);
+    await db.setRememberMe(_rememberMe);
+    await db.setRememberedEmail(_rememberMe ? user.email : null);
+    AppNotification.success(
+      title: 'Welcome Back!',
+      message: 'Login successful.',
+    );
+    if (mounted) {
+      ref.read(currentUserProvider.notifier).state = user;
+      context.go(user.homePath);
+    }
+  }
+
+  void _cancelOtp({String? message}) {
+    if (!mounted) return;
+    setState(() {
+      _otpChallenge = null;
+      _isLoading = false;
+      _passwordController.clear();
+      _error = message;
+    });
+  }
+
   Future<void> _login() async {
     if (_isLoading) return;
 
@@ -211,30 +240,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         }
       } else {
-        final user = await authRepo.login(email, password);
-        if (user != null) {
-          final db = ref.read(databaseProvider);
-          await db.setRememberMe(_rememberMe);
-          await db.setRememberedEmail(_rememberMe ? user.email : null);
-          AppNotification.success(
-            title: 'Welcome Back!',
-            message: 'Login successful.',
-          );
-          if (mounted) {
-            ref.read(currentUserProvider.notifier).state = user;
-            context.go(user.homePath);
-          }
-        } else {
-          AppNotification.error(
-            title: 'Authentication Failed',
-            message: 'Invalid email or password.',
-          );
-          if (mounted) {
-            setState(() {
-              _error = 'Invalid email or password.';
-              _isLoading = false;
-            });
-          }
+        final result = await authRepo.beginLogin(email, password);
+        switch (result) {
+          case LoginSuccess(:final user):
+            await _completeLogin(user);
+          case LoginOtpRequired(:final challenge):
+            if (mounted) {
+              setState(() {
+                _otpChallenge = challenge;
+                _passwordController.clear();
+                _isLoading = false;
+              });
+            }
+          case LoginFailure(:final message, :final isNetworkError):
+            AppNotification.error(
+              title: isNetworkError ? 'No Connection' : 'Authentication Failed',
+              message: message,
+            );
+            if (mounted) {
+              setState(() {
+                _error = message;
+                _isLoading = false;
+              });
+            }
         }
       }
     } catch (e) {
@@ -525,6 +553,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildAuthForm(BuildContext context, {bool isTall = false}) {
+    final pendingChallenge = _otpChallenge;
+    if (pendingChallenge != null) {
+      final authRepo = ref.read(authRepositoryProvider);
+      return OtpVerificationPanel(
+        key: ValueKey(pendingChallenge.email),
+        challenge: pendingChallenge,
+        onVerify: authRepo.verifyLoginOtp,
+        onResend: authRepo.resendLoginOtp,
+        onVerified: _completeLogin,
+        onCancel: _cancelOtp,
+      );
+    }
+
     final theme = Theme.of(context);
     final primary = AppColors.primaryEmeraldDark;
     const fieldBg = Color(0xFFF8FAFC);

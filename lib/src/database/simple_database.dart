@@ -410,6 +410,24 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
+  Future<DateTime?> getOtpVerifiedAt() async {
+    await _ensureLoaded();
+    final raw = _preferences['otp_verified_at'];
+    return raw is String ? DateTime.tryParse(raw) : null;
+  }
+
+  Future<void> setOtpVerifiedAt(DateTime? value) async {
+    await _ensureLoaded();
+    if (value == null) {
+      if (_preferences.remove('otp_verified_at') != null) {
+        await _saveToDisk();
+      }
+      return;
+    }
+    _preferences['otp_verified_at'] = value.toIso8601String();
+    await _saveToDisk();
+  }
+
   Future<bool> isClinicsSeeded() async {
     await _ensureLoaded();
     return _preferences['clinics_seeded'] as bool? ?? false;

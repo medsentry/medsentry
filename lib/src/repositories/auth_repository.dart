@@ -7,9 +7,11 @@ import 'package:uuid/uuid.dart';
 import '../config/seed_credentials.dart';
 import '../database/simple_database.dart';
 import '../models/audit_log.dart';
+import '../models/login_challenge.dart';
 import '../models/user.dart';
 import '../services/audit_service.dart';
 import '../utils/password_crypto.dart';
+import 'otp_gateway.dart';
 
 class AuthRepository {
   static const String _legacyStaffEmail = 'staff@rhu.gov.ph';
@@ -20,10 +22,12 @@ class AuthRepository {
   static const String _currentUserIdKey = 'medsentry.current_user_id';
   static const String _lastUserIdKey = 'medsentry.last_user_id';
   static const String _sessionLockedKey = 'medsentry.session_locked';
+  static const String _otpVerifiedAtKey = 'medsentry.otp_verified_at';
 
   final SimpleDatabase _db;
   final AuditService _auditService;
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final OtpGateway _otp;
+  late final SupabaseClient _supabase = Supabase.instance.client;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final _uuid = const Uuid();
 
@@ -32,7 +36,9 @@ class AuthRepository {
   int _failedPinAttempts = 0;
   DateTime? _pinLockedUntil;
 
-  AuthRepository(this._db, this._auditService);
+  AuthRepository(this._db, this._auditService, {OtpGateway? otpGateway})
+    : _otp = otpGateway ?? SupabaseOtpGateway();
+
 
   String _hashPassword(String password) => PasswordCrypto.hash(password);
 
@@ -171,6 +177,16 @@ class AuthRepository {
       if (account.email == email) return account;
     }
     return null;
+  }
+
+  /// The built-in development password only ever unlocks the Super Admin seed
+  /// account, and only in debug builds. Staff and RHU Admin always go through
+  /// the online password + email OTP flow.
+  bool _isSeedShortcut(SeedAccount account, String password) {
+    if (!kDebugMode || !_allowDefaultAdmin) return false;
+    if (account.role != UserRole.superAdmin) return false;
+    return password == SeedCredentials.defaultPassword ||
+        password == 'Password123!';
   }
 
   Future<void> ensureOnlineSession() async {
@@ -356,9 +372,7 @@ class AuthRepository {
 
     // 1. Direct seed account verification (Super Admin) - instant login
     final seedAccount = _seedAccountForEmail(normalizedEmail);
-    if (seedAccount != null &&
-        (password == SeedCredentials.defaultPassword ||
-            password == 'Password123!')) {
+    if (seedAccount != null && _isSeedShortcut(seedAccount, password)) {
       final user = await _ensureSeedAccount(seedAccount);
       await _db.updateUserLastLogin(user.id);
       await _setCurrentUserId(user.id);
@@ -429,6 +443,11 @@ class AuthRepository {
         unawaited(_supabase.auth.signOut().catchError((_) {}));
         return null;
       }
+      if (mergedUser.requiresEmailOtp) {
+        // Password alone is never enough for these roles; use beginLogin().
+        unawaited(_supabase.auth.signOut().catchError((_) {}));
+        return null;
+      }
 
       unawaited(
         _supabase
@@ -473,9 +492,7 @@ class AuthRepository {
     String password,
   ) async {
     final seed = _seedAccountForEmail(normalizedEmail);
-    if (seed != null &&
-        (password == SeedCredentials.defaultPassword ||
-            password == 'Password123!')) {
+    if (seed != null && _isSeedShortcut(seed, password)) {
       final user = await _ensureSeedAccount(seed);
       await _db.updateUserLastLogin(user.id);
       await _setCurrentUserId(user.id);
@@ -485,6 +502,8 @@ class AuthRepository {
 
     final localUser = await _db.getUserByEmail(normalizedEmail);
     if (localUser == null || !localUser.isActive) return null;
+    // Staff and RHU Admin must always verify by email OTP (see beginLogin).
+    if (localUser.requiresEmailOtp) return null;
 
     final storedHash = await _db.getUserPasswordHash(localUser.id);
     if (storedHash == null || !_verifyPassword(password, storedHash)) {
@@ -924,13 +943,277 @@ class AuthRepository {
     );
   }
 
-  // Alias for authenticate - used by auth provider
-  Future<User?> login(String email, String password) async {
-    final user = await authenticate(email, password);
-    if (user != null) {
+  static const String _offlineMessage =
+      'Internet connection required. Staff and RHU Admin accounts must verify '
+      'their email with a one-time code, so please connect and try again.';
+
+  bool _isNetworkError(Object e) {
+    if (e is TimeoutException || e is AuthRetryableFetchException) return true;
+    final text = e.toString();
+    return text.contains('SocketException') ||
+        text.contains('ClientException') ||
+        text.contains('Failed host lookup') ||
+        text.contains('XMLHttpRequest');
+  }
+
+  /// Phase one of login (email + password).
+  ///
+  /// Super Admin signs in directly. Staff and RHU Admin are verified online,
+  /// the temporary session is discarded, and a one-time code is emailed; no
+  /// session exists until [verifyLoginOtp] succeeds, so the gate is enforced by
+  /// the server rather than only by the UI.
+  Future<LoginResult> beginLogin(String email, String password) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final localUser = await _db.getUserByEmail(normalizedEmail);
+
+    if (localUser != null && !localUser.requiresEmailOtp) {
+      final user = await authenticate(normalizedEmail, password);
+      if (user == null) return const LoginFailure('Invalid email or password.');
       unawaited(ensureOnlineSession());
+      return LoginSuccess(user);
     }
-    return user;
+    if (localUser != null && !localUser.isActive) {
+      return const LoginFailure('This account is inactive.');
+    }
+
+    try {
+      final authUserId = await _otp.verifyPassword(normalizedEmail, password);
+      final profile = await _otp.fetchProfile(authUserId);
+      if (profile == null) {
+        await _otp.signOutLocal();
+        return const LoginFailure('Invalid email or password.');
+      }
+      final serverUser = User.fromJson(profile);
+      if (!serverUser.isActive) {
+        await _otp.signOutLocal();
+        return const LoginFailure('This account is inactive.');
+      }
+      if (!serverUser.requiresEmailOtp) {
+        // Super Admin without a local record yet: session already established.
+        final user = await _finishOnlineLogin(serverUser, method: 'password');
+        return LoginSuccess(user);
+      }
+
+      // Password verified. Drop the session until the emailed code is proven.
+      await _otp.signOutLocal();
+      return await _sendChallenge(serverUser.email, serverUser.id);
+    } on AuthException catch (e) {
+      debugPrint('beginLogin AuthException: ${e.message}');
+      if (_isNetworkError(e)) {
+        return const LoginFailure(_offlineMessage, isNetworkError: true);
+      }
+      return const LoginFailure('Invalid email or password.');
+    } catch (e) {
+      debugPrint('beginLogin error: $e');
+      if (_isNetworkError(e)) {
+        return const LoginFailure(_offlineMessage, isNetworkError: true);
+      }
+      return const LoginFailure('Login failed. Please try again.');
+    }
+  }
+
+  Future<LoginResult> _sendChallenge(
+    String email,
+    String userId, {
+    int attemptsLeft = kOtpMaxAttempts,
+  }) async {
+    try {
+      await _otp.sendOtp(email);
+    } on AuthException catch (e) {
+      debugPrint('sendOtp AuthException: ${e.statusCode} ${e.message}');
+      final rateLimited =
+          e.statusCode == '429' || e.message.toLowerCase().contains('seconds');
+      return LoginFailure(
+        rateLimited
+            ? 'A code was sent recently. Please wait a minute before trying again.'
+            : 'We could not send the verification email. Please contact your administrator.',
+      );
+    } catch (e) {
+      if (_isNetworkError(e)) {
+        return const LoginFailure(_offlineMessage, isNetworkError: true);
+      }
+      return const LoginFailure('We could not send the verification email.');
+    }
+
+    final now = DateTime.now();
+    await _auditService.logAction(
+      userId: userId,
+      action: AuditAction.login,
+      entityType: 'user',
+      entityId: userId,
+      description: 'Email verification code sent to ${_maskedEmail(email)}',
+    );
+    return LoginOtpRequired(
+      OtpChallenge(
+        email: email,
+        maskedEmail: _maskedEmail(email),
+        expiresAt: now.add(kOtpLifetime),
+        resendAvailableAt: now.add(kOtpResendCooldown),
+        attemptsLeft: attemptsLeft,
+      ),
+    );
+  }
+
+  String _maskedEmail(String email) => OtpChallenge.maskEmail(email);
+
+  /// Requests a fresh code once the resend cooldown has elapsed.
+  Future<LoginResult> resendLoginOtp(OtpChallenge challenge) async {
+    if (challenge.resendWait > Duration.zero) {
+      return LoginFailure(
+        'Please wait ${challenge.resendWait.inSeconds}s before requesting another code.',
+      );
+    }
+    final user = await _db.getUserByEmail(challenge.email);
+    return _sendChallenge(challenge.email, user?.id ?? 'system');
+  }
+
+  /// Phase two of login: verifies the emailed code and opens the session.
+  Future<OtpVerifyResult> verifyLoginOtp(
+    OtpChallenge challenge,
+    String code,
+  ) async {
+    final trimmed = code.trim();
+    if (challenge.isExpired) {
+      return OtpRejected(
+        'This code has expired. Request a new one.',
+        challenge: challenge,
+      );
+    }
+    if (!RegExp('^\\d{$kOtpLength}\$').hasMatch(trimmed)) {
+      return OtpRejected(
+        'Enter the $kOtpLength-digit code.',
+        challenge: challenge,
+      );
+    }
+
+    final localUser = await _db.getUserByEmail(challenge.email);
+    try {
+      final authUserId = await _otp.verifyOtp(challenge.email, trimmed);
+      final profile = await _otp.fetchProfile(authUserId);
+      if (profile == null) {
+        await _otp.signOutLocal();
+        return const OtpRejected(
+          'Account not found.',
+          exhausted: true,
+        );
+      }
+      final serverUser = User.fromJson(profile);
+      if (!serverUser.isActive || !serverUser.requiresEmailOtp) {
+        await _otp.signOutLocal();
+        return const OtpRejected(
+          'This account cannot sign in.',
+          exhausted: true,
+        );
+      }
+      final user = await _finishOnlineLogin(
+        serverUser,
+        method: 'password + email code',
+        cachedPinHash: localUser?.pinHash,
+      );
+      return OtpVerified(user);
+    } on AuthException catch (e) {
+      debugPrint('verifyLoginOtp AuthException: ${e.message}');
+      if (_isNetworkError(e)) {
+        return OtpRejected(_offlineMessage, challenge: challenge);
+      }
+      final left = challenge.attemptsLeft - 1;
+      await _auditService.logAction(
+        userId: localUser?.id ?? 'system',
+        action: AuditAction.login,
+        entityType: 'user',
+        entityId: localUser?.id ?? 'system',
+        description: 'Failed email code verification for ${challenge.email}',
+      );
+      if (left <= 0) {
+        return const OtpRejected(
+          'Too many incorrect codes. Please sign in again.',
+          exhausted: true,
+        );
+      }
+      return OtpRejected(
+        'Incorrect code. $left attempt${left == 1 ? '' : 's'} left.',
+        challenge: challenge.copyWith(attemptsLeft: left),
+      );
+    } catch (e) {
+      debugPrint('verifyLoginOtp error: $e');
+      return OtpRejected(
+        _isNetworkError(e)
+            ? _offlineMessage
+            : 'Verification failed. Please try again.',
+        challenge: challenge,
+      );
+    }
+  }
+
+  /// Persists the verified server profile locally and opens the app session.
+  Future<User> _finishOnlineLogin(
+    User serverUser, {
+    required String method,
+    String? cachedPinHash,
+  }) async {
+    final cached = await _db.getUserByEmail(serverUser.email);
+    final merged = serverUser.copyWith(
+      pinHash: cachedPinHash ?? cached?.pinHash,
+      clinicId: serverUser.clinicId ?? cached?.clinicId,
+    );
+    if (cached == null) {
+      await _db.insertUser(merged);
+    } else {
+      await _db.updateUser(merged);
+    }
+    await _db.updateUserLastLogin(merged.id);
+    await _setCurrentUserId(merged.id);
+    await unlockSession();
+    if (merged.requiresEmailOtp) {
+      await _markOtpVerified();
+    }
+    unawaited(_otp.logLoginEvent());
+    await _auditService.logAction(
+      userId: merged.id,
+      action: AuditAction.login,
+      entityType: 'user',
+      entityId: merged.id,
+      description: 'User logged in ($method): ${merged.email}',
+    );
+    return merged;
+  }
+
+  Future<void> _markOtpVerified() async {
+    try {
+      await _secureStorage.write(
+        key: _otpVerifiedAtKey,
+        value: DateTime.now().toIso8601String(),
+      );
+    } catch (_) {
+      // Secure storage may be unavailable; fall back to disk.
+    }
+    await _db.setOtpVerifiedAt(DateTime.now());
+  }
+
+  Future<void> _clearOtpVerified() async {
+    try {
+      await _secureStorage.delete(key: _otpVerifiedAtKey);
+    } catch (_) {}
+    await _db.setOtpVerifiedAt(null);
+  }
+
+  /// PIN / biometric unlock resumes an existing session. For Staff and RHU
+  /// Admin it is only honoured while a live, OTP-verified session exists and
+  /// the code was confirmed within [kOtpTrustWindow].
+  Future<bool> _isOtpTrustValid(User user) async {
+    if (!user.requiresEmailOtp) return true;
+    if (!_otp.hasSession) return false;
+    DateTime? verifiedAt;
+    var secureStorageFailed = false;
+    try {
+      final raw = await _secureStorage.read(key: _otpVerifiedAtKey);
+      if (raw != null) verifiedAt = DateTime.tryParse(raw);
+    } catch (_) {
+      secureStorageFailed = true;
+    }
+    if (secureStorageFailed) verifiedAt = await _db.getOtpVerifiedAt();
+    if (verifiedAt == null) return false;
+    return DateTime.now().difference(verifiedAt) <= kOtpTrustWindow;
   }
 
   // Login with PIN - used by auth provider
@@ -951,6 +1234,12 @@ class AuthRepository {
     }
 
     debugPrint('Attempting PIN login for user: $userId');
+    final pinUser = await getUserById(userId);
+    if (pinUser != null && !await _isOtpTrustValid(pinUser)) {
+      throw Exception(
+        'Email verification expired. Please sign in with your password.',
+      );
+    }
     final isValid = await verifyPin(userId, pin);
     if (!isValid) {
       debugPrint('Invalid PIN');
@@ -1010,6 +1299,11 @@ class AuthRepository {
     }
 
     final user = await getUserById(userId);
+    if (user != null && !await _isOtpTrustValid(user)) {
+      throw Exception(
+        'Email verification expired. Please sign in with your password.',
+      );
+    }
     if (user != null && user.isActive) {
       // Update last login
       await _db.updateUserLastLogin(userId);
@@ -1040,6 +1334,7 @@ class AuthRepository {
 
     final user = await getUserById(userId);
     if (user == null || !user.isActive || !user.pinEnabled) return false;
+    if (!await _isOtpTrustValid(user)) return false;
     if (user.pinHash != null) return true;
 
     await ensureOnlineSession();
@@ -1078,6 +1373,7 @@ class AuthRepository {
       // ignore secure storage errors
     }
     await _db.setLastUserId(null);
+    await _clearOtpVerified();
     _lastLoggedInUserId = null;
     _failedPinAttempts = 0;
     _pinLockedUntil = null;

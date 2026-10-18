@@ -1,4 +1,4 @@
-project_id = "medsentry"
+﻿project_id = "medsentry"
 
 [db]
 major_version = 15
@@ -6,6 +6,31 @@ major_version = 15
 [auth]
 enabled = true
 enable_signup = false
+
+# Staff and RHU Admin verify every login with a 6-digit code sent by email.
+# Apply with `supabase config push`, or set the same values in the dashboard
+# (Auth > Sign In / Providers > Email, and Auth > Emails > Magic Link).
+[auth.email]
+enable_signup = false
+enable_confirmations = false
+otp_length = 6
+otp_expiry = 300
+max_frequency = "60s"
+
+[auth.email.template.magic_link]
+subject = "Your MedSentry verification code"
+content_path = "./supabase/templates/otp.html"
+
+# Supabase's built-in mailer is limited to ~2 emails/hour. Configure custom SMTP
+# (Gmail app password, Resend, etc.) before going live. Keep secrets in env vars.
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(SMTP_PASSWORD)"
+# admin_email = "no-reply@your-domain.example"
+# sender_name = "MedSentry"
 
 [functions.provision-user]
 verify_jwt = true

@@ -122,6 +122,10 @@ class User {
   bool get canResetUserPasswords => isSuperAdmin || isAdmin;
   bool get canManageUserRoles => isSuperAdmin || isAdmin;
 
+  /// Staff and RHU Admin must confirm an emailed one-time code at every
+  /// password login. Super Admin is exempt.
+  bool get requiresEmailOtp => isAdmin || isStaff;
+
   RolePermissions get permissions => RolePermissions(this);
 
   String get accountStatusDisplay {
@@ -258,4 +262,5 @@ class RolePermissions {
   bool get canGenerateReports => _user.canGenerateReports;
   bool get canViewReports => _user.canViewReports;
   bool get canAccessSettings => _user.canAccessSettings;
+  bool get requiresEmailOtp => _user.requiresEmailOtp;
 }

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:#f4f6f8;font-family:Segoe UI,Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px;">
+      <tr>
+        <td align="center">
+          <table width="460" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;padding:36px 32px;">
+            <tr>
+              <td style="font-size:20px;font-weight:700;color:#0f766e;">MedSentry</td>
+            </tr>
+            <tr>
+              <td style="padding-top:18px;font-size:22px;font-weight:700;color:#0f172a;">Your verification code</td>
+            </tr>
+            <tr>
+              <td style="padding-top:8px;font-size:14px;line-height:1.5;color:#475569;">
+                Enter this code in MedSentry to finish signing in as {{ .Email }}.
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:26px 0;">
+                <div style="display:inline-block;background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:16px 28px;font-size:34px;font-weight:700;letter-spacing:10px;color:#0f766e;">
+                  {{ .Token }}
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="font-size:13px;line-height:1.5;color:#64748b;">
+                This code expires in 5 minutes and can be used once. If you did not try to sign in,
+                ignore this email and contact your RHU administrator.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+

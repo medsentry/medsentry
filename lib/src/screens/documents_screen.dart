@@ -9,6 +9,8 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
 import '../widgets/app_card.dart';
+import '../widgets/app_form_dialog.dart';
+import '../widgets/document_scanner_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
@@ -1516,117 +1518,148 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
     }
   }
 
+  Future<void> _scanDocument() async {
+    final result = await DocumentScannerDialog.show(context);
+    if (result != null) {
+      setState(() {
+        _pickedFile = result;
+        if (_titleController.text.trim().isEmpty) {
+          _titleController.text = result.name;
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final patientsAsync = ref.watch(patientsProvider);
 
-    return AlertDialog(
-      title: const Text('Upload Patient Document'),
-      content: SizedBox(
-        width: 620,
-        child: patientsAsync.when(
-          data: (patients) => SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PatientSearchDropdown(
-                  patients: patients,
-                  controller: _patientSearchController,
-                  focusNode: _patientSearchFocusNode,
-                  selectedPatient: _selectedPatient,
-                  onSelected: (patient) {
-                    setState(() {
-                      _selectedPatient = patient;
-                      _patientSearchController.text = _patientPickerLabel(
-                        patient,
-                      );
-                    });
-                  },
-                  onClear: () {
-                    setState(() {
-                      _selectedPatient = null;
-                      _patientSearchController.clear();
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Document title',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<DocumentType>(
-                        key: ValueKey(_selectedType),
-                        initialValue: _selectedType,
-                        decoration: const InputDecoration(
-                          labelText: 'Document type',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: DocumentType.values
-                            .map(
-                              (type) => DropdownMenuItem(
-                                value: type,
-                                child: Text(_typeDisplay(type)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (type) => setState(
-                          () => _selectedType = type ?? DocumentType.other,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _descriptionController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Description or notes',
-                    border: OutlineInputBorder(),
+    return AppFormDialog(
+      icon: Icons.document_scanner_rounded,
+      title: 'Upload Patient Document',
+      subtitle:
+          'Scan physical documents or webcam captures, or attach existing files',
+      maxWidth: 680,
+      content: patientsAsync.when(
+        data: (patients) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppFormSection(
+              title: 'Patient & Classification',
+              subtitle: 'Select the patient and assign document type',
+              icon: Icons.person_outline,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _PatientSearchDropdown(
+                    patients: patients,
+                    controller: _patientSearchController,
+                    focusNode: _patientSearchFocusNode,
+                    selectedPatient: _selectedPatient,
+                    onSelected: (patient) {
+                      setState(() {
+                        _selectedPatient = patient;
+                        _patientSearchController.text = _patientPickerLabel(
+                          patient,
+                        );
+                      });
+                    },
+                    onClear: () {
+                      setState(() {
+                        _selectedPatient = null;
+                        _patientSearchController.clear();
+                      });
+                    },
                   ),
-                ),
-                const SizedBox(height: 12),
-                _PickedFilePanel(
-                  pickedFile: _pickedFile,
-                  onPickFile: () => _pickFile(imageOnly: false),
-                  onPickImage: () => _pickFile(imageOnly: true),
-                  onClear: () => setState(() => _pickedFile = null),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _titleController,
+                          decoration: const InputDecoration(
+                            labelText: 'Document title *',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<DocumentType>(
+                          key: ValueKey(_selectedType),
+                          initialValue: _selectedType,
+                          decoration: const InputDecoration(
+                            labelText: 'Document type *',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: DocumentType.values
+                              .map(
+                                (type) => DropdownMenuItem(
+                                  value: type,
+                                  child: Text(_typeDisplay(type)),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (type) => setState(
+                            () => _selectedType = type ?? DocumentType.other,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _descriptionController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Description or notes (optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          loading: () => const SizedBox(height: 160, child: LoadingState()),
-          error: (error, _) => AppErrorState(
-            title: 'Patient list could not be loaded',
-            error: error,
-            onRetry: () => ref.invalidate(patientsProvider),
-          ),
+            const SizedBox(height: 16),
+            AppFormSection(
+              title: 'Document Source & Attachment',
+              subtitle:
+                  'Scan using physical flatbed/ADF or live camera, or upload existing file',
+              icon: Icons.attach_file_rounded,
+              child: _PickedFilePanel(
+                pickedFile: _pickedFile,
+                onScanDocument: _scanDocument,
+                onPickFile: () => _pickFile(imageOnly: false),
+                onPickImage: () => _pickFile(imageOnly: true),
+                onClear: () => setState(() => _pickedFile = null),
+              ),
+            ),
+          ],
+        ),
+        loading: () => const SizedBox(height: 160, child: LoadingState()),
+        error: (error, _) => AppErrorState(
+          title: 'Patient list could not be loaded',
+          error: error,
+          onRetry: () => ref.invalidate(patientsProvider),
         ),
       ),
       actions: [
-        TextButton(
+        OutlinedButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton.icon(
+        FilledButton.icon(
           onPressed: _canSave ? _saveDocument : null,
           icon: _isSaving
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
-              : const Icon(Icons.save_outlined),
+              : const Icon(Icons.cloud_upload_outlined),
           label: const Text('Save Document'),
         ),
       ],
@@ -1898,12 +1931,14 @@ String _patientPickerLabel(Patient patient) {
 
 class _PickedFilePanel extends StatelessWidget {
   final DocumentPickerResult? pickedFile;
+  final VoidCallback? onScanDocument;
   final VoidCallback onPickFile;
   final VoidCallback onPickImage;
   final VoidCallback onClear;
 
   const _PickedFilePanel({
     required this.pickedFile,
+    this.onScanDocument,
     required this.onPickFile,
     required this.onPickImage,
     required this.onClear,
@@ -1912,19 +1947,57 @@ class _PickedFilePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (pickedFile == null) {
-      return Wrap(
-        spacing: 10,
-        runSpacing: 10,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          OutlinedButton.icon(
-            onPressed: onPickFile,
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            label: const Text('Choose PDF or file'),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              if (onScanDocument != null)
+                FilledButton.icon(
+                  onPressed: onScanDocument,
+                  icon: const Icon(Icons.document_scanner_rounded, size: 18),
+                  label: const Text('Scan Document (Scanner / Camera)'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryEmerald,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              OutlinedButton.icon(
+                onPressed: onPickFile,
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                label: const Text('Choose PDF / File'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onPickImage,
+                icon: const Icon(Icons.image_outlined, size: 18),
+                label: const Text('Choose Image'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
-          OutlinedButton.icon(
-            onPressed: onPickImage,
-            icon: const Icon(Icons.image_outlined),
-            label: const Text('Choose image'),
+          const SizedBox(height: 8),
+          Text(
+            'Supported: PDF, JPG, PNG, WEBP (Max 10 MB). Scanned documents are encrypted with AES-GCM and stored securely.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
           ),
         ],
       );
@@ -1933,6 +2006,10 @@ class _PickedFilePanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.35),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.28),
         ),
@@ -1940,7 +2017,18 @@ class _PickedFilePanel extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(_fileIcon(pickedFile!.extension), size: 34),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryEmeraldSubtle,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              _fileIcon(pickedFile!.extension),
+              size: 26,
+              color: AppColors.primaryEmerald,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -2008,76 +2096,77 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit Document'),
-      content: SizedBox(
-        width: 560,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Document title',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<DocumentType>(
-                initialValue: _type,
-                decoration: const InputDecoration(
-                  labelText: 'Document type',
-                  border: OutlineInputBorder(),
-                ),
-                items: DocumentType.values
-                    .map(
-                      (type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(_typeDisplay(type)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) =>
-                    setState(() => _type = value ?? DocumentType.other),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _descriptionController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description or notes',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _notesController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Internal notes',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
+    return AppFormDialog(
+      icon: Icons.edit_note_rounded,
+      title: 'Edit Document',
+      subtitle: 'Update document metadata and internal staff notes',
+      maxWidth: 580,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(
+              labelText: 'Document title *',
+              border: OutlineInputBorder(),
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<DocumentType>(
+            initialValue: _type,
+            decoration: const InputDecoration(
+              labelText: 'Document type *',
+              border: OutlineInputBorder(),
+            ),
+            items: DocumentType.values
+                .map(
+                  (type) => DropdownMenuItem(
+                    value: type,
+                    child: Text(_typeDisplay(type)),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) =>
+                setState(() => _type = value ?? DocumentType.other),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _descriptionController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Description or notes',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _notesController,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Internal staff notes',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
       ),
       actions: [
-        TextButton(
+        OutlinedButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context, false),
           child: const Text('Cancel'),
         ),
-        ElevatedButton.icon(
+        FilledButton.icon(
           onPressed: _canSave ? _save : null,
           icon: _isSaving
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 )
               : const Icon(Icons.save_outlined),
-          label: const Text('Save'),
+          label: const Text('Save Changes'),
         ),
       ],
     );

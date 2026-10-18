@@ -2137,7 +2137,7 @@ class StaffFormDialog extends ConsumerStatefulWidget {
 }
 
 class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
-  final _stepFormKeys = List.generate(3, (_) => GlobalKey<FormState>());
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -2152,7 +2152,6 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
   bool _isSaving = false;
   bool _isDirty = false;
   bool _isPasswordVisible = false;
-  int _currentStep = 0;
 
   bool get _isEdit => widget.existingUser != null;
 
@@ -2258,397 +2257,326 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
         subtitle: _isEdit
             ? 'Update profile, role, facility assignment, or password'
             : 'Register an administrator or staff user with role-scoped access',
-        maxWidth: 680,
+        maxWidth: 720,
         onClose: _isSaving ? null : _handleCancel,
         isLoading: _isSaving,
         loadingText: _isEdit
             ? 'Saving user account...'
             : 'Creating user account...',
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildRegistrationStepper(),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 360,
-              child: IndexedStack(
-                index: _currentStep,
-                children: [
-                  Form(
-                    key: _stepFormKeys[0],
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          Center(
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: Stack(
-                                children: [
-                                  UserAvatar(
-                                    user: widget.existingUser?.copyWith(
-                                      firstName: _firstNameController.text.isNotEmpty
-                                          ? _firstNameController.text
-                                          : 'New',
-                                      lastName: _lastNameController.text.isNotEmpty
-                                          ? _lastNameController.text
-                                          : 'User',
-                                      profileImageUrl: _profileImageUrl,
-                                    ) ??
-                                        User(
-                                          id: 'temp',
-                                          email: _emailController.text,
-                                          firstName: _firstNameController.text.isNotEmpty
-                                              ? _firstNameController.text
-                                              : 'New',
-                                          lastName: _lastNameController.text.isNotEmpty
-                                              ? _lastNameController.text
-                                              : 'User',
-                                          role: _role,
-                                          profileImageUrl: _profileImageUrl,
-                                          isActive: true,
-                                          pinEnabled: false,
-                                        ),
-                                    radius: 36,
+        content: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppFormSection(
+                title: 'Profile Information',
+                subtitle:
+                    'Personal details, contact number, and professional credentials',
+                icon: Icons.person_outline,
+                child: Column(
+                  children: [
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Stack(
+                          children: [
+                            UserAvatar(
+                              user: widget.existingUser?.copyWith(
+                                firstName: _firstNameController.text.isNotEmpty
+                                    ? _firstNameController.text
+                                    : 'New',
+                                lastName: _lastNameController.text.isNotEmpty
+                                    ? _lastNameController.text
+                                    : 'User',
+                                profileImageUrl: _profileImageUrl,
+                              ) ??
+                                  User(
+                                    id: 'temp',
+                                    email: _emailController.text,
+                                    firstName:
+                                        _firstNameController.text.isNotEmpty
+                                            ? _firstNameController.text
+                                            : 'New',
+                                    lastName:
+                                        _lastNameController.text.isNotEmpty
+                                            ? _lastNameController.text
+                                            : 'User',
+                                    role: _role,
+                                    profileImageUrl: _profileImageUrl,
+                                    isActive: true,
+                                    pinEnabled: false,
                                   ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: Material(
-                                      color: Theme.of(context).colorScheme.primary,
-                                      shape: const CircleBorder(),
-                                      elevation: 2,
-                                      child: InkWell(
-                                        customBorder: const CircleBorder(),
-                                        onTap: _pickProfilePhoto,
-                                        child: const Padding(
-                                          padding: EdgeInsets.all(6),
-                                          child: Icon(Icons.camera_alt, size: 16, color: Colors.white),
-                                        ),
-                                      ),
+                              radius: 36,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Material(
+                                color: Theme.of(context).colorScheme.primary,
+                                shape: const CircleBorder(),
+                                elevation: 2,
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: _pickProfilePhoto,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(6),
+                                    child: Icon(
+                                      Icons.camera_alt,
+                                      size: 16,
+                                      color: Colors.white,
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                          _field(
-                            controller: _emailController,
-                            label: 'Email Address',
-                            icon: Icons.email_outlined,
-                            enabled: !_isEdit,
+                          ],
+                        ),
+                      ),
+                    ),
+                    _field(
+                      controller: _emailController,
+                      label: 'Email Address',
+                      icon: Icons.email_outlined,
+                      enabled: !_isEdit,
+                      required: true,
+                      keyboardType: TextInputType.emailAddress,
+                      helperText:
+                          'Verification codes (OTP) will be sent to this email address for Staff & Admin logins.',
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _field(
+                            controller: _firstNameController,
+                            label: 'First Name',
+                            icon: Icons.person_outline,
                             required: true,
-                            keyboardType: TextInputType.emailAddress,
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _field(
-                                  controller: _firstNameController,
-                                  label: 'First Name',
-                                  icon: Icons.person_outline,
-                                  required: true,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _field(
-                                  controller: _lastNameController,
-                                  label: 'Last Name',
-                                  icon: Icons.person_outline,
-                                  required: true,
-                                ),
-                              ),
-                            ],
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _field(
+                            controller: _lastNameController,
+                            label: 'Last Name',
+                            icon: Icons.person_outline,
+                            required: true,
                           ),
-                          const SizedBox(height: 12),
-                          _field(
-                            controller: _contactController,
-                            label: 'Contact Number',
-                            icon: Icons.phone_outlined,
-                            keyboardType: TextInputType.phone,
-                            required: false,
-                          ),
-                          const SizedBox(height: 12),
-                          _field(
-                            controller: _specializationController,
-                            label: 'Specialization / Clinical Role',
-                            icon: Icons.medical_services_outlined,
-                          ),
-                          const SizedBox(height: 12),
-                          _field(
-                            controller: _licenseController,
-                            label: 'Professional PRC License Number',
-                            icon: Icons.credit_card_outlined,
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ),
-                  Form(
-                    key: _stepFormKeys[1],
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          DropdownButtonFormField<UserRole>(
-                            initialValue: availableRoles.contains(_role)
-                                ? _role
-                                : availableRoles.first,
-                            decoration: const InputDecoration(
-                              labelText: 'System Role *',
-                              border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.badge_outlined),
-                            ),
-                            items: availableRoles
-                                .map(
-                                  (role) => DropdownMenuItem(
-                                    value: role,
-                                    child: Text(role.name.toUpperCase()),
-                                  ),
-                                )
-                                .toList(),
-                            validator: (value) =>
-                                value == null ? 'Select a system role.' : null,
-                            onChanged: (value) {
-                              if (value != null && value != _role) {
-                                setState(() {
-                                  _role = value;
-                                  _isDirty = true;
-                                });
-                              }
-                            },
-                          ),
-                          if (isSuperAdmin && _role != UserRole.superAdmin) ...[
-                            const SizedBox(height: 16),
-                            clinicsAsync.when(
-                              data: (clinics) =>
-                                  DropdownButtonFormField<String?>(
-                                    initialValue: clinics.any((c) => c.id == _clinicId)
-                                        ? _clinicId
-                                        : null,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Assigned RHU Facility *',
-                                      border: OutlineInputBorder(),
-                                      prefixIcon: Icon(Icons.domain_outlined),
-                                    ),
-                                    hint: const Text('Select RHU Facility'),
-                                    items: [
-                                      ...clinics.map(
-                                        (clinic) => DropdownMenuItem<String?>(
-                                          value: clinic.id,
-                                          child: Text(
-                                            '${clinic.name} (${clinic.code})',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    validator: (val) {
-                                      if (_role != UserRole.superAdmin &&
-                                          (val == null || val.isEmpty)) {
-                                        return 'Please select an RHU facility';
-                                      }
-                                      return null;
-                                    },
-                                    onChanged: (val) {
-                                      setState(() {
-                                        _clinicId = val;
-                                        _isDirty = true;
-                                      });
-                                    },
-                                  ),
-                              loading: () => const LinearProgressIndicator(),
-                              error: (error, _) => AppErrorState(
-                                title: 'Facility list could not be loaded',
-                                error: error,
-                                onRetry: () => ref.invalidate(clinicsProvider),
-                              ),
-                            ),
-                          ] else if (!isSuperAdmin) ...[
-                            const SizedBox(height: 16),
-                            AppInfoCard(
-                              icon: Icons.business_outlined,
-                              label: 'Facility Scope (Multi-RHU Isolation)',
-                              value: currentUser?.clinicId != null
-                                  ? 'Fixed to your active RHU clinic facility'
-                                  : 'Assigned to Platform Pool',
-                            ),
-                          ],
-                          if (_isEdit) ...[
-                            const SizedBox(height: 16),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Active Account Status'),
-                              subtitle: const Text(
-                                'Inactive users cannot log in or perform actions in MedSentry',
-                              ),
-                              value: _isActive,
-                              onChanged: (value) {
-                                setState(() {
-                                  _isActive = value;
-                                  _isDirty = true;
-                                });
-                              },
-                            ),
-                          ],
-                        ],
-                      ),
+                    const SizedBox(height: 12),
+                    _field(
+                      controller: _contactController,
+                      label: 'Contact Number',
+                      icon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                      required: false,
                     ),
-                  ),
-                  Form(
-                    key: _stepFormKeys[2],
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _field(
-                            controller: _passwordController,
-                            label: _isEdit
-                                ? 'New Password (Optional)'
-                                : 'Initial Account Password',
-                            icon: Icons.lock_outline,
-                            required: !_isEdit,
-                            obscureText: true,
-                            suffixIcon: IconButton(
-                              tooltip: _isPasswordVisible
-                                  ? 'Hide password'
-                                  : 'Show password',
-                              onPressed: () => setState(
-                                () => _isPasswordVisible = !_isPasswordVisible,
-                              ),
-                              icon: Icon(
-                                _isPasswordVisible
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          AppInfoCard(
-                            icon: Icons.info_outline,
-                            label: _isEdit
-                                ? 'Password Update'
-                                : 'Password Policy',
-                            value: _isEdit
-                                ? 'Leave blank to keep the current password. If changed, must be at least 8 characters with letters and numbers.'
-                                : 'Must be at least 8 characters with letters and numbers. Share this temporary password securely.',
-                          ),
-                          if (_isEdit) ...[
-                            const SizedBox(height: 12),
-                            AppInfoCard(
-                              icon: Icons.pin_outlined,
-                              label: 'PIN Login Status',
-                              value: widget.existingUser!.pinEnabled
-                                  ? 'Quick PIN login is currently enabled for this account.'
-                                  : 'PIN login is not yet configured by the user.',
-                            ),
-                          ],
-                        ],
-                      ),
+                    const SizedBox(height: 12),
+                    _field(
+                      controller: _specializationController,
+                      label: 'Specialization / Clinical Role',
+                      icon: Icons.medical_services_outlined,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    _field(
+                      controller: _licenseController,
+                      label: 'Professional PRC License Number',
+                      icon: Icons.credit_card_outlined,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              AppFormSection(
+                title: 'Role & Facility Assignment',
+                subtitle:
+                    'Access privileges and RHU clinic facility boundary',
+                icon: Icons.badge_outlined,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<UserRole>(
+                      initialValue: availableRoles.contains(_role)
+                          ? _role
+                          : availableRoles.first,
+                      decoration: const InputDecoration(
+                        labelText: 'System Role *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                      items: availableRoles
+                          .map(
+                            (role) => DropdownMenuItem(
+                              value: role,
+                              child: Text(role.name.toUpperCase()),
+                            ),
+                          )
+                          .toList(),
+                      validator: (value) =>
+                          value == null ? 'Select a system role.' : null,
+                      onChanged: (value) {
+                        if (value != null && value != _role) {
+                          setState(() {
+                            _role = value;
+                            _isDirty = true;
+                          });
+                        }
+                      },
+                    ),
+                    if (isSuperAdmin && _role != UserRole.superAdmin) ...[
+                      const SizedBox(height: 16),
+                      clinicsAsync.when(
+                        data: (clinics) => DropdownButtonFormField<String?>(
+                          initialValue: clinics.any((c) => c.id == _clinicId)
+                              ? _clinicId
+                              : null,
+                          decoration: const InputDecoration(
+                            labelText: 'Assigned RHU Facility *',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.domain_outlined),
+                          ),
+                          hint: const Text('Select RHU Facility'),
+                          items: [
+                            ...clinics.map(
+                              (clinic) => DropdownMenuItem<String?>(
+                                value: clinic.id,
+                                child: Text(
+                                  '${clinic.name} (${clinic.code})',
+                                ),
+                              ),
+                            ),
+                          ],
+                          validator: (val) {
+                            if (_role != UserRole.superAdmin &&
+                                (val == null || val.isEmpty)) {
+                              return 'Please select an RHU facility';
+                            }
+                            return null;
+                          },
+                          onChanged: (val) {
+                            setState(() {
+                              _clinicId = val;
+                              _isDirty = true;
+                            });
+                          },
+                        ),
+                        loading: () => const LinearProgressIndicator(),
+                        error: (error, _) => AppErrorState(
+                          title: 'Facility list could not be loaded',
+                          error: error,
+                          onRetry: () => ref.invalidate(clinicsProvider),
+                        ),
+                      ),
+                    ] else if (!isSuperAdmin) ...[
+                      const SizedBox(height: 16),
+                      AppInfoCard(
+                        icon: Icons.business_outlined,
+                        label: 'Facility Scope (Multi-RHU Isolation)',
+                        value: currentUser?.clinicId != null
+                            ? 'Fixed to your active RHU clinic facility'
+                            : 'Assigned to Platform Pool',
+                      ),
+                    ],
+                    if (_isEdit) ...[
+                      const SizedBox(height: 16),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Active Account Status'),
+                        subtitle: const Text(
+                          'Inactive users cannot log in or perform actions in MedSentry',
+                        ),
+                        value: _isActive,
+                        onChanged: (value) {
+                          setState(() {
+                            _isActive = value;
+                            _isDirty = true;
+                          });
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              AppFormSection(
+                title: 'Account Security & Credentials',
+                subtitle: 'Initial password setting and security policy',
+                icon: Icons.lock_outline,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _field(
+                      controller: _passwordController,
+                      label: _isEdit
+                          ? 'New Password (Optional)'
+                          : 'Initial Account Password',
+                      icon: Icons.lock_outline,
+                      required: !_isEdit,
+                      obscureText: true,
+                      suffixIcon: IconButton(
+                        tooltip: _isPasswordVisible
+                            ? 'Hide password'
+                            : 'Show password',
+                        onPressed: () => setState(
+                          () => _isPasswordVisible = !_isPasswordVisible,
+                        ),
+                        icon: Icon(
+                          _isPasswordVisible
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    AppInfoCard(
+                      icon: Icons.info_outline,
+                      label: _isEdit
+                          ? 'Password Update'
+                          : 'Password Policy',
+                      value: _isEdit
+                          ? 'Leave blank to keep current password. If changed, must be at least 8 characters with letters and numbers.'
+                          : 'Must be at least 8 characters with letters and numbers. Share this temporary password securely.',
+                    ),
+                    if (_isEdit) ...[
+                      const SizedBox(height: 12),
+                      AppInfoCard(
+                        icon: Icons.pin_outlined,
+                        label: 'PIN Login Status',
+                        value: widget.existingUser!.pinEnabled
+                            ? 'Quick PIN login is currently enabled for this account.'
+                            : 'PIN login is not yet configured by the user.',
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
-          if (_currentStep > 0)
-            AppDialogAction(
-              label: 'Back',
-              onPressed: _isSaving ? null : _previousStep,
-            )
-          else
-            AppDialogAction(
-              label: 'Cancel',
-              onPressed: _isSaving ? null : _handleCancel,
-            ),
-          if (_currentStep < 2)
-            AppDialogAction(
-              label: 'Next',
-              isPrimary: true,
-              icon: Icons.arrow_forward,
-              onPressed: _isSaving ? null : _nextStep,
-            )
-          else
-            AppDialogAction(
-              label: _isSaving
-                  ? (_isEdit ? 'Saving...' : 'Creating...')
-                  : (_isEdit
-                        ? 'Save Changes'
-                        : (_role == UserRole.admin
-                              ? 'Create Admin'
-                              : (_role == UserRole.superAdmin
-                                    ? 'Create Super Admin'
-                                    : 'Create User'))),
-              isPrimary: true,
-              icon: Icons.save_outlined,
-              onPressed: _isSaving ? null : _save,
-            ),
+          AppDialogAction(
+            label: 'Cancel',
+            onPressed: _isSaving ? null : _handleCancel,
+          ),
+          AppDialogAction(
+            label: _isSaving
+                ? (_isEdit ? 'Saving...' : 'Creating...')
+                : (_isEdit
+                      ? 'Save Changes'
+                      : (_role == UserRole.admin
+                            ? 'Create Admin'
+                            : (_role == UserRole.superAdmin
+                                  ? 'Create Super Admin'
+                                  : 'Create User'))),
+            isPrimary: true,
+            icon: Icons.save_outlined,
+            onPressed: _isSaving ? null : _save,
+          ),
         ],
       ),
     );
-  }
-
-  Widget _buildRegistrationStepper() {
-    const titles = ['Profile', 'Role & Access', 'Security'];
-    return Row(
-      children: [
-        for (var index = 0; index < titles.length; index++) ...[
-          Expanded(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: index <= _currentStep
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                  foregroundColor: index <= _currentStep
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                  child: index < _currentStep
-                      ? const Icon(Icons.check, size: 18)
-                      : Text('${index + 1}'),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  titles[index],
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: index == _currentStep
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          if (index < titles.length - 1)
-            Expanded(
-              child: Divider(
-                color: index < _currentStep
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).dividerColor,
-              ),
-            ),
-        ],
-      ],
-    );
-  }
-
-  void _nextStep() {
-    if (!(_stepFormKeys[_currentStep].currentState?.validate() ?? false)) {
-      return;
-    }
-    if (_currentStep < 2) {
-      setState(() => _currentStep++);
-    }
-  }
-
-  void _previousStep() {
-    if (_currentStep > 0) {
-      setState(() => _currentStep--);
-    }
   }
 
   Widget _field({
@@ -2660,6 +2588,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
     bool obscureText = false,
     TextInputType? keyboardType,
     Widget? suffixIcon,
+    String? helperText,
   }) {
     return TextFormField(
       controller: controller,
@@ -2668,6 +2597,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: required ? '$label *' : label,
+        helperText: helperText,
         border: const OutlineInputBorder(),
         prefixIcon: Icon(icon),
         suffixIcon: suffixIcon,
@@ -2705,7 +2635,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
   }
 
   Future<void> _save() async {
-    if (!(_stepFormKeys[2].currentState?.validate() ?? false)) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final curUser = ref.read(currentUserProvider);
     final isSuperAdmin = curUser?.isSuperAdmin == true;
@@ -2715,11 +2645,10 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
 
     if (_role != UserRole.superAdmin &&
         (targetClinicId == null || targetClinicId.trim().isEmpty)) {
-      setState(() => _currentStep = 1);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please select an RHU facility for this ${_role.name} account in Role & Access.',
+            'Please select an RHU facility for this ${_role.name} account in Role & Facility Assignment.',
           ),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),

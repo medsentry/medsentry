@@ -292,6 +292,20 @@ class DocumentPickerResult {
     required this.size,
   });
 
+  factory DocumentPickerResult.fromBytes({
+    required String name,
+    required List<int> bytes,
+    required String extension,
+  }) {
+    return DocumentPickerResult(
+      name: name,
+      path: null,
+      bytes: bytes,
+      extension: extension.toLowerCase().replaceFirst('.', ''),
+      size: bytes.length,
+    );
+  }
+
   Future<List<int>> getBytes() async {
     if (bytes != null) return bytes!;
     if (path != null) {

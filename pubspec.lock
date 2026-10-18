@@ -77,10 +77,10 @@ packages:
     dependency: transitive
     description:
       name: archive
-      sha256: "6c5bcd986e06b94e3c40244af471750840a3d2341d1f9763a1100a14add517b4"
+      sha256: "0d58d1fa1fddf6588251ccf2819f3fb3b6d0452c1b2813ac7413a05592bfbefe"
       url: "https://pub.dev"
     source: hosted
-    version: "4.3.0"
+    version: "4.5.2"
   args:
     dependency: transitive
     description:
@@ -193,6 +193,54 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "8.13.0"
+  camera:
+    dependency: "direct main"
+    description:
+      name: camera
+      sha256: "3f30ca0ff376f91534f23afa2a7aea06ebb6c889fd9e260642437b37e3d9f753"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.1"
+  camera_android_camerax:
+    dependency: transitive
+    description:
+      name: camera_android_camerax
+      sha256: "47645ffd20c597cb0edab4de20f3c89447b7eca90425ee13683b746275b18e2b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.5+1"
+  camera_avfoundation:
+    dependency: transitive
+    description:
+      name: camera_avfoundation
+      sha256: e409a731fad3fca10daa9567cf981720398659e6390f871a4e0f576058ff8940
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.3+1"
+  camera_platform_interface:
+    dependency: transitive
+    description:
+      name: camera_platform_interface
+      sha256: b3083b183ef1daa408d5f0c98c8c7ac0325b490695fb4557ff4210fcf04c5984
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.15.0"
+  camera_web:
+    dependency: transitive
+    description:
+      name: camera_web
+      sha256: "5aecf1ac4dd4a949c5a7820e590020acb2bc35425384ab87a030e1739bfe12e2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.5+6"
+  camera_windows:
+    dependency: "direct main"
+    description:
+      name: camera_windows
+      sha256: da05937f6dff64fbbd2d64f74e4240b6da50d377031034704b0a12a9dfb4ea15
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.0"
   characters:
     dependency: transitive
     description:
@@ -289,6 +337,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
+  crop_your_image:
+    dependency: "direct main"
+    description:
+      name: crop_your_image
+      sha256: "8cd2936d5e2f1a23b330390df0c7e59d685892d63f374196e498905e0896cc2c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.1"
   cross_file:
     dependency: transitive
     description:
@@ -761,13 +817,13 @@ packages:
     source: hosted
     version: "4.1.2"
   image:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: image
-      sha256: a1e7f4951e538a568e14b856702afc9ae1d2f4b202daced8d22c1b9cd211ce89
+      sha256: "89ed75b2f8231fe676808c5564f9590d728024ded7ac782a7ed8474f1c95b72a"
       url: "https://pub.dev"
     source: hosted
-    version: "4.10.1"
+    version: "4.12.0"
   intl:
     dependency: "direct main"
     description:
