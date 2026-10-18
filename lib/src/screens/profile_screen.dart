@@ -31,10 +31,10 @@ class ProfileScreen extends ConsumerWidget {
         ? AppColors.textSecondary
         : AppColors.lightTextSecondary;
 
-    return ResponsiveContentContainer(
-      maxWidth: 800,
+    return SingleChildScrollView(
       padding: ResponsiveLayout.pagePadding(context),
-      child: ListView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

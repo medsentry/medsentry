@@ -96,10 +96,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         }
 
         if (currentUser == null && !isLoginRoute) {
+          final fullTarget = state.uri.toString();
+          if (fullTarget.isNotEmpty && fullTarget != '/' && fullTarget != '/login') {
+            return '/login?redirect=${Uri.encodeComponent(fullTarget)}';
+          }
           return '/login';
         }
 
         if (currentUser != null && (isLoginRoute || state.uri.path == '/')) {
+          final redirectParam = state.uri.queryParameters['redirect'];
+          if (redirectParam != null &&
+              redirectParam.isNotEmpty &&
+              redirectParam.startsWith('/') &&
+              !redirectParam.startsWith('/login')) {
+            final target = Uri.decodeComponent(redirectParam);
+            if (_canAccessRoute(currentUser, target)) {
+              return target;
+            }
+          }
           return currentUser.homePath;
         }
 

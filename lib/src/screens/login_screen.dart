@@ -10,6 +10,7 @@ import '../models/models.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/biometric_auth/biometric_auth.dart';
+import '../utils/rate_limiter.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/otp_verification_panel.dart';
 import '../widgets/system_logo.dart';
@@ -218,8 +219,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final authRepo = ref.read(authRepositoryProvider);
 
       if (_isPinLogin) {
+        if (!pinRateLimiter.canAttempt('pin_login')) {
+          final wait = pinRateLimiter.remainingCooldown('pin_login');
+          final message =
+              'Too many PIN attempts. Please wait ${wait.inSeconds} seconds.';
+          AppNotification.warning(title: 'Rate Limit', message: message);
+          setState(() {
+            _error = message;
+            _isLoading = false;
+          });
+          return;
+        }
+        pinRateLimiter.recordAttempt('pin_login');
+
         final user = await authRepo.loginWithPin(pin);
         if (user != null) {
+          pinRateLimiter.reset('pin_login');
           AppNotification.success(
             title: 'Welcome Back!',
             message: 'Login successful.',
@@ -241,9 +256,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           }
         }
       } else {
+        if (!loginRateLimiter.canAttempt(email)) {
+          final wait = loginRateLimiter.remainingCooldown(email);
+          final message =
+              'Too many login attempts. Please wait ${wait.inSeconds} seconds.';
+          AppNotification.warning(title: 'Rate Limit', message: message);
+          setState(() {
+            _error = message;
+            _isLoading = false;
+          });
+          return;
+        }
+        loginRateLimiter.recordAttempt(email);
+
         final result = await authRepo.beginLogin(email, password);
         switch (result) {
           case LoginSuccess(:final user):
+            loginRateLimiter.reset(email);
             await _completeLogin(user);
           case LoginOtpRequired(:final challenge):
             if (mounted) {

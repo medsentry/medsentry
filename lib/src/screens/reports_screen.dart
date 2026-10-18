@@ -1602,8 +1602,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       actionColor = AppColors.pending;
                   }
 
-                  final dateStr =
-                      DateFormat('yyyy-MM-dd HH:mm:ss').format(log.timestamp);
+                  final dateStr = formatDateTime12h(log.timestamp);
                   final actorLabel = log.userName?.isNotEmpty == true
                       ? '${log.userName} (${log.userRole ?? log.userId})'
                       : log.userId;

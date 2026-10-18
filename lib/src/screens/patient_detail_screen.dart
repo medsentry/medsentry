@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/report_pdf_service.dart';
+import '../utils/date_time_format.dart';
 import '../utils/patient_address_data.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
@@ -2059,8 +2060,7 @@ class _PatientAuditTrailList extends ConsumerWidget {
                 actionColor = AppColors.pending;
             }
 
-            final dateStr =
-                DateFormat('yyyy-MM-dd HH:mm:ss').format(log.timestamp);
+            final dateStr = formatDateTime12h(log.timestamp);
 
             return AppCard(
               padding: const EdgeInsets.all(12),
@@ -2296,7 +2296,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
         actionColor = AppColors.pending;
     }
 
-    final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(log.timestamp);
+    final dateStr = formatDateTime12h(log.timestamp);
 
     return Container(
       padding: const EdgeInsets.all(12),

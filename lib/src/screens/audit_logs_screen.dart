@@ -6,7 +6,6 @@ import '../providers/providers.dart';
 import '../widgets/app_card.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
-import '../widgets/layout/responsive_layout.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 
@@ -25,20 +24,14 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
   Widget build(BuildContext context) {
     final logsAsync = ref.watch(auditLogsProvider);
 
-    return ResponsiveContentContainer(
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(context.isMobile ? 16 : 24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              context.isMobile ? 16 : 24,
-              20,
-              context.isMobile ? 16 : 24,
-              0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
                 Text(
                   'Audit Logs & Activity Monitoring',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -139,39 +132,37 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: logsAsync.when(
-              skipLoadingOnReload: true,
-              data: (logs) {
-                final filtered = logs.where((log) {
-                  if (_filterAction != null && log.action != _filterAction) {
-                    return false;
-                  }
-                  if (_searchQuery.isEmpty) return true;
-                  final q = _searchQuery.toLowerCase();
-                  return (log.userName?.toLowerCase().contains(q) ?? false) ||
-                      (log.patientName?.toLowerCase().contains(q) ?? false) ||
-                      (log.description?.toLowerCase().contains(q) ?? false) ||
-                      log.entityType.toLowerCase().contains(q);
-                }).toList();
-
-                if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text('No audit log entries found.'),
-                  );
+          const SizedBox(height: 16),
+          logsAsync.when(
+            skipLoadingOnReload: true,
+            data: (logs) {
+              final filtered = logs.where((log) {
+                if (_filterAction != null && log.action != _filterAction) {
+                  return false;
                 }
+                if (_searchQuery.isEmpty) return true;
+                final q = _searchQuery.toLowerCase();
+                return (log.userName?.toLowerCase().contains(q) ?? false) ||
+                    (log.patientName?.toLowerCase().contains(q) ?? false) ||
+                    (log.description?.toLowerCase().contains(q) ?? false) ||
+                    log.entityType.toLowerCase().contains(q);
+              }).toList();
 
-                return ListView.builder(
-                  padding: EdgeInsets.fromLTRB(
-                    context.isMobile ? 16 : 24,
-                    0,
-                    context.isMobile ? 16 : 24,
-                    24,
+              if (filtered.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Text('No audit log entries found.'),
                   ),
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
+                );
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                itemCount: filtered.length,
+                itemBuilder: (context, index) {
                     final log = filtered[index];
                     final color = _actionColor(context, log.action);
                     return AppCard(
@@ -231,7 +222,6 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                 onRetry: () => ref.invalidate(auditLogsProvider),
               ),
             ),
-          ),
         ],
       ),
     );

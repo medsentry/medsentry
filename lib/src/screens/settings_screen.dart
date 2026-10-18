@@ -2448,10 +2448,12 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
   final _contactController = TextEditingController();
   final _specializationController = TextEditingController();
   final _licenseController = TextEditingController();
+  final _pinController = TextEditingController();
   String? _profileImageUrl;
   UserRole _role = UserRole.staff;
   String? _clinicId;
   bool _isActive = true;
+  bool _pinEnabled = false;
   bool _isSaving = false;
   bool _isDirty = false;
   bool _isPasswordVisible = false;
@@ -2499,6 +2501,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
       _role = user.role;
       _clinicId = user.clinicId;
       _isActive = user.isActive;
+      _pinEnabled = user.pinEnabled;
     } else {
       final currentUser = ref.read(currentUserProvider);
       if (currentUser?.isSuperAdmin != true) {
@@ -2513,6 +2516,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
     _contactController.addListener(_markDirty);
     _specializationController.addListener(_markDirty);
     _licenseController.addListener(_markDirty);
+    _pinController.addListener(_markDirty);
   }
 
   @override
@@ -2524,6 +2528,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
     _contactController.dispose();
     _specializationController.dispose();
     _licenseController.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
@@ -2640,11 +2645,12 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                       controller: _emailController,
                       label: 'Email Address',
                       icon: Icons.email_outlined,
-                      enabled: !_isEdit,
+                      enabled: !_isEdit || isSuperAdmin,
                       required: true,
                       keyboardType: TextInputType.emailAddress,
-                      helperText:
-                          'Verification codes (OTP) will be sent to this email address for Staff & Admin logins.',
+                      helperText: isSuperAdmin && _isEdit
+                          ? 'Super Admin can update this staff member\'s login email address.'
+                          : 'Verification codes (OTP) will be sent to this email address for Staff & Admin logins.',
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -2843,7 +2849,33 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                           ? 'Leave blank to keep current password. If changed, must be at least 8 characters with letters and numbers.'
                           : 'Must be at least 8 characters with letters and numbers. Share this temporary password securely.',
                     ),
-                    if (_isEdit) ...[
+                    if (_isEdit && isSuperAdmin) ...[
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Quick PIN Login Enabled'),
+                        subtitle: const Text(
+                          'Allow or disallow PIN authentication for this account',
+                        ),
+                        value: _pinEnabled,
+                        onChanged: (val) {
+                          setState(() {
+                            _pinEnabled = val;
+                            _isDirty = true;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _field(
+                        controller: _pinController,
+                        label: 'Reset 4-Digit PIN (Optional)',
+                        icon: Icons.pin_outlined,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                        helperText:
+                            'Leave blank to retain current PIN or enter 4 digits to set a new PIN.',
+                      ),
+                    ] else if (_isEdit) ...[
                       const SizedBox(height: 12),
                       AppInfoCard(
                         icon: Icons.pin_outlined,
@@ -2919,6 +2951,11 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
             return 'Enter a valid email address (e.g. user@rhu.gov.ph).';
           }
         }
+        if (label.contains('PIN') && trimmed.isNotEmpty) {
+          if (!RegExp(r'^\d{4}$').hasMatch(trimmed)) {
+            return 'PIN must be exactly 4 digits.';
+          }
+        }
         if (label.contains('Password') && trimmed.isNotEmpty) {
           if (trimmed.length < 8) {
             return 'Password must be at least 8 characters long.';
@@ -2969,6 +3006,7 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
         final user = widget.existingUser!;
         await repository.updateUser(
           id: user.id,
+          email: isSuperAdmin ? _emailController.text.trim().toLowerCase() : null,
           clinicId: targetClinicId,
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
@@ -2979,6 +3017,8 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
           isActive: _isActive,
           profileImageUrl: _profileImageUrl,
           newPassword: _emptyToNull(_passwordController.text),
+          newPin: _emptyToNull(_pinController.text),
+          pinEnabled: isSuperAdmin ? _pinEnabled : null,
           updatedByUserId: currentUserId,
         );
       } else {

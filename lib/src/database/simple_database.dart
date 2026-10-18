@@ -21,6 +21,7 @@ class SimpleDatabase {
   final Map<String, IssuedCertificate> _certificates = {};
   final Map<String, String> _userPasswordHashes = {};
   final Map<String, DateTime> _syncDeletes = {};
+  final Set<String> _purgedPatientIds = {};
   final Map<String, SystemNotification> _notifications = {};
   final Map<String, dynamic> _preferences = {};
   SystemSettings _systemSettings = const SystemSettings();
@@ -73,6 +74,7 @@ class SimpleDatabase {
     _certificates.clear();
     _userPasswordHashes.clear();
     _syncDeletes.clear();
+    _purgedPatientIds.clear();
     _notifications.clear();
     _preferences.clear();
     _systemSettings = const SystemSettings();
@@ -151,6 +153,12 @@ class SimpleDatabase {
       _notifications,
       SystemNotification.fromJson,
     );
+    final purgedIds = decoded['purged_patient_ids'];
+    if (purgedIds is List) {
+      _purgedPatientIds
+        ..clear()
+        ..addAll(purgedIds.whereType<String>());
+    }
     _restoreSyncDeletes(decoded['sync_deletes']);
   }
 
@@ -258,6 +266,7 @@ class SimpleDatabase {
       'last_user_id': _lastUserId,
       'system_settings': _systemSettings.toJson(),
       'notifications': _notifications.values.map((e) => e.toJson()).toList(),
+      'purged_patient_ids': _purgedPatientIds.toList(),
       'sync_deletes': _syncDeleteJson(),
     };
   }
@@ -406,6 +415,7 @@ class SimpleDatabase {
     _certificates.clear();
     _userPasswordHashes.clear();
     _syncDeletes.clear();
+    _purgedPatientIds.clear();
     _notifications.clear();
     _preferences.clear();
     _systemSettings = const SystemSettings();
@@ -502,6 +512,7 @@ class SimpleDatabase {
 
   Future<void> insertPatient(Patient patient) async {
     await _ensureLoaded();
+    _purgedPatientIds.remove(patient.id);
     _patients[patient.id] = patient;
     await _saveToDisk();
   }
@@ -551,15 +562,30 @@ class SimpleDatabase {
 
   Future<void> updatePatient(Patient patient) async {
     await _ensureLoaded();
+    if (_purgedPatientIds.contains(patient.id)) return;
     _patients[patient.id] = patient;
     await _saveToDisk();
   }
 
   Future<void> deletePatient(String id) async {
     await _ensureLoaded();
+    _purgedPatientIds.add(id);
     if (_patients.containsKey(id)) _recordSyncDelete('patients', id);
     _patients.remove(id);
+    final linkedDocIds = _documents.values
+        .where((d) => d.patientId == id)
+        .map((d) => d.id)
+        .toList();
+    for (final docId in linkedDocIds) {
+      _documents.remove(docId);
+      _recordSyncDelete('documents', docId);
+    }
     await _saveToDisk();
+  }
+
+  Future<bool> isPatientPurged(String id) async {
+    await _ensureLoaded();
+    return _purgedPatientIds.contains(id);
   }
 
   Future<int> getPatientCount({
@@ -1173,14 +1199,8 @@ class SimpleDatabase {
     String? documentPath;
     switch (table) {
       case 'patients':
-        final patient = _patients[id];
-        if (patient != null) {
-          _patients[id] = patient.copyWith(
-            isArchived: true,
-            archivedAt: patient.archivedAt ?? DateTime.now(),
-            syncStatus: 0,
-          );
-        }
+        _purgedPatientIds.add(id);
+        _patients.remove(id);
       case 'documents':
         documentPath = _documents.remove(id)?.filePath;
       case 'clinics':
@@ -1211,7 +1231,9 @@ class SimpleDatabase {
     await _ensureLoaded();
     switch (table) {
       case 'patients':
+        if (_purgedPatientIds.contains(raw['id'])) return;
         final patient = Patient.fromJson(raw);
+        if (_purgedPatientIds.contains(patient.id)) return;
         final existing = _patients[patient.id];
         if (existing != null &&
             _shouldKeepLocalVersion(

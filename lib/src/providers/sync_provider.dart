@@ -16,6 +16,7 @@ import '../models/user.dart';
 import '../models/clinic.dart';
 import '../services/app_notification.dart';
 import '../services/document_service.dart';
+import '../utils/push_notification/push_notification_service.dart';
 import 'providers.dart';
 
 /// UI-facing sync state shown in the header, dashboard, and sync screen.
@@ -150,6 +151,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
   Future<void> _initializeSync() async {
     await _ref.read(databaseProvider).purgeRetiredClinicalData();
     await _refreshAutoSyncSettings();
+    unawaited(createPushNotificationService().requestPermission());
     final online = await _hasNetworkConnection();
     _wasOffline = !online;
     await _refreshDerivedStatus();
@@ -250,6 +252,46 @@ class SyncService extends StateNotifier<SyncServiceState> {
                   } else {
                     _ref.read(currentUserProvider.notifier).state = updatedUser;
                   }
+                }
+              } else if (table == 'notifications' &&
+                  change.eventType == PostgresChangeEvent.insert) {
+                final title =
+                    change.newRecord['title'] as String? ?? 'System Notification';
+                final message = change.newRecord['message'] as String? ?? '';
+                final type = change.newRecord['type'] as String? ?? '';
+                final target = change.newRecord['target'] as String? ?? 'all';
+                final currentUser = _ref.read(currentUserProvider);
+
+                final isAdmin = currentUser?.canManageSystemData == true;
+                final isStaff = !isAdmin;
+                final matchesRole = target == 'all' ||
+                    (target == 'admin' && isAdmin) ||
+                    (target == 'super_admin' &&
+                        currentUser?.isSuperAdmin == true) ||
+                    (target == 'staff' && isStaff);
+
+                if (matchesRole) {
+                  if (type.contains('error') ||
+                      type.contains('failed') ||
+                      type.contains('critical') ||
+                      type.contains('suspicious')) {
+                    AppNotification.error(title: title, message: message);
+                  } else if (type.contains('warning') ||
+                      type.contains('alert') ||
+                      type.contains('incomplete')) {
+                    AppNotification.warning(title: title, message: message);
+                  } else {
+                    AppNotification.info(title: title, message: message);
+                  }
+
+                  try {
+                    final pushService = createPushNotificationService();
+                    await pushService.showNotification(
+                      title: title,
+                      body: message,
+                      tag: change.newRecord['id'] as String?,
+                    );
+                  } catch (_) {}
                 }
               }
             }
@@ -1291,6 +1333,9 @@ class SyncService extends StateNotifier<SyncServiceState> {
     for (final raw in remotePatients) {
       final data = Map<String, dynamic>.from(raw);
       final remote = Patient.fromJson(data);
+      if (await db.isPatientPurged(remote.id)) {
+        continue;
+      }
       final existing = await db.getPatientById(remote.id);
       // Never overwrite an unsynced local edit. For clean local records,
       // accept only a newer authoritative server version.

@@ -90,7 +90,6 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
     final archiveCount = archiveAsync.valueOrNull?.length ?? 0;
 
     return ResponsiveContentContainer(
-      maxWidth: 1320,
       padding: ResponsiveLayout.pagePadding(context),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -984,113 +983,284 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   );
                 }
 
-                return ListView.separated(
+                return ListView.builder(
                   itemCount: filtered.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final item = filtered[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor:
-                            AppColors.primaryEmerald.withValues(alpha: 0.15),
-                        child: const Icon(
-                          Icons.description_outlined,
-                          color: AppColors.primaryEmerald,
-                          size: 20,
+                    final isSummary = item.certificateType.toLowerCase().contains('summary');
+                    final badgeColor = isSummary ? Colors.blue : AppColors.primaryEmerald;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.inputSurface : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
+                          width: 1,
                         ),
-                      ),
-                      title: Wrap(
-                        spacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            item.patientName,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppColors.inputSurface
-                                  : Colors.grey.shade200,
-                              borderRadius: AppRadius.roundedSm,
-                            ),
-                            child: Text(
-                              item.id,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      subtitle: Text(
-                        '${item.certificateType} • Purpose: ${item.purpose} • Issued on ${DateFormat('MMM d, yyyy h:mm a').format(item.issuedAt)} by ${item.issuedBy}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark
-                              ? AppColors.textMuted
-                              : AppColors.lightTextMuted,
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          IconButton(
-                            tooltip: 'Re-print Certificate',
-                            icon: const Icon(Icons.print_outlined, size: 20),
-                            onPressed: () => _reissueArchivedCertificate(
-                              context,
-                              item,
-                              exportPdf: false,
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: 'Export PDF',
-                            icon: const Icon(
-                              Icons.picture_as_pdf_outlined,
-                              size: 20,
-                            ),
-                            onPressed: () => _reissueArchivedCertificate(
-                              context,
-                              item,
-                              exportPdf: true,
-                            ),
-                          ),
-                          if (canDelete)
-                            IconButton(
-                              tooltip: 'Delete Record',
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                size: 20,
-                                color: AppColors.dangerRed,
-                              ),
-                              onPressed: () async {
-                                await ref
-                                    .read(databaseProvider)
-                                    .deleteIssuedCertificate(item.id);
-                                await ref.read(auditServiceProvider).logAction(
-                                      action: AuditAction.delete,
-                                      entityType: AuditEntityTypes.certificate,
-                                      entityId: item.id,
-                                      details:
-                                          'Deleted issued certificate record ${item.id} for ${item.patientName}',
-                                    );
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Deleted certificate ${item.id}.',
+                          // Header Row: Type Badge + Cert ID + Action Buttons
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: badgeColor.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: badgeColor.withValues(alpha: 0.28)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      isSummary ? Icons.summarize_outlined : Icons.verified_outlined,
+                                      size: 14,
+                                      color: badgeColor,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      item.certificateType,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: badgeColor,
                                       ),
                                     ),
-                                  );
-                                }
-                              },
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.elevatedSurface : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: isDark ? AppColors.border : Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Text(
+                                  'ID: ${item.id}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              // Actions
+                              FilledButton.tonalIcon(
+                                onPressed: () => _reissueArchivedCertificate(
+                                  context,
+                                  item,
+                                  exportPdf: false,
+                                ),
+                                icon: const Icon(Icons.print_outlined, size: 16),
+                                label: const Text('Print', style: TextStyle(fontSize: 12)),
+                                style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton.icon(
+                                onPressed: () => _reissueArchivedCertificate(
+                                  context,
+                                  item,
+                                  exportPdf: true,
+                                ),
+                                icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                                label: const Text('Export PDF', style: TextStyle(fontSize: 12)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              if (canDelete) ...[
+                                const SizedBox(width: 6),
+                                IconButton(
+                                  tooltip: 'Delete Record',
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: AppColors.dangerRed,
+                                  ),
+                                  onPressed: () async {
+                                    await ref
+                                        .read(databaseProvider)
+                                        .deleteIssuedCertificate(item.id);
+                                    await ref.read(auditServiceProvider).logAction(
+                                          action: AuditAction.delete,
+                                          entityType: AuditEntityTypes.certificate,
+                                          entityId: item.id,
+                                          details:
+                                              'Deleted issued certificate record ${item.id} for ${item.patientName}',
+                                        );
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Deleted certificate ${item.id}.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Patient Name & Details
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: isDark
+                                    ? AppColors.elevatedSurface
+                                    : AppColors.primaryEmerald.withValues(alpha: 0.1),
+                                child: Text(
+                                  item.patientName.isNotEmpty
+                                      ? item.patientName[0].toUpperCase()
+                                      : 'P',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? AppColors.textPrimary : AppColors.primaryEmerald,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.patientName,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (item.patientId.isNotEmpty)
+                                      Text(
+                                        'Patient ID: ${item.patientId}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: isDark
+                                              ? AppColors.textSecondary
+                                              : AppColors.lightTextSecondary,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Purpose Highlight
+                          if (item.purpose != null && item.purpose!.isNotEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.elevatedSurface
+                                    : Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isDark
+                                      ? AppColors.borderSubtle
+                                      : Colors.grey.shade200,
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.flag_outlined,
+                                    size: 14,
+                                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Purpose: ${item.purpose}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: isDark ? AppColors.textPrimary : Colors.grey.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+
+                          // Metadata Footer: Issued By Doctor, License, 12h Timestamp
+                          const Divider(height: 16),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.person_outline,
+                                size: 14,
+                                color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                item.issuedBy.isNotEmpty ? item.issuedBy : 'Attending Officer',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                                ),
+                              ),
+                              if (item.licenseNumber != null && item.licenseNumber!.isNotEmpty) ...[
+                                Text(
+                                  ' (PRC #${item.licenseNumber})',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                                  ),
+                                ),
+                              ],
+                              const Spacer(),
+                              Icon(
+                                Icons.access_time,
+                                size: 13,
+                                color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                DateFormat('MMM d, yyyy · h:mm a').format(item.issuedAt),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     );

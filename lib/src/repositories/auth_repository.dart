@@ -591,6 +591,7 @@ class AuthRepository {
   // Update user
   Future<User> updateUser({
     required String id,
+    String? email,
     String? clinicId,
     String? firstName,
     String? lastName,
@@ -636,6 +637,42 @@ class AuthRepository {
       throw StateError('Only an administrator can change account access');
     }
 
+    final normalizedEmail = email?.trim().toLowerCase();
+    final emailChanged = normalizedEmail != null &&
+        normalizedEmail.isNotEmpty &&
+        normalizedEmail != existing.email.toLowerCase();
+
+    if (emailChanged) {
+      if (!actor.isSuperAdmin) {
+        throw StateError('Only a Super Administrator can change account email addresses');
+      }
+      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(normalizedEmail)) {
+        throw ArgumentError('Invalid email address format');
+      }
+      final other = await _db.getUserByEmail(normalizedEmail);
+      if (other != null && other.id != id) {
+        throw StateError('Email $normalizedEmail is already in use by another account');
+      }
+      try {
+        await _supabase
+            .from('users')
+            .update({'email': normalizedEmail})
+            .eq('id', id);
+        if (_supabase.auth.currentSession != null) {
+          await _supabase.functions.invoke(
+            'provision-user',
+            body: {
+              'action': 'update_email',
+              'target_user_id': id,
+              'email': normalizedEmail,
+            },
+          );
+        }
+      } catch (e) {
+        debugPrint('Remote email update non-fatal: $e');
+      }
+    }
+
     if (newPassword != null && newPassword.isNotEmpty) {
       await _validatePassword(newPassword);
       await ensureOnlineSession();
@@ -667,6 +704,7 @@ class AuthRepository {
 
     final willReactivate = existing.isActive == false && (isActive == true);
     final updated = existing.copyWith(
+      email: emailChanged ? normalizedEmail : null,
       clinicId: clinicId ?? existing.clinicId,
       firstName: firstName ?? existing.firstName,
       lastName: lastName ?? existing.lastName,
@@ -699,6 +737,7 @@ class AuthRepository {
     }
 
     final accountChanged =
+        emailChanged ||
         updated.firstName != existing.firstName ||
         updated.lastName != existing.lastName ||
         updated.licenseNumber != existing.licenseNumber ||

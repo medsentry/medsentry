@@ -12,6 +12,7 @@ import '../services/app_notification.dart';
 import '../services/report_pdf_service.dart';
 import '../services/report_service.dart';
 import '../utils/context_extensions.dart';
+import '../utils/rate_limiter.dart';
 import '../utils/report_date_filter.dart';
 
 /// Modal dialog providing interactive preview, DOH/LGU official formatting,
@@ -214,6 +215,19 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
   }
 
   Future<void> _handleSaveAsPdf() async {
+    final currentUser = ref.read(currentUserProvider);
+    final key = currentUser?.id ?? 'export_user';
+    if (!reportExportRateLimiter.canAttempt(key)) {
+      final wait = reportExportRateLimiter.remainingCooldown(key);
+      AppNotification.warning(
+        title: 'Export Throttled',
+        message:
+            'Please wait ${wait.inSeconds} seconds before exporting another report.',
+      );
+      return;
+    }
+    reportExportRateLimiter.recordAttempt(key);
+
     setState(() => _isSaving = true);
     try {
       final bytes = await _generatePdfBytes();
@@ -457,176 +471,305 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
     );
   }
 
+  Widget _buildInputLabel(
+    BuildContext context,
+    String label, {
+    bool isRequired = false,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppColors.textPrimary : Colors.grey.shade800,
+            ),
+          ),
+          if (isRequired)
+            const Text(
+              ' *',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: Colors.redAccent,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildConfigurationTab(BuildContext context, bool isCompact) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '1. SELECT REPORT TYPE',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: context.semanticColors.info,
-            ),
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedReportType,
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.assignment_outlined),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-            ),
-            items: _availableReportTypes
-                .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-                .toList(),
-            onChanged: (val) {
-              if (val != null) {
-                setState(() {
-                  _selectedReportType = val;
-                  _updateDefaultFilename();
-                  _invalidatePdfCache();
-                });
-              }
-            },
-          ),
-          const SizedBox(height: 18),
-          Text(
-            '2. REPORTING PERIOD / DATE RANGE',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: context.semanticColors.info,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildDateRangeSelector(context),
-          const SizedBox(height: 18),
-          Text(
-            '3. DOCUMENT SIGN-OFFS & OFFICIAL AUDIT BLOCK',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: context.semanticColors.info,
-            ),
-          ),
-          const SizedBox(height: 8),
-          isCompact
-              ? Column(
-                  children: [
-                    _buildSignOffInputs(
-                      title: 'Prepared By (Staff / Nurse)',
-                      nameController: _preparedByNameController,
-                      roleController: _preparedByRoleController,
-                      icon: Icons.badge_outlined,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSignOffInputs(
-                      title: 'Approved By (Municipal Health Officer)',
-                      nameController: _approvedByNameController,
-                      roleController: _approvedByRoleController,
-                      icon: Icons.verified_user_outlined,
-                    ),
-                  ],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _buildSignOffInputs(
-                        title: 'Prepared By (Staff / Nurse)',
-                        nameController: _preparedByNameController,
-                        roleController: _preparedByRoleController,
-                        icon: Icons.badge_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: _buildSignOffInputs(
-                        title: 'Approved By (Municipal Health Officer)',
-                        nameController: _approvedByNameController,
-                        roleController: _approvedByRoleController,
-                        icon: Icons.verified_user_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-          const SizedBox(height: 18),
-          Text(
-            '4. FILE NAME & SAVE DESTINATION',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.6,
-              color: context.semanticColors.info,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _filenameController,
-            decoration: InputDecoration(
-              labelText: 'Target File Name',
-              hintText: 'e.g. MedSentry_Report_2026-10-01.pdf',
-              prefixIcon: const Icon(Icons.insert_drive_file_outlined),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.restore_outlined),
-                tooltip: 'Reset to standard naming convention',
-                onPressed: _updateDefaultFilename,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-            ),
-            onChanged: (_) => _invalidatePdfCache(),
-          ),
-          const SizedBox(height: 10),
+          // Section 1: Report Type
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: context.semanticColors.info.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: context.semanticColors.info.withValues(alpha: 0.25),
-              ),
+              color: isDark
+                  ? AppColors.cardSurface
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.15)),
             ),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.folder_open_outlined,
-                  size: 20,
-                  color: context.semanticColors.info,
+                Row(
+                  children: [
+                    Icon(Icons.assignment_outlined, size: 18, color: context.semanticColors.info),
+                    const SizedBox(width: 8),
+                    Text(
+                      'REPORT TYPE & CATEGORY',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: context.semanticColors.info,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
+                const SizedBox(height: 12),
+                _buildInputLabel(context, 'Report Category', isRequired: true),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedReportType,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.description_outlined, size: 20),
+                    hintText: 'Select report category',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: _availableReportTypes
+                      .map((type) => DropdownMenuItem(value: type, child: Text(type)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedReportType = val;
+                        _updateDefaultFilename();
+                        _invalidatePdfCache();
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Section 2: Date Range
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.cardSurface
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.date_range_outlined, size: 18, color: context.semanticColors.info),
+                    const SizedBox(width: 8),
+                    Text(
+                      'REPORTING PERIOD / DATE RANGE',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: context.semanticColors.info,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildDateRangeSelector(context),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Section 3: Document Sign-offs
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.cardSurface
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.verified_outlined, size: 18, color: context.semanticColors.info),
+                    const SizedBox(width: 8),
+                    Text(
+                      'DOCUMENT SIGN-OFFS & OFFICIAL AUDIT BLOCK',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: context.semanticColors.info,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                isCompact
+                    ? Column(
+                        children: [
+                          _buildSignOffInputs(
+                            title: 'Prepared By (Staff / Nurse)',
+                            nameController: _preparedByNameController,
+                            roleController: _preparedByRoleController,
+                            icon: Icons.badge_outlined,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildSignOffInputs(
+                            title: 'Approved By (Municipal Health Officer)',
+                            nameController: _approvedByNameController,
+                            roleController: _approvedByRoleController,
+                            icon: Icons.verified_user_outlined,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _buildSignOffInputs(
+                              title: 'Prepared By (Staff / Nurse)',
+                              nameController: _preparedByNameController,
+                              roleController: _preparedByRoleController,
+                              icon: Icons.badge_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _buildSignOffInputs(
+                              title: 'Approved By (Municipal Health Officer)',
+                              nameController: _approvedByNameController,
+                              roleController: _approvedByRoleController,
+                              icon: Icons.verified_user_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Section 4: File Name & Save Destination
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.cardSurface
+                  : colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.save_as_outlined, size: 18, color: context.semanticColors.info),
+                    const SizedBox(width: 8),
+                    Text(
+                      'FILE NAME & SAVE DESTINATION',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: context.semanticColors.info,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildInputLabel(context, 'Target File Name', isRequired: true),
+                TextFormField(
+                  controller: _filenameController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. MedSentry_Report_2026-10-01.pdf',
+                    prefixIcon: const Icon(Icons.insert_drive_file_outlined),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.restore_outlined),
+                      tooltip: 'Reset to standard naming convention',
+                      onPressed: _updateDefaultFilename,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                  ),
+                  onChanged: (_) => _invalidatePdfCache(),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: context.semanticColors.info.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: context.semanticColors.info.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Interactive Save Location Selection',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: context.semanticColors.info,
-                        ),
+                      Icon(
+                        Icons.folder_open_outlined,
+                        size: 20,
+                        color: context.semanticColors.info,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'When you tap "Save As PDF...", your operating system\'s native Save Dialog opens. You can select your preferred local directory (Desktop, Documents, Flash Drive, or Downloads) without silent background saving.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.75),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Interactive Save Location Selection',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: context.semanticColors.info,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'When you tap "Save As PDF...", your operating system\'s native Save Dialog opens. You can select your preferred local directory (Desktop, Documents, Flash Drive, or Downloads) without silent background saving.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurface.withValues(alpha: 0.75),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -649,86 +792,96 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
         Row(
           children: [
             Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _startDate,
-                    firstDate: DateTime(2020),
-                    lastDate: now,
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      _startDate = picked;
-                      if (_endDate.isBefore(_startDate)) {
-                        _endDate = _startDate;
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInputLabel(context, 'Start Date', isRequired: true),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _startDate,
+                        firstDate: DateTime(2020),
+                        lastDate: now,
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _startDate = picked;
+                          if (_endDate.isBefore(_startDate)) {
+                            _endDate = _startDate;
+                          }
+                          _updateDefaultFilename();
+                          _invalidatePdfCache();
+                        });
                       }
-                      _updateDefaultFilename();
-                      _invalidatePdfCache();
-                    });
-                  }
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: 'Start Date',
-                    prefixIcon: const Icon(
-                      Icons.calendar_today_outlined,
-                      size: 18,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 18,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: Text(DateFormat('yyyy-MM-dd').format(_startDate)),
                     ),
                   ),
-                  child: Text(DateFormat('yyyy-MM-dd').format(_startDate)),
-                ),
+                ],
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
-              child: InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _endDate,
-                    firstDate: _startDate,
-                    lastDate: now,
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      _endDate = picked;
-                      _updateDefaultFilename();
-                      _invalidatePdfCache();
-                    });
-                  }
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: 'End Date',
-                    prefixIcon: const Icon(
-                      Icons.event_available_outlined,
-                      size: 18,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInputLabel(context, 'End Date', isRequired: true),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _endDate,
+                        firstDate: _startDate,
+                        lastDate: now,
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          _endDate = picked;
+                          _updateDefaultFilename();
+                          _invalidatePdfCache();
+                        });
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(
+                          Icons.event_available_outlined,
+                          size: 18,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: Text(DateFormat('yyyy-MM-dd').format(_endDate)),
                     ),
                   ),
-                  child: Text(DateFormat('yyyy-MM-dd').format(_endDate)),
-                ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Wrap(
           spacing: 6,
           runSpacing: 4,
@@ -788,11 +941,14 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
     required IconData icon,
   }) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        color: isDark
+            ? AppColors.cardSurface
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.15)),
       ),
@@ -811,25 +967,31 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          _buildInputLabel(context, 'Full Name', isRequired: true),
           TextFormField(
             controller: nameController,
-            decoration: const InputDecoration(
-              labelText: 'Full Name',
+            decoration: InputDecoration(
+              hintText: 'Enter full name',
               isDense: true,
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
             onChanged: (_) => _invalidatePdfCache(),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          _buildInputLabel(context, 'Designation / Title', isRequired: true),
           TextFormField(
             controller: roleController,
-            decoration: const InputDecoration(
-              labelText: 'Designation / Title',
+            decoration: InputDecoration(
+              hintText: 'e.g. Staff Nurse, MHO',
               isDense: true,
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
             onChanged: (_) => _invalidatePdfCache(),
           ),

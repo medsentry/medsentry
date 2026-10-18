@@ -309,7 +309,7 @@ class ResponsiveContentContainer extends StatelessWidget {
   const ResponsiveContentContainer({
     super.key,
     required this.child,
-    this.maxWidth = 1600.0,
+    this.maxWidth = double.infinity,
     this.padding,
   });
 
@@ -318,9 +318,12 @@ class ResponsiveContentContainer extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: Padding(
-          padding: padding ?? ResponsiveLayout.pagePadding(context),
-          child: child,
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: padding ?? ResponsiveLayout.pagePadding(context),
+            child: child,
+          ),
         ),
       ),
     );

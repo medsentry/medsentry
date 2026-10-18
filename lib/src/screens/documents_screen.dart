@@ -122,7 +122,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               return SingleChildScrollView(
                 padding: ResponsiveLayout.pagePadding(context),
                 child: ResponsiveContentContainer(
-                  maxWidth: 1400,
                   padding: EdgeInsets.zero,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -635,12 +635,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final int columns = width < 560
-            ? 1
-            : width < 980
-            ? 2
-            : 4;
-        const spacing = 14.0;
+        final int columns = width < 560 ? 1 : 2;
+        const spacing = 16.0;
         final cardWidth = (width - (spacing * (columns - 1))) / columns;
 
         final cards = [
@@ -651,8 +647,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             title: 'Active Patients',
             value: totalPatientsDisplay,
             subtext: todayPatients > 0
-                ? '▲ +$todayPatients registered today'
-                : (totalPatients > 0 ? '● Active in RHU' : '● Ready for records'),
+                ? '+$todayPatients registered today'
+                : (totalPatients > 0 ? 'Active in RHU' : 'Ready for records'),
             subtextColor: AppColors.primaryEmerald,
             sparklineBars: patientSparkline,
             onTap: () => context.go(canAccessPatients ? '/patients' : '/rhus'),
@@ -664,8 +660,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             title: 'Medical Documents',
             value: totalDocsDisplay,
             subtext: docsToday > 0
-                ? '▲ +$docsToday uploaded today'
-                : '● Digital repository',
+                ? '+$docsToday uploaded today'
+                : 'Digital repository',
             subtextColor: const Color(0xFF38BDF8),
             sparklineBars: docSparkline,
             onTap: () =>
@@ -678,8 +674,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             title: 'Certificates Issued',
             value: totalCertsDisplay,
             subtext: certsToday > 0
-                ? '▲ +$certsToday issued today'
-                : '● Official RHU registry',
+                ? '+$certsToday issued today'
+                : 'Official RHU registry',
             subtextColor: const Color(0xFFFBBF24),
             sparklineBars: certSparkline,
             onTap: () =>
@@ -692,8 +688,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             title: 'Priority & Alerts',
             value: priorityDisplay,
             subtext: alertsCount > 0
-                ? '▲ $alertsCount unread system alerts'
-                : '● $riskCount priority patients',
+                ? '$alertsCount unread system alerts'
+                : '$riskCount priority patients',
             subtextColor: const Color(0xFFA78BFA),
             sparklineBars: prioritySparkline,
             onTap: () =>
@@ -727,61 +723,79 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.all(20),
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon Container
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: accentColor.withValues(alpha: 0.22),
-                width: 1,
+          // Top row: Icon Badge and Action Arrow Affordance
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.24),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(icon, color: accentColor, size: 20),
               ),
-            ),
-            child: Icon(icon, color: accentColor, size: 18),
+              Icon(
+                Icons.arrow_outward_rounded,
+                size: 18,
+                color: (isDark ? AppColors.textTertiary : AppColors.lightTextSecondary)
+                    .withValues(alpha: 0.6),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-
-          // Title
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-              color: isDark
-                  ? AppColors.textSecondary
-                  : AppColors.lightTextSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 16),
 
           // Big Metric and Sparkline Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 27,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                  color: isDark
-                      ? AppColors.textPrimary
-                      : AppColors.lightTextPrimary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.7,
+                        height: 1.1,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.lightTextPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : AppColors.lightTextSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: 6),
                 child: SizedBox(
-                  width: 44,
-                  height: 22,
+                  width: 52,
+                  height: 26,
                   child: CustomPaint(
                     painter: _MiniSparklinePainter(
                       color: accentColor,
@@ -792,15 +806,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 14),
 
-          // Subtext delta
-          Text(
-            subtext,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: subtextColor,
+          // Bento Pill Trend Tag
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: subtextColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: subtextColor.withValues(alpha: 0.2),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: subtextColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    subtext,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: subtextColor,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

@@ -11,8 +11,10 @@ Future<void> showMedsentryCommandPalette(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  final isMobile = MediaQuery.of(context).size.width < 640;
   await showDialog<void>(
     context: context,
+    useSafeArea: !isMobile,
     barrierColor: Colors.black.withValues(alpha: 0.65),
     builder: (dialogCtx) => const MedSentryCommandPaletteDialog(),
   );
@@ -55,7 +57,10 @@ class _MedSentryCommandPaletteDialogState
     final isDark = theme.brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final dialogWidth = screenWidth > 640 ? 600.0 : screenWidth - 28;
+    final isMobile = screenWidth < 640;
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    final safePadding = MediaQuery.of(context).padding;
+    final dialogWidth = isMobile ? screenWidth : (screenWidth > 640 ? 600.0 : screenWidth - 28);
 
     final user = ref.watch(currentUserProvider);
     final settings = ref.watch(systemSettingsProvider).valueOrNull;
@@ -230,46 +235,61 @@ class _MedSentryCommandPaletteDialogState
     final headerBg = isDark ? const Color(0xFF14161E) : const Color(0xFFF9FAFB);
 
     return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 24),
+      backgroundColor: isMobile ? bgColor : Colors.transparent,
+      elevation: 0,
+      insetPadding: isMobile ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 14, vertical: 24),
       child: Center(
         child: Container(
           width: dialogWidth,
+          height: isMobile ? screenHeight : null,
           constraints: BoxConstraints(
-            maxHeight: screenHeight * 0.78,
+            maxHeight: isMobile ? screenHeight : screenHeight * 0.78,
           ),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor, width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.25),
-                blurRadius: 32,
-                offset: const Offset(0, 16),
-              ),
-            ],
+            borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(16),
+            border: isMobile ? null : Border.all(color: borderColor, width: 1.2),
+            boxShadow: isMobile
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.25),
+                      blurRadius: 32,
+                      offset: const Offset(0, 16),
+                    ),
+                  ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: isMobile ? BorderRadius.zero : BorderRadius.circular(15),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
               children: [
                 // Top Search Bar Header
                 Container(
                   color: headerBg,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
+                  padding: EdgeInsets.only(
+                    top: isMobile ? safePadding.top + 8 : 10,
+                    bottom: 10,
+                    left: isMobile ? 8 : 14,
+                    right: 14,
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.search_rounded,
-                        color: AppColors.primaryEmerald,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 10),
+                      if (isMobile)
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          color: isDark ? Colors.white70 : Colors.black87,
+                          onPressed: () => Navigator.of(context).pop(),
+                          tooltip: 'Back',
+                        )
+                      else ...[
+                        const Icon(
+                          Icons.search_rounded,
+                          color: AppColors.primaryEmerald,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 10),
+                      ],
                       Expanded(
                         child: TextField(
                           controller: _searchController,
@@ -291,7 +311,7 @@ class _MedSentryCommandPaletteDialogState
                             border: InputBorder.none,
                             isDense: true,
                             contentPadding: const EdgeInsets.symmetric(
-                              vertical: 6,
+                              vertical: 8,
                             ),
                           ),
                           onSubmitted: (_) {
@@ -320,35 +340,37 @@ class _MedSentryCommandPaletteDialogState
                             _searchController.clear();
                           },
                         ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
+                      if (!isMobile) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.12)
-                                : Colors.black.withValues(alpha: 0.08),
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.12)
+                                  : Colors.black.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          child: Text(
+                            'ESC',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                              color: isDark
+                                  ? AppColors.textSecondary
+                                  : Colors.grey.shade700,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          'ESC',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                            color: isDark
-                                ? AppColors.textSecondary
-                                : Colors.grey.shade700,
-                          ),
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -402,10 +424,12 @@ class _MedSentryCommandPaletteDialogState
                           ),
                         )
                       : ListView(
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 6,
+                          shrinkWrap: !isMobile,
+                          padding: EdgeInsets.fromLTRB(
+                            6,
+                            8,
+                            6,
+                            isMobile ? (viewInsets.bottom + 24) : 8,
                           ),
                           children: [
                             // Section: Patients
@@ -477,54 +501,55 @@ class _MedSentryCommandPaletteDialogState
                         ),
                 ),
 
-                // Bottom Hint Footer
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF111319)
-                        : const Color(0xFFF3F4F6),
-                    border: Border(
-                      top: BorderSide(
-                        color: isDark
-                            ? AppColors.border
-                            : const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
+                // Bottom Hint Footer (desktop/tablet only)
+                if (!isMobile)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'MedSentry RHU Command Palette',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF111319)
+                          : const Color(0xFFF3F4F6),
+                      border: Border(
+                        top: BorderSide(
                           color: isDark
-                              ? AppColors.textMuted
-                              : Colors.grey.shade600,
+                              ? AppColors.border
+                              : const Color(0xFFE5E7EB),
+                          width: 1,
                         ),
                       ),
-                      Row(
-                        children: [
-                          Text(
-                            'Tap or press Enter to navigate',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark
-                                  ? AppColors.textMuted
-                                  : Colors.grey.shade600,
-                            ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'MedSentry RHU Command Palette',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: isDark
+                                ? AppColors.textMuted
+                                : Colors.grey.shade600,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              'Tap or press Enter to navigate',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? AppColors.textMuted
+                                    : Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),

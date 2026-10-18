@@ -7,3 +7,7 @@ String formatTime12h(DateTime dateTime) {
 String formatDateTime12h(DateTime dateTime) {
   return DateFormat('MMM d, yyyy h:mm a').format(dateTime.toLocal());
 }
+
+String formatDateTimeWithSeconds12h(DateTime dateTime) {
+  return DateFormat('MMM d, yyyy h:mm:ss a').format(dateTime.toLocal());
+}

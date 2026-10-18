@@ -8,6 +8,7 @@ import '../widgets/app_card.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
+import '../utils/rate_limiter.dart';
 
 class SyncScreen extends ConsumerStatefulWidget {
   const SyncScreen({super.key});
@@ -22,6 +23,19 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
 
   Future<void> _startSync() async {
     if (_isSyncing || ref.read(syncStatusProvider) == SyncStatus.syncing) return;
+    final currentUser = ref.read(currentUserProvider);
+    final syncKey = currentUser?.id ?? 'sync_user';
+    if (!manualSyncRateLimiter.canAttempt(syncKey)) {
+      final wait = manualSyncRateLimiter.remainingCooldown(syncKey);
+      AppNotification.warning(
+        title: 'Sync Throttled',
+        message:
+            'Please wait ${wait.inSeconds} seconds before requesting another manual sync.',
+      );
+      return;
+    }
+    manualSyncRateLimiter.recordAttempt(syncKey);
+
     setState(() {
       _isSyncing = true;
       _lastMessage = null;
@@ -82,7 +96,6 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     return SingleChildScrollView(
       padding: ResponsiveLayout.pagePadding(context),
       child: ResponsiveContentContainer(
-        maxWidth: 960,
         padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
