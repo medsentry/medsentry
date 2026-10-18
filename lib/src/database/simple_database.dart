@@ -476,6 +476,18 @@ class SimpleDatabase {
     return _lastUserId;
   }
 
+  Future<bool> isSessionLocked() async {
+    await _ensureLoaded();
+    return _preferences['session_locked'] as bool? ?? false;
+  }
+
+  Future<void> setSessionLocked(bool value) async {
+    await _ensureLoaded();
+    if (_preferences['session_locked'] == value) return;
+    _preferences['session_locked'] = value;
+    await _saveToDisk();
+  }
+
   Future<void> insertPatient(Patient patient) async {
     await _ensureLoaded();
     _patients[patient.id] = patient;

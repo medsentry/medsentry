@@ -256,6 +256,36 @@ void main() {
     expect(await repo.isPinLoginAvailable(), isFalse);
   });
 
+  test('lockSession clears active session, marks session locked, and preserves last user ID', () async {
+    final staff = _user('nurse@example.com', UserRole.staff).copyWith(
+      pinEnabled: true,
+      pinHash: 'hash',
+    );
+    await db.insertUser(staff);
+    gateway.passwords['nurse@example.com'] = 'Secret123!';
+    gateway.profiles['nurse@example.com'] = staff.toJson();
+
+    final started =
+        await repo.beginLogin('nurse@example.com', 'Secret123!')
+            as LoginOtpRequired;
+    await repo.verifyLoginOtp(started.challenge, '123456');
+
+    expect(await repo.isSessionLocked(), isFalse);
+    expect(await db.getLastUserId(), staff.id);
+
+    // Now lock session
+    await repo.lockSession(userId: staff.id);
+
+    expect(await repo.isSessionLocked(), isTrue);
+    expect(await repo.getCurrentUser(), isNull);
+    expect(await repo.getLastLoggedInUserEmail(), 'nurse@example.com');
+    expect(await repo.isPinLoginAvailable(), isTrue);
+
+    // Unlock session
+    await repo.unlockSession();
+    expect(await repo.isSessionLocked(), isFalse);
+  });
+
   test('maskEmail hides the local part', () {
     expect(OtpChallenge.maskEmail('jane.doe@gmail.com'), 'j*******@gmail.com');
     expect(OtpChallenge.maskEmail('a@b.co'), 'a@b.co');

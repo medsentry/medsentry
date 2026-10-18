@@ -323,38 +323,157 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     bool compact = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Tooltip(
-      message: 'My Profile',
+    return PopupMenuButton<String>(
+      tooltip: 'Account & Security (${user.displayName})',
+      offset: const Offset(0, 42),
+      onSelected: (val) async {
+        if (val == 'profile') {
+          context.push('/profile');
+        } else if (val == 'lock') {
+          await _lockSession(context);
+        } else if (val == 'settings') {
+          context.push('/settings');
+        } else if (val == 'logout') {
+          await _logout(context);
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user.fullName,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: isDark ? AppColors.textPrimary : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                user.email,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryEmerald.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  user.roleDisplay,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryEmerald,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'profile',
+          child: ListTile(
+            leading: Icon(Icons.account_circle_outlined, size: 20),
+            title: Text('My Profile', style: TextStyle(fontSize: 13)),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'lock',
+          child: ListTile(
+            leading: const Icon(
+              Icons.lock_outline,
+              size: 20,
+              color: AppColors.primaryEmerald,
+            ),
+            title: const Text(
+              'Lock Screen',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              user.pinEnabled
+                  ? 'Unlock with your 4-digit PIN'
+                  : 'Lock current device session',
+              style: const TextStyle(fontSize: 10),
+            ),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+        ),
+        if (user.canAccessSettings)
+          const PopupMenuItem<String>(
+            value: 'settings',
+            child: ListTile(
+              leading: Icon(Icons.settings_outlined, size: 20),
+              title: Text('Settings & Security', style: TextStyle(fontSize: 13)),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+            ),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'logout',
+          child: ListTile(
+            leading: Icon(Icons.logout, size: 20, color: AppColors.critical),
+            title: Text(
+              'Log Out',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.critical,
+              ),
+            ),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+        ),
+      ],
       child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => context.push('/profile'),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 0 : 8,
-              vertical: 4,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                UserAvatar(user: user, radius: 16),
-                if (!compact) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    user.displayName,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimary
-                          : AppColors.lightTextPrimary,
-                    ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 0 : 8,
+            vertical: 4,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              UserAvatar(user: user, radius: 16),
+              if (!compact) ...[
+                const SizedBox(width: 8),
+                Text(
+                  user.displayName,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
                   ),
-                ],
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_drop_down,
+                  size: 18,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -484,6 +603,25 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
             ListTile(
               leading: const Icon(
+                Icons.lock_outline,
+                color: AppColors.primaryEmerald,
+                size: 20,
+              ),
+              title: const Text(
+                'Lock Screen',
+                style: TextStyle(
+                  color: AppColors.primaryEmerald,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onTap: () async {
+                Navigator.of(context).pop();
+                await _lockSession(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
                 Icons.logout,
                 color: AppColors.critical,
                 size: 20,
@@ -585,6 +723,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
           ),
 
+          _buildSidebarLock(context, isExpanded),
           _buildSidebarLogout(context, isExpanded),
 
           if (!forceCollapsed) ...[
@@ -675,13 +814,51 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
+  Widget _buildSidebarLock(BuildContext context, bool isExpanded) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Tooltip(
+      message: 'Lock Screen',
+      child: InkWell(
+        onTap: () => _lockSession(context),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Row(
+            mainAxisAlignment: isExpanded
+                ? MainAxisAlignment.start
+                : MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.lock_outline,
+                color: AppColors.primaryEmerald,
+                size: 20,
+              ),
+              if (isExpanded) ...[
+                const SizedBox(width: 12),
+                Text(
+                  'Lock Screen',
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSidebarLogout(BuildContext context, bool isExpanded) {
     return Tooltip(
       message: 'Log Out',
       child: InkWell(
         onTap: () => _logout(context),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Row(
             mainAxisAlignment: isExpanded
                 ? MainAxisAlignment.start
@@ -704,6 +881,17 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         ),
       ),
     );
+  }
+
+  Future<void> _lockSession(BuildContext context) async {
+    try {
+      final user = ref.read(currentUserProvider);
+      await ref.read(authRepositoryProvider).lockSession(userId: user?.id);
+      ref.read(currentUserProvider.notifier).state = null;
+      if (context.mounted) context.go('/login?locked=1');
+    } catch (e) {
+      AppNotification.error(title: 'Lock Failed', message: '$e');
+    }
   }
 
   Future<void> _logout(BuildContext context) async {

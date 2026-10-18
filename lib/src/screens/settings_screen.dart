@@ -72,6 +72,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Icons.pin,
               () => _showChangePinDialog(context, ref),
             ),
+            _buildListTile(
+              context,
+              'Lock Screen / Session',
+              (currentUser?.pinEnabled == true &&
+                      currentUser?.pinHash != null &&
+                      currentUser!.pinHash!.isNotEmpty)
+                  ? 'Lock terminal immediately (unlock with your 4-digit PIN)'
+                  : 'Lock the current terminal session',
+              Icons.lock_outline,
+              () async {
+                final user = ref.read(currentUserProvider);
+                await ref
+                    .read(authRepositoryProvider)
+                    .lockSession(userId: user?.id);
+                ref.read(currentUserProvider.notifier).state = null;
+                if (context.mounted) {
+                  context.go('/login?locked=1');
+                }
+              },
+            ),
           ]),
           if (currentUser?.canManageSystemData == true) ...[
             const Divider(),
@@ -582,6 +602,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       isPinSetup
                           ? 'PIN setup successfully'
                           : 'PIN updated successfully',
+                    ),
+                    action: SnackBarAction(
+                      label: 'Lock Now',
+                      textColor: AppColors.primaryEmerald,
+                      onPressed: () async {
+                        await ref
+                            .read(authRepositoryProvider)
+                            .lockSession(userId: user.id);
+                        ref.read(currentUserProvider.notifier).state = null;
+                        if (context.mounted) {
+                          context.go('/login?locked=1');
+                        }
+                      },
                     ),
                   ),
                 );

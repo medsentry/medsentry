@@ -72,10 +72,12 @@ class AuthRepository {
 
   Future<bool> isSessionLocked() async {
     try {
-      return await _secureStorage.read(key: _sessionLockedKey) == 'true';
+      final v = await _secureStorage.read(key: _sessionLockedKey);
+      if (v != null) return v == 'true';
     } catch (_) {
-      return false;
+      // Secure storage may be unavailable on some platforms.
     }
+    return await _db.isSessionLocked();
   }
 
   Future<void> _setSessionLocked(bool locked) async {
@@ -86,8 +88,9 @@ class AuthRepository {
         await _secureStorage.delete(key: _sessionLockedKey);
       }
     } catch (_) {
-      // Secure storage may be unavailable on some desktop setups.
+      // Secure storage may be unavailable on some platforms.
     }
+    await _db.setSessionLocked(locked);
   }
 
   Future<void> unlockSession() async {
@@ -1406,15 +1409,24 @@ class AuthRepository {
   // Lock keeps the last user available for PIN/biometric unlock, but clears the
   // active session so the router shows the unlock screen.
   Future<void> lockSession({String? userId}) async {
+    final effectiveUserId =
+        userId ?? await _getCurrentUserId() ?? await _getLastLoggedInUserId();
+    if (effectiveUserId != null) {
+      _lastLoggedInUserId = effectiveUserId;
+      await _db.setLastUserId(effectiveUserId);
+      try {
+        await _secureStorage.write(key: _lastUserIdKey, value: effectiveUserId);
+      } catch (_) {}
+    }
     await _clearCurrentUserSession();
     await _setSessionLocked(true);
 
-    if (userId != null) {
+    if (effectiveUserId != null) {
       await _auditService.logAction(
-        userId: userId,
+        userId: effectiveUserId,
         action: AuditAction.logout,
         entityType: 'user',
-        entityId: userId,
+        entityId: effectiveUserId,
         description: 'User locked the session',
       );
     }

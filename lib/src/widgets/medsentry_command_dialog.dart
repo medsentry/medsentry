@@ -186,6 +186,23 @@ class _MedSentryCommandPaletteDialogState
               );
         },
       ),
+      (
+        title: 'Lock Screen / Session',
+        subtitle: (user?.pinEnabled == true)
+            ? 'Lock terminal; unlock instantly with your 4-digit PIN'
+            : 'Lock the current workstation session',
+        icon: Icons.lock_outline,
+        execute: () async {
+          final navigator = Navigator.of(context);
+          final router = GoRouter.of(context);
+          final authRepo = ref.read(authRepositoryProvider);
+          final userNotifier = ref.read(currentUserProvider.notifier);
+          navigator.pop();
+          await authRepo.lockSession(userId: user?.id);
+          userNotifier.state = null;
+          router.go('/login?locked=1');
+        },
+      ),
       if (user?.canSyncRecords == true)
         (
           title: 'Trigger Force Sync Cycle',

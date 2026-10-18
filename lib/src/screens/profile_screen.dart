@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../models/user.dart';
 import '../providers/providers.dart';
@@ -57,10 +58,29 @@ class ProfileScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              FilledButton.icon(
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Edit Profile'),
-                onPressed: () => _editProfile(context, user),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.lock_outline, size: 18),
+                    label: const Text('Lock Screen'),
+                    onPressed: () async {
+                      await ref
+                          .read(authRepositoryProvider)
+                          .lockSession(userId: user.id);
+                      ref.read(currentUserProvider.notifier).state = null;
+                      if (context.mounted) {
+                        context.go('/login?locked=1');
+                      }
+                    },
+                  ),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Edit Profile'),
+                    onPressed: () => _editProfile(context, user),
+                  ),
+                ],
               ),
             ],
           ),
@@ -195,6 +215,70 @@ class ProfileScreen extends ConsumerWidget {
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Role & Permissions',
                   value: user.roleDisplay,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Security & Quick Lock Card
+          AppCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Terminal Security & Quick Access',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (user.pinEnabled)
+                      StatusBadge.active(text: 'PIN Enabled', showDot: true)
+                    else
+                      StatusBadge.inactive(text: 'No PIN Setup', showDot: false),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  user.pinEnabled
+                      ? 'Your account has a 4-digit PIN configured. You can lock your workstation screen anytime and resume work without retyping your password.'
+                      : 'No 4-digit access PIN is currently configured for this account. Set up a PIN in Settings for fast, single-tap terminal unlock.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: secondaryTextColor,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 10,
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryEmerald,
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.lock_outline, size: 18),
+                      label: const Text('Lock Screen Now'),
+                      onPressed: () async {
+                        await ref
+                            .read(authRepositoryProvider)
+                            .lockSession(userId: user.id);
+                        ref.read(currentUserProvider.notifier).state = null;
+                        if (context.mounted) {
+                          context.go('/login?locked=1');
+                        }
+                      },
+                    ),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.pin_outlined, size: 18),
+                      label: Text(user.pinEnabled ? 'Change PIN' : 'Setup PIN'),
+                      onPressed: () => context.push('/settings'),
+                    ),
+                  ],
                 ),
               ],
             ),
