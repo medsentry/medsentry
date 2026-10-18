@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
 import '../widgets/app_card.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import 'settings_screen.dart';
 
@@ -109,25 +110,15 @@ class StaffScreen extends ConsumerWidget {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Deactivate User'),
-        content: Text(
-          'Deactivate ${user.fullName}? They will no longer be able to sign in.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonalIcon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.person_off_outlined),
-            label: const Text('Deactivate'),
-          ),
-        ],
-      ),
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Deactivate User',
+      message: 'Deactivate ${user.fullName}? They will no longer be able to sign in.',
+      confirmLabel: 'Deactivate',
+      cancelLabel: 'Cancel',
+      type: ConfirmDialogType.warning,
+      isDestructive: true,
+      icon: Icons.person_off_outlined,
     );
 
     if (confirmed != true) return;

@@ -10,6 +10,7 @@ import '../models/models.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/biometric_auth/biometric_auth.dart';
+import '../widgets/app_form_dialog.dart';
 import '../widgets/otp_verification_panel.dart';
 import '../widgets/system_logo.dart';
 
@@ -1277,27 +1278,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _showNeedHelpDialog(BuildContext context) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.help_outline, color: primary),
-            const SizedBox(width: 10),
-            const Text('Login assistance'),
-          ],
-        ),
+      builder: (ctx) => AppFormDialog(
+        title: 'Login Assistance',
+        subtitle: 'Healthcare Provider Security',
+        icon: Icons.help_outline,
+        maxWidth: 460,
         content: const Text(
           'Contact your Rural Health Unit administrator to create, unlock, or reset an account. '
           'For security, MedSentry does not display account credentials in the application.',
+          style: TextStyle(height: 1.5),
         ),
         actions: [
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
+            child: const Text('Understood'),
           ),
         ],
       ),

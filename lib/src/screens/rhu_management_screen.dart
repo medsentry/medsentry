@@ -108,67 +108,155 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
               ),
               const SizedBox(height: 24),
 
-            // Metrics / KPIs
-            clinicsAsync.when(
-              data: (clinics) {
-                final allUsers = usersAsync.valueOrNull ?? <User>[];
-                final activeCount = clinics.where((c) => c.isActive).length;
-                final totalAssignedStaff = allUsers
-                    .where((User u) => u.clinicId != null)
-                    .length;
+              // Metrics / KPIs
+              clinicsAsync.when(
+                data: (clinics) {
+                  final allUsers = usersAsync.valueOrNull ?? <User>[];
+                  final activeCount = clinics.where((c) => c.isActive).length;
+                  final totalAssignedStaff = allUsers
+                      .where((User u) => u.clinicId != null)
+                      .length;
 
-                return LayoutBuilder(
-                  builder: (context, kpiConstraints) {
-                    final card1 = _buildKpiCard(
-                      context,
-                      title: 'Total RHU Units',
-                      value: '${clinics.length}',
-                      icon: Icons.domain_outlined,
-                      color: colorScheme.primary,
-                    );
-                    final card2 = _buildKpiCard(
-                      context,
-                      title: 'Active Facilities',
-                      value: '$activeCount',
-                      icon: Icons.check_circle_outline,
-                      color: context.semanticColors.normal,
-                    );
-                    final card3 = _buildKpiCard(
-                      context,
-                      title: 'Assigned Personnel',
-                      value: '$totalAssignedStaff',
-                      icon: Icons.people_outline,
-                      color: context.semanticColors.info,
-                    );
+                  return LayoutBuilder(
+                    builder: (context, kpiConstraints) {
+                      final card1 = _buildKpiCard(
+                        context,
+                        title: 'Total RHU Units',
+                        value: '${clinics.length}',
+                        icon: Icons.domain_outlined,
+                        color: colorScheme.primary,
+                      );
+                      final card2 = _buildKpiCard(
+                        context,
+                        title: 'Active Facilities',
+                        value: '$activeCount',
+                        icon: Icons.check_circle_outline,
+                        color: context.semanticColors.normal,
+                      );
+                      final card3 = _buildKpiCard(
+                        context,
+                        title: 'Assigned Personnel',
+                        value: '$totalAssignedStaff',
+                        icon: Icons.people_outline,
+                        color: context.semanticColors.info,
+                      );
 
-                    if (kpiConstraints.maxWidth < 600) {
-                      return Column(
+                      if (kpiConstraints.maxWidth < 600) {
+                        return Column(
+                          children: [
+                            card1,
+                            const SizedBox(height: 12),
+                            card2,
+                            const SizedBox(height: 12),
+                            card3,
+                          ],
+                        );
+                      }
+
+                      if (kpiConstraints.maxWidth < 900) {
+                        return Wrap(
+                          spacing: 16,
+                          runSpacing: 16,
+                          children: [
+                            SizedBox(
+                              width: (kpiConstraints.maxWidth - 16) / 2,
+                              child: card1,
+                            ),
+                            SizedBox(
+                              width: (kpiConstraints.maxWidth - 16) / 2,
+                              child: card2,
+                            ),
+                            SizedBox(
+                              width: kpiConstraints.maxWidth,
+                              child: card3,
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Row(
                         children: [
-                          card1,
-                          const SizedBox(height: 12),
-                          card2,
-                          const SizedBox(height: 12),
-                          card3,
+                          Expanded(child: card1),
+                          const SizedBox(width: 16),
+                          Expanded(child: card2),
+                          const SizedBox(width: 16),
+                          Expanded(child: card3),
                         ],
                       );
-                    }
+                    },
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (error, _) => AppErrorState(
+                  title: 'Facility metrics could not be loaded',
+                  error: error,
+                  onRetry: () => ref.invalidate(clinicsProvider),
+                ),
+              ),
+              const SizedBox(height: 24),
 
-                    if (kpiConstraints.maxWidth < 900) {
-                      return Wrap(
-                        spacing: 16,
-                        runSpacing: 16,
+              // Search and Filter Bar
+              AppCard(
+                padding: const EdgeInsets.all(12),
+                child: LayoutBuilder(
+                  builder: (context, filterConstraints) {
+                    final isNarrow = filterConstraints.maxWidth < 640;
+                    final searchField = TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Search facilities by name, code, or location...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                        ),
+                      ),
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val.trim().toLowerCase();
+                        });
+                      },
+                    );
+
+                    final filterButtons = SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'all', label: Text('All')),
+                        ButtonSegment(value: 'active', label: Text('Active')),
+                        ButtonSegment(
+                          value: 'inactive',
+                          label: Text('Inactive'),
+                        ),
+                      ],
+                      selected: {_statusFilter},
+                      onSelectionChanged: (val) {
+                        setState(() {
+                          _statusFilter = val.first;
+                        });
+                      },
+                    );
+
+                    if (isNarrow) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          searchField,
+                          const Divider(height: 16),
                           SizedBox(
-                            width: (kpiConstraints.maxWidth - 16) / 2,
-                            child: card1,
-                          ),
-                          SizedBox(
-                            width: (kpiConstraints.maxWidth - 16) / 2,
-                            child: card2,
-                          ),
-                          SizedBox(
-                            width: kpiConstraints.maxWidth,
-                            child: card3,
+                            width: double.infinity,
+                            child: filterButtons,
                           ),
                         ],
                       );
@@ -176,180 +264,98 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
 
                     return Row(
                       children: [
-                        Expanded(child: card1),
+                        Expanded(child: searchField),
                         const SizedBox(width: 16),
-                        Expanded(child: card2),
-                        const SizedBox(width: 16),
-                        Expanded(child: card3),
+                        filterButtons,
                       ],
                     );
                   },
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (error, _) => AppErrorState(
-                title: 'Facility metrics could not be loaded',
-                error: error,
-                onRetry: () => ref.invalidate(clinicsProvider),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-            // Search and Filter Bar
-            AppCard(
-              padding: const EdgeInsets.all(12),
-              child: LayoutBuilder(
-                builder: (context, filterConstraints) {
-                  final isNarrow = filterConstraints.maxWidth < 640;
-                  final searchField = TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText:
-                          'Search facilities by name, code, or location...',
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                setState(() {
-                                  _searchController.clear();
-                                  _searchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 10,
+              // Facilities Content
+              clinicsAsync.when(
+                data: (clinics) {
+                  var filtered = clinics.where((c) {
+                    if (_statusFilter == 'active' && !c.isActive) return false;
+                    if (_statusFilter == 'inactive' && c.isActive) return false;
+                    if (_searchQuery.isNotEmpty) {
+                      final matchName = c.name.toLowerCase().contains(
+                        _searchQuery,
+                      );
+                      final matchCode = c.code.toLowerCase().contains(
+                        _searchQuery,
+                      );
+                      final matchAddr = (c.address ?? '')
+                          .toLowerCase()
+                          .contains(_searchQuery);
+                      return matchName || matchCode || matchAddr;
+                    }
+                    return true;
+                  }).toList();
+
+                  if (filtered.isEmpty) {
+                    return EmptyState(
+                      icon: Icons.domain_disabled_outlined,
+                      title: _searchQuery.isNotEmpty
+                          ? 'No facilities match "$_searchQuery"'
+                          : 'No facilities found',
+                      message: 'Add a new Rural Health Unit to get started.',
+                      action: FilledButton.icon(
+                        onPressed: () => _showAddClinicDialog(context),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Facility'),
                       ),
-                    ),
-                    onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val.trim().toLowerCase();
-                      });
-                    },
-                  );
-
-                  final filterButtons = SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: 'all', label: Text('All')),
-                      ButtonSegment(value: 'active', label: Text('Active')),
-                      ButtonSegment(
-                        value: 'inactive',
-                        label: Text('Inactive'),
-                      ),
-                    ],
-                    selected: {_statusFilter},
-                    onSelectionChanged: (val) {
-                      setState(() {
-                        _statusFilter = val.first;
-                      });
-                    },
-                  );
-
-                  if (isNarrow) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        searchField,
-                        const Divider(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: filterButtons,
-                        ),
-                      ],
                     );
                   }
 
-                  return Row(
-                    children: [
-                      Expanded(child: searchField),
-                      const SizedBox(width: 16),
-                      filterButtons,
-                    ],
+                  final users = usersAsync.valueOrNull ?? <User>[];
+
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final crossAxisCount = constraints.maxWidth > 1100
+                          ? 3
+                          : (constraints.maxWidth > 700 ? 2 : 1);
+
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          mainAxisExtent: constraints.maxWidth <= 600
+                              ? 310
+                              : 280,
+                        ),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final clinic = filtered[index];
+                          final assignedStaff = users
+                              .where((User u) => u.clinicId == clinic.id)
+                              .toList();
+
+                          return _buildClinicCard(
+                            context,
+                            clinic,
+                            assignedStaff,
+                          );
+                        },
+                      );
+                    },
                   );
                 },
+                loading: () => const LoadingState(),
+                error: (error, _) => AppErrorState(
+                  title: 'Rural health units could not be loaded',
+                  error: error,
+                  onRetry: () => ref.invalidate(clinicsProvider),
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Facilities Content
-            clinicsAsync.when(
-              data: (clinics) {
-                var filtered = clinics.where((c) {
-                  if (_statusFilter == 'active' && !c.isActive) return false;
-                  if (_statusFilter == 'inactive' && c.isActive) return false;
-                  if (_searchQuery.isNotEmpty) {
-                    final matchName = c.name.toLowerCase().contains(
-                      _searchQuery,
-                    );
-                    final matchCode = c.code.toLowerCase().contains(
-                      _searchQuery,
-                    );
-                    final matchAddr = (c.address ?? '').toLowerCase().contains(
-                      _searchQuery,
-                    );
-                    return matchName || matchCode || matchAddr;
-                  }
-                  return true;
-                }).toList();
-
-                if (filtered.isEmpty) {
-                  return EmptyState(
-                    icon: Icons.domain_disabled_outlined,
-                    title: _searchQuery.isNotEmpty
-                        ? 'No facilities match "$_searchQuery"'
-                        : 'No facilities found',
-                    message: 'Add a new Rural Health Unit to get started.',
-                    action: FilledButton.icon(
-                      onPressed: () => _showAddClinicDialog(context),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Facility'),
-                    ),
-                  );
-                }
-
-                final users = usersAsync.valueOrNull ?? <User>[];
-
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final crossAxisCount = constraints.maxWidth > 1100
-                        ? 3
-                        : (constraints.maxWidth > 700 ? 2 : 1);
-
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        mainAxisExtent: constraints.maxWidth <= 600 ? 310 : 280,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final clinic = filtered[index];
-                        final assignedStaff = users
-                            .where((User u) => u.clinicId == clinic.id)
-                            .toList();
-
-                        return _buildClinicCard(context, clinic, assignedStaff);
-                      },
-                    );
-                  },
-                );
-              },
-              loading: () => const LoadingState(),
-              error: (error, _) => AppErrorState(
-                title: 'Rural health units could not be loaded',
-                error: error,
-                onRetry: () => ref.invalidate(clinicsProvider),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -531,11 +537,8 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
           Row(
             children: [
               InkWell(
-                onTap: () => _showAssignedStaffDialog(
-                  context,
-                  clinic,
-                  assignedStaff,
-                ),
+                onTap: () =>
+                    _showAssignedStaffDialog(context, clinic, assignedStaff),
                 borderRadius: BorderRadius.circular(4),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -578,13 +581,9 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                 icon: Icon(
                   isActive ? Icons.toggle_on : Icons.toggle_off_outlined,
                   size: 24,
-                  color: isActive
-                      ? AppColors.success
-                      : AppColors.textSecondary,
+                  color: isActive ? AppColors.success : AppColors.textSecondary,
                 ),
-                tooltip: isActive
-                    ? 'Deactivate Facility'
-                    : 'Activate Facility',
+                tooltip: isActive ? 'Deactivate Facility' : 'Activate Facility',
                 onPressed: () => _toggleClinicStatus(clinic),
               ),
               IconButton(
@@ -634,122 +633,93 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
               final enteredCode = codeController.text.trim().toUpperCase();
               final isCodeMatched = enteredCode == clinic.code.toUpperCase();
 
-              return AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                title: Row(
+              return AppFormDialog(
+                title: 'Delete Rural Health Unit',
+                subtitle: 'Confirm facility deletion',
+                icon: Icons.warning_amber_rounded,
+                maxWidth: 480,
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: context.semanticColors.criticalBg,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.warning_amber_rounded,
-                        color: context.semanticColors.critical,
-                        size: 24,
+                    RichText(
+                      text: TextSpan(
+                        style: theme.textTheme.bodyMedium,
+                        children: [
+                          const TextSpan(
+                            text:
+                                'Are you sure you want to permanently delete ',
+                          ),
+                          TextSpan(
+                            text: clinic.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          TextSpan(
+                            text:
+                                ' (${clinic.code})? This will remove the facility from the provincial system.',
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Delete Rural Health Unit',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
+                    const SizedBox(height: 16),
+                    if (assignedStaff.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: context.semanticColors.warningBg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: context.semanticColors.warning.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                content: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          style: theme.textTheme.bodyMedium,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const TextSpan(
-                              text:
-                                  'Are you sure you want to permanently delete ',
+                            Icon(
+                              Icons.info_outline,
+                              size: 18,
+                              color: context.semanticColors.warning,
                             ),
-                            TextSpan(
-                              text: clinic.name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            TextSpan(
-                              text:
-                                  ' (${clinic.code})? This will remove the facility from the provincial system.',
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${assignedStaff.length} staff member(s) are currently assigned to this facility. Deleting will unassign these staff members.',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: context.semanticColors.warning,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 16),
-                      if (assignedStaff.isNotEmpty) ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: context.semanticColors.warningBg,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: context.semanticColors.warning
-                                  .withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 18,
-                                color: context.semanticColors.warning,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  '${assignedStaff.length} staff member(s) are currently assigned to this facility. Deleting will unassign these staff members.',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: context.semanticColors.warning,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      Text(
-                        'To confirm deletion, please type the facility code "${clinic.code}":',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.75),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: codeController,
-                        autofocus: true,
-                        textCapitalization: TextCapitalization.characters,
-                        decoration: InputDecoration(
-                          hintText: clinic.code,
-                          prefixIcon:
-                              const Icon(Icons.shield_outlined, size: 20),
-                          border: const OutlineInputBorder(),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                        ),
-                        onChanged: (_) => setDialogState(() {}),
-                      ),
                     ],
-                  ),
+                    Text(
+                      'To confirm deletion, please type the facility code "${clinic.code}":',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.75),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: codeController,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        hintText: clinic.code,
+                        prefixIcon: const Icon(Icons.shield_outlined, size: 20),
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                  ],
                 ),
                 actions: [
                   TextButton(
@@ -763,8 +733,9 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         ? null
                         : () async {
                             setDialogState(() => isDeleting = true);
-                            final currentUserId =
-                                ref.read(currentUserProvider)?.id;
+                            final currentUserId = ref
+                                .read(currentUserProvider)
+                                ?.id;
 
                             try {
                               await ref
@@ -796,8 +767,9 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                                   SnackBar(
                                     backgroundColor:
                                         context.semanticColors.critical,
-                                    content:
-                                        Text('Error deleting facility: $e'),
+                                    content: Text(
+                                      'Error deleting facility: $e',
+                                    ),
                                   ),
                                 );
                               }
@@ -813,13 +785,11 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation(Colors.white),
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
                             ),
                           )
                         : const Icon(Icons.delete_forever, size: 18),
-                    label:
-                        Text(isDeleting ? 'Deleting...' : 'Delete Facility'),
+                    label: Text(isDeleting ? 'Deleting...' : 'Delete Facility'),
                   ),
                 ],
               );
@@ -863,63 +833,60 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
   ) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.groups_outlined),
-            const SizedBox(width: 10),
-            Expanded(child: Text('${clinic.name} Personnel')),
-          ],
-        ),
-        content: SizedBox(
-          width: 440,
-          child: assignedStaff.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 48,
-                        color: Theme.of(context).colorScheme.outline,
+      builder: (ctx) => AppFormDialog(
+        title: '${clinic.name} Personnel',
+        subtitle: 'Assigned Healthcare Staff',
+        icon: Icons.groups_outlined,
+        maxWidth: 480,
+        content: assignedStaff.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.people_outline,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'No personnel assigned yet',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Use the Staff Directory to assign or add healthcare personnel to this facility.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.65),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'No personnel assigned yet',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Use the Staff Directory to assign or add healthcare personnel to this facility.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.65),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: assignedStaff.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, idx) {
-                    final staff = assignedStaff[idx];
-                    return ListTile(
-                      leading: CircleAvatar(child: Text(staff.initials)),
-                      title: Text(staff.fullName),
-                      subtitle: Text('${staff.roleDisplay} • ${staff.email}'),
-                      trailing: staff.isActive
-                          ? StatusBadge.active(text: 'Active')
-                          : StatusBadge.inactive(text: 'Inactive'),
-                    );
-                  },
+                    ),
+                  ],
                 ),
-        ),
+              )
+            : ListView.separated(
+                shrinkWrap: true,
+                itemCount: assignedStaff.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, idx) {
+                  final staff = assignedStaff[idx];
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    leading: CircleAvatar(child: Text(staff.initials)),
+                    title: Text(staff.fullName),
+                    subtitle: Text('${staff.roleDisplay} • ${staff.email}'),
+                    trailing: staff.isActive
+                        ? StatusBadge.active(text: 'Active')
+                        : StatusBadge.inactive(text: 'Inactive'),
+                  );
+                },
+              ),
         actions: [
           TextButton.icon(
             onPressed: () {
@@ -1218,8 +1185,8 @@ class _ClinicFormModalState extends ConsumerState<_ClinicFormModal> {
                       final assigned = allUsers
                           .where((u) => u.clinicId == existing.id)
                           .toList();
-                      final deleted = await _RhuManagementScreenState
-                          ._showDeleteClinicConfirmDialog(
+                      final deleted =
+                          await _RhuManagementScreenState._showDeleteClinicConfirmDialog(
                             context,
                             ref,
                             existing,
@@ -1259,8 +1226,8 @@ class _ClinicFormModalState extends ConsumerState<_ClinicFormModal> {
       final normalizedContact = phoneInput.isEmpty
           ? null
           : (isValidPhilippinePhone(phoneInput)
-              ? formatPhilippinePhone(phoneInput)
-              : phoneInput);
+                ? formatPhilippinePhone(phoneInput)
+                : phoneInput);
 
       if (existing != null) {
         final updated = existing.copyWith(

@@ -1204,18 +1204,20 @@ class _EmptyPatientsState extends StatelessWidget {
   }
 }
 
-class _PatientRegistrationWizard extends ConsumerStatefulWidget {
+class PatientRegistrationDialog extends ConsumerStatefulWidget {
   final VoidCallback onPatientAdded;
 
-  const _PatientRegistrationWizard({required this.onPatientAdded});
+  const PatientRegistrationDialog({super.key, required this.onPatientAdded});
 
   @override
-  ConsumerState<_PatientRegistrationWizard> createState() =>
-      _PatientRegistrationWizardState();
+  ConsumerState<PatientRegistrationDialog> createState() =>
+      _PatientRegistrationDialogState();
 }
 
-class _PatientRegistrationWizardState
-    extends ConsumerState<_PatientRegistrationWizard> {
+typedef _PatientRegistrationWizard = PatientRegistrationDialog;
+
+class _PatientRegistrationDialogState
+    extends ConsumerState<PatientRegistrationDialog> {
   bool _showValidationErrors = false;
   bool _isSubmitting = false;
 
@@ -1516,27 +1518,17 @@ class _PatientRegistrationWizardState
   }
 
   Future<bool> _confirmPossibleDuplicate(String message) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Possible Duplicate Patient'),
-        content: Text(
+    return AppConfirmDialog.show(
+      context,
+      title: 'Possible Duplicate Patient',
+      message:
           '$message\n\nReview the existing record before creating another patient profile.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Review'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Create Anyway'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Create Anyway',
+      cancelLabel: 'Review',
+      isDestructive: false,
+      icon: Icons.person_search_outlined,
+      type: ConfirmDialogType.warning,
     );
-
-    return result ?? false;
   }
 
   String _normalize(String value) {

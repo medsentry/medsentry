@@ -740,27 +740,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<bool> _confirmRestore(BuildContext context) async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Restore Backup'),
-        content: const Text(
+    return await AppConfirmDialog.show(
+      context,
+      title: 'Restore Backup',
+      message:
           'Restoring this backup will replace the current local data. Continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonalIcon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.restore_outlined),
-            label: const Text('Restore'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Restore Data',
+      cancelLabel: 'Cancel',
+      type: ConfirmDialogType.warning,
+      isDestructive: true,
+      icon: Icons.restore_outlined,
     );
-    return result ?? false;
   }
 
   void _refreshAllProviders(WidgetRef ref) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/app_design_tokens.dart';
 
+export 'app_confirm_dialog.dart';
 export 'forms/app_form_components.dart';
 
 /// A professional, reusable form dialog widget for MedSentry EMR.

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../widgets/app_card.dart';
+import '../widgets/app_confirm_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 
@@ -251,29 +252,16 @@ class ArchiveScreen extends ConsumerWidget {
     WidgetRef ref,
     Patient patient,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Permanently Delete Patient Record'),
-        content: Text(
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Permanently Delete Patient Record',
+      message:
           'Are you sure you want to permanently delete ${patient.fullName} (${patient.id}) and all associated documents? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.dangerRed,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.delete_forever_outlined),
-            label: const Text('Delete Forever'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete Forever',
+      cancelLabel: 'Cancel',
+      isDestructive: true,
+      icon: Icons.delete_forever_outlined,
+      type: ConfirmDialogType.danger,
     );
     if (confirmed != true) return;
     final userId = ref.read(currentUserProvider)?.id ?? 'system';

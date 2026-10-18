@@ -11,6 +11,7 @@ import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 import '../utils/report_date_filter.dart';
 import '../widgets/app_card.dart';
+import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/report_export_dialog.dart';
@@ -971,32 +972,40 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(report.title),
-        content: SizedBox(
-          width: 460,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Report type: ${report.type}'),
-              const SizedBox(height: 8),
-              Text('Generated: ${formatDateTime12h(report.generatedAt)}'),
-              const SizedBox(height: 8),
-              Text('Coverage: $coverage'),
-              if (report.filePath != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Saved location: ${report.filePath}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
+      builder: (dialogContext) => AppFormDialog(
+        title: report.title,
+        subtitle: 'Generated Report Details',
+        icon: Icons.description_outlined,
+        maxWidth: 500,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
                 ),
-              ],
-            ],
-          ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildReportInfoRow(context, 'Report type', report.type),
+                  const Divider(height: 16),
+                  _buildReportInfoRow(context, 'Generated', formatDateTime12h(report.generatedAt)),
+                  const Divider(height: 16),
+                  _buildReportInfoRow(context, 'Coverage', coverage),
+                  if (report.filePath != null) ...[
+                    const Divider(height: 16),
+                    _buildReportInfoRow(context, 'Saved location', report.filePath!),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -1005,7 +1014,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
           OutlinedButton.icon(
             onPressed: () => _downloadReport(context, report),
-            icon: const Icon(Icons.share_outlined),
+            icon: const Icon(Icons.share_outlined, size: 18),
             label: const Text('Open / Share'),
           ),
           FilledButton.icon(
@@ -1018,7 +1027,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 endDate: report.endDate ?? appliedFilters.endDate,
               );
             },
-            icon: const Icon(Icons.picture_as_pdf_outlined),
+            icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
             label: const Text('Preview & Export PDF'),
           ),
         ],
@@ -1026,29 +1035,46 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
+  Widget _buildReportInfoRow(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 120,
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _deleteReport(
     BuildContext context,
     GeneratedReport report,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Report'),
-        content: const Text(
-          'Are you sure you want to delete this report from the archive?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonalIcon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Delete Report',
+      message: 'Are you sure you want to delete "${report.title}" from the archive? This action cannot be undone.',
+      confirmLabel: 'Delete Report',
+      cancelLabel: 'Cancel',
+      type: ConfirmDialogType.danger,
+      isDestructive: true,
+      icon: Icons.delete_outline,
     );
 
     if (confirmed != true) return;

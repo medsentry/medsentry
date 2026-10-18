@@ -198,25 +198,16 @@ class PatientDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Patient patient,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Permanently Delete Patient Record'),
-        content: Text(
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Permanently Delete Patient Record',
+      message:
           'Are you sure you want to permanently delete the record for ${patient.fullName}? This action cannot be undone and is recorded in the audit trail.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonalIcon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete Permanently'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete Permanently',
+      cancelLabel: 'Cancel',
+      isDestructive: true,
+      icon: Icons.delete_forever_outlined,
+      type: ConfirmDialogType.danger,
     );
 
     if (confirmed != true || !context.mounted) return;
@@ -243,24 +234,16 @@ class PatientDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Patient patient,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Archive Patient Record'),
-        content: Text(
-          'Archive ${patient.fullName}? The record can be restored from the Archive module.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Archive'),
-          ),
-        ],
-      ),
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Archive Patient Record',
+      message:
+          'Archive ${patient.fullName}? The record can be restored at any time from the Archive module.',
+      confirmLabel: 'Archive Patient',
+      cancelLabel: 'Cancel',
+      isDestructive: false,
+      icon: Icons.archive_outlined,
+      type: ConfirmDialogType.warning,
     );
 
     if (confirmed != true) return;

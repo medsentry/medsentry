@@ -155,7 +155,11 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
               color: primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(Icons.mark_email_read_outlined, color: primary, size: 26),
+            child: Icon(
+              Icons.mark_email_read_outlined,
+              color: primary,
+              size: 26,
+            ),
           ),
         ),
         const SizedBox(height: 18),
@@ -189,9 +193,8 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
         AnimatedBuilder(
           animation: _shake,
           builder: (context, child) {
-            final dx = math.sin(_shake.value * math.pi * 6) *
-                (1 - _shake.value) *
-                10;
+            final dx =
+                math.sin(_shake.value * math.pi * 6) * (1 - _shake.value) * 10;
             return Transform.translate(offset: Offset(dx, 0), child: child);
           },
           child: _CodeBoxes(
@@ -261,16 +264,20 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
           ),
         ),
         const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            TextButton.icon(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final accountButton = TextButton.icon(
               onPressed: _verifying ? null : () => widget.onCancel(),
               icon: const Icon(Icons.arrow_back, size: 16),
-              label: const Text('Use a different account'),
+              label: const Text(
+                'Use a different account',
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
               style: TextButton.styleFrom(foregroundColor: _muted),
-            ),
-            TextButton(
+            );
+
+            final resendButton = TextButton(
               onPressed:
                   (_resending || _verifying || resendWait > Duration.zero)
                   ? null
@@ -281,8 +288,28 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
                     ? 'Resend in ${resendWait.inSeconds}s'
                     : (_resending ? 'Sending...' : 'Resend code'),
               ),
-            ),
-          ],
+            );
+
+            if (constraints.maxWidth < 360) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  accountButton,
+                  const SizedBox(height: 4),
+                  resendButton,
+                ],
+              );
+            }
+
+            return Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [accountButton, resendButton],
+            );
+          },
         ),
       ],
     );
@@ -453,4 +480,3 @@ class _Box extends StatelessWidget {
     );
   }
 }
-

@@ -869,23 +869,16 @@ class _DocumentCard extends ConsumerWidget {
   }
 
   Future<void> _deleteDocument(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Document'),
-        content: Text('Delete "${document.title}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton.tonalIcon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Delete Document',
+      message:
+          'Are you sure you want to delete "${document.title}"? This cannot be undone.',
+      confirmLabel: 'Delete Document',
+      cancelLabel: 'Cancel',
+      isDestructive: true,
+      icon: Icons.delete_outline_rounded,
+      type: ConfirmDialogType.danger,
     );
 
     if (confirmed != true || !context.mounted) return;

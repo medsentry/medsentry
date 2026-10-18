@@ -1,38 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app_confirm_dialog.dart';
+
 /// Prompts the user with a confirmation dialog before discarding unsaved changes.
 /// Returns `true` if the user confirms discarding changes, or `false` otherwise.
 Future<bool> confirmDiscardUnsavedChanges(BuildContext context) async {
-  final result = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Row(
-        children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.amber),
-          SizedBox(width: 10),
-          Text('Unsaved Changes'),
-        ],
-      ),
-      content: const Text(
+  return AppConfirmDialog.show(
+    context,
+    title: 'Unsaved Changes',
+    message:
         'You have unsaved changes. Are you sure you want to discard your modifications and leave?',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Keep Editing'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(ctx).colorScheme.error,
-          ),
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Discard Changes'),
-        ),
-      ],
-    ),
+    confirmLabel: 'Discard Changes',
+    cancelLabel: 'Keep Editing',
+    isDestructive: true,
+    icon: Icons.warning_amber_rounded,
+    type: ConfirmDialogType.warning,
   );
-  return result ?? false;
 }
 
 /// A structured section container for complex forms.
@@ -57,16 +41,19 @@ class AppFormSection extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+    return Material(
+      color: colorScheme.surface,
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
@@ -114,6 +101,7 @@ class AppFormSection extends StatelessWidget {
           Padding(padding: padding, child: child),
         ],
       ),
+    ),
     );
   }
 }
