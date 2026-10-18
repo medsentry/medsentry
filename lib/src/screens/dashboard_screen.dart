@@ -1274,10 +1274,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmall = constraints.maxWidth < 520;
+              final titleSection = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -1301,10 +1301,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                 ],
-              ),
+              );
 
-              // Timeframe Pills
-              Row(
+              final pillsSection = Row(
+                mainAxisSize: MainAxisSize.min,
                 children: ['7D', '30D', '90D'].map((tf) {
                   final isSelected = _vitalsTimeframe == tf;
                   return GestureDetector(
@@ -1352,8 +1352,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   );
                 }).toList(),
-              ),
-            ],
+              );
+
+              if (isSmall) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    titleSection,
+                    const SizedBox(height: 10),
+                    pillsSection,
+                  ],
+                );
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(child: titleSection),
+                  pillsSection,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 20),
 
@@ -1513,10 +1532,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmall = constraints.maxWidth < 520;
+              final titleSection = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -1540,10 +1559,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                 ],
-              ),
+              );
 
-              // Filter pills
-              Row(
+              final pillsSection = Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildQueueFilterPill('All', 'all', isDark),
                   const SizedBox(width: 6),
@@ -1551,8 +1570,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(width: 6),
                   _buildQueueFilterPill('Monitored', 'improving', isDark),
                 ],
-              ),
-            ],
+              );
+
+              if (isSmall) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    titleSection,
+                    const SizedBox(height: 10),
+                    pillsSection,
+                  ],
+                );
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(child: titleSection),
+                  pillsSection,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
 

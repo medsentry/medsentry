@@ -21,7 +21,8 @@ class ReportService {
     required ReportGrouping grouping,
     String? clinicId,
   }) async {
-    if (reportType != 'Patient Statistics') {
+    if (reportType != 'Patient Statistics' &&
+        reportType != 'Document & Registry Summary') {
       throw ArgumentError.value(reportType, 'reportType', 'Unsupported report');
     }
 
@@ -42,10 +43,12 @@ class ReportService {
       includeArchived: true,
       clinicId: clinicId,
     );
+    final patientMap = {for (final p in allPatients) p.id: p};
     final patients = allPatients
         .where((patient) => !patient.isArchived && inRange(patient.createdAt))
         .toList();
-    final documents = (await _db.getDocuments(clinicId: clinicId))
+    final allDocuments = await _db.getDocuments(clinicId: clinicId);
+    final documents = allDocuments
         .where((document) => inRange(document.createdAt))
         .toList();
 
@@ -66,6 +69,23 @@ class ReportService {
       }
     }
 
+    final documentTypeCounts = <String, int>{};
+    final documentPeriodCounts = <String, int>{};
+    for (final doc in documents) {
+      final typeLabel = doc.typeDisplay;
+      documentTypeCounts[typeLabel] = (documentTypeCounts[typeLabel] ?? 0) + 1;
+
+      final dt = doc.scanDate ?? doc.createdAt;
+      if (dt != null) {
+        final bucket = reportBucketStart(dt, grouping);
+        final key = _reportBucketLabel(bucket, grouping);
+        documentPeriodCounts[key] = (documentPeriodCounts[key] ?? 0) + 1;
+      }
+    }
+
+    final associatedPatientIds =
+        documents.map((d) => d.patientId).where((id) => id.isNotEmpty).toSet();
+
     return {
       'report_type': reportType,
       'period': {
@@ -79,10 +99,18 @@ class ReportService {
             .where((patient) => !patient.isArchived)
             .length,
         'documents': documents.length,
+        'total_documents': documents.length,
+        'verified_documents':
+            documents.where((d) => d.status == DocumentStatus.active).length,
+        'pending_verification':
+            documents.where((d) => d.status != DocumentStatus.active).length,
+        'associated_patients': associatedPatientIds.length,
       },
       'patient_registrations_by_period': registrationCounts,
       'patients_by_gender': genderCounts,
       'patients_by_category': categoryCounts,
+      'documents_by_type': documentTypeCounts,
+      'documents_by_period': documentPeriodCounts,
       'patient_records': patients
           .map(
             (patient) => {
@@ -101,6 +129,22 @@ class ReportService {
               'blood_type': patient.bloodType ?? '',
               'contact_number': patient.contactNumber ?? '',
               'registered_at': patient.createdAt?.toIso8601String(),
+            },
+          )
+          .toList(),
+      'document_records': documents
+          .map(
+            (doc) => {
+              'id': doc.id,
+              'title': doc.title,
+              'type': doc.typeDisplay,
+              'patient_id': doc.patientId,
+              'patient_name':
+                  patientMap[doc.patientId]?.fullName ?? 'Unknown Patient',
+              'is_verified': doc.status == DocumentStatus.active,
+              'mime_type': doc.mimeType ?? 'unknown',
+              'scan_date': doc.scanDate?.toIso8601String(),
+              'created_at': doc.createdAt?.toIso8601String(),
             },
           )
           .toList(),

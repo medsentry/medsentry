@@ -24,7 +24,8 @@ class ReportPdfService {
     required String approvedByName,
     String approvedByRole = 'Municipal Health Officer (MHO) / Medical Officer IV',
   }) async {
-    if (reportType != 'Patient Statistics') {
+    if (reportType != 'Patient Statistics' &&
+        reportType != 'Document & Registry Summary') {
       throw ArgumentError.value(reportType, 'reportType', 'Unsupported report');
     }
 
@@ -44,6 +45,10 @@ class ReportPdfService {
         (reportData['patients_by_gender'] as Map<String, dynamic>?) ?? {};
     final patientsByCategory =
         (reportData['patients_by_category'] as Map<String, dynamic>?) ?? {};
+    final documentsByType =
+        (reportData['documents_by_type'] as Map<String, dynamic>?) ?? {};
+    final documentRecords =
+        (reportData['document_records'] as List<dynamic>?) ?? [];
 
     pdf.addPage(
       pw.MultiPage(
@@ -78,14 +83,17 @@ class ReportPdfService {
             pw.SizedBox(height: 14),
 
             // Summary Callout Cards
-            _buildSummaryCalloutCards(summary),
+            _buildSummaryCalloutCards(summary, reportType: reportType),
             pw.SizedBox(height: 16),
 
             // Report Body Content Based on Type
             ..._buildReportBody(
+              reportType: reportType,
               patientRecords: patientRecords,
               patientsByGender: patientsByGender,
               patientsByCategory: patientsByCategory,
+              documentsByType: documentsByType,
+              documentRecords: documentRecords,
             ),
 
             pw.SizedBox(height: 24),
@@ -492,8 +500,49 @@ class ReportPdfService {
   // ==========================================
 
   pw.Widget _buildSummaryCalloutCards(
-    Map<String, dynamic> summary,
-  ) {
+    Map<String, dynamic> summary, {
+    required String reportType,
+  }) {
+    if (reportType == 'Document & Registry Summary') {
+      final totalDocs = summary['total_documents'] ?? 0;
+      final periodDocs = summary['period_documents'] ?? 0;
+      final verifiedDocs = summary['verified_documents'] ?? 0;
+      final pendingDocs = summary['pending_verification'] ?? 0;
+      final associatedPatients = summary['associated_patients'] ?? 0;
+
+      return pw.Row(
+        children: [
+          _buildKpiCard(
+            title: 'TOTAL ARCHIVES',
+            value: '$totalDocs',
+            subtitle: 'All recorded documents',
+            accentColor: PdfColors.teal800,
+          ),
+          pw.SizedBox(width: 8),
+          _buildKpiCard(
+            title: 'PERIOD DOCUMENTS',
+            value: '$periodDocs',
+            subtitle: 'Created in date range',
+            accentColor: PdfColors.blue800,
+          ),
+          pw.SizedBox(width: 8),
+          _buildKpiCard(
+            title: 'VERIFIED ARCHIVES',
+            value: '$verifiedDocs',
+            subtitle: 'Digitally verified',
+            accentColor: PdfColors.green800,
+          ),
+          pw.SizedBox(width: 8),
+          _buildKpiCard(
+            title: 'PENDING / ASSOCIATED',
+            value: '$pendingDocs / $associatedPatients',
+            subtitle: 'Pending audit | Patients',
+            accentColor: PdfColors.orange800,
+          ),
+        ],
+      );
+    }
+
     final totalPatients = summary['total_patients'] ?? 0;
     final newPatients = summary['new_patients'] ?? 0;
     final documents = summary['documents'] ?? 0;
@@ -593,15 +642,108 @@ class ReportPdfService {
   // ==========================================
 
   List<pw.Widget> _buildReportBody({
+    required String reportType,
     required List<dynamic> patientRecords,
     required Map<String, dynamic> patientsByGender,
     required Map<String, dynamic> patientsByCategory,
+    required Map<String, dynamic> documentsByType,
+    required List<dynamic> documentRecords,
   }) {
+    if (reportType == 'Document & Registry Summary') {
+      return _buildDocumentRegistryBody(
+        documentsByType: documentsByType,
+        documentRecords: documentRecords,
+      );
+    }
     return _buildPatientStatisticsBody(
       patientRecords: patientRecords,
       patientsByGender: patientsByGender,
       patientsByCategory: patientsByCategory,
     );
+  }
+
+  List<pw.Widget> _buildDocumentRegistryBody({
+    required Map<String, dynamic> documentsByType,
+    required List<dynamic> documentRecords,
+  }) {
+    return [
+      _buildSectionTitle('DOCUMENT TYPE & CLASSIFICATION DISTRIBUTION'),
+      pw.SizedBox(height: 6),
+      if (documentsByType.isEmpty)
+        _buildEmptyState('No document categories recorded.')
+      else
+        pw.TableHelper.fromTextArray(
+          border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+          headerStyle: pw.TextStyle(
+            fontSize: 7.5,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.white,
+          ),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.teal800),
+          headerHeight: 20,
+          cellHeight: 17,
+          cellStyle: const pw.TextStyle(fontSize: 7, color: PdfColors.blueGrey900),
+          headers: ['Document Type / Classification', 'Record Count'],
+          data: documentsByType.entries.map((e) => [e.key, '${e.value}']).toList(),
+        ),
+      pw.SizedBox(height: 14),
+      _buildSectionTitle('ARCHIVED MEDICAL DOCUMENTS REGISTRY (IN REPORT PERIOD)'),
+      pw.SizedBox(height: 6),
+      if (documentRecords.isEmpty)
+        _buildEmptyState('No medical documents registered during this reporting period.')
+      else
+        pw.TableHelper.fromTextArray(
+          border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+          headerStyle: pw.TextStyle(
+            fontSize: 7.5,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.white,
+          ),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+          headerHeight: 22,
+          cellHeight: 18,
+          cellStyle: const pw.TextStyle(fontSize: 6.5, color: PdfColors.blueGrey900),
+          oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+          headers: [
+            '#',
+            'Doc ID',
+            'Document Title',
+            'Category',
+            'Patient Name',
+            'Status',
+            'Date Created',
+          ],
+          columnWidths: {
+            0: const pw.FixedColumnWidth(18),
+            1: const pw.FixedColumnWidth(55),
+            2: const pw.FlexColumnWidth(2.8),
+            3: const pw.FlexColumnWidth(2.0),
+            4: const pw.FlexColumnWidth(2.4),
+            5: const pw.FixedColumnWidth(50),
+            6: const pw.FixedColumnWidth(55),
+          },
+          data: documentRecords.asMap().entries.map((entry) {
+            final item = entry.value as Map<String, dynamic>;
+            final rawDate = item['created_at'];
+            final parsedDate = rawDate != null ? DateTime.tryParse(rawDate.toString()) : null;
+            final createdDate = parsedDate != null
+                ? DateFormat('MM/dd/yyyy').format(parsedDate)
+                : (rawDate?.toString() ?? '-');
+            final isVerified = item['is_verified'] == true;
+            final statusStr = isVerified ? 'VERIFIED' : 'PENDING';
+
+            return [
+              '${entry.key + 1}',
+              item['id'] ?? '-',
+              item['title'] ?? '-',
+              item['type'] ?? '-',
+              item['patient_name'] ?? '-',
+              statusStr,
+              createdDate,
+            ];
+          }).toList(),
+        ),
+    ];
   }
 
   // 4. Patient Statistics Body

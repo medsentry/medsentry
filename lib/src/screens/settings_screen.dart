@@ -1429,6 +1429,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
   late final TabController _tabController;
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  String? _selectedClinicFilter; // null = All, '__unassigned__' = Unassigned, or clinicId
 
   @override
   void initState() {
@@ -1459,11 +1460,28 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
             // Administrators only manage accounts within their assigned RHU clinic.
             // Super administrators must NEVER be displayed or managed in clinic staff views.
             if (u.role == UserRole.superAdmin) return false;
-            if (currentUser.clinicId != null &&
-                u.clinicId != currentUser.clinicId) {
-              return false;
+
+            // Always display the currentUser's own account
+            if (u.id != currentUser.id) {
+              // If current user is assigned to an RHU, allow accounts assigned to the same RHU
+              // OR unassigned accounts (so administrators can view and manage unassigned personnel)
+              if (currentUser.clinicId != null &&
+                  u.clinicId != null &&
+                  u.clinicId != currentUser.clinicId) {
+                return false;
+              }
+            }
+          } else {
+            // Super Administrator facility filter
+            if (_selectedClinicFilter != null) {
+              if (_selectedClinicFilter == '__unassigned__') {
+                if (u.clinicId != null) return false;
+              } else if (u.clinicId != _selectedClinicFilter) {
+                return false;
+              }
             }
           }
+
           if (query.isEmpty) return true;
           final clinic = clinics.where((c) => c.id == u.clinicId).firstOrNull;
           final clinicMatches = clinic != null &&
@@ -1525,32 +1543,103 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
       ),
     );
 
+    final isSuperAdmin = currentUser?.isSuperAdmin == true;
+    final allUsersList = usersAsync.valueOrNull ?? <User>[];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Search & Refresh Row
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (value) => setState(() => _searchQuery = value),
-            decoration: InputDecoration(
-              hintText: 'Search users by name, email, phone, or role...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchQuery.isEmpty
-                  ? null
-                  : IconButton(
-                      tooltip: 'Clear search',
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                      icon: const Icon(Icons.clear),
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                  decoration: InputDecoration(
+                    hintText: 'Search users by name, email, phone, or role...',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: _searchQuery.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Clear search',
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                            icon: const Icon(Icons.clear, size: 18),
+                          ),
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                tooltip: 'Refresh staff accounts',
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                onPressed: () => ref.invalidate(usersProvider),
+              ),
+            ],
           ),
         ),
+
+        // Facility Filter Chips for Super Admin
+        if (isSuperAdmin) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    label: Text('All Facilities (${allUsersList.length})'),
+                    selected: _selectedClinicFilter == null,
+                    onSelected: (selected) {
+                      if (selected) setState(() => _selectedClinicFilter = null);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: Text(
+                      'Unassigned (${allUsersList.where((u) => u.clinicId == null).length})',
+                    ),
+                    selected: _selectedClinicFilter == '__unassigned__',
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedClinicFilter = selected ? '__unassigned__' : null;
+                      });
+                    },
+                  ),
+                  ...clinics.map((clinic) {
+                    final clinicCount = allUsersList
+                        .where((u) => u.clinicId == clinic.id)
+                        .length;
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: ChoiceChip(
+                        label: Text('${clinic.name} ($clinicCount)'),
+                        selected: _selectedClinicFilter == clinic.id,
+                        onSelected: (selected) {
+                          setState(() {
+                            _selectedClinicFilter = selected ? clinic.id : null;
+                          });
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        ],
+
         TabBar(
           controller: _tabController,
           tabs: const [

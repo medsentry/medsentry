@@ -85,6 +85,54 @@ void main() {
         expect(header, equals('%PDF-'));
     });
 
+    test('generateReportPdf generates Document & Registry Summary PDF bytes', () async {
+      final startDate = DateTime(2026, 10, 1);
+      final endDate = DateTime(2026, 10, 15);
+
+      final reportData = {
+        'summary': {
+          'total_documents': 10,
+          'period_documents': 2,
+          'verified_documents': 1,
+          'pending_verification': 1,
+          'associated_patients': 2,
+        },
+        'documents_by_type': {'Laboratory Result': 1, 'X-Ray / Imaging': 1},
+        'document_records': [
+          {
+            'id': 'DOC-001',
+            'title': 'Complete Blood Count',
+            'type': 'Laboratory Result',
+            'patient_name': 'Juan Dela Cruz',
+            'is_verified': true,
+            'created_at': DateTime(2026, 10, 5).toIso8601String(),
+          },
+          {
+            'id': 'DOC-002',
+            'title': 'Chest X-Ray',
+            'type': 'X-Ray / Imaging',
+            'patient_name': 'Ana Santos',
+            'is_verified': false,
+            'created_at': DateTime(2026, 10, 8).toIso8601String(),
+          },
+        ],
+      };
+
+      final pdfBytes = await pdfService.generateReportPdf(
+        reportType: 'Document & Registry Summary',
+        startDate: startDate,
+        endDate: endDate,
+        reportData: reportData,
+        settings: settings,
+        preparedByName: 'Maria Santos, RN',
+        preparedByRole: 'Public Health Nurse',
+        approvedByName: 'Dr. Roberto Cruz, MD',
+      );
+
+      expect(pdfBytes, isNotEmpty);
+      expect(ascii.decode(pdfBytes.sublist(0, 5)), equals('%PDF-'));
+    });
+
     test('generateReportPdf rejects removed clinical report types', () async {
       expect(
         () => pdfService.generateReportPdf(

@@ -200,6 +200,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             .length ??
         0;
 
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final showThemeToggle = screenWidth >= 390;
+
     return AppBar(
       elevation: 0,
       backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
@@ -253,6 +256,8 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       actions: [
         IconButton(
           tooltip: 'Search (Ctrl+K)',
+          constraints: const BoxConstraints(),
+          padding: const EdgeInsets.all(6),
           icon: Icon(
             Icons.search,
             size: 20,
@@ -262,24 +267,29 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           ),
           onPressed: () => showMedsentryCommandPalette(context, ref),
         ),
-        IconButton(
-          tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
-          icon: Icon(
-            isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-            size: 20,
-            color: isDark
-                ? const Color(0xFFFBBF24)
-                : AppColors.lightTextSecondary,
+        if (showThemeToggle)
+          IconButton(
+            tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(6),
+            icon: Icon(
+              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              size: 20,
+              color: isDark
+                  ? const Color(0xFFFBBF24)
+                  : AppColors.lightTextSecondary,
+            ),
+            onPressed: () {
+              ref
+                  .read(themeModeProvider.notifier)
+                  .setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+            },
           ),
-          onPressed: () {
-            ref
-                .read(themeModeProvider.notifier)
-                .setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
-          },
-        ),
         if (user != null)
           IconButton(
             tooltip: 'Notifications',
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(6),
             icon: Badge(
               isLabelVisible: unreadCount > 0,
               label: Text(unreadCount > 9 ? '9+' : '$unreadCount'),
@@ -295,10 +305,11 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             ),
             onPressed: () => _showNotifications(context, notificationTarget),
           ),
+        const SizedBox(width: 4),
         _SyncStatusDropdown(status: syncStatus),
         if (user != null) ...[
           Padding(
-            padding: const EdgeInsets.only(right: 12, left: 4),
+            padding: const EdgeInsets.only(right: 8, left: 4),
             child: _buildProfileButton(context, user, compact: true),
           ),
         ],

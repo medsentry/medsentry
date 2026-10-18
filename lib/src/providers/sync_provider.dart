@@ -1107,7 +1107,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
     final local = await db.getSystemSettings() as SystemSettings;
     var settingsQuery = _supabase
         .from('system_settings')
-        .select('value,updated_at')
+        .select('id,value,updated_at')
         .eq('key', 'clinic');
     settingsQuery = clinicId == null
         ? settingsQuery.isFilter('clinic_id', null)
@@ -1125,13 +1125,21 @@ class SyncService extends StateNotifier<SyncServiceState> {
       final updatedAt = local.updatedAt ?? DateTime.now();
       final value = local.toJson()
         ..['updated_at'] = updatedAt.toIso8601String();
-      await _supabase.from('system_settings').upsert({
-        'clinic_id': clinicId,
-        'key': 'clinic',
-        'value': value,
-        'updated_by': profile['id'],
-        'updated_at': updatedAt.toIso8601String(),
-      });
+      if (remote != null && remote['id'] != null) {
+        await _supabase.from('system_settings').update({
+          'value': value,
+          'updated_by': profile['id'],
+          'updated_at': updatedAt.toIso8601String(),
+        }).eq('id', remote['id']);
+      } else {
+        await _supabase.from('system_settings').insert({
+          'clinic_id': clinicId,
+          'key': 'clinic',
+          'value': value,
+          'updated_by': profile['id'],
+          'updated_at': updatedAt.toIso8601String(),
+        });
+      }
       return;
     }
 
