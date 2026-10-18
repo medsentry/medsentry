@@ -378,7 +378,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/images/rhu_madrid_background.png',
+            'assets/images/rhu_background.jpg',
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => ColoredBox(
               color: isDark
