@@ -362,49 +362,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 600;
+                final isVeryNarrow = constraints.maxWidth < 360;
                 final horizontalPadding = constraints.maxWidth >= 900
                     ? (constraints.maxWidth * 0.045).clamp(32.0, 88.0)
-                    : 24.0;
-                final isTall = constraints.maxHeight >= 820;
+                    : (isVeryNarrow ? 12.0 : (isMobile ? 16.0 : 24.0));
+                final verticalPadding = isMobile ? 8.0 : 12.0;
+                final isTall = !isMobile && constraints.maxHeight >= 820;
+                final cardPadding = isVeryNarrow
+                    ? const EdgeInsets.symmetric(horizontal: 14, vertical: 16)
+                    : isMobile
+                    ? const EdgeInsets.symmetric(horizontal: 20, vertical: 22)
+                    : EdgeInsets.all(isTall ? 32 : 24);
+                final minContentHeight =
+                    (constraints.maxHeight - (verticalPadding * 2)).clamp(
+                      0.0,
+                      double.infinity,
+                    );
+
                 final card = Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: ClipRRect(
-                        borderRadius: AppRadius.roundedLg,
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(isTall ? 32 : 24),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.98),
-                              borderRadius: AppRadius.roundedLg,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.24),
-                                  blurRadius: 36,
-                                  offset: const Offset(0, 14),
-                                ),
-                              ],
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: ClipRRect(
+                      borderRadius: AppRadius.roundedLg,
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                        child: Container(
+                          width: double.infinity,
+                          padding: cardPadding,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.98),
+                            borderRadius: AppRadius.roundedLg,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 1.2,
                             ),
-                            child: Theme(
-                              data: Theme.of(context).copyWith(
-                                brightness: Brightness.light,
-                                colorScheme:
-                                    Theme.of(context).colorScheme.copyWith(
-                                  brightness: Brightness.light,
-                                  surface: Colors.white,
-                                  onSurface: const Color(0xFF0F172A),
-                                  outline: const Color(0xFFCBD5E1),
-                                ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.24),
+                                blurRadius: 36,
+                                offset: const Offset(0, 14),
                               ),
-                              child: _buildAuthForm(context, isTall: isTall),
+                            ],
+                          ),
+                          child: Theme(
+                            data: Theme.of(context).copyWith(
+                              brightness: Brightness.light,
+                              colorScheme: Theme.of(context).colorScheme
+                                  .copyWith(
+                                    brightness: Brightness.light,
+                                    surface: Colors.white,
+                                    onSurface: const Color(0xFF0F172A),
+                                    outline: const Color(0xFFCBD5E1),
+                                  ),
+                            ),
+                            child: _buildAuthForm(
+                              context,
+                              isTall: isTall,
+                              isMobile: isMobile,
                             ),
                           ),
                         ),
@@ -413,49 +428,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 );
 
-                if (constraints.maxHeight < 680) {
-                  return SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                      vertical: 8,
-                    ),
+                return SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                    vertical: verticalPadding,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: minContentHeight),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildTopBar(
                           context,
                           compact: true,
+                          isTall: isTall,
+                          isMobile: isMobile,
                           onBackground: true,
                         ),
-                        const SizedBox(height: 16),
-                        card,
-                        const SizedBox(height: 16),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: isMobile ? 12 : 16,
+                          ),
+                          child: card,
+                        ),
                         _buildBottomBar(
                           context,
                           compact: true,
+                          isTall: isTall,
+                          isMobile: isMobile,
                           onBackground: true,
                         ),
                       ],
                     ),
-                  );
-                }
-
-                return Column(
-                  children: [
-                    _buildTopBar(
-                      context,
-                      horizontalPadding: horizontalPadding,
-                      isTall: isTall,
-                      onBackground: true,
-                    ),
-                    Expanded(child: card),
-                    _buildBottomBar(
-                      context,
-                      horizontalPadding: horizontalPadding,
-                      isTall: isTall,
-                      onBackground: true,
-                    ),
-                  ],
+                  ),
                 );
               },
             ),
@@ -470,6 +477,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool compact = false,
     double horizontalPadding = 48,
     bool isTall = false,
+    bool isMobile = false,
     bool onBackground = false,
   }) {
     final theme = Theme.of(context);
@@ -485,13 +493,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 0 : horizontalPadding,
-        vertical: compact ? 10 : (isTall ? 20 : 12),
+        vertical: isMobile ? 6 : (compact ? 10 : (isTall ? 20 : 12)),
       ),
       child: Row(
         children: [
           SystemLogo(
             dataUri: settings.logoDataUri,
-            size: isTall ? 36 : 30,
+            size: isMobile ? 28 : (isTall ? 36 : 30),
             backgroundColor: onBackground
                 ? AppColors.primaryEmerald
                 : isDark
@@ -500,30 +508,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             iconColor: isDark && !onBackground
                 ? AppColors.primaryEmerald
                 : Colors.white,
-            iconSize: isTall ? 22 : 18,
+            iconSize: isMobile ? 16 : (isTall ? 22 : 18),
           ),
           const SizedBox(width: 10),
-          Text(
-            settings.appName,
-            style: TextStyle(
-              fontSize: isTall ? 20 : 17,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-              color: onBackground
-                  ? Colors.white
-                  : isDark
-                  ? AppColors.textPrimary
-                  : primary,
+          Expanded(
+            child: Text(
+              settings.appName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: isMobile ? 16 : (isTall ? 20 : 17),
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+                color: onBackground
+                    ? Colors.white
+                    : isDark
+                    ? AppColors.textPrimary
+                    : primary,
+              ),
             ),
           ),
-          const Spacer(),
-          _buildPwaInstallButton(context),
+          const SizedBox(width: 8),
+          _buildPwaInstallButton(context, isMobile: isMobile),
         ],
       ),
     );
   }
 
-  Widget _buildPwaInstallButton(BuildContext context) {
+  Widget _buildPwaInstallButton(BuildContext context, {bool isMobile = false}) {
     final installer = ref.watch(pwaInstallerProvider);
     if (!installer.isSupported || installer.isInstalled) {
       return const SizedBox.shrink();
@@ -546,14 +558,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               );
             }
           },
-          icon: const Icon(Icons.install_desktop_outlined, size: 18),
-          label: const Text('Install App'),
+          style: isMobile
+              ? FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                )
+              : null,
+          icon: Icon(
+            Icons.install_desktop_outlined,
+            size: isMobile ? 16 : 18,
+          ),
+          label: Text(isMobile ? 'Install' : 'Install App'),
         );
       },
     );
   }
 
-  Widget _buildAuthForm(BuildContext context, {bool isTall = false}) {
+  Widget _buildAuthForm(
+    BuildContext context, {
+    bool isTall = false,
+    bool isMobile = false,
+  }) {
     final pendingChallenge = _otpChallenge;
     if (pendingChallenge != null) {
       final authRepo = ref.read(authRepositoryProvider);
@@ -573,6 +605,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     const borderColor = Color(0xFFCBD5E1);
     const cardTextColor = Color(0xFF0F172A);
     const cardSecondaryTextColor = Color(0xFF475569);
+    final fieldPadding = EdgeInsets.symmetric(
+      horizontal: isMobile ? 14 : 16,
+      vertical: isMobile ? 12 : 14,
+    );
+
+    Future<void> toggleRememberMe([bool? val]) async {
+      final next = val ?? !_rememberMe;
+      setState(() {
+        _rememberMe = next;
+      });
+      final db = ref.read(databaseProvider);
+      await db.setRememberMe(next);
+      if (!next) {
+        await db.setRememberedEmail(null);
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -580,7 +629,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Align(
           alignment: Alignment.centerLeft,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 9 : 11,
+              vertical: isMobile ? 4 : 7,
+            ),
             decoration: BoxDecoration(
               color: primary.withValues(alpha: 0.09),
               borderRadius: BorderRadius.circular(20),
@@ -589,28 +641,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.verified_user_outlined, size: 15, color: primary),
-                const SizedBox(width: 7),
-                Text(
-                  'SECURE CLINIC ACCESS',
-                  style: TextStyle(
-                    color: primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                    letterSpacing: 0.8,
+                Icon(Icons.verified_user_outlined, size: 14, color: primary),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'SECURE CLINIC ACCESS',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10,
+                      letterSpacing: 0.6,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ),
-        SizedBox(height: isTall ? 22 : 16),
+        SizedBox(height: isMobile ? 12 : (isTall ? 22 : 16)),
 
         Text(
           _sessionLocked ? 'Screen Locked' : 'Welcome back',
           textAlign: TextAlign.left,
           style: theme.textTheme.headlineSmall?.copyWith(
-            fontSize: isTall ? 30 : 26,
+            fontSize: isMobile ? 22 : (isTall ? 30 : 26),
             fontWeight: FontWeight.w800,
             color: cardTextColor,
             letterSpacing: -0.7,
@@ -626,10 +682,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           textAlign: TextAlign.left,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: cardSecondaryTextColor,
+            fontSize: isMobile ? 13 : 14,
             height: 1.45,
           ),
         ),
-        SizedBox(height: isTall ? 24 : 20),
+        SizedBox(height: isMobile ? 16 : (isTall ? 24 : 20)),
 
         // Session locked banner if returning user
         if ((_isPinLogin || _sessionLocked) && _lastUserEmail != null) ...[
@@ -684,6 +741,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             TextField(
               controller: _emailController,
               focusNode: _emailFocusNode,
+              scrollPadding: const EdgeInsets.only(bottom: 120),
               style: const TextStyle(
                 color: cardTextColor,
                 fontSize: 14,
@@ -693,8 +751,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: InputDecoration(
                 labelText: 'Email Address',
                 labelStyle: const TextStyle(color: cardSecondaryTextColor),
-                floatingLabelStyle:
-                    TextStyle(color: primary, fontWeight: FontWeight.w600),
+                floatingLabelStyle: TextStyle(
+                  color: primary,
+                  fontWeight: FontWeight.w600,
+                ),
                 hintText: 'name@rhu.gov.ph',
                 hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 errorText: _emailError,
@@ -726,10 +786,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     width: AppColors.borderWidthActive,
                   ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
+                contentPadding: fieldPadding,
               ),
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [
@@ -754,6 +811,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           TextField(
             controller: _passwordController,
             focusNode: _passwordFocusNode,
+            scrollPadding: const EdgeInsets.only(bottom: 120),
             style: const TextStyle(
               color: cardTextColor,
               fontSize: 14,
@@ -763,8 +821,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             decoration: InputDecoration(
               labelText: 'Password',
               labelStyle: const TextStyle(color: cardSecondaryTextColor),
-              floatingLabelStyle:
-                  TextStyle(color: primary, fontWeight: FontWeight.w600),
+              floatingLabelStyle: TextStyle(
+                color: primary,
+                fontWeight: FontWeight.w600,
+              ),
               errorText: _passwordFieldError,
               prefixIcon: const Icon(
                 Icons.vpn_key_outlined,
@@ -809,10 +869,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   width: AppColors.borderWidthActive,
                 ),
               ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
+              contentPadding: fieldPadding,
             ),
             autofillHints: const [AutofillHints.password],
             autocorrect: false,
@@ -875,6 +932,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           TextField(
             controller: _pinController,
             focusNode: _pinFocusNode,
+            scrollPadding: const EdgeInsets.only(bottom: 120),
             style: const TextStyle(
               color: cardTextColor,
               fontSize: 16,
@@ -931,10 +989,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   width: AppColors.borderWidthActive,
                 ),
               ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
+              contentPadding: fieldPadding,
             ),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             keyboardType: TextInputType.number,
@@ -956,46 +1011,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 8),
 
         // Remember Me & Need Help row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 4,
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: Checkbox(
-                    value: _rememberMe,
-                    activeColor: primary,
-                    checkColor: Colors.white,
-                    side: const BorderSide(color: borderColor, width: 1.5),
-                    onChanged: (val) async {
-                      final next = val ?? false;
-                      setState(() {
-                        _rememberMe = next;
-                      });
-                      final db = ref.read(databaseProvider);
-                      await db.setRememberMe(next);
-                      if (!next) {
-                        await db.setRememberedEmail(null);
-                      }
-                    },
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+            InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () => toggleRememberMe(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: _rememberMe,
+                        activeColor: primary,
+                        checkColor: Colors.white,
+                        side: const BorderSide(color: borderColor, width: 1.5),
+                        onChanged: toggleRememberMe,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Remember Me',
+                      style: TextStyle(
+                        color: cardTextColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Remember Me',
-                  style: TextStyle(
-                    color: cardTextColor,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
+              ),
             ),
             if (_pinLoginAvailable)
               TextButton(
@@ -1008,6 +1063,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     _pinFieldError = null;
                   });
                 },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: Text(
                   _isPinLogin ? 'Use Password' : 'Use PIN',
                   style: TextStyle(
@@ -1021,7 +1084,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               TextButton(
                 onPressed: () => _showNeedHelpDialog(context),
                 style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 4,
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -1071,7 +1137,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ],
 
-        const SizedBox(height: 16),
+        SizedBox(height: isMobile ? 14 : 16),
 
         // Primary Login / Sign In Button
         ElevatedButton.icon(
@@ -1081,7 +1147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             foregroundColor: Colors.white,
             disabledBackgroundColor: primary.withValues(alpha: 0.6),
             disabledForegroundColor: Colors.white70,
-            minimumSize: Size.fromHeight(isTall ? 54 : 50),
+            minimumSize: Size.fromHeight(isMobile ? 48 : (isTall ? 54 : 50)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -1150,10 +1216,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (_canCheckBiometrics) ...[
             OutlinedButton.icon(
               onPressed: _isLoading ? null : _loginWithBiometrics,
-              icon: const Icon(Icons.fingerprint_rounded, size: 20, color: cardTextColor),
+              icon: const Icon(
+                Icons.fingerprint_rounded,
+                size: 20,
+                color: cardTextColor,
+              ),
               label: const Text(
                 'Use Biometrics / Windows Hello',
-                style: TextStyle(color: cardTextColor, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: cardTextColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               style: OutlinedButton.styleFrom(
                 minimumSize: Size.fromHeight(isTall ? 46 : 42),
@@ -1171,7 +1244,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (_sessionLocked)
             TextButton.icon(
               onPressed: _isLoading ? null : _switchUser,
-              icon: Icon(Icons.switch_account_outlined, size: 18, color: primary),
+              icon: Icon(
+                Icons.switch_account_outlined,
+                size: 18,
+                color: primary,
+              ),
               label: Text(
                 'Sign in as a different user',
                 style: TextStyle(color: primary, fontWeight: FontWeight.w600),
@@ -1179,7 +1256,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
         ],
 
-        const SizedBox(height: 16),
+        SizedBox(height: isMobile ? 12 : 16),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
@@ -1189,19 +1266,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               color: const Color(0xFFE2E8F0),
             ),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.shield_outlined,
                 size: 13,
                 color: Color(0xFF64748B),
               ),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   'DOH Healthcare Standards • RA 10173 • AES-256 Offline',
-                  style: TextStyle(
+                  textAlign: TextAlign.center,
+                  maxLines: isMobile ? 2 : 1,
+                  style: const TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF475569),
@@ -1221,6 +1300,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool compact = false,
     double horizontalPadding = 48,
     bool isTall = false,
+    bool isMobile = false,
     bool onBackground = false,
   }) {
     final theme = Theme.of(context);
@@ -1229,6 +1309,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         : theme.colorScheme.onSurface.withValues(alpha: 0.6);
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
+    final textStyle = theme.textTheme.bodySmall?.copyWith(
+      color: mutedColor,
+      fontSize: isMobile ? 10.5 : (isTall ? 12 : 11),
+    );
+
+    if (isMobile) {
+      return Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 0 : horizontalPadding,
+          vertical: 6,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.shield_outlined,
+                  size: 12,
+                  color: mutedColor,
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    'Protected access • Activity is audited • ${settings.appName} v1.0.0',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textStyle,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '(C) 2026 ${settings.organizationName}. All Rights Reserved',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textStyle,
+            ),
+          ],
+        ),
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -1242,10 +1369,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Text(
               '(C) 2026 ${settings.organizationName}. All Rights are Reserved',
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: mutedColor,
-                fontSize: isTall ? 12 : 11,
-              ),
+              style: textStyle,
             ),
           ),
           const SizedBox(width: 16),
@@ -1263,10 +1387,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Text(
                     'Protected access • Activity is audited • ${settings.appName} v1.0.0',
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: mutedColor,
-                      fontSize: isTall ? 12 : 11,
-                    ),
+                    style: textStyle,
                   ),
                 ),
               ],

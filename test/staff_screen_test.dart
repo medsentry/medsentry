@@ -32,17 +32,15 @@ void main() {
       ProviderScope(
         overrides: [
           currentUserProvider.overrideWith((ref) => mockUser),
-          usersProvider.overrideWith((ref) => Future.value([mockUser, mockStaff])),
+          usersProvider.overrideWith(
+            (ref) => Future.value([mockUser, mockStaff]),
+          ),
           clinicsProvider.overrideWith((ref) => Future.value(<Clinic>[])),
         ],
         child: MaterialApp(
           theme: buildMedSentryTheme(Brightness.dark),
           home: const Scaffold(
-            body: SizedBox(
-              width: 1200,
-              height: 800,
-              child: StaffScreen(),
-            ),
+            body: SizedBox(width: 1200, height: 800, child: StaffScreen()),
           ),
         ),
       ),
