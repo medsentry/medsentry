@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../config/app_design_tokens.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
@@ -216,147 +217,187 @@ class _DocumentsPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 600;
-            final titleWidget = Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Patient Documents',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Scanned records, lab results, referrals, and certificates linked to patients.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
-                  ),
-                ),
-              ],
-            );
-
-            final uploadButton = FilledButton.icon(
-              onPressed: canUpload ? onUpload : null,
-              icon: const Icon(Icons.upload_file_outlined),
-              label: const Text('Upload Document'),
-            );
-
-            if (isNarrow) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardSurface : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 620;
+              final titleSection = Row(
                 children: [
-                  titleWidget,
-                  const SizedBox(height: 12),
-                  SizedBox(width: double.infinity, child: uploadButton),
+                  Icon(
+                    Icons.folder_shared_outlined,
+                    size: 22,
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : const Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Patient Documents',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                            color: isDark
+                                ? AppColors.textPrimary
+                                : AppColors.lightTextPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Scanned records, lab results, referrals, and certificates linked to patients',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark
+                                ? AppColors.textSecondary
+                                : AppColors.lightTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               );
-            }
 
-            return Row(
-              children: [
-                Expanded(child: titleWidget),
-                const SizedBox(width: 16),
-                uploadButton,
-              ],
-            );
-          },
+              final uploadButton = canUpload
+                  ? FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryEmerald,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: onUpload,
+                      icon: const Icon(Icons.upload_file_outlined, size: 15),
+                      label: const Text(
+                        'Upload Document',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  : null;
+
+              if (isNarrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    titleSection,
+                    if (uploadButton != null) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(width: double.infinity, child: uploadButton),
+                    ],
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: titleSection),
+                  if (uploadButton != null) uploadButton,
+                ],
+              );
+            },
+          ),
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _StatChip(
-              icon: Icons.folder_outlined,
-              label: 'Total Documents',
-              value: '$totalCount',
-              color: Theme.of(context).colorScheme.primary,
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardSurface : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
             ),
-            _StatChip(
-              icon: Icons.today_outlined,
-              label: 'Uploaded Today',
-              value: '$todayCount',
-              color: context.semanticColors.info,
-            ),
-            if (filteredCount != totalCount)
-              _StatChip(
-                icon: Icons.filter_alt_outlined,
-                label: 'Showing',
-                value: '$filteredCount',
-                color: context.semanticColors.analytical,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.query_stats_rounded,
+                size: 15,
+                color: isDark
+                    ? AppColors.textTertiary
+                    : const Color(0xFF64748B),
               ),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                '$totalCount documents',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  color: isDark
+                      ? AppColors.textPrimary
+                      : const Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                ' · ',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark
+                      ? AppColors.textTertiary
+                      : AppColors.lightTextMuted,
+                ),
+              ),
+              Text(
+                '$todayCount uploaded today',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : const Color(0xFF64748B),
+                ),
+              ),
+              if (filteredCount != totalCount) ...[
+                Text(
+                  ' · ',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppColors.textTertiary
+                        : AppColors.lightTextMuted,
+                  ),
+                ),
+                Text(
+                  '$filteredCount records showing',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: isDark
+                        ? AppColors.primaryEmerald
+                        : const Color(0xFF0F766E),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ],
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
-        borderRadius: AppRadius.roundedSm,
-        border: Border.all(
-          color: isDark
-              ? AppColors.border
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 7),
-          Text(
-            '$label: ',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: isDark
-                  ? AppColors.textSecondary
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.65),
-              fontSize: 12,
-            ),
-          ),
-          Text(
-            value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-              color: isDark ? AppColors.textPrimary : null,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -388,30 +429,90 @@ class _DocumentsToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(14),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextField(
             controller: searchController,
-            decoration: const InputDecoration(
-              hintText: 'Search title, patient, PhilHealth, or type...',
-              prefixIcon: Icon(Icons.search),
+            decoration: InputDecoration(
               isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 11,
+              ),
+              hintText: 'Search title, patient, PhilHealth, or type...',
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
+              ),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                size: 18,
+                color: isDark ? AppColors.textTertiary : const Color(0xFF64748B),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
+              suffixIcon: searchController.text.isNotEmpty
+                  ? IconButton(
+                      tooltip: 'Clear search',
+                      icon: const Icon(Icons.clear_rounded, size: 16),
+                      onPressed: () {
+                        searchController.clear();
+                        onSearchChanged('');
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: isDark ? AppColors.inputSurface : Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? AppColors.borderSubtle
+                      : const Color(0xFFCBD5E1),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? AppColors.borderSubtle
+                      : const Color(0xFFCBD5E1),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: AppColors.primaryEmerald,
+                  width: 1.5,
+                ),
+              ),
             ),
             onChanged: onSearchChanged,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final isNarrow = width < 500;
-              final dropdownWidth = isNarrow ? width : 260.0;
+              final dropdownWidth = isNarrow ? width : 240.0;
 
               return Wrap(
-                spacing: 10,
-                runSpacing: 10,
+                spacing: 8,
+                runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   SizedBox(
@@ -419,15 +520,44 @@ class _DocumentsToolbar extends StatelessWidget {
                     child: DropdownButtonFormField<DocumentType?>(
                       initialValue: typeFilter,
                       isExpanded: true,
-                      decoration: const InputDecoration(
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                      ),
+                      decoration: InputDecoration(
                         labelText: 'Document Type',
-                        border: OutlineInputBorder(),
+                        labelStyle: TextStyle(
+                          fontSize: 12.5,
+                          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+                        ),
                         isDense: true,
+                        filled: true,
+                        fillColor: isDark ? AppColors.inputSurface : Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.primaryEmerald,
+                            width: 1.5,
+                          ),
+                        ),
                       ),
                       items: [
                         const DropdownMenuItem<DocumentType?>(
                           value: null,
-                          child: Text('All types'),
+                          child: Text('All document types'),
                         ),
                         ...DocumentType.values.map(
                           (type) => DropdownMenuItem<DocumentType?>(
@@ -443,9 +573,21 @@ class _DocumentsToolbar extends StatelessWidget {
                     ActionChip(
                       avatar: const Icon(
                         Icons.filter_alt_off_outlined,
-                        size: 16,
+                        size: 15,
+                        color: AppColors.primaryEmerald,
                       ),
-                      label: const Text('Clear filter'),
+                      label: const Text(
+                        'Clear filters',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                      side: BorderSide(
+                        color: isDark
+                            ? AppColors.borderSubtle
+                            : const Color(0xFFCBD5E1),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       onPressed: onClearFilters,
                     ),
                 ],
@@ -458,37 +600,51 @@ class _DocumentsToolbar extends StatelessWidget {
             runSpacing: 8,
             children: [
               SegmentedButton<_DocumentSortMode>(
+                style: ButtonStyle(
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
                 segments: const [
                   ButtonSegment(
                     value: _DocumentSortMode.newest,
-                    icon: Icon(Icons.schedule, size: 16),
-                    label: Text('Newest'),
+                    icon: Icon(Icons.schedule, size: 15),
+                    label: Text('Newest', style: TextStyle(fontSize: 12)),
                   ),
                   ButtonSegment(
                     value: _DocumentSortMode.oldest,
-                    icon: Icon(Icons.history, size: 16),
-                    label: Text('Oldest'),
+                    icon: Icon(Icons.history, size: 15),
+                    label: Text('Oldest', style: TextStyle(fontSize: 12)),
                   ),
                   ButtonSegment(
                     value: _DocumentSortMode.title,
-                    icon: Icon(Icons.sort_by_alpha, size: 16),
-                    label: Text('Title'),
+                    icon: Icon(Icons.sort_by_alpha, size: 15),
+                    label: Text('Title', style: TextStyle(fontSize: 12)),
                   ),
                 ],
                 selected: {sortMode},
                 onSelectionChanged: (value) => onSortModeChanged(value.first),
               ),
               SegmentedButton<_DocumentViewMode>(
+                style: ButtonStyle(
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
                 segments: const [
                   ButtonSegment(
                     value: _DocumentViewMode.list,
-                    icon: Icon(Icons.view_list_outlined, size: 16),
-                    label: Text('List'),
+                    icon: Icon(Icons.view_list_outlined, size: 15),
+                    label: Text('List', style: TextStyle(fontSize: 12)),
                   ),
                   ButtonSegment(
                     value: _DocumentViewMode.grid,
-                    icon: Icon(Icons.grid_view_outlined, size: 16),
-                    label: Text('Grid'),
+                    icon: Icon(Icons.grid_view_outlined, size: 15),
+                    label: Text('Grid', style: TextStyle(fontSize: 12)),
                   ),
                 ],
                 selected: {viewMode},
