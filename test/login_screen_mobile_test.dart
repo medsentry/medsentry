@@ -138,13 +138,15 @@ void main() {
         ),
       ),
     );
+    await tester.runAsync(() => db.getSystemSettings());
 
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
     await tester.pumpWidget(createSubject(loadSettingsFromDatabase: true));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
     expect(
       tester.widget<SystemLogo>(find.byType(SystemLogo)).dataUri,
@@ -156,7 +158,8 @@ void main() {
         (await db.getSystemSettings()).copyWith(logoDataUri: updatedLogo),
       );
     });
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
     expect(
       tester.widget<SystemLogo>(find.byType(SystemLogo)).dataUri,

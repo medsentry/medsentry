@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../config/app_design_tokens.dart';
 import '../models/system_settings.dart';
 import '../providers/providers.dart';
 import 'system_logo.dart';

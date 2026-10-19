@@ -23,7 +23,8 @@ void main() {
         child: const MaterialApp(home: StartupLoadingScreen()),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.text('Starting MedSentry…'), findsOneWidget);
