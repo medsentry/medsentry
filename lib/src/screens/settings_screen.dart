@@ -15,6 +15,7 @@ import '../widgets/app_form_dialog.dart';
 import '../widgets/change_pin_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/screen_kit.dart';
 import '../widgets/system_logo.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/user_avatar.dart';
@@ -39,28 +40,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
         children: [
-          Text(
-            currentUser?.isSuperAdmin == true
+          ScreenHeader(
+            icon: Icons.tune_outlined,
+            title: currentUser?.isSuperAdmin == true
                 ? 'Platform Settings & System Configuration'
                 : 'Clinic Settings & Facility Administration',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            currentUser?.isSuperAdmin == true
+            subtitle: currentUser?.isSuperAdmin == true
                 ? 'Manage master platform branding, security policies, and system-wide infrastructure.'
                 : 'Manage your local health facility, operational services, and clinic preferences.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.72),
-            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _buildAppearanceSection(context, ref),
-          const Divider(),
+          const SizedBox(height: 16),
           _buildSection(context, 'Security', [
             _buildListTile(
               context,
@@ -99,7 +90,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ]),
           if (currentUser?.canManageSystemData == true) ...[
-            const Divider(),
+            const SizedBox(height: 16),
             _buildSection(
               context,
               currentUser?.isSuperAdmin == true
@@ -136,7 +127,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ],
           if (currentUser?.isSuperAdmin != true) ...[
-            const Divider(),
+            const SizedBox(height: 16),
             _buildSection(context, 'Backup & Synchronization', [
               _buildListTile(
                 context,
@@ -151,7 +142,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ]),
           ],
-          const Divider(),
+          const SizedBox(height: 16),
           _buildSection(context, 'Database', [
             _buildListTile(
               context,
@@ -179,7 +170,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               () => _showStatisticsDialog(context, ref),
             ),
           ]),
-          const Divider(),
+          const SizedBox(height: 16),
           settingsAsync.when(
             skipLoadingOnReload: true,
             data: (settings) => _buildSection(context, 'System Information', [
@@ -261,153 +252,180 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildAppearanceSection(BuildContext context, WidgetRef ref) {
     final currentThemeMode = ref.watch(themeModeProvider);
     final currentAccentTheme = ref.watch(accentThemeProvider);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return _buildSection(context, 'Appearance & Theme', [
-      AppCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Theme Mode',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
+          child: Text(
+            'Appearance & Theme',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Select your preferred display mode or match your operating system.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.65),
-              ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardSurface : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              width: 1,
             ),
-            const SizedBox(height: 12),
-            SegmentedButton<ThemeMode>(
-              segments: const [
-                ButtonSegment<ThemeMode>(
-                  value: ThemeMode.light,
-                  icon: Icon(Icons.light_mode_outlined, size: 18),
-                  label: Text('Light'),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Theme Mode',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                 ),
-                ButtonSegment<ThemeMode>(
-                  value: ThemeMode.dark,
-                  icon: Icon(Icons.dark_mode_outlined, size: 18),
-                  label: Text('Dark'),
-                ),
-                ButtonSegment<ThemeMode>(
-                  value: ThemeMode.system,
-                  icon: Icon(Icons.settings_brightness_outlined, size: 18),
-                  label: Text('System'),
-                ),
-              ],
-              selected: {currentThemeMode},
-              onSelectionChanged: (newSelection) {
-                ref
-                    .read(themeModeProvider.notifier)
-                    .setThemeMode(newSelection.first);
-              },
-            ),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 14),
-            Text(
-              'Clinical Accent Theme',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Choose an accent palette for navigation, buttons, and active indicators.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface.withValues(alpha: 0.65),
+              const SizedBox(height: 4),
+              Text(
+                'Select your preferred display mode or match your operating system.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                ),
               ),
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: AppAccentTheme.values.map((accent) {
-                final isSelected = accent == currentAccentTheme;
-                return InkWell(
-                  onTap: () {
-                    ref
-                        .read(accentThemeProvider.notifier)
-                        .setAccentTheme(accent);
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    width: 108,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? accent.primaryColor.withValues(alpha: 0.12)
-                          : colorScheme.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
+              const SizedBox(height: 12),
+              SegmentedButton<ThemeMode>(
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+                segments: const [
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.light_mode_outlined, size: 16),
+                    label: Text('Light', style: TextStyle(fontSize: 12)),
+                  ),
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.dark_mode_outlined, size: 16),
+                    label: Text('Dark', style: TextStyle(fontSize: 12)),
+                  ),
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.settings_brightness_outlined, size: 16),
+                    label: Text('System', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+                selected: {currentThemeMode},
+                onSelectionChanged: (newSelection) {
+                  ref
+                      .read(themeModeProvider.notifier)
+                      .setThemeMode(newSelection.first);
+                },
+              ),
+              const SizedBox(height: 16),
+              Divider(
+                height: 1,
+                color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Clinical Accent Theme',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Choose an accent palette for navigation, buttons, and active indicators.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: AppAccentTheme.values.map((accent) {
+                  final isSelected = accent == currentAccentTheme;
+                  return InkWell(
+                    onTap: () {
+                      ref
+                          .read(accentThemeProvider.notifier)
+                          .setAccentTheme(accent);
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      width: 104,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 8,
+                      ),
+                      decoration: BoxDecoration(
                         color: isSelected
-                            ? accent.primaryColor
-                            : colorScheme.outlineVariant.withValues(alpha: 0.7),
-                        width: isSelected ? 2 : 1,
+                            ? accent.primaryColor.withValues(alpha: 0.1)
+                            : (isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC)),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: isSelected
+                              ? accent.primaryColor
+                              : (isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: accent.primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check,
+                                    size: 14,
+                                    color: Colors.white,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            accent.label,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected
+                                  ? accent.primaryColor
+                                  : (isDark ? AppColors.textPrimary : const Color(0xFF334155)),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: accent.primaryColor,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: accent.primaryColor.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: isSelected
-                              ? const Icon(
-                                  Icons.check,
-                                  size: 16,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          accent.label,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? accent.primaryColor
-                                : colorScheme.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 
   Widget _buildSection(
@@ -415,19 +433,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     String title,
     List<Widget> children,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
           child: Text(
             title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+            ),
           ),
         ),
-        ...children,
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardSurface : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              width: 1,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9),
+                  ),
+                children[i],
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -439,24 +485,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     IconData icon,
     VoidCallback? onTap,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListTile(
-      leading: Icon(icon),
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Icon(
+        icon,
+        size: 18,
+        color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+      ),
+      minLeadingWidth: 20,
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w600,
+          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+        ),
+      ),
+      trailing: Icon(
+        Icons.chevron_right,
+        size: 18,
+        color: isDark ? AppColors.textSecondary : const Color(0xFF94A3B8),
+      ),
       enabled: onTap != null,
       onTap: onTap,
     );
   }
 
   Widget _buildInfoTile(BuildContext context, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListTile(
-      title: Text(label),
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+        ),
+      ),
       trailing: Text(
         value,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: context.semanticColors.neutral),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          fontFeatures: const [FontFeature.tabularFigures()],
+          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+        ),
       ),
     );
   }
