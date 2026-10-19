@@ -4,9 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../models/models.dart';
 import '../providers/providers.dart';
-import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
-import '../widgets/app_card.dart';
+import '../widgets/screen_kit.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
@@ -26,83 +25,39 @@ class ArchiveScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Archive & Recovery Management',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Manage inactive patient records. Restore archived records when needed.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+          ScreenHeader(
+            icon: Icons.inventory_2_outlined,
+            title: 'Archive & Recovery',
+            subtitle: switch (archivedAsync.valueOrNull?.length) {
+              null =>
+                'Inactive patient records, kept until restored or deleted.',
+              0 => 'No patient records are archived.',
+              1 =>
+                '1 archived patient record. Restore it to make it active again.',
+              final n =>
+                '$n archived patient records. Restore one to make it active again.',
+            },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           archivedAsync.when(
             skipLoadingOnReload: true,
             data: (patients) {
               if (patients.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 48.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.archive_outlined,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No archived patient records.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
+                return const EmptyPanel(
+                  icon: Icons.inventory_2_outlined,
+                  message: 'No archived patient records',
+                  detail:
+                      'Patients you archive from the registry appear here until they are restored.',
                 );
               }
 
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-                itemCount: patients.length,
-                itemBuilder: (context, index) {
-                  final patient = patients[index];
-                  return AppCard(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: EdgeInsets.zero,
-                    child: ListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: context.elevatedSurfaceColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: context.borderColor),
-                        ),
-                        child: Icon(
-                          Icons.archive_outlined,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+              return RowsPanel(
+                children: [
+                  for (final patient in patients)
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
                       ),
                       title: Text(
                         patient.fullName,
@@ -213,8 +168,7 @@ class ArchiveScreen extends ConsumerWidget {
                               ],
                             ),
                     ),
-                  );
-                },
+                ],
               );
             },
             loading: () => const LoadingState(),

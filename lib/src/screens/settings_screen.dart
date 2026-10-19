@@ -1687,6 +1687,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
     User? currentUser,
     AsyncValue<List<User>> usersAsync,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final clinics = ref.watch(clinicsProvider).valueOrNull ?? <Clinic>[];
     final tabView = usersAsync.when(
       skipLoadingOnReload: true,
@@ -1800,36 +1801,78 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: 'Search users by name, email, phone, or role...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    suffixIcon: _searchQuery.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Clear search',
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                            icon: const Icon(Icons.clear, size: 18),
-                          ),
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(() => _searchQuery = value),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Search users by name, email, phone, or role...',
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? AppColors.textSecondary : const Color(0xFF94A3B8),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        size: 16,
+                        color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                      ),
+                      suffixIcon: _searchQuery.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Clear search',
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                              icon: const Icon(Icons.clear, size: 14),
+                            ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide(
+                          color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                        ),
+                      ),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.outlined(
-                tooltip: 'Refresh staff accounts',
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-                onPressed: () => ref.invalidate(usersProvider),
+              Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    width: 1,
+                  ),
+                ),
+                child: IconButton(
+                  tooltip: 'Refresh staff accounts',
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    size: 18,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                  ),
+                  onPressed: () => ref.invalidate(usersProvider),
+                ),
               ),
             ],
           ),
@@ -1845,7 +1888,21 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                 children: [
                   ChoiceChip(
                     label: Text('All Facilities (${activeUsersList.length})'),
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      color: _selectedClinicFilter == null
+                          ? AppColors.primaryEmerald
+                          : (isDark ? AppColors.textSecondary : const Color(0xFF64748B)),
+                    ),
                     selected: _selectedClinicFilter == null,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    side: BorderSide(
+                      color: _selectedClinicFilter == null
+                          ? AppColors.primaryEmerald
+                          : (isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                    ),
                     onSelected: (selected) {
                       if (selected) {
                         setState(() => _selectedClinicFilter = null);
@@ -1857,7 +1914,21 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     label: Text(
                       'Unassigned (${activeUsersList.where((u) => u.clinicId == null).length})',
                     ),
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      color: _selectedClinicFilter == '__unassigned__'
+                          ? AppColors.primaryEmerald
+                          : (isDark ? AppColors.textSecondary : const Color(0xFF64748B)),
+                    ),
                     selected: _selectedClinicFilter == '__unassigned__',
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    side: BorderSide(
+                      color: _selectedClinicFilter == '__unassigned__'
+                          ? AppColors.primaryEmerald
+                          : (isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                    ),
                     onSelected: (selected) {
                       setState(() {
                         _selectedClinicFilter = selected
@@ -1870,11 +1941,26 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     final clinicCount = activeUsersList
                         .where((u) => u.clinicId == clinic.id)
                         .length;
+                    final isSelected = _selectedClinicFilter == clinic.id;
                     return Padding(
                       padding: const EdgeInsets.only(left: 8),
                       child: ChoiceChip(
                         label: Text('${clinic.name} ($clinicCount)'),
-                        selected: _selectedClinicFilter == clinic.id,
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: isSelected
+                              ? AppColors.primaryEmerald
+                              : (isDark ? AppColors.textSecondary : const Color(0xFF64748B)),
+                        ),
+                        selected: isSelected,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        side: BorderSide(
+                          color: isSelected
+                              ? AppColors.primaryEmerald
+                              : (isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                        ),
                         onSelected: (selected) {
                           setState(() {
                             _selectedClinicFilter = selected ? clinic.id : null;
@@ -1889,12 +1975,45 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
           ),
         ],
 
-        TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Active Accounts'),
-            Tab(text: 'Inactive Accounts'),
-          ],
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              width: 1,
+            ),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            dividerColor: Colors.transparent,
+            indicator: BoxDecoration(
+              color: isDark ? AppColors.cardSurface : Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                width: 1,
+              ),
+              boxShadow: isDark
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+            ),
+            labelColor: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
+            unselectedLabelColor: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            tabs: const [
+              Tab(text: 'Active Accounts'),
+              Tab(text: 'Inactive Accounts'),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         if (widget.embedded)
@@ -1961,8 +2080,16 @@ class _StaffAccountsTab extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: ElevatedButton.icon(
               onPressed: onAddUser,
-              icon: const Icon(Icons.person_add_alt_1),
-              label: const Text('Add User'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryEmerald,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                minimumSize: const Size(0, 38),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+              label: const Text('Add User', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
             ),
           ),
         if (showAddButton) const SizedBox(height: 12),
@@ -2241,260 +2368,288 @@ class _UserManagementTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return AppCard(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.zero,
-      child: ListTile(
-        leading: UserAvatar(user: user, radius: 20, showStatusIndicator: true),
-        title: Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            Text(
-              user.fullName,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            _buildStatusBadge(),
-          ],
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
         ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              Text(
-                user.email,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.65),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          UserAvatar(user: user, radius: 18, showStatusIndicator: true),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Text(
+                      user.fullName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        letterSpacing: -0.2,
+                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    _buildStatusBadge(),
+                  ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  user.roleDisplay,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-              ),
-              if (currentUser?.isSuperAdmin == true) ...[
-                if (user.role == UserRole.superAdmin)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                const SizedBox(height: 4),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    Text(
+                      user.email,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                      ),
                     ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.shield_outlined,
-                          size: 12,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'All Facilities',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ],
-                    ),
-                  )
-                else if (user.clinicId != null) ...[
-                  Builder(
-                    builder: (context) {
-                      final clinics =
-                          ref.watch(clinicsProvider).valueOrNull ?? <Clinic>[];
-                      final clinic = clinics
-                          .where((c) => c.id == user.clinicId)
-                          .firstOrNull;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.domain_outlined, size: 12),
-                            const SizedBox(width: 4),
-                            Text(
-                              clinic?.name ?? clinic?.code ?? 'Assigned RHU',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ] else ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: context.semanticColors.warningBg,
-                      border: Border.all(
-                        color: context.semanticColors.warning.withValues(
-                          alpha: 0.35,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                          width: 1,
                         ),
                       ),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.warning_amber_rounded,
-                          size: 12,
-                          color: context.semanticColors.warning,
+                      child: Text(
+                        user.roleDisplay,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Unassigned Facility',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: context.semanticColors.warning,
-                                fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (currentUser?.isSuperAdmin == true) ...[
+                      if (user.role == UserRole.superAdmin)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryEmerald.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: AppColors.primaryEmerald.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.shield_outlined, size: 11, color: AppColors.primaryEmerald),
+                              SizedBox(width: 4),
+                              Text(
+                                'All Facilities',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primaryEmerald,
+                                ),
                               ),
+                            ],
+                          ),
+                        )
+                      else if (user.clinicId != null) ...[
+                        Builder(
+                          builder: (context) {
+                            final clinics = ref.watch(clinicsProvider).valueOrNull ?? <Clinic>[];
+                            final clinic = clinics.where((c) => c.id == user.clinicId).firstOrNull;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.domain_outlined, size: 11, color: isDark ? AppColors.textSecondary : const Color(0xFF64748B)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    clinic?.name ?? clinic?.code ?? 'Assigned RHU',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: context.semanticColors.warningBg,
+                            border: Border.all(
+                              color: context.semanticColors.warning.withValues(alpha: 0.35),
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                size: 11,
+                                color: context.semanticColors.warning,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Unassigned Facility',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.semanticColors.warning,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-                ],
+                    ],
+                    if (user.id == currentUser?.id)
+                      StatusBadge.info(text: 'Current User'),
+                  ],
+                ),
               ],
-              if (user.id == currentUser?.id)
-                StatusBadge.info(text: 'Current User'),
-            ],
+            ),
           ),
-        ),
-        trailing: context.isMobile
-            ? (canEdit ||
-                      canResetPassword ||
-                      (canDeactivate &&
+          if (context.isMobile)
+            (canEdit ||
+                    canResetPassword ||
+                    (canDeactivate &&
+                        user.isActive &&
+                        onDeactivate != null) ||
+                    canDelete)
+                ? PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      size: 18,
+                      color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    ),
+                    tooltip: 'User options',
+                    onSelected: (val) {
+                      if (val == 'edit') onEdit();
+                      if (val == 'reset_pwd') {
+                        _handleResetPassword(context, ref);
+                      }
+                      if (val == 'deactivate') onDeactivate?.call();
+                      if (val == 'delete') onDelete();
+                    },
+                    itemBuilder: (context) => [
+                      if (canEdit)
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_outlined, size: 18),
+                            title: Text('Edit user', style: TextStyle(fontSize: 13)),
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ),
+                      if (canResetPassword)
+                        const PopupMenuItem(
+                          value: 'reset_pwd',
+                          child: ListTile(
+                            leading: Icon(Icons.lock_reset_outlined, size: 18),
+                            title: Text('Reset Password', style: TextStyle(fontSize: 13)),
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ),
+                      if (canDeactivate &&
                           user.isActive &&
-                          onDeactivate != null) ||
-                      canDelete)
-                  ? PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert),
-                      tooltip: 'User options',
-                      onSelected: (val) {
-                        if (val == 'edit') onEdit();
-                        if (val == 'reset_pwd') {
-                          _handleResetPassword(context, ref);
-                        }
-                        if (val == 'deactivate') onDeactivate?.call();
-                        if (val == 'delete') onDelete();
-                      },
-                      itemBuilder: (context) => [
-                        if (canEdit)
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: ListTile(
-                              leading: Icon(Icons.edit_outlined),
-                              title: Text('Edit user'),
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
+                          onDeactivate != null)
+                        PopupMenuItem(
+                          value: 'deactivate',
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.person_off_outlined,
+                              size: 18,
+                              color: context.semanticColors.warning,
                             ),
+                            title: const Text('Deactivate', style: TextStyle(fontSize: 13)),
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
                           ),
-                        if (canResetPassword)
-                          const PopupMenuItem(
-                            value: 'reset_pwd',
-                            child: ListTile(
-                              leading: Icon(Icons.lock_reset_outlined),
-                              title: Text('Reset Password'),
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
+                        ),
+                      if (canDelete)
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.delete_outline,
+                              size: 18,
+                              color: context.semanticColors.critical,
                             ),
+                            title: const Text('Delete permanently', style: TextStyle(fontSize: 13)),
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
                           ),
-                        if (canDeactivate &&
-                            user.isActive &&
-                            onDeactivate != null)
-                          PopupMenuItem(
-                            value: 'deactivate',
-                            child: ListTile(
-                              leading: Icon(
-                                Icons.person_off_outlined,
-                                color: context.semanticColors.warning,
-                              ),
-                              title: const Text('Deactivate'),
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                            ),
-                          ),
-                        if (canDelete)
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: ListTile(
-                              leading: Icon(
-                                Icons.delete_outline,
-                                color: context.semanticColors.critical,
-                              ),
-                              title: const Text('Delete permanently'),
-                              contentPadding: EdgeInsets.zero,
-                              dense: true,
-                            ),
-                          ),
-                      ],
-                    )
-                  : null
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (canResetPassword)
-                    IconButton(
-                      tooltip: 'Reset Password (Reset PWD)',
-                      icon: const Icon(Icons.lock_reset_outlined),
-                      onPressed: () => _handleResetPassword(context, ref),
-                    ),
-                  if (canEdit)
-                    IconButton(
-                      tooltip: 'Edit user',
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: onEdit,
-                    ),
-                  if (canDeactivate && user.isActive && onDeactivate != null)
-                    IconButton(
-                      tooltip: 'Deactivate user',
-                      icon: const Icon(Icons.person_off_outlined),
-                      onPressed: onDeactivate,
-                    ),
-                  if (canDelete)
-                    IconButton(
-                      tooltip: 'Delete user permanently',
-                      icon: const Icon(Icons.delete_outline),
-                      color: context.semanticColors.critical,
-                      onPressed: onDelete,
-                    ),
-                ],
-              ),
+                        ),
+                    ],
+                  )
+                : const SizedBox.shrink()
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (canResetPassword)
+                  IconButton(
+                    tooltip: 'Reset Password (Reset PWD)',
+                    icon: const Icon(Icons.lock_reset_outlined, size: 16),
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    onPressed: () => _handleResetPassword(context, ref),
+                  ),
+                if (canEdit)
+                  IconButton(
+                    tooltip: 'Edit user',
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    onPressed: onEdit,
+                  ),
+                if (canDeactivate && user.isActive && onDeactivate != null)
+                  IconButton(
+                    tooltip: 'Deactivate user',
+                    icon: const Icon(Icons.person_off_outlined, size: 16),
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    onPressed: onDeactivate,
+                  ),
+                if (canDelete)
+                  IconButton(
+                    tooltip: 'Delete user permanently',
+                    icon: const Icon(Icons.delete_outline, size: 16),
+                    color: context.semanticColors.critical,
+                    onPressed: onDelete,
+                  ),
+              ],
+            ),
+        ],
       ),
     );
   }

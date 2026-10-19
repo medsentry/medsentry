@@ -114,7 +114,10 @@ class AppCard extends StatelessWidget {
         icon != null ||
         headerAction != null;
 
-    final effectiveBorderRadius = borderRadius ?? AppRadius.roundedCard;
+    // Flat panels: one tight 8px radius, a 1px border and no resting shadow,
+    // matching the restyled patient, document and certificate screens.
+    final effectiveBorderRadius =
+        borderRadius ?? const BorderRadius.all(Radius.circular(8));
 
     Color effectiveBgColor;
     List<BoxShadow> effectiveShadows = AppShadows.none;
@@ -124,7 +127,7 @@ class AppCard extends StatelessWidget {
         effectiveBgColor =
             backgroundColor ??
             (isDark ? AppColors.cardSurface : AppColors.lightCardSurface);
-        effectiveShadows = isDark ? AppShadows.subtle : AppShadows.subtle;
+        effectiveShadows = AppShadows.none;
         break;
       case AppCardVariant.elevated:
         effectiveBgColor =
@@ -170,21 +173,14 @@ class AppCard extends StatelessWidget {
           child: Row(
             children: [
               if (icon != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.xs),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.primaryEmeraldSubtle
-                        : AppColors.primaryEmerald.withValues(alpha: 0.12),
-                    borderRadius: AppRadius.roundedSm,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: AppIconSize.sm,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                Icon(
+                  icon,
+                  size: AppIconSize.sm,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                const SizedBox(width: AppSpacing.sm + 2),
               ],
               Expanded(
                 child: Column(
@@ -194,7 +190,8 @@ class AppCard extends StatelessWidget {
                       Text(
                         titleText!,
                         style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                           letterSpacing: -0.2,
                           color: isDark
                               ? AppColors.textPrimary

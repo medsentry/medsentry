@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/user.dart';
 import '../providers/providers.dart';
-import '../widgets/app_card.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
+import '../widgets/screen_kit.dart';
 import 'settings_screen.dart';
 
 class StaffScreen extends ConsumerWidget {
@@ -13,28 +13,30 @@ class StaffScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ResponsiveContentContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Staff',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          const ScreenHeader(
+            icon: Icons.badge_outlined,
+            title: 'Staff',
+            subtitle:
+                'Administrators and staff accounts, their roles and RHU assignments.',
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Manage administrators and staff accounts for this RHU.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Expanded(
-            child: AppCard(
-              expandContent: true,
+            child: Container(
               padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.cardSurface : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+              ),
               child: StaffManagementPanel(
                 embedded: true,
                 onAddUser: () => _showStaffFormDialog(context, ref),

@@ -4,9 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/audit_log.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
-import '../widgets/app_card.dart';
+import '../widgets/screen_kit.dart';
 import '../widgets/layout/responsive_layout.dart';
-import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 import '../utils/rate_limiter.dart';
 
@@ -96,132 +95,145 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     final lastSync = ref.watch(lastSyncTimeProvider);
     final stats = ref.watch(syncStatsProvider).valueOrNull;
     final isSyncing = _isSyncing || syncStatus == SyncStatus.syncing;
+    final t = ScreenTokens.of(context);
+
+    final pending = stats?.pendingSync;
 
     return SingleChildScrollView(
       padding: ResponsiveLayout.pagePadding(context),
       child: ResponsiveContentContainer(
         padding: EdgeInsets.zero,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Record Synchronization',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Synchronize updated records between local storage and cloud when internet is available.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.68),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _StatusCard(
-                  icon: Icons.cloud_outlined,
-                  title: 'Sync Status',
-                  value: _statusLabel(syncStatus),
-                  color: _statusColor(context, syncStatus),
+            ScreenHeader(
+              icon: Icons.cloud_sync_outlined,
+              title: 'Record Synchronization',
+              subtitle: pending == null
+                  ? 'Local records are sent to the cloud when the internet is available.'
+                  : pending == 0
+                  ? 'Every local record is in the cloud.'
+                  : '$pending local ${pending == 1 ? 'record is' : 'records are'} waiting to be sent to the cloud.',
+              actions: [
+                FilledButton.icon(
+                  style: t.filledButton,
+                  onPressed: isSyncing ? null : _startSync,
+                  icon: isSyncing
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: t.onAccent,
+                          ),
+                        )
+                      : const Icon(Icons.cloud_sync_outlined, size: 16),
+                  label: Text(isSyncing ? 'Synchronizing...' : 'Sync now'),
                 ),
-                _StatusCard(
-                  icon: Icons.schedule_outlined,
-                  title: 'Last Sync',
-                  value: lastSync != null ? _formatDateTime(lastSync) : 'Never',
-                  color: context.semanticColors.info,
-                ),
-                if (stats != null)
-                  _StatusCard(
-                    icon: Icons.pending_actions_outlined,
-                    title: 'Pending Records',
-                    value: '${stats.pendingSync}',
-                    color: stats.pendingSync > 0
-                        ? context.semanticColors.warning
-                        : context.semanticColors.normal,
-                  ),
               ],
             ),
-            const SizedBox(height: 24),
-            if (stats != null) ...[
-              Text(
-                'Local Database',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              AppCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: Icon(
-                        Icons.people_outlined,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      title: const Text('Patients'),
-                      trailing: Text(
-                        '${stats.totalPatients}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: Icon(
-                        Icons.folder_outlined,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      title: const Text('Documents'),
-                      trailing: Text(
-                        '${stats.totalDocuments}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.verified_outlined,
-                        color: AppColors.accentTeal,
-                      ),
-                      title: const Text('Issued Certificates'),
-                      trailing: Text(
-                        '${stats.totalCertificates}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 16),
+            MetricStrip(
+              metrics: [
+                Metric(
+                  label: 'Sync status',
+                  value: _statusLabel(syncStatus),
+                  note: _statusNote(syncStatus),
+                  noteIsAlert: syncStatus == SyncStatus.error,
                 ),
-              ),
-            ],
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: isSyncing ? null : _startSync,
-              icon: isSyncing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.cloud_sync_outlined),
-              label: Text(isSyncing ? 'Synchronizing...' : 'Sync Now'),
+                Metric(
+                  label: 'Last sync',
+                  value: lastSync != null ? _formatDateTime(lastSync) : 'Never',
+                  note: lastSync != null
+                      ? 'Last successful upload'
+                      : 'No upload yet',
+                ),
+                Metric(
+                  label: 'Pending records',
+                  value: pending?.toString() ?? '-',
+                  note: pending == null
+                      ? 'Counting local changes'
+                      : pending == 0
+                      ? 'Nothing waiting'
+                      : 'Created or changed since the last sync',
+                ),
+              ],
             ),
             if (_lastMessage != null) ...[
               const SizedBox(height: 12),
               Text(
                 _lastMessage!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.68),
-                ),
+                style: TextStyle(fontSize: 13, color: t.muted),
               ),
             ],
+            const SizedBox(height: 16),
+            Container(
+              decoration: t.panel,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                    child: Text(
+                      'Local database',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: t.text,
+                      ),
+                    ),
+                  ),
+                  Divider(height: 1, color: t.border),
+                  _countRow(
+                    t,
+                    Icons.people_outlined,
+                    'Patients',
+                    stats?.totalPatients,
+                  ),
+                  Divider(height: 1, indent: 16, color: t.border),
+                  _countRow(
+                    t,
+                    Icons.folder_outlined,
+                    'Documents',
+                    stats?.totalDocuments,
+                  ),
+                  Divider(height: 1, indent: 16, color: t.border),
+                  _countRow(
+                    t,
+                    Icons.verified_outlined,
+                    'Issued certificates',
+                    stats?.totalCertificates,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _countRow(ScreenTokens t, IconData icon, String label, int? count) {
+    return SizedBox(
+      height: 48,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: t.muted),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(label, style: TextStyle(fontSize: 14, color: t.text)),
+            ),
+            Text(
+              count?.toString() ?? '-',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: count == null ? t.muted : t.text,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
           ],
         ),
       ),
@@ -243,84 +255,22 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     }
   }
 
-  Color _statusColor(BuildContext context, SyncStatus status) {
-    final colors = context.semanticColors;
+  String _statusNote(SyncStatus status) {
     switch (status) {
       case SyncStatus.synced:
-        return colors.normal;
+        return 'Cloud copy is up to date';
       case SyncStatus.syncing:
-        return colors.info;
+        return 'Uploading changes now';
       case SyncStatus.pending:
-        return colors.warning;
+        return 'Changes waiting to upload';
       case SyncStatus.error:
-        return colors.critical;
+        return 'Last sync failed. Try again.';
       case SyncStatus.offline:
-        return colors.neutral;
+        return 'No internet connection';
     }
   }
 
   String _formatDateTime(DateTime dt) {
     return formatDateTime12h(dt);
-  }
-}
-
-class _StatusCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-  final Color color;
-
-  const _StatusCard({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final isMobile = ResponsiveLayout.isMobile(context);
-    return SizedBox(
-      width: isMobile ? double.infinity : 220,
-      child: AppCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color.withValues(alpha: 0.25)),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              value,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: color,
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDark
-                    ? AppColors.textSecondary
-                    : AppColors.lightTextSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

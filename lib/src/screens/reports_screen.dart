@@ -10,7 +10,6 @@ import '../services/report_service.dart';
 import '../utils/context_extensions.dart';
 import '../utils/date_time_format.dart';
 import '../utils/report_date_filter.dart';
-import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
@@ -55,7 +54,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final reportStatsAsync = ref.watch(reportStatsProvider);
     final generatedReportsAsync = ref.watch(generatedReportsProvider);
 
@@ -66,20 +64,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Reports & Analytics',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Patient and document statistics for the selected period.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 16),
+            _buildPageHeader(context, reportStatsAsync.valueOrNull),
+            const SizedBox(height: 12),
             _buildRangeSelector(context),
             const SizedBox(height: 12),
             reportStatsAsync.when(
@@ -142,116 +128,383 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   String _formatDate(DateTime date) => DateFormat('MMM d, yyyy').format(date);
 
+  Widget _buildPageHeader(BuildContext context, ReportStats? stats) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final startStr = _formatDate(_draftFilters.startDate);
+    final endStr = _formatDate(_draftFilters.endDate);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Reports & Clinical Analytics',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    letterSpacing: -0.3,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryEmerald.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: AppColors.primaryEmerald.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: const Text(
+                  'DOH FHSIS & AO 2021-0037 COMPLIANT',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: AppColors.primaryEmerald,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Official RHU epidemiological census, morbidity metrics, and regulatory audit trail.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  'PERIOD: $startStr - $endStr',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF334155),
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+              if (stats != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryEmerald.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: AppColors.primaryEmerald.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '${stats.newPatients} NEW PATIENTS',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                      color: AppColors.primaryEmerald,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '${stats.documentsInRange} DOCUMENTS RECORDED',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
+                      color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRangeSelector(BuildContext context) {
     final canApply =
         !_draftFilters.endDate.isBefore(_draftFilters.startDate) &&
         !_draftFilters.endDate.isAfter(DateTime.now());
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      child: AppCard(
-        padding: const EdgeInsets.all(16),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final isVeryNarrow = width < 420;
-            final isNarrow = width < 600;
-            final dropdownWidth = isVeryNarrow
-                ? width
-                : isNarrow
-                ? (width - 12) / 2
-                : 180.0;
-            final groupingWidth = isVeryNarrow
-                ? width
-                : isNarrow
-                ? (width - 12) / 2
-                : 150.0;
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final isVeryNarrow = width < 420;
+          final isNarrow = width < 600;
+          final dropdownWidth = isVeryNarrow
+              ? width
+              : isNarrow
+              ? (width - 12) / 2
+              : 180.0;
+          final groupingWidth = isVeryNarrow
+              ? width
+              : isNarrow
+              ? (width - 12) / 2
+              : 150.0;
 
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SizedBox(
-                  width: dropdownWidth,
-                  child: DropdownButtonFormField<ReportDatePreset>(
-                    initialValue: _draftFilters.preset,
-                    decoration: const InputDecoration(
-                      labelText: 'Date Range',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: dropdownWidth,
+                height: 40,
+                child: DropdownButtonFormField<ReportDatePreset>(
+                  initialValue: _draftFilters.preset,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Date Range',
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                     ),
-                    items: ReportDatePreset.values
-                        .map(
-                          (preset) => DropdownMenuItem(
-                            value: preset,
-                            child: Text(preset.label),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (preset) {
-                      if (preset == null) return;
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    isDense: true,
+                  ),
+                  items: ReportDatePreset.values
+                      .map(
+                        (preset) => DropdownMenuItem(
+                          value: preset,
+                          child: Text(preset.label, style: const TextStyle(fontSize: 13)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (preset) {
+                    if (preset == null) return;
+                    setState(() {
+                      _draftFilters = ReportFilters.forPreset(
+                        preset,
+                        grouping: _draftFilters.grouping,
+                      );
+                    });
+                  },
+                ),
+              ),
+              InkWell(
+                onTap: _pickReportStartDate,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        size: 15,
+                        color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'From ${_formatDate(_draftFilters.startDate)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: _pickReportEndDate,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.event_outlined,
+                        size: 15,
+                        color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'To ${_formatDate(_draftFilters.endDate)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: groupingWidth,
+                height: 40,
+                child: DropdownButtonFormField<ReportGrouping>(
+                  initialValue: _draftFilters.grouping,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                  ),
+                  decoration: InputDecoration(
+                    labelText: 'Group By',
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    isDense: true,
+                  ),
+                  items: ReportGrouping.values
+                      .map(
+                        (grouping) => DropdownMenuItem(
+                          value: grouping,
+                          child: Text(grouping.label, style: const TextStyle(fontSize: 13)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (grouping) {
+                    if (grouping != null) {
                       setState(() {
-                        _draftFilters = ReportFilters.forPreset(
-                          preset,
-                          grouping: _draftFilters.grouping,
+                        _draftFilters = _draftFilters.copyWith(
+                          grouping: grouping,
                         );
                       });
-                    },
-                  ),
+                    }
+                  },
                 ),
-                OutlinedButton.icon(
-                  onPressed: _pickReportStartDate,
-                  icon: const Icon(Icons.calendar_today_outlined, size: 18),
-                  label: Text('From ${_formatDate(_draftFilters.startDate)}'),
+              ),
+              ElevatedButton.icon(
+                onPressed: canApply ? _applyReportFilters : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryEmerald,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                OutlinedButton.icon(
-                  onPressed: _pickReportEndDate,
-                  icon: const Icon(Icons.event_outlined, size: 18),
-                  label: Text('To ${_formatDate(_draftFilters.endDate)}'),
+                icon: const Icon(Icons.filter_alt_outlined, size: 16),
+                label: const Text('Apply Filters', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              ),
+              OutlinedButton.icon(
+                onPressed: _resetReportFilters,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                  side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                SizedBox(
-                  width: groupingWidth,
-                  child: DropdownButtonFormField<ReportGrouping>(
-                    initialValue: _draftFilters.grouping,
-                    decoration: const InputDecoration(
-                      labelText: 'Group By',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: ReportGrouping.values
-                        .map(
-                          (grouping) => DropdownMenuItem(
-                            value: grouping,
-                            child: Text(grouping.label),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (grouping) {
-                      if (grouping != null) {
-                        setState(() {
-                          _draftFilters = _draftFilters.copyWith(
-                            grouping: grouping,
-                          );
-                        });
-                      }
-                    },
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: canApply ? _applyReportFilters : null,
-                  icon: const Icon(Icons.filter_alt_outlined),
-                  label: const Text('Apply Filters'),
-                ),
-                TextButton.icon(
-                  onPressed: _resetReportFilters,
-                  icon: const Icon(Icons.restart_alt),
-                  label: const Text('Reset'),
-                ),
-              ],
-            );
-          },
-        ),
+                icon: const Icon(Icons.restart_alt, size: 16),
+                label: const Text('Reset', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -333,32 +586,64 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildNoReportData(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(16),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: context.semanticColors.info),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              Icons.info_outline,
+              size: 16,
+              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'No data for this period',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  'No records found for this period',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                  ),
                 ),
                 Text(
-                  'Try another date range or change the report filters.',
+                  'Try selecting a wider date range or resetting filter parameters.',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                   ),
                 ),
               ],
             ),
           ),
-          TextButton(
+          OutlinedButton(
             onPressed: _resetReportFilters,
-            child: const Text('Reset Filters'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(0, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+            ),
+            child: const Text('Reset Filters', style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
@@ -366,22 +651,24 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildKpiGrid(BuildContext context, ReportStats stats) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     final kpis = [
       _KpiMetric(
         title: 'New Patients',
-        subtitle: 'Registered in period',
+        subtitle: 'Registered in selected period',
         value: stats.newPatients.toString(),
         delta: stats.newPatientsDelta,
-        icon: Icons.person_add_alt_1,
-        color: Theme.of(context).colorScheme.primary,
+        icon: Icons.person_add_alt_1_outlined,
+        color: AppColors.primaryEmerald,
       ),
       _KpiMetric(
         title: 'Clinical Documents',
-        subtitle: 'Uploaded in period',
+        subtitle: 'Uploaded in selected period',
         value: stats.documentsInRange.toString(),
         delta: stats.documentsDelta,
         icon: Icons.folder_copy_outlined,
-        color: context.semanticColors.info,
+        color: const Color(0xFF0D9488),
       ),
     ];
 
@@ -398,79 +685,107 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 (constraints.maxWidth - (12 * (columns - 1))) / columns;
             return SizedBox(
               width: width,
-              child: AppCard(
+              child: Container(
                 padding: const EdgeInsets.all(16),
-                child: Row(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: kpi.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(kpi.icon, color: kpi.color, size: 22),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          kpi.title.toUpperCase(),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.8,
+                            fontSize: 10,
+                          ),
+                        ),
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Icon(
+                            kpi.icon,
+                            size: 15,
+                            color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            kpi.title,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
+                    const SizedBox(height: 12),
+                    Text(
+                      kpi.value,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 28,
+                        letterSpacing: -0.5,
+                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (kpi.delta.isPositive ? AppColors.success : AppColors.critical).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                          if (kpi.subtitle != null)
-                            Text(
-                              kpi.subtitle!,
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          const SizedBox(height: 4),
-                          Text(
-                            kpi.value,
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.5,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 kpi.delta.isPositive
                                     ? Icons.trending_up
                                     : Icons.trending_down,
-                                size: 14,
+                                size: 12,
                                 color: kpi.delta.isPositive
                                     ? AppColors.success
                                     : AppColors.critical,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 3),
                               Text(
                                 kpi.delta.formatted,
                                 style: TextStyle(
                                   color: kpi.delta.isPositive
                                       ? AppColors.success
                                       : AppColors.critical,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ],
                           ),
+                        ),
+                        if (kpi.subtitle != null) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              kpi.subtitle!,
+                              style: TextStyle(
+                                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                                fontSize: 11,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -494,7 +809,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       trends: newPatientTrends,
       values: newPatientValues,
       grouping: stats.grouping,
-      lineColor: context.semanticColors.normal,
+      lineColor: AppColors.primaryEmerald,
     );
   }
 
@@ -506,13 +821,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           context,
           title: 'Patients by Barangay',
           metrics: stats.patientsByBarangay,
-          emptyMessage: 'No barangay data recorded',
+          emptyMessage: 'No barangay records for selected period',
         );
         final categoryCard = _buildDistributionCard(
           context,
           title: 'Patients by Category',
           metrics: stats.patientsByCategory,
-          emptyMessage: 'No category data recorded',
+          emptyMessage: 'No patient category records for selected period',
         );
 
         if (isWide) {
@@ -542,6 +857,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required ReportGrouping grouping,
     required Color lineColor,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     final total = trends.fold<int>(0, (sum, item) => sum + item.count);
     final average = trends.isEmpty ? 0.0 : total / trends.length;
     final startLabel = trends.isNotEmpty
@@ -551,8 +868,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         ? _formatTrendLabel(trends.last.date, grouping)
         : '';
 
-    return AppCard(
+    return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -564,14 +889,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       '$subtitle · avg ${average.toStringAsFixed(1)} per period',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                        fontSize: 12,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -580,62 +910,71 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               if (trends.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: 8,
+                    vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: lineColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
+                    color: AppColors.primaryEmerald.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: lineColor.withValues(alpha: 0.25),
+                      color: AppColors.primaryEmerald.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
                   child: Text(
-                    '$total total',
-                    style: TextStyle(
-                      color: lineColor,
+                    '$total TOTAL',
+                    style: const TextStyle(
+                      color: AppColors.primaryEmerald,
                       fontWeight: FontWeight.w700,
-                      fontSize: 12,
+                      fontSize: 11,
+                      letterSpacing: 0.4,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
-            height: 220,
+            height: 200,
             child: values.isEmpty
                 ? Center(
                     child: Text(
-                      'No data available',
-                      style: TextStyle(color: context.semanticColors.neutral),
+                      'No trend observations in range',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                      ),
                     ),
                   )
                 : CustomPaint(
                     painter: _TrendLinePainter(
                       values: values,
-                      lineColor: lineColor,
-                      gridColor: AppColors.border.withValues(alpha: 0.3),
+                      lineColor: AppColors.primaryEmerald,
+                      gridColor: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
                     ),
                     child: const SizedBox.expand(),
                   ),
           ),
           if (startLabel.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   startLabel,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
                 Text(
                   endLabel,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -652,25 +991,51 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required List<DistributionMetric> metrics,
     required String emptyMessage,
   }) {
-    return AppCard(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+
+    // Clinical sequential density scale
+    const clinicalColors = [
+      AppColors.primaryEmerald, // #0F766E
+      Color(0xFF0D9488),        // Teal 600
+      Color(0xFF0284C7),        // Sky 600
+      Color(0xFF6366F1),        // Indigo 500
+      Color(0xFF64748B),        // Slate 500
+      Color(0xFF334155),        // Slate 700
+    ];
+
+    return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (metrics.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Text(
                   emptyMessage,
-                  style: TextStyle(color: context.semanticColors.neutral),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                  ),
                 ),
               ),
             )
@@ -680,18 +1045,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               final metric = entry.value;
               final maxVal = metrics.map((e) => e.value).reduce(math.max);
               final ratio = maxVal > 0 ? metric.value / maxVal : 0.0;
-              final colors = [
-                AppColors.info,
-                AppColors.primaryEmerald,
-                AppColors.warning,
-                AppColors.textSecondary,
-                AppColors.critical,
-                AppColors.analytical,
-              ];
-              final color = colors[index % colors.length];
+              final color = clinicalColors[index % clinicalColors.length];
 
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -700,38 +1057,42 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Expanded(
                           child: Text(
                             metric.label,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                ),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Text(
                           '${metric.value}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                            color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                          ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Text(
                           '${metric.percentage.toStringAsFixed(0)}%',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w500,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                            color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(3),
                       child: LinearProgressIndicator(
-                        minHeight: 8,
+                        minHeight: 6,
                         value: ratio,
-                        backgroundColor: color.withValues(alpha: 0.12),
+                        backgroundColor: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
                         valueColor: AlwaysStoppedAnimation<Color>(color),
                       ),
                     ),
@@ -749,16 +1110,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     String title,
     List<Widget> children,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+            color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         LayoutBuilder(
           builder: (context, constraints) {
             final isDesktop = constraints.maxWidth >= 768;
@@ -783,17 +1149,42 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildEmptyReportsSection(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return _buildSection(context, 'Recent Reports', [
-      AppCard(
+      Container(
         padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardSurface : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
         child: Row(
           children: [
-            Icon(Icons.info_outline, color: context.semanticColors.neutral),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                Icons.info_outline,
+                size: 16,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'No reports generated yet. Use the options above to create your first report.',
-                style: TextStyle(color: context.semanticColors.neutral),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                ),
               ),
             ),
           ],
@@ -810,43 +1201,74 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     Color color,
     VoidCallback onTap,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
-    return AppCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.zero,
-      child: ListTile(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-        ),
-        leading: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
-          ),
-          child: Icon(icon, color: color, size: 18),
-        ),
-        title: Text(
-          title,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.1,
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardSurface : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+            width: 1,
           ),
         ),
-        subtitle: Text(
-          description,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+              ),
+              child: Icon(
+                icon,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      letterSpacing: -0.2,
+                      color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: isDark ? AppColors.textSecondary : const Color(0xFF94A3B8),
+            ),
+          ],
         ),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          size: 13,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        onTap: onTap,
       ),
     );
   }
@@ -857,97 +1279,152 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     IconData icon,
     VoidCallback onTap,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isMobile = context.isMobile;
 
-    return AppCard(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.zero,
-      child: ListTile(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
         ),
-        leading: Icon(icon, color: context.semanticColors.neutral),
-        title: Text(report.title),
-        subtitle: Text(
-          [
-            'Generated on ${_formatDate(report.generatedAt)}',
-            if (report.startDate != null && report.endDate != null)
-              '${_formatDate(report.startDate!)} to ${_formatDate(report.endDate!)}',
-          ].join(' - '),
-        ),
-        trailing: isMobile
-            ? PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                tooltip: 'Report options',
-                onSelected: (value) {
-                  switch (value) {
-                    case 'view':
-                      onTap();
-                      break;
-                    case 'download':
-                      _downloadReport(context, report);
-                      break;
-                    case 'delete':
-                      _deleteReport(context, report);
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'view',
-                    child: ListTile(
-                      leading: Icon(Icons.visibility_outlined),
-                      title: Text('View Report'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  report.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    letterSpacing: -0.2,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                   ),
-                  const PopupMenuItem(
-                    value: 'download',
-                    child: ListTile(
-                      leading: Icon(Icons.download_outlined),
-                      title: Text('Download'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    'Generated on ${_formatDate(report.generatedAt)}',
+                    if (report.startDate != null && report.endDate != null)
+                      '${_formatDate(report.startDate!)} to ${_formatDate(report.endDate!)}',
+                  ].join(' · '),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.delete_outline,
+                ),
+              ],
+            ),
+          ),
+          if (isMobile)
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert,
+                size: 18,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+              ),
+              tooltip: 'Report options',
+              onSelected: (value) {
+                switch (value) {
+                  case 'view':
+                    onTap();
+                    break;
+                  case 'download':
+                    _downloadReport(context, report);
+                    break;
+                  case 'delete':
+                    _deleteReport(context, report);
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'view',
+                  child: ListTile(
+                    leading: Icon(Icons.visibility_outlined, size: 18),
+                    title: Text('View Details', style: TextStyle(fontSize: 13)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'download',
+                  child: ListTile(
+                    leading: Icon(Icons.download_outlined, size: 18),
+                    title: Text('Open / Export', style: TextStyle(fontSize: 13)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    title: Text(
+                      'Delete',
+                      style: TextStyle(
+                        fontSize: 13,
                         color: Theme.of(context).colorScheme.error,
                       ),
-                      title: Text(
-                        'Delete',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                      contentPadding: EdgeInsets.zero,
                     ),
+                    contentPadding: EdgeInsets.zero,
                   ),
-                ],
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.visibility),
-                    tooltip: 'View',
-                    onPressed: onTap,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.download),
-                    tooltip: 'Download',
-                    onPressed: () => _downloadReport(context, report),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    tooltip: 'Delete',
-                    onPressed: () => _deleteReport(context, report),
-                  ),
-                ],
-              ),
-        onTap: onTap,
+                ),
+              ],
+            )
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.visibility_outlined, size: 16),
+                  tooltip: 'View Details',
+                  color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                  onPressed: onTap,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.download_outlined, size: 16),
+                  tooltip: 'Open / Export',
+                  color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                  onPressed: () => _downloadReport(context, report),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  tooltip: 'Delete',
+                  color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                  onPressed: () => _deleteReport(context, report),
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
@@ -976,6 +1453,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         ? 'Not specified'
         : '${_formatDate(report.startDate!)} to ${_formatDate(report.endDate!)}';
     final appliedFilters = ref.read(reportFiltersProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
       context: context,
@@ -991,14 +1469,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(12),
+                color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                  width: 1,
                 ),
               ),
               child: Column(
@@ -1033,7 +1508,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
           OutlinedButton.icon(
             onPressed: () => _downloadReport(context, report),
-            icon: const Icon(Icons.share_outlined, size: 18),
+            icon: const Icon(Icons.share_outlined, size: 16),
             label: const Text('Open / Share'),
           ),
           FilledButton.icon(
@@ -1046,7 +1521,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 endDate: report.endDate ?? appliedFilters.endDate,
               );
             },
-            icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryEmerald,
+            ),
+            icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
             label: const Text('Preview & Export PDF'),
           ),
         ],
@@ -1056,6 +1534,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   Widget _buildReportInfoRow(BuildContext context, String label, String value) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1063,8 +1543,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           width: 120,
           child: Text(
             label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1072,8 +1553,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         Expanded(
           child: Text(
             value,
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: TextStyle(
+              fontSize: 13,
               fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
             ),
           ),
         ),
@@ -1154,20 +1638,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildTabSelector(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
-        borderRadius: AppRadius.roundedSm,
+        color: isDark ? AppColors.cardSurface : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark
-              ? AppColors.border
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
         ),
       ),
       child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
         children: [
           _buildTabButton(
             context,
@@ -1195,27 +1680,34 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: AppRadius.roundedSm,
+      borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isActive
-              ? (isDark
-                    ? AppColors.primaryEmeraldSubtle
-                    : theme.colorScheme.primary.withValues(alpha: 0.12))
+              ? (isDark ? AppColors.elevatedSurface : Colors.white)
               : Colors.transparent,
-          borderRadius: AppRadius.roundedSm,
+          borderRadius: BorderRadius.circular(6),
           border: isActive
               ? Border.all(
                   color: isDark
                       ? AppColors.primaryEmerald.withValues(alpha: 0.4)
-                      : theme.colorScheme.primary.withValues(alpha: 0.4),
+                      : const Color(0xFFCBD5E1),
+                  width: 1,
                 )
+              : null,
+          boxShadow: isActive && !isDark
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
               : null,
         ),
         child: Row(
@@ -1223,14 +1715,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           children: [
             Icon(
               icon,
-              size: 16,
+              size: 15,
               color: isActive
-                  ? (isDark
-                        ? AppColors.primaryEmerald
-                        : theme.colorScheme.primary)
+                  ? AppColors.primaryEmerald
                   : (isDark
                         ? AppColors.textSecondary
-                        : theme.colorScheme.onSurfaceVariant),
+                        : const Color(0xFF64748B)),
             ),
             const SizedBox(width: 8),
             Text(
@@ -1241,10 +1731,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 color: isActive
                     ? (isDark
                           ? AppColors.primaryEmerald
-                          : theme.colorScheme.primary)
+                          : const Color(0xFF0F766E))
                     : (isDark
-                          ? AppColors.textPrimary
-                          : theme.colorScheme.onSurface),
+                          ? AppColors.textSecondary
+                          : const Color(0xFF64748B)),
               ),
             ),
           ],
@@ -1328,52 +1818,71 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     required List<String> types,
     required String activeTypeFilter,
   }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return AppCard(
+    return Container(
       padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
       child: Wrap(
-        spacing: 12,
+        spacing: 10,
         runSpacing: 10,
         crossAxisAlignment: WrapCrossAlignment.center,
         alignment: WrapAlignment.spaceBetween,
         children: [
           ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 200, maxWidth: 320),
-            child: TextField(
-              controller: _reportSearchController,
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: 'Search generated reports...',
-                hintStyle: TextStyle(
+            child: SizedBox(
+              height: 38,
+              child: TextField(
+                controller: _reportSearchController,
+                style: TextStyle(
                   fontSize: 13,
-                  color: isDark ? AppColors.textSecondary : Colors.grey,
+                  color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                 ),
-                prefixIcon: const Icon(Icons.search, size: 18),
-                suffixIcon: _reportSearchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 16),
-                        onPressed: () {
-                          _reportSearchController.clear();
-                          setState(() => _reportSearchQuery = '');
-                        },
-                      )
-                    : null,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.roundedSm,
-                  borderSide: BorderSide(
-                    color: isDark
-                        ? AppColors.border
-                        : theme.colorScheme.outlineVariant,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'Search generated reports...',
+                  hintStyle: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF94A3B8),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 16,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                  ),
+                  suffixIcon: _reportSearchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 14),
+                          onPressed: () {
+                            _reportSearchController.clear();
+                            setState(() => _reportSearchQuery = '');
+                          },
+                        )
+                      : null,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(
+                      color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    ),
                   ),
                 ),
+                onChanged: (val) => setState(() => _reportSearchQuery = val),
               ),
-              onChanged: (val) => setState(() => _reportSearchQuery = val),
             ),
           ),
           Wrap(
@@ -1382,57 +1891,90 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               if (types.isNotEmpty)
-                DropdownButton<String>(
-                  value: activeTypeFilter,
-                  underline: const SizedBox.shrink(),
-                  items: [
-                    const DropdownMenuItem(
-                      value: 'all',
-                      child: Text('All Types'),
+                Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                      width: 1,
                     ),
-                    ...types.map(
-                      (t) => DropdownMenuItem(value: t, child: Text(t)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: activeTypeFilter,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('All Types'),
+                        ),
+                        ...types.map(
+                          (t) => DropdownMenuItem(value: t, child: Text(t)),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _reportTypeFilter = val);
+                      },
                     ),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setState(() => _reportTypeFilter = val);
-                  },
+                  ),
                 ),
-              DropdownButton<String>(
-                value: _reportSortOrder,
-                underline: const SizedBox.shrink(),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'newest',
-                    child: Text('Newest First'),
+              Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    width: 1,
                   ),
-                  DropdownMenuItem(
-                    value: 'oldest',
-                    child: Text('Oldest First'),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _reportSortOrder,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'newest',
+                        child: Text('Newest First'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'oldest',
+                        child: Text('Oldest First'),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setState(() => _reportSortOrder = val);
+                    },
                   ),
-                ],
-                onChanged: (val) {
-                  if (val != null) setState(() => _reportSortOrder = val);
-                },
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.elevatedSurface
-                      : theme.colorScheme.surfaceContainerHighest.withValues(
-                          alpha: 0.3,
-                        ),
-                  borderRadius: AppRadius.roundedSm,
+                  color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
                 ),
                 child: Text(
                   'Showing $filteredCount of $totalCount',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: isDark
-                        ? AppColors.textSecondary
-                        : theme.colorScheme.onSurfaceVariant,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                   ),
                 ),
               ),
@@ -1444,8 +1986,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Widget _buildHistoricalAuditLogsSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final auditLogsAsync = ref.watch(auditLogsProvider);
 
     return auditLogsAsync.when(
@@ -1472,10 +2013,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            AppCard(
+            Container(
               padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.cardSurface : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+              ),
               child: Wrap(
-                spacing: 12,
+                spacing: 10,
                 runSpacing: 10,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 alignment: WrapAlignment.spaceBetween,
@@ -1485,41 +2034,53 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       minWidth: 200,
                       maxWidth: 320,
                     ),
-                    child: TextField(
-                      controller: _auditSearchController,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText:
-                            'Search audit logs (actor, entity, patient ID)...',
-                        hintStyle: TextStyle(
+                    child: SizedBox(
+                      height: 38,
+                      child: TextField(
+                        controller: _auditSearchController,
+                        style: TextStyle(
                           fontSize: 13,
-                          color: isDark ? AppColors.textSecondary : Colors.grey,
+                          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                         ),
-                        prefixIcon: const Icon(Icons.search, size: 18),
-                        suffixIcon: _auditSearchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 16),
-                                onPressed: () {
-                                  _auditSearchController.clear();
-                                  setState(() => _auditSearchQuery = '');
-                                },
-                              )
-                            : null,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: AppRadius.roundedSm,
-                          borderSide: BorderSide(
-                            color: isDark
-                                ? AppColors.border
-                                : theme.colorScheme.outlineVariant,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText:
+                              'Search audit logs (actor, entity, patient ID)...',
+                          hintStyle: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? AppColors.textSecondary : const Color(0xFF94A3B8),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            size: 16,
+                            color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                          ),
+                          suffixIcon: _auditSearchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 14),
+                                  onPressed: () {
+                                    _auditSearchController.clear();
+                                    setState(() => _auditSearchQuery = '');
+                                  },
+                                )
+                              : null,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                            ),
                           ),
                         ),
+                        onChanged: (val) =>
+                            setState(() => _auditSearchQuery = val),
                       ),
-                      onChanged: (val) =>
-                          setState(() => _auditSearchQuery = val),
                     ),
                   ),
                   Wrap(
@@ -1527,52 +2088,70 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     runSpacing: 10,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      DropdownButton<String>(
-                        value: _auditActionFilter,
-                        underline: const SizedBox.shrink(),
-                        items: [
-                          const DropdownMenuItem(
-                            value: 'all',
-                            child: Text('All Actions'),
+                      Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                            width: 1,
                           ),
-                          ...AuditAction.values.map(
-                            (action) => DropdownMenuItem(
-                              value: action.name,
-                              child: Text(action.displayName),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _auditActionFilter,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                             ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: 'all',
+                                child: Text('All Actions'),
+                              ),
+                              ...AuditAction.values.map(
+                                (action) => DropdownMenuItem(
+                                  value: action.name,
+                                  child: Text(action.displayName),
+                                ),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => _auditActionFilter = val);
+                              }
+                            },
                           ),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() => _auditActionFilter = val);
-                          }
-                        },
+                        ),
                       ),
                       IconButton(
                         tooltip: 'Refresh Logs',
-                        icon: const Icon(Icons.refresh, size: 18),
+                        icon: Icon(
+                          Icons.refresh,
+                          size: 16,
+                          color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                        ),
                         onPressed: () => ref.invalidate(auditLogsProvider),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? AppColors.elevatedSurface
-                              : theme.colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.3),
-                          borderRadius: AppRadius.roundedSm,
+                          color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                            width: 1,
+                          ),
                         ),
                         child: Text(
                           'Showing ${filtered.length} of ${allLogs.length}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: isDark
-                                ? AppColors.textSecondary
-                                : theme.colorScheme.onSurfaceVariant,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                            color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                           ),
                         ),
                       ),
@@ -1583,23 +2162,30 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             ),
             const SizedBox(height: 12),
             if (filtered.isEmpty)
-              AppCard(
+              Container(
                 padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                ),
                 child: Center(
                   child: Column(
                     children: [
                       Icon(
                         Icons.history_toggle_off,
-                        size: 44,
-                        color: isDark ? AppColors.textSecondary : Colors.grey,
+                        size: 36,
+                        color: isDark ? AppColors.textSecondary : const Color(0xFF94A3B8),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Text(
                         'No audit logs match your search or filters.',
                         style: TextStyle(
-                          color: isDark
-                              ? AppColors.textSecondary
-                              : Colors.grey[700],
+                          fontSize: 13,
+                          color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                         ),
                       ),
                     ],
@@ -1621,14 +2207,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       actionColor = AppColors.primaryEmerald;
                       break;
                     case 'update':
-                      actionColor = AppColors.info;
+                      actionColor = const Color(0xFF0284C7);
                       break;
                     case 'delete':
                     case 'archive':
                       actionColor = AppColors.critical;
                       break;
                     default:
-                      actionColor = AppColors.pending;
+                      actionColor = const Color(0xFF64748B);
                   }
 
                   final dateStr = formatDateTime12h(log.timestamp);
@@ -1636,8 +2222,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       ? '${log.userName} (${log.userRole ?? log.userId})'
                       : log.userId;
 
-                  return AppCard(
-                    padding: const EdgeInsets.all(12),
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.cardSurface : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                        width: 1,
+                      ),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1649,10 +2243,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: actionColor.withValues(alpha: 0.15),
+                                color: actionColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
-                                  color: actionColor.withValues(alpha: 0.4),
+                                  color: actionColor.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Text(
@@ -1660,6 +2254,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
                                   color: actionColor,
                                 ),
                               ),
@@ -1670,9 +2265,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: isDark
-                                    ? AppColors.textSecondary
-                                    : Colors.grey[700],
+                                color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
                               ),
                             ),
                             if (log.patientId != null &&
@@ -1680,11 +2273,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                               const SizedBox(width: 6),
                               Text(
                                 'PID: ${log.patientId}',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 11,
-                                  color: isDark
-                                      ? AppColors.primaryEmerald
-                                      : theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryEmerald,
+                                  fontFeatures: [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ],
@@ -1693,9 +2286,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                               dateStr,
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark
-                                    ? AppColors.textSecondary
-                                    : Colors.grey[600],
+                                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                                fontFeatures: const [FontFeature.tabularFigures()],
                               ),
                             ),
                           ],
@@ -1706,9 +2298,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: isDark
-                                ? AppColors.textPrimary
-                                : Colors.black87,
+                            color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                           ),
                         ),
                         if (actorLabel.isNotEmpty) ...[
@@ -1717,9 +2307,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             'Actor: $actorLabel',
                             style: TextStyle(
                               fontSize: 11,
-                              color: isDark
-                                  ? AppColors.textSecondary
-                                  : Colors.grey[600],
+                              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                             ),
                           ),
                         ],
@@ -1742,21 +2330,30 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget _buildEmptyFilteredReports(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return AppCard(
+    return Container(
       padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
       child: Center(
         child: Column(
           children: [
             Icon(
               Icons.search_off,
-              size: 44,
-              color: isDark ? AppColors.textSecondary : Colors.grey,
+              size: 36,
+              color: isDark ? AppColors.textSecondary : const Color(0xFF94A3B8),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               'No reports found matching your criteria.',
               style: TextStyle(
-                color: isDark ? AppColors.textSecondary : Colors.grey[700],
+                fontSize: 13,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
               ),
             ),
             const SizedBox(height: 12),
@@ -1768,7 +2365,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   _reportTypeFilter = 'all';
                 });
               },
-              child: const Text('Reset Filter'),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+              ),
+              child: const Text('Reset Filter', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
@@ -1856,7 +2457,7 @@ class _TrendLinePainter extends CustomPainter {
 
     final linePaint = Paint()
       ..color = lineColor
-      ..strokeWidth = 2.4
+      ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
@@ -1870,7 +2471,7 @@ class _TrendLinePainter extends CustomPainter {
           : (size.width * i) / (values.length - 1);
       final normalized = (values[i] - minVal) / range;
       final y = size.height - (normalized * (size.height - 8)) - 4;
-      canvas.drawCircle(Offset(x, y), 2.8, dotPaint);
+      canvas.drawCircle(Offset(x, y), 2.5, dotPaint);
     }
   }
 

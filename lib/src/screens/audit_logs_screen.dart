@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/audit_log.dart';
 import '../providers/providers.dart';
-import '../widgets/app_card.dart';
+import '../widgets/screen_kit.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/status_badge.dart';
 import '../utils/context_extensions.dart';
@@ -23,198 +23,176 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
   @override
   Widget build(BuildContext context) {
     final logsAsync = ref.watch(auditLogsProvider);
+    final t = ScreenTokens.of(context);
+
+    List<AuditLog> applyFilters(List<AuditLog> logs) => logs.where((log) {
+      if (_filterAction != null && log.action != _filterAction) {
+        return false;
+      }
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return (log.userName?.toLowerCase().contains(q) ?? false) ||
+          (log.patientName?.toLowerCase().contains(q) ?? false) ||
+          (log.description?.toLowerCase().contains(q) ?? false) ||
+          log.entityType.toLowerCase().contains(q);
+    }).toList();
+
+    final allLogs = logsAsync.valueOrNull;
+    final shown = allLogs == null ? null : applyFilters(allLogs).length;
+
+    final searchField = SizedBox(
+      height: 40,
+      child: TextField(
+        controller: TextEditingController(text: _searchQuery)
+          ..selection = TextSelection.collapsed(offset: _searchQuery.length),
+        style: TextStyle(fontSize: 13, color: t.text),
+        decoration: InputDecoration(
+          hintText: 'Search by user, patient, or description',
+          hintStyle: TextStyle(fontSize: 13, color: t.muted),
+          prefixIcon: const Icon(Icons.search, size: 18),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 16),
+                  onPressed: () => setState(() => _searchQuery = ''),
+                )
+              : null,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          border: OutlineInputBorder(
+            borderRadius: ScreenTokens.radius,
+            borderSide: BorderSide(color: t.control),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: ScreenTokens.radius,
+            borderSide: BorderSide(color: t.control),
+          ),
+        ),
+        onChanged: (v) => setState(() => _searchQuery = v),
+      ),
+    );
+
+    final actionFilter = Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        borderRadius: ScreenTokens.radius,
+        border: Border.all(color: t.control),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<AuditAction?>(
+          isExpanded: context.isMobile,
+          value: _filterAction,
+          hint: const Text('All actions', style: TextStyle(fontSize: 13)),
+          style: TextStyle(fontSize: 13, color: t.text),
+          items: [
+            const DropdownMenuItem(value: null, child: Text('All actions', style: TextStyle(fontSize: 13))),
+            ...AuditAction.values.map(
+              (a) => DropdownMenuItem(value: a, child: Text(_actionLabel(a), style: const TextStyle(fontSize: 13))),
+            ),
+          ],
+          onChanged: (v) => setState(() => _filterAction = v),
+        ),
+      ),
+    );
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(context.isMobile ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Audit Logs & Activity Monitoring',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Track login history, record changes, staff actions, and suspicious activity.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.68),
-                ),
-              ),
-              const SizedBox(height: 16),
-              AppCard(
-                padding: const EdgeInsets.all(12),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isMobile = constraints.maxWidth < 600;
-                    final searchField = TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search by user, patient, or description...',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      onChanged: (v) => setState(() => _searchQuery = v),
-                    );
-                    final actionDropdown = DropdownButton<AuditAction?>(
-                      value: _filterAction,
-                      hint: const Text('All Actions'),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('All Actions'),
-                        ),
-                        ...AuditAction.values.map(
-                          (a) => DropdownMenuItem(
-                            value: a,
-                            child: Text(_actionLabel(a)),
-                          ),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() => _filterAction = v),
-                    );
-
-                    if (isMobile) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          searchField,
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              border: Border.all(color: context.borderColor),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<AuditAction?>(
-                                isExpanded: true,
-                                value: _filterAction,
-                                hint: const Text('All Actions'),
-                                items: [
-                                  const DropdownMenuItem(
-                                    value: null,
-                                    child: Text('All Actions'),
-                                  ),
-                                  ...AuditAction.values.map(
-                                    (a) => DropdownMenuItem(
-                                      value: a,
-                                      child: Text(_actionLabel(a)),
-                                    ),
-                                  ),
-                                ],
-                                onChanged: (v) =>
-                                    setState(() => _filterAction = v),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-
-                    return Row(
-                      children: [
-                        Expanded(child: searchField),
-                        const SizedBox(width: 12),
-                        actionDropdown,
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
+          ScreenHeader(
+            icon: Icons.history_edu_outlined,
+            title: 'Audit Logs',
+            subtitle: allLogs == null
+                ? 'Sign-ins, record changes and staff actions, newest first.'
+                : (shown == allLogs.length
+                      ? '${allLogs.length} logged ${allLogs.length == 1 ? 'event' : 'events'}: sign-ins, record changes and staff actions, newest first.'
+                      : 'Showing $shown of ${allLogs.length} logged events.'),
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 600) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    searchField,
+                    const SizedBox(height: 8),
+                    actionFilter,
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: searchField),
+                  const SizedBox(width: 12),
+                  SizedBox(width: 200, child: actionFilter),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 16),
           logsAsync.when(
             skipLoadingOnReload: true,
             data: (logs) {
-              final filtered = logs.where((log) {
-                if (_filterAction != null && log.action != _filterAction) {
-                  return false;
-                }
-                if (_searchQuery.isEmpty) return true;
-                final q = _searchQuery.toLowerCase();
-                return (log.userName?.toLowerCase().contains(q) ?? false) ||
-                    (log.patientName?.toLowerCase().contains(q) ?? false) ||
-                    (log.description?.toLowerCase().contains(q) ?? false) ||
-                    log.entityType.toLowerCase().contains(q);
-              }).toList();
+              final filtered = applyFilters(logs);
 
               if (filtered.isEmpty) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
-                    child: Text('No audit log entries found.'),
-                  ),
+                return EmptyPanel(
+                  icon: Icons.history_edu_outlined,
+                  message: logs.isEmpty
+                      ? 'No activity logged yet'
+                      : 'No entries match these filters',
+                  detail: logs.isEmpty
+                      ? 'Sign-ins, record changes and staff actions are recorded here as they happen.'
+                      : 'Clear the search or choose All actions to see every entry.',
                 );
               }
 
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-                itemCount: filtered.length,
-                itemBuilder: (context, index) {
-                  final log = filtered[index];
-                  final color = _actionColor(context, log.action);
-                  return AppCard(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: EdgeInsets.zero,
-                    child: ListTile(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+              return RowsPanel(
+                children: [
+                  for (final log in filtered)
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
                       ),
-                      leading: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: color.withValues(alpha: 0.25),
-                          ),
-                        ),
-                        child: Icon(
-                          _actionIcon(log.action),
-                          color: color,
-                          size: 18,
-                        ),
+                      leading: Icon(
+                        _actionIcon(log.action),
+                        size: 18,
+                        color: t.muted,
                       ),
-                      title: Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 8,
-                        runSpacing: 4,
+                      minLeadingWidth: 20,
+                      title: Row(
                         children: [
-                          Text(
-                            '${log.actionDisplay} — ${log.entityType}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
+                          Flexible(
+                            child: Text(
+                              '${log.actionDisplay}: ${log.entityType}',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                color: t.text,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           _buildActionBadge(log.action),
                         ],
                       ),
                       subtitle: Text(
-                        '${log.userName ?? log.userId} • ${_formatDateTime(log.timestamp)}'
-                        '${log.patientName != null ? ' • ${log.patientName}' : ''}'
+                        '${log.userName ?? log.userId}, ${_formatDateTime(log.timestamp)}'
+                        '${log.patientName != null ? '. Patient: ${log.patientName}' : ''}'
                         '${log.description != null ? '\n${log.description}' : ''}',
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12.5,
+                          color: t.muted,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                       isThreeLine: log.description != null,
                     ),
-                  );
-                },
+                ],
               );
             },
             loading: () => const LoadingState(),
@@ -227,26 +205,6 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildActionBadge(AuditAction action) {
-    return switch (action) {
-      AuditAction.delete => StatusBadge.critical(
-        text: action.name.toUpperCase(),
-        showDot: true,
-      ),
-      AuditAction.update => StatusBadge.pending(
-        text: action.name.toUpperCase(),
-        showDot: true,
-      ),
-      AuditAction.create || AuditAction.sync || AuditAction.backup =>
-        StatusBadge.normal(text: action.name.toUpperCase(), showDot: true),
-      AuditAction.login || AuditAction.logout => StatusBadge.info(
-        text: action.name.toUpperCase(),
-        showDot: true,
-      ),
-      _ => StatusBadge.neutral(text: action.name.toUpperCase(), showDot: true),
-    };
   }
 
   String _actionLabel(AuditAction action) {
@@ -287,25 +245,6 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
         return Icons.cloud_sync_outlined;
       default:
         return Icons.history;
-    }
-  }
-
-  Color _actionColor(BuildContext context, AuditAction action) {
-    final colors = context.semanticColors;
-    switch (action) {
-      case AuditAction.delete:
-        return colors.critical;
-      case AuditAction.login:
-      case AuditAction.logout:
-        return colors.info;
-      case AuditAction.sync:
-      case AuditAction.backup:
-      case AuditAction.create:
-        return colors.normal;
-      case AuditAction.update:
-        return colors.warning;
-      default:
-        return colors.neutral;
     }
   }
 
