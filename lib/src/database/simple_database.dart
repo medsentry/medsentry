@@ -370,8 +370,15 @@ class SimpleDatabase {
 
     final settings = decoded['system_settings'];
     if (settings is Map<String, dynamic>) {
-      _systemSettings = SystemSettings.fromJson(settings);
-    } else {
+      final parsed = SystemSettings.fromJson(settings);
+      _systemSettings = _systemSettings.logoDataUri.isNotEmpty && parsed.logoDataUri.isEmpty
+          ? parsed.copyWith(logoDataUri: _systemSettings.logoDataUri)
+          : parsed;
+    } else if (settings is SystemSettings) {
+      _systemSettings = _systemSettings.logoDataUri.isNotEmpty && settings.logoDataUri.isEmpty
+          ? settings.copyWith(logoDataUri: _systemSettings.logoDataUri)
+          : settings;
+    } else if (_systemSettings.logoDataUri.isEmpty) {
       _systemSettings = const SystemSettings();
     }
 
