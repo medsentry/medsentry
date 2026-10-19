@@ -93,6 +93,18 @@ void main() {
     expect(find.textContaining('All Rights Reserved'), findsOneWidget);
   });
 
+  testWidgets('centers sign-in fields in the whole desktop window', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(createSubject());
+    await tester.pumpAndSettle();
+
+    final emailField = tester.getRect(find.byType(TextField).first);
+    expect(emailField.center.dx, closeTo(720, 1));
+  });
+
   testWidgets('renders cleanly on narrow mobile portrait (320x568) without overflow', (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1.0;
