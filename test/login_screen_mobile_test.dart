@@ -138,14 +138,23 @@ void main() {
         ),
       ),
     );
-    await tester.runAsync(() => db.getSystemSettings());
+    final persistedSettings = await tester.runAsync(
+      () => db.getSystemSettings(),
+    );
+    expect(persistedSettings?.logoDataUri, initialLogo);
 
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
     await tester.pumpWidget(createSubject(loadSettingsFromDatabase: true));
-    await tester.pump();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(LoginScreen)),
+    );
+    final initialSettings = await tester.runAsync(
+      () => container.read(systemSettingsProvider.future),
+    );
+    expect(initialSettings?.logoDataUri, initialLogo);
     await tester.pump();
 
     expect(
@@ -158,7 +167,10 @@ void main() {
         (await db.getSystemSettings()).copyWith(logoDataUri: updatedLogo),
       );
     });
-    await tester.pump();
+    final updatedSettings = await tester.runAsync(
+      () => container.read(systemSettingsProvider.future),
+    );
+    expect(updatedSettings?.logoDataUri, updatedLogo);
     await tester.pump();
 
     expect(
