@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
 import 'src/config/supabase_config.dart';
+import 'src/widgets/startup_loading_screen.dart';
 
 Future<void>? _supabaseInitialization;
 
@@ -36,7 +37,8 @@ Future<void> _initializeSupabase() async {
   try {
     await initialization.timeout(const Duration(seconds: 20));
   } catch (error, stackTrace) {
-    if (error is! TimeoutException && identical(_supabaseInitialization, initialization)) {
+    if (error is! TimeoutException &&
+        identical(_supabaseInitialization, initialization)) {
       _supabaseInitialization = null;
     }
     debugPrint('Supabase initialization failed: $error\n$stackTrace');
@@ -119,18 +121,7 @@ class _AppBootstrapState extends State<_AppBootstrap> {
         }
         return const MaterialApp(
           debugShowCheckedModeBanner: false,
-          home: Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Starting MedSentry…'),
-                ],
-              ),
-            ),
-          ),
+          home: StartupLoadingScreen(),
         );
       },
     );

@@ -17,7 +17,8 @@ class _FakeOtpGateway implements OtpGateway {
   bool get hasSession => false;
 
   @override
-  Future<String> verifyPassword(String email, String password) async => 'auth-$email';
+  Future<String> verifyPassword(String email, String password) async =>
+      'auth-$email';
 
   @override
   Future<void> sendOtp(String email) async {}
@@ -45,7 +46,11 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('medsentry_login_test');
     db = SimpleDatabase();
     await db.useStoreFileForTesting(File('${tempDir.path}/store.json'));
-    authRepo = AuthRepository(db, AuditService(db), otpGateway: _FakeOtpGateway());
+    authRepo = AuthRepository(
+      db,
+      AuditService(db),
+      otpGateway: _FakeOtpGateway(),
+    );
   });
 
   tearDown(() async {
@@ -71,37 +76,40 @@ void main() {
             ),
           ),
       ],
-      child: const MaterialApp(
-        home: LoginScreen(),
-      ),
+      child: const MaterialApp(home: LoginScreen()),
     );
   }
 
-  testWidgets('renders cleanly on standard mobile portrait (390x844) without overflow', (tester) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() => tester.view.resetPhysicalSize());
+  testWidgets(
+    'renders cleanly on standard mobile portrait (390x844) without overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-    await tester.pumpWidget(createSubject());
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(createSubject());
+      await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-    expect(find.text('MedSentry RHU'), findsOneWidget);
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Email Address'), findsOneWidget);
-    expect(find.text('Password'), findsOneWidget);
-    expect(find.text('Remember Me'), findsOneWidget);
-    expect(find.text('Sign in securely'), findsOneWidget);
-    expect(find.textContaining('All Rights Reserved'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(find.text('MedSentry RHU'), findsOneWidget);
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.text('Email Address'), findsOneWidget);
+      expect(find.text('Password'), findsOneWidget);
+      expect(find.text('Remember Me'), findsOneWidget);
+      expect(find.text('Sign in securely'), findsOneWidget);
+      expect(find.textContaining('All Rights Reserved'), findsOneWidget);
 
-    final loginCard = tester.getRect(
-      find.byKey(const ValueKey('login-form-card')),
-    );
-    expect(loginCard.center.dx, closeTo(195, 1));
-    expect(loginCard.center.dy, closeTo(422, 1));
-  });
+      final loginCard = tester.getRect(
+        find.byKey(const ValueKey('login-form-card')),
+      );
+      expect(loginCard.center.dx, closeTo(195, 1));
+      expect(loginCard.center.dy, closeTo(422, 1));
+    },
+  );
 
-  testWidgets('centers sign-in fields in the whole desktop window', (tester) async {
+  testWidgets('centers sign-in fields in the whole desktop window', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -156,20 +164,25 @@ void main() {
     );
   });
 
-  testWidgets('renders cleanly on narrow mobile portrait (320x568) without overflow', (tester) async {
-    tester.view.physicalSize = const Size(320, 568);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() => tester.view.resetPhysicalSize());
+  testWidgets(
+    'renders cleanly on narrow mobile portrait (320x568) without overflow',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 568);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
-    await tester.pumpWidget(createSubject());
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(createSubject());
+      await tester.pumpAndSettle();
 
-    expect(tester.takeException(), isNull);
-    expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Sign in securely'), findsOneWidget);
-  });
+      expect(tester.takeException(), isNull);
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.text('Sign in securely'), findsOneWidget);
+    },
+  );
 
-  testWidgets('renders cleanly when mobile soft keyboard opens (390x420)', (tester) async {
+  testWidgets('renders cleanly when mobile soft keyboard opens (390x420)', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 420);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -180,12 +193,17 @@ void main() {
     expect(tester.takeException(), isNull);
 
     // Scrollable content should be present and scroll without issue
-    await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -100));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -100),
+    );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('tapping Remember Me label toggles checkbox on mobile', (tester) async {
+  testWidgets('tapping Remember Me label toggles checkbox on mobile', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());

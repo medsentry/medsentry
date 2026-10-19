@@ -16,9 +16,8 @@ void main() {
       ProviderScope(
         overrides: [
           systemSettingsProvider.overrideWith(
-            (ref) => Future.value(
-              const SystemSettings(logoDataUri: logoDataUri),
-            ),
+            (ref) =>
+                Future.value(const SystemSettings(logoDataUri: logoDataUri)),
           ),
         ],
         child: const MaterialApp(home: StartupLoadingScreen()),

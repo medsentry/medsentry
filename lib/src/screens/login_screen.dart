@@ -11,6 +11,7 @@ import '../utils/biometric_auth/biometric_auth.dart';
 import '../utils/rate_limiter.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/otp_verification_panel.dart';
+import '../widgets/system_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final bool locked;
@@ -631,18 +632,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       children: [
         Row(
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: palette.accent,
-                borderRadius: AppRadius.roundedMd,
-              ),
-              child: Icon(
-                Icons.health_and_safety_rounded,
-                color: palette.onAccent,
-                size: 20,
-              ),
+            SystemLogo(
+              dataUri: settings.logoDataUri,
+              size: 32,
+              backgroundColor: palette.accent,
+              iconColor: palette.onAccent,
+              iconSize: 20,
+              borderRadius: AppRadius.md,
             ),
             const SizedBox(width: 10),
             Flexible(
