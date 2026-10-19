@@ -10,7 +10,6 @@ import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../services/document_service.dart';
 import '../providers/providers.dart';
-import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/change_pin_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';

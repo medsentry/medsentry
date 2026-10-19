@@ -7,10 +7,10 @@ import 'package:go_router/go_router.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
-import '../widgets/app_card.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/change_pin_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
+import '../widgets/screen_kit.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/user_avatar.dart';
 
@@ -27,77 +27,77 @@ class ProfileScreen extends ConsumerWidget {
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final secondaryTextColor = isDark
-        ? AppColors.textSecondary
-        : AppColors.lightTextSecondary;
 
     return SingleChildScrollView(
       padding: ResponsiveLayout.pagePadding(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'My Profile',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Personal credentials, PRC license, contact details, and clinical specialization.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: secondaryTextColor,
-                      ),
-                    ),
-                  ],
+          ScreenHeader(
+            icon: Icons.badge_outlined,
+            title: 'My Profile',
+            subtitle:
+                'Personal credentials, PRC license, contact details, and clinical specialization.',
+            actions: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.lock_outline, size: 16),
+                label: const Text('Lock Screen'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: const Size(0, 36),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  side: BorderSide(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  ),
+                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 ),
+                onPressed: () async {
+                  await ref
+                      .read(authRepositoryProvider)
+                      .lockSession(userId: user.id);
+                  ref.read(currentUserProvider.notifier).state = null;
+                  if (context.mounted) {
+                    context.go('/login?locked=1');
+                  }
+                },
               ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.lock_outline, size: 18),
-                    label: const Text('Lock Screen'),
-                    onPressed: () async {
-                      await ref
-                          .read(authRepositoryProvider)
-                          .lockSession(userId: user.id);
-                      ref.read(currentUserProvider.notifier).state = null;
-                      if (context.mounted) {
-                        context.go('/login?locked=1');
-                      }
-                    },
-                  ),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Edit Profile'),
-                    onPressed: () => _editProfile(context, user),
-                  ),
-                ],
+              FilledButton.icon(
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Edit Profile'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryEmeraldDeep,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  minimumSize: const Size(0, 36),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                onPressed: () => _editProfile(context, user),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // User Header Card
-          AppCard(
-            padding: const EdgeInsets.all(24),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardSurface : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
             child: Row(
               children: [
                 UserAvatar(
                   user: user,
-                  radius: 36,
+                  radius: 32,
                   showStatusIndicator: true,
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 18),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,8 +107,11 @@ class ProfileScreen extends ConsumerWidget {
                           Expanded(
                             child: Text(
                               user.fullName,
-                              style: theme.textTheme.titleLarge?.copyWith(
+                              style: TextStyle(
+                                fontSize: 18,
                                 fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                                color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                               ),
                             ),
                           ),
@@ -123,8 +126,9 @@ class ProfileScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         user.email,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: secondaryTextColor,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -135,20 +139,21 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? AppColors.elevatedSurface
-                              : AppColors.lightElevatedSurface,
+                              ? AppColors.inputSurface
+                              : const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: isDark ? AppColors.border : AppColors.lightBorder,
-                            width: 0.5,
+                            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                            width: 1,
                           ),
                         ),
                         child: Text(
                           user.roleDisplay,
-                          style: theme.textTheme.labelSmall?.copyWith(
+                          style: TextStyle(
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                            color: secondaryTextColor,
+                            letterSpacing: 0.3,
+                            color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
                           ),
                         ),
                       ),
@@ -161,46 +166,57 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Account Details Card
-          AppCard(
+          Container(
             padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardSurface : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Account Information',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.person_outline,
                   label: 'Full Name',
                   value: user.fullName,
                 ),
-                const Divider(height: 24),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.email_outlined,
                   label: 'Email Address',
                   value: user.email,
                 ),
-                const Divider(height: 24),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.phone_outlined,
                   label: 'Contact Number',
                   value: user.contactNumber ?? 'Not provided',
                 ),
-                const Divider(height: 24),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.medical_services_outlined,
                   label: 'Specialization',
                   value: user.specialization ?? 'General Healthcare',
                 ),
-                const Divider(height: 24),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.credit_card_outlined,
@@ -210,7 +226,7 @@ class ProfileScreen extends ConsumerWidget {
                       ? user.licenseNumber!
                       : 'Not provided',
                 ),
-                const Divider(height: 24),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.admin_panel_settings_outlined,
@@ -223,8 +239,16 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Security & Quick Lock Card
-          AppCard(
+          Container(
             padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardSurface : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -233,8 +257,11 @@ class ProfileScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'Terminal Security & Quick Access',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                       ),
                     ),
                     if (user.pinEnabled)
@@ -243,26 +270,30 @@ class ProfileScreen extends ConsumerWidget {
                       StatusBadge.inactive(text: 'No PIN Setup', showDot: false),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Text(
                   user.pinEnabled
                       ? 'Your account has a 4-digit PIN configured. You can lock your workstation screen anytime and resume work without retyping your password.'
                       : 'No 4-digit access PIN is currently configured for this account. Set up a PIN in Settings for fast, single-tap terminal unlock.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: secondaryTextColor,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Wrap(
-                  spacing: 12,
+                  spacing: 10,
                   runSpacing: 10,
                   children: [
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryEmerald,
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryEmeraldDeep,
                         foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                       ),
-                      icon: const Icon(Icons.lock_outline, size: 18),
+                      icon: const Icon(Icons.lock_outline, size: 16),
                       label: const Text('Lock Screen Now'),
                       onPressed: () async {
                         await ref
@@ -275,7 +306,16 @@ class ProfileScreen extends ConsumerWidget {
                       },
                     ),
                     OutlinedButton.icon(
-                      icon: const Icon(Icons.pin_outlined, size: 18),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        side: BorderSide(
+                          color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                        ),
+                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      icon: const Icon(Icons.pin_outlined, size: 16),
                       label: Text(user.pinEnabled ? 'Change PIN' : 'Setup PIN'),
                       onPressed: () => showChangePinDialog(context, ref),
                     ),
@@ -287,41 +327,59 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Workstation Appearance & Theme Card
-          AppCard(
+          Container(
             padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardSurface : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Workstation Display & Theme',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Personalize your terminal appearance, dark mode, and clinical accent colors.',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: secondaryTextColor,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 SegmentedButton<ThemeMode>(
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                  ),
                   segments: const [
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.light,
-                      icon: Icon(Icons.light_mode_outlined, size: 18),
-                      label: Text('Light'),
+                      icon: Icon(Icons.light_mode_outlined, size: 16),
+                      label: Text('Light', style: TextStyle(fontSize: 12)),
                     ),
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.dark,
-                      icon: Icon(Icons.dark_mode_outlined, size: 18),
-                      label: Text('Dark'),
+                      icon: Icon(Icons.dark_mode_outlined, size: 16),
+                      label: Text('Dark', style: TextStyle(fontSize: 12)),
                     ),
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.system,
-                      icon: Icon(Icons.settings_brightness_outlined, size: 18),
-                      label: Text('System'),
+                      icon: Icon(Icons.settings_brightness_outlined, size: 16),
+                      label: Text('System', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                   selected: {ref.watch(themeModeProvider)},
@@ -332,18 +390,20 @@ class ProfileScreen extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 12),
+                Divider(height: 1, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
+                const SizedBox(height: 14),
                 Text(
                   'Clinical Accent Color',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                  spacing: 10,
+                  runSpacing: 10,
                   children: AppAccentTheme.values.map((accent) {
                     final currentAccentTheme = ref.watch(accentThemeProvider);
                     final isSelected = accent == currentAccentTheme;
@@ -353,37 +413,42 @@ class ProfileScreen extends ConsumerWidget {
                             .read(accentThemeProvider.notifier)
                             .setAccentTheme(accent);
                       },
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(6),
                       child: Container(
-                        width: 108,
+                        width: 104,
                         padding: const EdgeInsets.symmetric(
-                          vertical: 10,
+                          vertical: 8,
                           horizontal: 8,
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? accent.primaryColor.withValues(alpha: 0.12)
-                              : theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(10),
+                              ? accent.primaryColor.withValues(alpha: 0.1)
+                              : (isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC)),
+                          borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color: isSelected
                                 ? accent.primaryColor
-                                : theme.colorScheme.outlineVariant.withValues(
-                                    alpha: 0.7,
-                                  ),
-                            width: isSelected ? 2 : 1,
+                                : (isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                            width: isSelected ? 1.5 : 1,
                           ),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              width: 28,
-                              height: 28,
+                              width: 24,
+                              height: 24,
                               decoration: BoxDecoration(
                                 color: accent.primaryColor,
                                 shape: BoxShape.circle,
                               ),
+                              child: isSelected
+                                  ? const Icon(
+                                      Icons.check,
+                                      size: 14,
+                                      color: Colors.white,
+                                    )
+                                  : null,
                             ),
                             const SizedBox(height: 6),
                             Text(
@@ -393,6 +458,9 @@ class ProfileScreen extends ConsumerWidget {
                                 fontWeight: isSelected
                                     ? FontWeight.w700
                                     : FontWeight.w500,
+                                color: isSelected
+                                    ? accent.primaryColor
+                                    : (isDark ? AppColors.textPrimary : const Color(0xFF334155)),
                               ),
                             ),
                           ],
@@ -418,11 +486,11 @@ class ProfileScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondaryColor = isDark
         ? AppColors.textSecondary
-        : AppColors.lightTextSecondary;
+        : const Color(0xFF64748B);
     return Row(
       children: [
-        Icon(icon, size: 20, color: secondaryColor),
-        const SizedBox(width: 14),
+        Icon(icon, size: 16, color: secondaryColor),
+        const SizedBox(width: 12),
         SizedBox(
           width: 140,
           child: Text(
@@ -437,9 +505,11 @@ class ProfileScreen extends ConsumerWidget {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              fontSize: 14,
+            style: TextStyle(
+              fontSize: 13.5,
               fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
             ),
           ),
         ),
