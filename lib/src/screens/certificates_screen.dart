@@ -104,59 +104,151 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           );
 
           return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Official Certificates & Medical Clearances',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: isDark ? AppColors.textPrimary : null,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Generate DOH-compliant medical certificates, return-to-work clearances, and patient summaries.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: isDark
-                                    ? AppColors.textSecondary
-                                    : Theme.of(context).colorScheme.onSurface
-                                          .withValues(alpha: 0.68),
-                              ),
-                        ),
-                      ],
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
                   ),
-                ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.verified_outlined,
+                      size: 22,
+                      color: isDark
+                          ? AppColors.textSecondary
+                          : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Official Certificates & Medical Clearances',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.2,
+                              color: isDark
+                                  ? AppColors.textPrimary
+                                  : AppColors.lightTextPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Generate DOH-compliant medical certificates, return-to-work clearances, and patient summaries',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? AppColors.textSecondary
+                                  : AppColors.lightTextSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.query_stats_rounded,
+                      size: 15,
+                      color: isDark
+                          ? AppColors.textTertiary
+                          : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$archiveCount certificates issued',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    Text(
+                      ' · ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColors.textTertiary
+                            : AppColors.lightTextMuted,
+                      ),
+                    ),
+                    Text(
+                      'DOH AO No. 2021-0037 standard',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                    Text(
+                      ' · ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColors.textTertiary
+                            : AppColors.lightTextMuted,
+                      ),
+                    ),
+                    Text(
+                      'Anti-tamper QR active',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppColors.primaryEmerald
+                            : const Color(0xFF0F766E),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               TabBar(
                 controller: _tabController,
                 isScrollable: true,
-                labelColor: AppColors.primaryEmerald,
+                labelColor: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
                 unselectedLabelColor: isDark
                     ? AppColors.textSecondary
                     : AppColors.lightTextSecondary,
-                indicatorColor: AppColors.primaryEmerald,
+                indicatorColor: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
+                indicatorWeight: 2,
                 tabs: [
                   const Tab(
-                    icon: Icon(Icons.edit_document, size: 18),
-                    child: Text('Issue Certificate & Live Preview'),
+                    icon: Icon(Icons.edit_document, size: 16),
+                    child: Text('Issue Certificate & Live Preview', style: TextStyle(fontSize: 12.5)),
                   ),
                   Tab(
-                    icon: const Icon(Icons.history_edu, size: 18),
-                    child: Text('Issued Certificates Registry ($archiveCount)'),
+                    icon: const Icon(Icons.history_edu, size: 16),
+                    child: Text('Issued Registry ($archiveCount)', style: TextStyle(fontSize: 12.5)),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               if (hasBoundedHeight)
                 Expanded(child: tabView)
               else
@@ -214,8 +306,15 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
     final patients = patientsAsync.valueOrNull ?? const <Patient>[];
     final selectedPatient = _resolveSelectedPatient(patients);
 
-    return AppCard(
-      padding: EdgeInsets.all(ResponsiveLayout.isMobile(context) ? 14 : 20),
+    return Container(
+      padding: EdgeInsets.all(ResponsiveLayout.isMobile(context) ? 14 : 18),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -223,15 +322,17 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             children: [
               Icon(
                 Icons.assignment_outlined,
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
+                size: 18,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
               ),
               const SizedBox(width: 8),
               Text(
                 'Document Parameters',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                ),
               ),
             ],
           ),
@@ -240,7 +341,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             spacing: 8,
             children: CertificateType.values.map((type) {
               return ChoiceChip(
-                label: Text(type.displayName),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                label: Text(type.displayName, style: const TextStyle(fontSize: 12)),
                 selected: _selectedType == type,
                 onSelected: (_) => setState(() => _selectedType = type),
               );
@@ -253,12 +357,12 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               decoration: BoxDecoration(
                 color: isDark
                     ? AppColors.inputSurface
-                    : AppColors.primaryEmerald.withValues(alpha: 0.05),
-                borderRadius: AppRadius.roundedMd,
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isDark
                       ? AppColors.borderSubtle
-                      : AppColors.primaryEmerald.withValues(alpha: 0.2),
+                      : const Color(0xFFE2E8F0),
                 ),
               ),
               child: Column(
@@ -268,15 +372,16 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     children: [
                       Icon(
                         Icons.bolt,
-                        size: 16,
-                        color: context.semanticColors.warning,
+                        size: 15,
+                        color: isDark ? AppColors.pending : const Color(0xFFD97706),
                       ),
                       const SizedBox(width: 6),
-                      const Text(
+                      Text(
                         '1-Click Clinical Presets',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontSize: 12.5,
+                          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                         ),
                       ),
                       const Spacer(),
@@ -285,7 +390,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark
-                              ? AppColors.textMuted
+                              ? AppColors.textTertiary
                               : AppColors.lightTextMuted,
                         ),
                       ),
@@ -298,10 +403,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     children: [
                       ActionChip(
                         avatar: const Icon(Icons.work_outline, size: 14),
-                        label: const Text(
-                          'Fit to Work',
-                          style: TextStyle(fontSize: 12),
-                        ),
+                        label: const Text('Fit to Work', style: TextStyle(fontSize: 12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
                         onPressed: () => _applyPreset(
                           purpose: 'Employment & Return-to-Work Clearance',
                           findings:
@@ -312,10 +416,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.school_outlined, size: 14),
-                        label: const Text(
-                          'School / P.E.',
-                          style: TextStyle(fontSize: 12),
-                        ),
+                        label: const Text('School / P.E.', style: TextStyle(fontSize: 12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
                         onPressed: () => _applyPreset(
                           purpose: 'School Readmission & P.E. Clearance',
                           findings:
@@ -326,10 +429,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.bed_outlined, size: 14),
-                        label: const Text(
-                          'Bed Rest (3 Days)',
-                          style: TextStyle(fontSize: 12),
-                        ),
+                        label: const Text('Bed Rest (3 Days)', style: TextStyle(fontSize: 12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
                         onPressed: () => _applyPreset(
                           purpose: 'Medical Excusal / Sick Leave',
                           findings:
@@ -340,17 +442,12 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         ),
                       ),
                       ActionChip(
-                        avatar: const Icon(
-                          Icons.local_hospital_outlined,
-                          size: 14,
-                        ),
-                        label: const Text(
-                          'Referral Slip',
-                          style: TextStyle(fontSize: 12),
-                        ),
+                        avatar: const Icon(Icons.local_hospital_outlined, size: 14),
+                        label: const Text('Referral Slip', style: TextStyle(fontSize: 12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
                         onPressed: () => _applyPreset(
-                          purpose:
-                              'Tertiary Level Evaluation & Diagnostic Work-up',
+                          purpose: 'Tertiary Level Evaluation & Diagnostic Work-up',
                           findings:
                               'Clinical findings warrant advanced diagnostic work-up and specialized medical management unavailable at the primary RHU tier.',
                           recommendations:
@@ -366,9 +463,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           ],
           Text(
             'Target Patient',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+            ),
           ),
           const SizedBox(height: 8),
           patientsAsync.when(
@@ -381,17 +480,23 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               itemLabel: (p) => '${p.fullName} (${p.id})',
               itemSubtitle: (p) =>
                   'Age: ${p.age ?? 'N/A'} • ${p.gender ?? ''} • Brgy. ${p.barangay ?? 'N/A'}',
-              itemLeading: (p) => CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.primaryEmerald.withValues(
-                  alpha: 0.15,
+              itemLeading: (p) => Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                  ),
                 ),
+                alignment: Alignment.center,
                 child: Text(
                   p.initials,
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                   ),
                 ),
               ),
@@ -421,28 +526,28 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.cardSurface
-                    : Colors.blue.shade50.withValues(alpha: 0.5),
-                borderRadius: AppRadius.roundedSm,
+                color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isDark ? AppColors.borderSubtle : Colors.blue.shade200,
+                  color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    Icons.person_pin,
-                    size: 16,
-                    color: context.semanticColors.info,
+                    Icons.person_outline,
+                    size: 15,
+                    color: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Selected: ${selectedPatient.fullName} | Age ${selectedPatient.age ?? 'N/A'} | ${selectedPatient.gender ?? 'N/A'} | Brgy. ${selectedPatient.barangay ?? 'Unspecified'}',
-                      style: const TextStyle(
+                      'Selected: ${selectedPatient.fullName} | Age ${selectedPatient.age ?? "—"} | ${selectedPatient.gender ?? "—"} | Brgy. ${selectedPatient.barangay ?? "Unspecified"}',
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                       ),
                     ),
                   ),
@@ -462,56 +567,94 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             const SizedBox(height: 16),
             TextField(
               controller: _purposeController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 labelText: 'Purpose',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  ),
+                ),
                 hintText:
                     'e.g. Employment, School clearance, Legal, Sick leave',
-                prefixIcon: Icon(Icons.flag_outlined),
+                prefixIcon: const Icon(Icons.flag_outlined, size: 16),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _findingsController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 labelText: 'Clinical Findings & Examination Observations',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  ),
+                ),
                 hintText:
                     'e.g. Afebrile, BP 120/80 mmHg, clear breath sounds...',
-                prefixIcon: Icon(Icons.medical_services_outlined),
+                prefixIcon: const Icon(Icons.medical_services_outlined, size: 16),
               ),
               maxLines: 3,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _recommendationsController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 labelText: 'Medical Recommendations & Plan',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  ),
+                ),
                 hintText:
                     'e.g. Fit to work, rest for 3 days, avoid heavy lifting...',
-                prefixIcon: Icon(Icons.thumb_up_alt_outlined),
+                prefixIcon: const Icon(Icons.thumb_up_alt_outlined, size: 16),
               ),
               maxLines: 3,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _restDaysController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 labelText: 'Recommended Rest Days (optional)',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  ),
+                ),
                 hintText: 'e.g. 3',
-                prefixIcon: Icon(Icons.hotel_outlined),
+                prefixIcon: const Icon(Icons.hotel_outlined, size: 16),
               ),
               keyboardType: TextInputType.number,
             ),
           ],
           const SizedBox(height: 24),
           Wrap(
-            spacing: 12,
+            spacing: 10,
             runSpacing: 8,
             children: [
               FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryEmerald,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
                 onPressed: _isGenerating || selectedPatient == null
                     ? null
                     : () => _generate(
@@ -522,16 +665,24 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       ),
                 icon: _isGenerating
                     ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Icon(Icons.print_outlined),
+                    : const Icon(Icons.print_outlined, size: 16),
                 label: Text(
                   _isGenerating ? 'Generating...' : 'Generate & Print',
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
                 ),
               ),
               OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  side: BorderSide(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  ),
+                ),
                 onPressed: _isGenerating || selectedPatient == null
                     ? null
                     : () => _generate(
@@ -540,8 +691,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         selectedPatient,
                         exportPdf: true,
                       ),
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('Export Official PDF'),
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                label: const Text(
+                  'Export Official PDF',
+                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                ),
               ),
             ],
           ),
@@ -591,8 +745,15 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
     final signatoryRole = user?.roleDisplayName ?? 'Health Officer';
     final licenseNo = user?.licenseNumber?.trim();
 
-    return AppCard(
-      padding: const EdgeInsets.all(24),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -600,57 +761,51 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             children: [
               Icon(
                 Icons.preview_outlined,
-                size: 18,
-                color: Theme.of(context).colorScheme.primary,
+                size: 16,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
               ),
               const SizedBox(width: 8),
               Text(
                 'LIVE DOCUMENT PREVIEW',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  letterSpacing: 1.1,
-                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 11,
+                  letterSpacing: 0.8,
+                  color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
                 ),
               ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.12),
-                  borderRadius: AppRadius.roundedSm,
+                  color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: Colors.green.withValues(alpha: 0.3),
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
                   ),
                 ),
                 child: Text(
                   'A4 Standard • $clinicName',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: Colors.green,
+                    color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
                     fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.modalSurface : Colors.white,
-              borderRadius: AppRadius.roundedMd,
+              color: isDark ? const Color(0xFF181A22) : Colors.white,
+              borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: isDark ? AppColors.borderActive : Colors.grey.shade300,
-                width: 1.5,
+                color: isDark ? AppColors.borderActive : const Color(0xFFCBD5E1),
+                width: 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -854,16 +1009,19 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     ),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? AppColors.appBackground
-                          : Colors.grey.shade100,
-                      borderRadius: AppRadius.roundedSm,
+                          ? AppColors.inputSurface
+                          : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                      ),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.verified_user_outlined,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.primary,
+                          size: 13,
+                          color: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -872,7 +1030,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                             style: TextStyle(
                               fontSize: 9,
                               color: isDark
-                                  ? AppColors.textMuted
+                                  ? AppColors.textTertiary
                                   : AppColors.lightTextMuted,
                             ),
                           ),
