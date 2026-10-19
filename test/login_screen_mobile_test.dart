@@ -130,6 +130,23 @@ void main() {
     expect(loginCard.center.dy, closeTo(450, 1));
   });
 
+  testWidgets('shows the clinic photo as a full-screen login background', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createSubject());
+    await tester.pumpAndSettle();
+
+    final background = tester.widget<Image>(
+      find.byKey(const ValueKey('login-background-image')),
+    );
+
+    expect(
+      (background.image as AssetImage).assetName,
+      'assets/images/rhu_background.jpg',
+    );
+    expect(background.fit, BoxFit.cover);
+  });
+
   testWidgets('shows the updated system logo on the login screen immediately', (
     tester,
   ) async {

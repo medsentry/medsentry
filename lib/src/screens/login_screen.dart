@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -390,9 +392,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final gutter = constraints.maxWidth < 360 ? 16.0 : 24.0;
     const topClearance = 64.0;
     const bottomClearance = 64.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Stack(
       children: [
+        // Clinic Environmental Background Photo
+        Positioned.fill(
+          child: ExcludeSemantics(
+            child: Image.asset(
+              'assets/images/rhu_background.jpg',
+              key: const ValueKey('login-background-image'),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  ColoredBox(color: palette.surface),
+            ),
+          ),
+        ),
+
+        // Contrast-Enhancing Vignette & Gradient Overlay
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? [const Color(0xCC0A0F1D), const Color(0xF2040711)]
+                    : [const Color(0x730F172A), const Color(0xB30F172A)],
+              ),
+            ),
+          ),
+        ),
+
         SafeArea(
           child: LayoutBuilder(
             builder: (context, viewport) => SingleChildScrollView(
@@ -414,19 +445,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     constraints: const BoxConstraints(maxWidth: 430),
                     child: Container(
                       key: const ValueKey('login-form-card'),
-                      padding: EdgeInsets.all(isCompact ? 18 : 32),
                       decoration: BoxDecoration(
-                        color: palette.card,
-                        border: Border.all(color: palette.border),
-                        borderRadius: AppRadius.roundedMd,
+                        color: isDark
+                            ? const Color(0xFF1E293B).withValues(alpha: 0.75)
+                            : Colors.white.withValues(alpha: 0.88),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.16)
+                              : Colors.white.withValues(alpha: 0.90),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.45 : 0.22,
+                            ),
+                            blurRadius: 36,
+                            spreadRadius: -4,
+                            offset: const Offset(0, 16),
+                          ),
+                          BoxShadow(
+                            color:
+                                (isDark
+                                        ? AppColors.primaryEmerald
+                                        : const Color(0xFF047857))
+                                    .withValues(alpha: 0.08),
+                            blurRadius: 40,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: _entrance(
-                        context,
-                        _buildAuthForm(
-                          context,
-                          palette,
-                          isTall: !isCompact && viewport.maxHeight >= 760,
-                          isMobile: isCompact,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                          child: Padding(
+                            padding: EdgeInsets.all(isCompact ? 20 : 32),
+                            child: _entrance(
+                              context,
+                              _buildAuthForm(
+                                context,
+                                palette,
+                                isTall: !isCompact && viewport.maxHeight >= 760,
+                                isMobile: isCompact,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -436,16 +501,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
+
+        // PWA Install Button (Frosted Glass Pill)
         Align(
           alignment: Alignment.topRight,
           child: SafeArea(
             bottom: false,
             child: Padding(
               padding: EdgeInsets.fromLTRB(gutter, 12, gutter, 0),
-              child: _buildPwaInstallButton(context, isMobile: isCompact),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        width: 1,
+                      ),
+                    ),
+                    child: _buildPwaInstallButton(context, isMobile: isCompact),
+                  ),
+                ),
+              ),
             ),
           ),
         ),
+
+        // Footer Banner (Frosted Glass Pill)
         Align(
           alignment: Alignment.bottomCenter,
           child: SafeArea(
@@ -454,7 +539,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 12),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 760),
-                child: _buildFooter(context, palette),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF0F172A).withValues(alpha: 0.70)
+                            : Colors.black.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          width: 1,
+                        ),
+                      ),
+                      child: _buildFooter(context, palette),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -1125,7 +1232,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final orgName = settings.organizationName.isNotEmpty
         ? settings.organizationName
         : 'Madrid Rural Health Unit';
-    final style = TextStyle(color: palette.muted, fontSize: 12, height: 1.4);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark
+        ? AppColors.textSecondary
+        : Colors.white.withValues(alpha: 0.92);
+    final iconColor = isDark
+        ? AppColors.textSecondary
+        : Colors.white.withValues(alpha: 0.85);
+    final style = TextStyle(color: textColor, fontSize: 12, height: 1.4);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1133,7 +1247,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.verified_user_outlined, size: 14, color: palette.muted),
+            Icon(Icons.verified_user_outlined, size: 14, color: iconColor),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
