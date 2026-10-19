@@ -284,21 +284,19 @@ class _PatientIdentityHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
-        borderRadius: AppRadius.roundedMd,
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDark
-              ? AppColors.border
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ? AppColors.borderSubtle
+              : const Color(0xFFE2E8F0),
         ),
-        boxShadow: isDark ? AppShadows.subtle : null,
       ),
       child: _PatientIdentity(patient: patient),
     );
@@ -314,16 +312,26 @@ class _PatientIdentity extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(right: 8, top: 4),
-          child: IconButton.filledTonal(
+          padding: const EdgeInsets.only(right: 8, top: 2),
+          child: IconButton.outlined(
+            style: IconButton.styleFrom(
+              padding: const EdgeInsets.all(8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              side: BorderSide(
+                color: isDark
+                    ? AppColors.borderSubtle
+                    : const Color(0xFFCBD5E1),
+              ),
+            ),
             tooltip: 'Back to Patients',
-            icon: const Icon(Icons.arrow_back),
+            icon: const Icon(Icons.arrow_back_rounded, size: 18),
             onPressed: () {
               if (context.canPop()) {
                 context.pop();
@@ -334,13 +342,13 @@ class _PatientIdentity extends StatelessWidget {
           ),
         ),
         Container(
-          width: 50,
-          height: 50,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
-            color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
-            borderRadius: AppRadius.roundedSm,
+            color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? primary.withValues(alpha: 0.25) : primary.withValues(alpha: 0.25),
+              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
             ),
           ),
           alignment: Alignment.center,
@@ -349,8 +357,8 @@ class _PatientIdentity extends StatelessWidget {
                 ? patient.firstName[0].toUpperCase()
                 : '?',
             style: TextStyle(
-              color: primary,
-              fontSize: 22,
+              color: isDark ? AppColors.textPrimary : const Color(0xFF334155),
+              fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -367,10 +375,13 @@ class _PatientIdentity extends StatelessWidget {
                       patient.fullName,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
-                      style: theme.textTheme.titleLarge?.copyWith(
+                      style: TextStyle(
+                        fontSize: 18,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.2,
-                        color: isDark ? AppColors.textPrimary : null,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.lightTextPrimary,
                       ),
                     ),
                   ),
@@ -410,7 +421,7 @@ class _PatientIdentity extends StatelessWidget {
                 children: [
                   _InfoChip(
                     icon: Icons.credit_card,
-                    label: 'PHN: ${patient.philHealthNumber ?? 'N/A'}',
+                    label: 'PHN: ${patient.philHealthNumber ?? 'None'}',
                   ),
                   _InfoChip(
                     icon: Icons.cake_outlined,
@@ -434,7 +445,7 @@ class _PatientIdentity extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: theme.colorScheme.error.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                           color: theme.colorScheme.error.withValues(alpha: 0.3),
                         ),
@@ -492,21 +503,19 @@ class _PatientActionsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
-        borderRadius: AppRadius.roundedMd,
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isDark
-              ? AppColors.border
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ? AppColors.borderSubtle
+              : const Color(0xFFE2E8F0),
         ),
-        boxShadow: isDark ? AppShadows.subtle : null,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -525,22 +534,21 @@ class _PatientActionsBar extends StatelessWidget {
                   if (onIssueCertificate != null)
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: isDark
-                            ? AppColors.primaryEmerald
-                            : theme.colorScheme.primary,
-                        foregroundColor: isDark
-                            ? const Color(0xFF080909)
-                            : theme.colorScheme.onPrimary,
+                        backgroundColor: AppColors.primaryEmerald,
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
-                          vertical: 10,
+                          vertical: 9,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                       onPressed: onIssueCertificate,
-                      icon: const Icon(Icons.workspace_premium_outlined, size: 18),
+                      icon: const Icon(Icons.workspace_premium_outlined, size: 16),
                       label: const Text(
                         'Issue Certificate',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
                   if (onUploadDocuments != null)
@@ -548,47 +556,79 @@ class _PatientActionsBar extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 10,
+                          vertical: 9,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.borderSubtle
+                              : const Color(0xFFCBD5E1),
                         ),
                       ),
                       onPressed: onUploadDocuments,
-                      icon: const Icon(Icons.upload_file_outlined, size: 18),
-                      label: const Text('Upload Documents'),
+                      icon: const Icon(Icons.upload_file_outlined, size: 16),
+                      label: const Text('Upload Documents', style: TextStyle(fontSize: 12)),
                     ),
                   if (onEditDetails != null)
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 10,
+                          vertical: 9,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.borderSubtle
+                              : const Color(0xFFCBD5E1),
                         ),
                       ),
                       onPressed: onEditDetails,
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Edit Details'),
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: const Text('Edit Details', style: TextStyle(fontSize: 12)),
                     ),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
-                        vertical: 10,
+                        vertical: 9,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      side: BorderSide(
+                        color: isDark
+                            ? AppColors.borderSubtle
+                            : const Color(0xFFCBD5E1),
                       ),
                     ),
                     onPressed: onPrintRecord,
-                    icon: const Icon(Icons.print_outlined, size: 18),
-                    label: const Text('Print Record'),
+                    icon: const Icon(Icons.print_outlined, size: 16),
+                    label: const Text('Print Record', style: TextStyle(fontSize: 12)),
                   ),
                   if (onAuditHistory != null)
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 10,
+                          vertical: 9,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.borderSubtle
+                              : const Color(0xFFCBD5E1),
                         ),
                       ),
                       onPressed: onAuditHistory,
-                      icon: const Icon(Icons.history_outlined, size: 18),
-                      label: const Text('History / Audit Log'),
+                      icon: const Icon(Icons.history_outlined, size: 16),
+                      label: const Text('Audit History', style: TextStyle(fontSize: 12)),
                     ),
                 ],
               ),
@@ -1648,9 +1688,7 @@ class _SectionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AppCard(
       padding: const EdgeInsets.all(16),
@@ -1659,27 +1697,32 @@ class _SectionPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
-                  borderRadius: AppRadius.roundedSm,
-                ),
-                child: Icon(icon, size: 16, color: primary),
+              Icon(
+                icon,
+                size: 16,
+                color: isDark
+                    ? AppColors.textSecondary
+                    : const Color(0xFF64748B),
               ),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: theme.textTheme.titleSmall?.copyWith(
+                style: TextStyle(
+                  fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.1,
-                  color: isDark ? AppColors.textPrimary : null,
+                  color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
                 ),
               ),
             ],
           ),
-          const Divider(height: 20),
+          Divider(
+            height: 20,
+            thickness: 1,
+            color: isDark
+                ? AppColors.borderSubtle
+                : const Color(0xFFE2E8F0),
+          ),
           ...children,
         ],
       ),
@@ -1695,11 +1738,13 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final labelWidth = (constraints.maxWidth * 0.4).clamp(96.0, 160.0);
+        final labelWidth = (constraints.maxWidth * 0.38).clamp(96.0, 160.0);
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
+          padding: const EdgeInsets.symmetric(vertical: 4.5),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1708,20 +1753,27 @@ class _InfoRow extends StatelessWidget {
                 child: Text(
                   label,
                   style: TextStyle(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.62),
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : const Color(0xFF64748B),
                     fontWeight: FontWeight.w500,
-                    fontSize: 13,
+                    fontSize: 12.5,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  value?.isNotEmpty == true ? value! : 'N/A',
+                  value?.isNotEmpty == true ? value! : 'Not specified',
                   softWrap: true,
-                  style: const TextStyle(fontSize: 13),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    fontWeight: FontWeight.w500,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : const Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ],
@@ -1740,31 +1792,33 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.elevatedSurface : theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.35,
-        ),
-        borderRadius: AppRadius.roundedSm,
+        color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
         ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: isDark ? AppColors.primaryEmerald : theme.colorScheme.onSurfaceVariant),
+          Icon(
+            icon,
+            size: 13,
+            color: isDark ? AppColors.textTertiary : const Color(0xFF64748B),
+          ),
           const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w500,
-              color: isDark ? AppColors.textPrimary : theme.colorScheme.onSurface,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: isDark ? AppColors.textPrimary : const Color(0xFF1E293B),
             ),
           ),
         ],
