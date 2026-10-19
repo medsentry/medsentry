@@ -480,7 +480,7 @@ class _PatientsPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -488,38 +488,28 @@ class _PatientsPageHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: theme.brightness == Brightness.dark ? AppColors.cardSurface : theme.colorScheme.surface,
-              borderRadius: AppRadius.roundedMd,
+              color: isDark ? AppColors.cardSurface : Colors.white,
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: theme.brightness == Brightness.dark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                color: isDark
+                    ? AppColors.borderSubtle
+                    : const Color(0xFFE2E8F0),
               ),
-              boxShadow: theme.brightness == Brightness.dark ? AppShadows.subtle : null,
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 580;
-                final isDark = theme.brightness == Brightness.dark;
-                final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+                final isNarrow = constraints.maxWidth < 620;
 
                 final titleSection = Row(
                   children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.primaryEmeraldSubtle : primary.withValues(alpha: 0.1),
-                        borderRadius: AppRadius.roundedSm,
-                        border: Border.all(
-                          color: isDark ? primary.withValues(alpha: 0.25) : primary.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.people_alt_outlined,
-                        color: primary,
-                        size: 20,
-                      ),
+                    Icon(
+                      Icons.people_alt_outlined,
+                      size: 22,
+                      color: isDark
+                          ? AppColors.textSecondary
+                          : const Color(0xFF64748B),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -528,19 +518,23 @@ class _PatientsPageHeader extends StatelessWidget {
                         children: [
                           Text(
                             'Patient Registry',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                               letterSpacing: -0.2,
-                              color: isDark ? AppColors.textPrimary : null,
+                              color: isDark
+                                  ? AppColors.textPrimary
+                                  : AppColors.lightTextPrimary,
                             ),
                           ),
-                          const SizedBox(height: 1),
+                          const SizedBox(height: 2),
                           Text(
-                            'Search, filter, and open patient records across RHU barangays',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(
-                                alpha: 0.65,
-                              ),
+                            'Search, filter, and open clinical records across RHU barangays',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? AppColors.textSecondary
+                                  : AppColors.lightTextSecondary,
                             ),
                           ),
                         ],
@@ -551,17 +545,48 @@ class _PatientsPageHeader extends StatelessWidget {
 
                 final exportButton = onExportRegistry != null
                     ? OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          side: BorderSide(
+                            color: isDark
+                                ? AppColors.borderSubtle
+                                : const Color(0xFFCBD5E1),
+                          ),
+                        ),
                         onPressed: onExportRegistry,
-                        icon: const Icon(Icons.file_download_outlined, size: 16),
-                        label: const Text('Export CSV'),
+                        icon: const Icon(Icons.file_download_outlined, size: 15),
+                        label: const Text(
+                          'Export CSV',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
                       )
                     : null;
 
                 final registerButton = onAddPatient != null
                     ? FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryEmerald,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                         onPressed: onAddPatient,
-                        icon: const Icon(Icons.person_add_alt_1, size: 16),
-                        label: const Text('Register Patient'),
+                        icon: const Icon(Icons.person_add_alt_1, size: 15),
+                        label: const Text(
+                          'Register Patient',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
                       )
                     : null;
 
@@ -600,27 +625,80 @@ class _PatientsPageHeader extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _StatChip(
-                icon: Icons.groups_outlined,
-                label: 'Total',
-                value: totalCount.toString(),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.cardSurface : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark
+                    ? AppColors.borderSubtle
+                    : const Color(0xFFE2E8F0),
               ),
-              _StatChip(
-                icon: Icons.filter_list_outlined,
-                label: 'Showing',
-                value: filteredCount.toString(),
-              ),
-              _StatChip(
-                icon: Icons.holiday_village_outlined,
-                label: 'Barangays',
-                value: barangayCount.toString(),
-              ),
-            ],
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.query_stats_rounded,
+                  size: 15,
+                  color: isDark
+                      ? AppColors.textTertiary
+                      : const Color(0xFF64748B),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$totalCount registered patients',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : const Color(0xFF0F172A),
+                  ),
+                ),
+                Text(
+                  ' · ',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppColors.textTertiary
+                        : AppColors.lightTextMuted,
+                  ),
+                ),
+                Text(
+                  '$barangayCount barangays',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+                Text(
+                  ' · ',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark
+                        ? AppColors.textTertiary
+                        : AppColors.lightTextMuted,
+                  ),
+                ),
+                Text(
+                  '$filteredCount records showing',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: isDark
+                        ? AppColors.primaryEmerald
+                        : const Color(0xFF0F766E),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -628,60 +706,6 @@ class _PatientsPageHeader extends StatelessWidget {
   }
 }
 
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
-        borderRadius: AppRadius.roundedSm,
-        border: Border.all(
-          color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
-            color: isDark ? AppColors.primaryEmerald : theme.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '$label: ',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: isDark ? AppColors.textSecondary : theme.colorScheme.onSurface.withValues(alpha: 0.65),
-              fontSize: 12,
-            ),
-          ),
-          Text(
-            value,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-              color: isDark ? AppColors.textPrimary : null,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _PatientsToolbar extends StatelessWidget {
   final TextEditingController searchController;
@@ -730,6 +754,8 @@ class _PatientsToolbar extends StatelessWidget {
         purokFilter != null ||
         categoryFilter != null;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
@@ -738,19 +764,56 @@ class _PatientsToolbar extends StatelessWidget {
           TextField(
             controller: searchController,
             decoration: InputDecoration(
-              hintText: 'Search by name, patient ID, or phone number...',
-              prefixIcon: const Icon(Icons.search),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 11,
+              ),
+              hintText: 'Search by patient name, PhilHealth number, ID, or contact...',
+              hintStyle: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
+              ),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                size: 18,
+                color: isDark ? AppColors.textTertiary : const Color(0xFF64748B),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
               suffixIcon: searchQuery.isNotEmpty
                   ? IconButton(
                       tooltip: 'Clear search',
-                      icon: const Icon(Icons.clear),
+                      icon: const Icon(Icons.clear_rounded, size: 16),
                       onPressed: onClearSearch,
                     )
                   : null,
               filled: true,
-              fillColor: Theme.of(context).colorScheme.surface,
+              fillColor: isDark ? AppColors.inputSurface : Colors.white,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? AppColors.borderSubtle
+                      : const Color(0xFFCBD5E1),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? AppColors.borderSubtle
+                      : const Color(0xFFCBD5E1),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(
+                  color: AppColors.primaryEmerald,
+                  width: 1.5,
+                ),
               ),
             ),
             onChanged: onSearchChanged,
@@ -804,9 +867,23 @@ class _PatientsToolbar extends StatelessWidget {
                   ),
                   if (hasFilters)
                     ActionChip(
-                      avatar:
-                          const Icon(Icons.filter_alt_off_outlined, size: 16),
-                      label: const Text('Clear filters'),
+                      avatar: const Icon(
+                        Icons.filter_alt_off_outlined,
+                        size: 15,
+                        color: AppColors.primaryEmerald,
+                      ),
+                      label: const Text(
+                        'Clear filters',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                      side: BorderSide(
+                        color: isDark
+                            ? AppColors.borderSubtle
+                            : const Color(0xFFCBD5E1),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       onPressed: onClearFilters,
                     ),
                 ],
@@ -819,32 +896,46 @@ class _PatientsToolbar extends StatelessWidget {
             runSpacing: 8,
             children: [
               SegmentedButton<_PatientSortMode>(
+                style: ButtonStyle(
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
                 segments: const [
                   ButtonSegment(
                     value: _PatientSortMode.byLocation,
-                    icon: Icon(Icons.map_outlined, size: 16),
-                    label: Text('By Barangay'),
+                    icon: Icon(Icons.map_outlined, size: 15),
+                    label: Text('By Barangay', style: TextStyle(fontSize: 12)),
                   ),
                   ButtonSegment(
                     value: _PatientSortMode.alphabetical,
-                    icon: Icon(Icons.sort_by_alpha, size: 16),
-                    label: Text('A–Z'),
+                    icon: Icon(Icons.sort_by_alpha, size: 15),
+                    label: Text('A–Z', style: TextStyle(fontSize: 12)),
                   ),
                 ],
                 selected: {sortMode},
                 onSelectionChanged: (value) => onSortModeChanged(value.first),
               ),
               SegmentedButton<_PatientViewMode>(
+                style: ButtonStyle(
+                  shape: WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
                 segments: const [
                   ButtonSegment(
                     value: _PatientViewMode.list,
-                    icon: Icon(Icons.view_list_outlined, size: 16),
-                    label: Text('List'),
+                    icon: Icon(Icons.view_list_outlined, size: 15),
+                    label: Text('List', style: TextStyle(fontSize: 12)),
                   ),
                   ButtonSegment(
                     value: _PatientViewMode.grid,
-                    icon: Icon(Icons.grid_view_outlined, size: 16),
-                    label: Text('Grid'),
+                    icon: Icon(Icons.grid_view_outlined, size: 15),
+                    label: Text('Grid', style: TextStyle(fontSize: 12)),
                   ),
                 ],
                 selected: {viewMode},
@@ -875,21 +966,55 @@ class _FilterDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final safeValue = (value != null && items.contains(value)) ? value : null;
+
     return DropdownButtonFormField<T?>(
       initialValue: safeValue,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        labelStyle: TextStyle(
+          fontSize: 12.5,
+          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
+        ),
         isDense: true,
+        filled: true,
+        fillColor: isDark ? AppColors.inputSurface : Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(
+            color: AppColors.primaryEmerald,
+            width: 1.5,
+          ),
+        ),
       ),
       items: [
-        DropdownMenuItem<T?>(value: null, child: Text('All $label')),
+        DropdownMenuItem<T?>(
+          value: null,
+          child: Text('All $label', style: const TextStyle(fontSize: 12)),
+        ),
         ...items.map(
           (item) => DropdownMenuItem<T?>(
             value: item,
-            child: Text(itemLabel(item), overflow: TextOverflow.ellipsis),
+            child: Text(
+              itemLabel(item),
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ),
       ],
@@ -1124,77 +1249,79 @@ class _EmptyPatientsState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Center(
       child: Container(
-        padding: const EdgeInsets.all(32),
-        constraints: const BoxConstraints(maxWidth: 400),
+        padding: const EdgeInsets.all(28),
+        constraints: const BoxConstraints(maxWidth: 380),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
+          color: isDark ? AppColors.cardSurface : Colors.white,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+            color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                hasFilters ? Icons.search_off_rounded : Icons.people_outline,
-                size: 64,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+            Icon(
+              hasFilters ? Icons.search_off_rounded : Icons.people_outline_rounded,
+              size: 38,
+              color: isDark ? AppColors.textTertiary : const Color(0xFF94A3B8),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Text(
-              hasFilters ? 'No Matches Found' : 'No Patients Yet',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              hasFilters ? 'No Matching Records' : 'No Patients Registered',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             Text(
               hasFilters
-                  ? 'We couldn\'t find any patients matching your current filters. Try adjusting them or clearing the search.'
-                  : 'Start building your patient registry by adding your first patient record to the system.',
+                  ? 'No patient records match your active search and filters. Clear filters or adjust query.'
+                  : 'Start building the RHU patient cohort by registering the first patient record.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.7),
+              style: TextStyle(
+                fontSize: 12,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                height: 1.4,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
             if (hasFilters && onClearFilters != null)
-              FilledButton.tonalIcon(
+              OutlinedButton.icon(
                 onPressed: onClearFilters,
-                icon: const Icon(Icons.filter_alt_off),
-                label: const Text('Clear All Filters'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
+                icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
+                label: const Text('Clear All Filters', style: TextStyle(fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  side: BorderSide(
+                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  ),
                 ),
               )
             else if (onAddPatient != null)
               FilledButton.icon(
                 onPressed: onAddPatient,
-                icon: const Icon(Icons.person_add),
-                label: const Text('Register New Patient'),
+                icon: const Icon(Icons.person_add_alt_1, size: 15),
+                label: const Text(
+                  'Register New Patient',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
                 style: FilledButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 48),
+                  backgroundColor: AppColors.primaryEmerald,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
           ],
@@ -2589,49 +2716,56 @@ class _PatientListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categoryColor = _patientCategoryColor(patient.category);
     final initials = _patientInitials(patient);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
         color: isSelected
-            ? (isDark ? AppColors.primaryEmeraldSubtle : theme.colorScheme.primaryContainer.withValues(alpha: 0.12))
-            : (isDark ? AppColors.cardSurface : theme.colorScheme.surface),
-        borderRadius: AppRadius.roundedSm,
+            ? (isDark
+                ? AppColors.primaryEmeraldSubtle
+                : const Color(0xFFF0FDF4))
+            : (isDark ? AppColors.cardSurface : Colors.white),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isSelected
-              ? primary
-              : (isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.45)),
+              ? AppColors.primaryEmerald
+              : (isDark
+                  ? AppColors.borderSubtle
+                  : const Color(0xFFE2E8F0)),
           width: isSelected ? 1.5 : 1.0,
         ),
       ),
       child: InkWell(
-        borderRadius: AppRadius.roundedSm,
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: categoryColor.withValues(alpha: 0.1),
+                  color: isDark
+                      ? AppColors.inputSurface
+                      : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: categoryColor.withValues(alpha: 0.25),
+                    color: isDark
+                        ? AppColors.borderSubtle
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   initials,
                   style: TextStyle(
-                    color: categoryColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : const Color(0xFF334155),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
                   ),
                 ),
               ),
@@ -2646,9 +2780,13 @@ class _PatientListTile extends StatelessWidget {
                           child: Text(
                             patient.fullName,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
+                            style: TextStyle(
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w600,
                               letterSpacing: -0.1,
+                              color: isDark
+                                  ? AppColors.textPrimary
+                                  : AppColors.lightTextPrimary,
                             ),
                           ),
                         ),
@@ -2657,20 +2795,26 @@ class _PatientListTile extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
-                              vertical: 1.5,
+                              vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: categoryColor.withValues(alpha: 0.08),
+                              color: isDark
+                                  ? AppColors.elevatedSurface
+                                  : const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
-                                color: categoryColor.withValues(alpha: 0.2),
+                                color: isDark
+                                    ? AppColors.borderSubtle
+                                    : const Color(0xFFE2E8F0),
                               ),
                             ),
                             child: Text(
                               patient.category!.displayName,
                               style: TextStyle(
-                                color: categoryColor,
-                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? AppColors.textSecondary
+                                    : const Color(0xFF475569),
+                                fontWeight: FontWeight.w500,
                                 fontSize: 10,
                               ),
                             ),
@@ -2680,12 +2824,13 @@ class _PatientListTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${patient.age ?? 'N/A'} yrs • ${patient.gender?.toUpperCase() ?? 'N/A'} • PHN: ${patient.philHealthNumber ?? 'N/A'}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.6,
-                        ),
-                        fontSize: 12,
+                      '${patient.age ?? 'N/A'} yrs · ${patient.gender?.toUpperCase() ?? 'N/A'} · PHN: ${patient.philHealthNumber ?? 'None'}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : AppColors.lightTextSecondary,
                       ),
                     ),
                     if (showLocation) ...[
@@ -2695,18 +2840,20 @@ class _PatientListTile extends StatelessWidget {
                           Icon(
                             Icons.location_on_outlined,
                             size: 13,
-                            color: theme.colorScheme.onSurfaceVariant,
+                            color: isDark
+                                ? AppColors.textTertiary
+                                : const Color(0xFF64748B),
                           ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              '${_locationLabel(patient.barangay, 'No barangay')} • ${_locationLabel(patient.purokSitio, 'No purok')}',
+                              '${_locationLabel(patient.barangay, 'Unassigned Barangay')} · ${_locationLabel(patient.purokSitio, 'Unassigned Purok')}',
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
-                                ),
+                              style: TextStyle(
                                 fontSize: 11,
+                                color: isDark
+                                    ? AppColors.textMuted
+                                    : AppColors.lightTextMuted,
                               ),
                             ),
                           ),
@@ -2718,11 +2865,13 @@ class _PatientListTile extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Icon(
-                Icons.chevron_right,
-                size: 18,
+                Icons.arrow_forward_ios_rounded,
+                size: 13,
                 color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                    ? AppColors.primaryEmerald
+                    : (isDark
+                        ? AppColors.textTertiary
+                        : const Color(0xFF94A3B8)),
               ),
             ],
           ),
@@ -2745,26 +2894,27 @@ class _PatientGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categoryColor = _patientCategoryColor(patient.category);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primary = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
         color: isSelected
-            ? (isDark ? AppColors.primaryEmeraldSubtle : theme.colorScheme.primaryContainer.withValues(alpha: 0.12))
-            : (isDark ? AppColors.cardSurface : theme.colorScheme.surface),
-        borderRadius: AppRadius.roundedSm,
+            ? (isDark
+                ? AppColors.primaryEmeraldSubtle
+                : const Color(0xFFF0FDF4))
+            : (isDark ? AppColors.cardSurface : Colors.white),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: isSelected
-              ? primary
-              : (isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.45)),
+              ? AppColors.primaryEmerald
+              : (isDark
+                  ? AppColors.borderSubtle
+                  : const Color(0xFFE2E8F0)),
           width: isSelected ? 1.5 : 1.0,
         ),
       ),
       child: InkWell(
-        borderRadius: AppRadius.roundedSm,
+        borderRadius: BorderRadius.circular(8),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -2774,21 +2924,27 @@ class _PatientGridCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: categoryColor.withValues(alpha: 0.1),
+                      color: isDark
+                          ? AppColors.inputSurface
+                          : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: categoryColor.withValues(alpha: 0.25),
+                        color: isDark
+                            ? AppColors.borderSubtle
+                            : const Color(0xFFE2E8F0),
                       ),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       _patientInitials(patient),
                       style: TextStyle(
-                        color: categoryColor,
-                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : const Color(0xFF334155),
+                        fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
                     ),
@@ -2799,9 +2955,13 @@ class _PatientGridCard extends StatelessWidget {
                       patient.fullName,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
-                      style: theme.textTheme.titleSmall?.copyWith(
+                      style: TextStyle(
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.1,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.lightTextPrimary,
                       ),
                     ),
                   ),
@@ -2810,19 +2970,19 @@ class _PatientGridCard extends StatelessWidget {
               const SizedBox(height: 10),
               _PatientMetaLine(
                 icon: Icons.credit_card,
-                text: 'PHN: ${patient.philHealthNumber ?? 'N/A'}',
+                text: 'PHN: ${patient.philHealthNumber ?? 'None'}',
               ),
               const SizedBox(height: 4),
               _PatientMetaLine(
                 icon: Icons.cake_outlined,
                 text:
-                    '${patient.age ?? 'N/A'} yrs • ${patient.gender?.toUpperCase() ?? 'N/A'}',
+                    '${patient.age ?? 'N/A'} yrs · ${patient.gender?.toUpperCase() ?? 'N/A'}',
               ),
               const SizedBox(height: 4),
               _PatientMetaLine(
                 icon: Icons.location_on_outlined,
                 text:
-                    '${_locationLabel(patient.barangay, 'No barangay')} / ${_locationLabel(patient.purokSitio, 'No purok')}',
+                    '${_locationLabel(patient.barangay, 'No barangay')} · ${_locationLabel(patient.purokSitio, 'No purok')}',
               ),
               if (patient.category != null) ...[
                 const SizedBox(height: 8),
@@ -2832,17 +2992,23 @@ class _PatientGridCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: categoryColor.withValues(alpha: 0.08),
+                    color: isDark
+                        ? AppColors.elevatedSurface
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: categoryColor.withValues(alpha: 0.2),
+                      color: isDark
+                          ? AppColors.borderSubtle
+                          : const Color(0xFFE2E8F0),
                     ),
                   ),
                   child: Text(
                     patient.category!.displayName,
                     style: TextStyle(
-                      color: categoryColor,
-                      fontWeight: FontWeight.w600,
+                      color: isDark
+                          ? AppColors.textSecondary
+                          : const Color(0xFF475569),
+                      fontWeight: FontWeight.w500,
                       fontSize: 10,
                     ),
                   ),
@@ -2901,29 +3067,5 @@ String _locationLabel(String? value, String fallback) {
   return trimmed == null || trimmed.isEmpty ? fallback : trimmed;
 }
 
-Color _patientCategoryColor(PatientCategory? category) {
-  if (category == null) {
-    return Colors.grey;
-  }
-
-  switch (category) {
-    case PatientCategory.infant:
-    case PatientCategory.toddler:
-    case PatientCategory.preschool:
-    case PatientCategory.schoolAge:
-    case PatientCategory.adolescent:
-    case PatientCategory.pediatric:
-      return const Color(0xFF059669);
-    case PatientCategory.adult:
-      return const Color(0xFF16A34A);
-    case PatientCategory.senior:
-    case PatientCategory.seniorCitizen:
-      return const Color(0xFF15803D);
-    case PatientCategory.pregnant:
-      return const Color(0xFF10B981);
-    case PatientCategory.pwd:
-      return const Color(0xFF047857);
-  }
-}
 
 // Patient registration with Philippine address support and auto age/category detection

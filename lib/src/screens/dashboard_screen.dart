@@ -119,7 +119,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               context,
               icon: Icons.person_add_outlined,
               label: 'Register Patient',
-              color: Theme.of(context).colorScheme.primary,
+              isPrimary: true,
               onTap: () => context.go('/patients?action=add-patient'),
             ),
             const SizedBox(width: 8),
@@ -129,7 +129,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               context,
               icon: Icons.edit_document,
               label: 'Issue Certificate',
-              color: Colors.blue,
               onTap: () => context.go('/certificates'),
             ),
             const SizedBox(width: 8),
@@ -139,7 +138,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               context,
               icon: Icons.upload_file_outlined,
               label: 'Upload Document',
-              color: Colors.amber.shade700,
               onTap: () => context.go('/documents'),
             ),
             const SizedBox(width: 8),
@@ -149,7 +147,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               context,
               icon: Icons.domain_rounded,
               label: 'Manage RHU Units',
-              color: Theme.of(context).colorScheme.primary,
               onTap: () => context.go('/rhus'),
             ),
             const SizedBox(width: 8),
@@ -157,16 +154,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               context,
               icon: Icons.badge_outlined,
               label: 'Staff Accounts',
-              color: Colors.blue,
               onTap: () => context.go('/staff'),
             ),
             const SizedBox(width: 8),
           ],
           _buildQuickActionPill(
             context,
-            icon: Icons.sync,
+            icon: Icons.sync_rounded,
             label: 'Cloud Sync',
-            color: Colors.cyan,
             onTap: () async {
               try {
                 final result = await ref.read(syncServiceProvider).startSync();
@@ -187,18 +182,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           const SizedBox(width: 8),
           _buildQuickActionPill(
             context,
-            icon: Icons.keyboard_command_key,
-            label: 'Command Palette (Ctrl+K)',
-            color: Colors.purple,
+            icon: Icons.keyboard_command_key_rounded,
+            label: 'Command Palette',
             onTap: () => showMedsentryCommandPalette(context, ref),
           ),
           if (canViewReports) ...[
             const SizedBox(width: 8),
             _buildQuickActionPill(
               context,
-              icon: Icons.bar_chart_outlined,
+              icon: Icons.bar_chart_rounded,
               label: 'FHSIS & DOH Reports',
-              color: Colors.teal,
               onTap: () => context.go('/reports'),
             ),
           ] else if (canViewAudit) ...[
@@ -207,7 +200,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               context,
               icon: Icons.history_edu_outlined,
               label: 'Audit Trail',
-              color: Colors.teal,
               onTap: () => context.go('/audit-logs'),
             ),
           ],
@@ -220,36 +212,58 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     BuildContext context, {
     required IconData icon,
     required String label,
-    required Color color,
     required VoidCallback onTap,
+    bool isPrimary = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryEmerald = AppColors.primaryEmerald;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppRadius.roundedPill,
+        borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.inputSurface : Colors.white,
-            borderRadius: AppRadius.roundedPill,
+            color: isPrimary
+                ? (isDark
+                    ? primaryEmerald.withValues(alpha: 0.15)
+                    : primaryEmerald.withValues(alpha: 0.08))
+                : (isDark ? AppColors.cardSurface : Colors.white),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark
-                  ? AppColors.borderSubtle
-                  : AppColors.lightBorderSubtle,
+              color: isPrimary
+                  ? primaryEmerald.withValues(alpha: 0.35)
+                  : (isDark
+                      ? AppColors.borderSubtle
+                      : const Color(0xFFE2E8F0)),
+              width: 1,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 8),
+              Icon(
+                icon,
+                size: 15,
+                color: isPrimary
+                    ? primaryEmerald
+                    : (isDark
+                        ? AppColors.textSecondary
+                        : const Color(0xFF64748B)),
+              ),
+              const SizedBox(width: 7),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: isPrimary ? FontWeight.w600 : FontWeight.w500,
+                  color: isPrimary
+                      ? (isDark ? primaryEmerald : const Color(0xFF0F766E))
+                      : (isDark
+                          ? AppColors.textPrimary
+                          : const Color(0xFF1E293B)),
                 ),
               ),
             ],
@@ -290,38 +304,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final sortedEntries = barangayCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final palette = <Color>[
-      Colors.blue,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.green,
-      Colors.indigo,
-    ];
-    final icons = <IconData>[
-      Icons.location_on_outlined,
-      Icons.people_alt_outlined,
-      Icons.health_and_safety_outlined,
-      Icons.medical_services_outlined,
-      Icons.shield_outlined,
-      Icons.home_work_outlined,
-    ];
-
     final totalCount = math.max(1, allPatients.length);
-    final surveillanceData = sortedEntries.take(6).indexed.map((entry) {
-      final idx = entry.$1;
-      final e = entry.$2;
+    final surveillanceData = sortedEntries.take(6).map((e) {
       final ratio = (e.value / totalCount).clamp(0.0, 1.0);
-      final statusLabel = ratio >= 0.35
-          ? 'High Volume Cluster'
-          : (ratio >= 0.15 ? 'Active Catchment' : 'Monitored');
+      final String statusLabel;
+      final Color densityColor;
+
+      if (ratio >= 0.35) {
+        statusLabel = 'High Volume Cluster';
+        densityColor = const Color(0xFF0F766E); // Primary deep emerald/teal
+      } else if (ratio >= 0.15) {
+        statusLabel = 'Active Catchment';
+        densityColor = const Color(0xFF0D9488); // Mid teal
+      } else {
+        statusLabel = 'Monitored Baseline';
+        densityColor = isDark
+            ? const Color(0xFF94A3B8)
+            : const Color(0xFF64748B); // Slate neutral
+      }
+
       return (
         'Barangay ${e.key}',
         '${e.value} ${e.value == 1 ? 'patient' : 'patients'}',
         ratio,
         statusLabel,
-        palette[idx % palette.length],
-        icons[idx % icons.length],
+        densityColor,
+        Icons.location_on_outlined,
       );
     }).toList();
 
@@ -336,19 +344,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryEmerald.withValues(alpha: 0.12),
-                  borderRadius: AppRadius.roundedSm,
-                ),
-                child: Icon(
-                  Icons.radar_rounded,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+              Icon(
+                Icons.radar_outlined,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,7 +357,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     const Text(
                       'Catchment Barangay & Population Surveillance',
                       style: TextStyle(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
                     ),
@@ -429,7 +430,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           children: [
                             Row(
                               children: [
-                                Icon(item.$6, size: 16, color: item.$5),
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  size: 15,
+                                  color: isDark
+                                      ? AppColors.textTertiary
+                                      : const Color(0xFF64748B),
+                                ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -445,8 +452,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 Text(
                                   item.$2,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w600,
                                     fontSize: 12,
+                                    fontFeatures: [FontFeature.tabularFigures()],
                                   ),
                                 ),
                               ],
@@ -456,7 +464,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               value: item.$3,
                               backgroundColor: isDark
                                   ? AppColors.borderSubtle
-                                  : Colors.grey.shade200,
+                                  : const Color(0xFFE2E8F0),
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 item.$5,
                               ),
@@ -471,6 +479,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   '$catchmentName · ${(item.$3 * 100).toStringAsFixed(0)}% of cohort',
                                   style: TextStyle(
                                     fontSize: 10,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
                                     color: isDark
                                         ? AppColors.textMuted
                                         : AppColors.lightTextMuted,
@@ -482,13 +491,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: item.$5.withValues(alpha: 0.12),
+                                    color: item.$5.withValues(alpha: 0.1),
                                     borderRadius: AppRadius.roundedSm,
                                   ),
                                   child: Text(
                                     item.$4,
                                     style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: 9.5,
                                       fontWeight: FontWeight.w600,
                                       color: item.$5,
                                     ),
@@ -573,29 +582,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   // ==========================================
-  // TIER 1: 4 TOP KPI CARDS
+  // TIER 1: 4 TOP KPI CARDS (Framed-Sheet Anti-Slop Standard)
   // ==========================================
-  List<double> _computeSparkline(List<DateTime?> dates) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final counts = List<int>.filled(6, 0);
-    for (final dt in dates) {
-      if (dt == null) continue;
-      final d = DateTime(dt.year, dt.month, dt.day);
-      final diffDays = today.difference(d).inDays;
-      if (diffDays >= 0 && diffDays < 6) {
-        counts[5 - diffDays]++;
-      }
-    }
-    final maxCount = counts.fold<int>(0, math.max);
-    if (maxCount == 0) {
-      return const [0.18, 0.18, 0.18, 0.18, 0.18, 0.18];
-    }
-    return counts
-        .map((c) => (0.2 + 0.8 * (c / maxCount)).clamp(0.2, 1.0))
-        .toList();
-  }
-
   Widget _buildKpiCardsRow(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
@@ -644,28 +632,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final canManageDocs = user?.permissions.canManageDocuments ?? false;
     final canGenerateCerts = user?.permissions.canGenerateCertificates ?? false;
 
-    final patientSparkline = _computeSparkline(
-      allPatients.map((p) => p.createdAt ?? p.updatedAt).toList(),
-    );
-    final docSparkline = _computeSparkline(
-      allDocuments.map((d) => d.createdAt).toList(),
-    );
-    final certSparkline = _computeSparkline(
-      allCertificates.map((c) => c.issuedAt).toList(),
-    );
-    final prioritySparkline = _computeSparkline(
-      allPatients
-          .where(
-            (p) =>
-                p.isPwd ||
-                p.category == PatientCategory.senior ||
-                p.category == PatientCategory.seniorCitizen ||
-                (p.allergies != null && p.allergies!.isNotEmpty),
-          )
-          .map((p) => p.updatedAt ?? p.createdAt)
-          .toList(),
-    );
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -676,56 +642,54 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         final cards = [
           _buildKpiCard(
             context,
-            icon: Icons.person_rounded,
-            accentColor: AppColors.primaryEmerald,
-            title: 'Active Patients',
+            icon: Icons.people_outline_rounded,
+            title: 'Active patients',
             value: totalPatientsDisplay,
-            subtext: todayPatients > 0
-                ? '+$todayPatients registered today'
-                : (totalPatients > 0 ? 'Active in RHU' : 'Ready for records'),
-            subtextColor: AppColors.primaryEmerald,
-            sparklineBars: patientSparkline,
+            deltaText: todayPatients > 0 ? '+$todayPatients today' : null,
+            deltaColor: AppColors.primaryEmerald,
+            baselineText: todayPatients > 0
+                ? 'Registered today in RHU'
+                : (totalPatients > 0
+                    ? 'Registered cohort in RHU'
+                    : 'Ready for patient intake'),
             onTap: () => context.go(canAccessPatients ? '/patients' : '/rhus'),
           ),
           _buildKpiCard(
             context,
-            icon: Icons.folder_special_rounded,
-            accentColor: const Color(0xFF38BDF8),
-            title: 'Medical Documents',
+            icon: Icons.folder_open_outlined,
+            title: 'Medical documents',
             value: totalDocsDisplay,
-            subtext: docsToday > 0
-                ? '+$docsToday uploaded today'
-                : 'Digital repository',
-            subtextColor: const Color(0xFF38BDF8),
-            sparklineBars: docSparkline,
+            deltaText: docsToday > 0 ? '+$docsToday today' : null,
+            deltaColor: const Color(0xFF0284C7),
+            baselineText: docsToday > 0
+                ? 'Uploaded to clinical archive'
+                : 'Permanent digital records',
             onTap: () =>
                 context.go(canManageDocs ? '/documents' : '/audit-logs'),
           ),
           _buildKpiCard(
             context,
-            icon: Icons.workspace_premium_rounded,
-            accentColor: const Color(0xFFFBBF24),
-            title: 'Certificates Issued',
+            icon: Icons.workspace_premium_outlined,
+            title: 'Certificates issued',
             value: totalCertsDisplay,
-            subtext: certsToday > 0
-                ? '+$certsToday issued today'
-                : 'Official RHU registry',
-            subtextColor: const Color(0xFFFBBF24),
-            sparklineBars: certSparkline,
+            deltaText: certsToday > 0 ? '+$certsToday today' : null,
+            deltaColor: const Color(0xFFD97706),
+            baselineText: certsToday > 0
+                ? 'Verified official registry'
+                : 'Tamper-evident QR registry',
             onTap: () =>
                 context.go(canGenerateCerts ? '/certificates' : '/staff'),
           ),
           _buildKpiCard(
             context,
             icon: Icons.warning_amber_rounded,
-            accentColor: const Color(0xFFA78BFA),
-            title: 'Priority & Alerts',
+            title: 'Priority & alerts',
             value: priorityDisplay,
-            subtext: alertsCount > 0
-                ? '$alertsCount unread system alerts'
-                : '$riskCount priority patients',
-            subtextColor: const Color(0xFFA78BFA),
-            sparklineBars: prioritySparkline,
+            deltaText: alertsCount > 0 ? '$alertsCount unread' : null,
+            deltaColor: const Color(0xFFE11D48),
+            baselineText: alertsCount > 0
+                ? 'Unread clinical alerts'
+                : '$riskCount high-risk cohort (Senior/PWD)',
             onTap: () =>
                 context.go(canAccessPatients ? '/patients' : '/audit-logs'),
           ),
@@ -745,143 +709,105 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildKpiCard(
     BuildContext context, {
     required IconData icon,
-    required Color accentColor,
     required String title,
     required String value,
-    required String subtext,
-    required Color subtextColor,
-    required List<double> sparklineBars,
+    required String baselineText,
+    String? deltaText,
+    Color? deltaColor,
     VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return AppCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: Icon Badge and Action Arrow Affordance
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: accentColor.withValues(alpha: 0.24),
-                    width: 1,
-                  ),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
                 ),
-                child: Icon(icon, color: accentColor, size: 20),
               ),
               Icon(
-                Icons.arrow_outward_rounded,
-                size: 18,
-                color:
-                    (isDark
-                            ? AppColors.textTertiary
-                            : AppColors.lightTextSecondary)
-                        .withValues(alpha: 0.6),
+                icon,
+                size: 16,
+                color: isDark
+                    ? AppColors.textTertiary
+                    : AppColors.lightTextMuted,
               ),
             ],
           ),
-          const SizedBox(height: 16),
-
-          // Big Metric and Sparkline Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.7,
-                        height: 1.1,
-                        color: isDark
-                            ? AppColors.textPrimary
-                            : AppColors.lightTextPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: isDark
-                            ? AppColors.textSecondary
-                            : AppColors.lightTextSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: SizedBox(
-                  width: 52,
-                  height: 26,
-                  child: CustomPaint(
-                    painter: _MiniSparklinePainter(
-                      color: accentColor,
-                      barHeights: sparklineBars,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // Bento Pill Trend Tag
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: subtextColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: subtextColor.withValues(alpha: 0.2),
-                width: 0.8,
-              ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.5,
+              height: 1.1,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: isDark
+                  ? AppColors.textPrimary
+                  : AppColors.lightTextPrimary,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: subtextColor,
-                    shape: BoxShape.circle,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (deltaText != null && deltaText.isNotEmpty) ...[
+                Text(
+                  deltaText,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: deltaColor ?? AppColors.primaryEmerald,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    subtext,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: subtextColor,
-                    ),
+                Text(
+                  ' · ',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark
+                        ? AppColors.textTertiary
+                        : AppColors.lightTextMuted,
                   ),
                 ),
               ],
-            ),
+              Expanded(
+                child: Text(
+                  baselineText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark
+                        ? AppColors.textMuted
+                        : AppColors.lightTextMuted,
+                  ),
+                ),
+              ),
+              if (onTap != null)
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 11,
+                  color: (isDark
+                          ? AppColors.textTertiary
+                          : AppColors.lightTextMuted)
+                      .withValues(alpha: 0.7),
+                ),
+            ],
           ),
         ],
       ),
@@ -2121,39 +2047,6 @@ class _QueueItem {
     required this.updatedAt,
     required this.updated,
   });
-}
-
-class _MiniSparklinePainter extends CustomPainter {
-  final Color color;
-  final List<double> barHeights;
-
-  _MiniSparklinePainter({required this.color, required this.barHeights});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (barHeights.isEmpty) return;
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    const barWidth = 3.5;
-    const spacing = 3.0;
-    final startX = size.width - (barHeights.length * (barWidth + spacing));
-
-    for (int i = 0; i < barHeights.length; i++) {
-      final h = size.height * barHeights[i];
-      final x = startX + (i * (barWidth + spacing));
-      final y = size.height - h;
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, y, barWidth, h),
-        const Radius.circular(2),
-      );
-      canvas.drawRRect(rect, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MiniSparklinePainter oldDelegate) => true;
 }
 
 class _WeeklyAdmissionsPainter extends CustomPainter {
