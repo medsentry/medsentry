@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1950" width="1600" height="1950">
+  <defs>
+    <filter id="drop-shadow" x="-10%" y="-15%" width="125%" height="135%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3.5" flood-color="#000000" flood-opacity="0.08" />
+    </filter>
+    <filter id="actor-shadow" x="-15%" y="-20%" width="130%" height="145%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.07" />
+    </filter>
+    <filter id="card-shadow" x="-5%" y="-2%" width="110%" height="104%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.05" />
+    </filter>
+    <marker id="arrow-emerald" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#059669" />
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#D97706" />
+    </marker>
+    <linearGradient id="header-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#064E3B" />
+      <stop offset="50%" stop-color="#047857" />
+      <stop offset="100%" stop-color="#0F766E" />
+    </linearGradient>
+  </defs>
+
+  <!-- Clean Canvas Background -->
+  <rect width="100%" height="100%" fill="#F8FAFC" />
+
+  <!-- Master Header Banner -->
+  <rect x="50" y="30" width="1500" height="100" rx="16" fill="url(#header-grad)" filter="url(#card-shadow)" />
+  <circle cx="105" cy="80" r="30" fill="#FFFFFF" fill-opacity="0.15" />
+  <text x="105" y="89" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="28" fill="#FFFFFF">⚕</text>
+  <text x="155" y="70" font-family="Segoe UI, sans-serif" font-size="24" font-weight="800" fill="#FFFFFF" letter-spacing="0.5">MEDSENTRY: RURAL HEALTH UNIT EHR &amp; DOCUMENT MANAGEMENT</text>
+  <text x="155" y="98" font-family="Segoe UI, sans-serif" font-size="14.5" font-weight="500" fill="#D1FAE5">Systematic UML Use Case Diagram — Complete Operational Lifecycle (Login to Logout)</text>
+  
+  <rect x="1270" y="65" width="250" height="30" rx="15" fill="#FFFFFF" fill-opacity="0.2" />
+  <text x="1395" y="85" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="12" font-weight="700" fill="#FFFFFF">DOH RHU • RA 10173 COMPLIANT</text>
+
+  <!-- System Boundary Container -->
+  <rect x="420" y="160" width="1130" height="1740" rx="20" fill="#FFFFFF" stroke="#0D9488" stroke-width="2.5" filter="url(#card-shadow)" />
+  
+  <!-- System Boundary Header Tag -->
+  <rect x="420" y="160" width="1130" height="46" rx="20" fill="#F0FDFA" />
+  <rect x="420" y="186" width="1130" height="20" fill="#F0FDFA" />
+  <line x1="420" y1="206" x2="1550" y2="206" stroke="#CCFBF1" stroke-width="1.5" />
+  <text x="445" y="191" font-family="Segoe UI, sans-serif" font-size="14" font-weight="800" fill="#0F766E" letter-spacing="1">SYSTEM BOUNDARY: MEDSENTRY RHU PLATFORM</text>
+
+  <!-- ================= SUB-CONTAINERS ================= -->
+
+  <!-- 1. AUTHENTICATION & INITIALIZATION -->
+  <rect x="445" y="225" width="1080" height="235" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2" />
+  <text x="465" y="250" font-family="Segoe UI, sans-serif" font-size="12.5" font-weight="800" fill="#475569" letter-spacing="0.5">1. AUTHENTICATION &amp; SESSION INITIALIZATION</text>
+
+  <!-- 2. CLINICAL OPERATIONS (SHARED) -->
+  <rect x="445" y="480" width="1080" height="530" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2" />
+  <text x="465" y="505" font-family="Segoe UI, sans-serif" font-size="12.5" font-weight="800" fill="#475569" letter-spacing="0.5">2. CORE CLINICAL &amp; HEALTH DOCUMENT OPERATIONS (SHARED STAFF / ADMIN / SUPER ADMIN)</text>
+
+  <!-- 3. RHU & STAFF ADMINISTRATION -->
+  <rect x="445" y="1030" width="1080" height="315" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2" />
+  <text x="465" y="1055" font-family="Segoe UI, sans-serif" font-size="12.5" font-weight="800" fill="#475569" letter-spacing="0.5">3. RHU &amp; USER ADMINISTRATION (ADMIN + SUPER ADMIN)</text>
+
+  <!-- 4. SUPER ADMIN GOVERNANCE -->
+  <rect x="445" y="1365" width="1080" height="315" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2" />
+  <text x="465" y="1390" font-family="Segoe UI, sans-serif" font-size="12.5" font-weight="800" fill="#475569" letter-spacing="0.5">4. PLATFORM &amp; MULTI-TENANT GOVERNANCE (SUPER ADMIN ONLY)</text>
+
+  <!-- 5. SESSION TERMINATION -->
+  <rect x="445" y="1700" width="1080" height="180" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2" />
+  <text x="465" y="1725" font-family="Segoe UI, sans-serif" font-size="12.5" font-weight="800" fill="#475569" letter-spacing="0.5">5. SESSION TERMINATION &amp; EXIT</text>
+
+
+  <!-- ================= USE CASE NODES ================= -->
+
+  <!-- Subsystem 1: Auth -->
+  <!-- UC-01 -->
+  
+    <g class="use-case-node" id="uc-01">
+      <ellipse cx="690" cy="305" rx="170" ry="29" fill="#ECFDF5" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="299" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-01: Sign In Securely</text>
+      <text x="690" y="319" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Email &amp; Password Credentials)</text>
+    </g>
+  
+  <!-- UC-02 -->
+  
+    <g class="use-case-node" id="uc-02">
+      <ellipse cx="1250" cy="305" rx="150" ry="28" fill="#F0FDF4" stroke="#10B981" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="1250" y="299" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-02: Verify Email OTP</text>
+      <text x="1250" y="319" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Mandatory 2FA Challenge)</text>
+    </g>
+  
+  <!-- UC-03 -->
+  
+    <g class="use-case-node" id="uc-03">
+      <ellipse cx="690" cy="400" rx="170" ry="29" fill="#FEF3C7" stroke="#D97706" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="394" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-03: Quick Unlock</text>
+      <text x="690" y="414" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(4-Digit PIN / Windows Hello Biometric)</text>
+    </g>
+  
+  <!-- UC-04 -->
+  
+    <g class="use-case-node" id="uc-04">
+      <ellipse cx="1250" cy="400" rx="150" ry="28" fill="#F0FDF4" stroke="#10B981" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="1250" y="394" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-04: Initialize RBAC Session</text>
+      <text x="1250" y="414" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Role Scoping &amp; Offline Cache Load)</text>
+    </g>
+  
+
+  <!-- Subsystem 2: Clinical (Shared) -->
+  <!-- UC-05 -->
+  
+    <g class="use-case-node" id="uc-05">
+      <ellipse cx="690" cy="560" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="554" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-05: Register &amp; Manage Patients</text>
+      <text x="690" y="574" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Demographics, Vitals, Medical History)</text>
+    </g>
+  
+  <!-- UC-06 -->
+  
+    <g class="use-case-node" id="uc-06">
+      <ellipse cx="690" cy="640" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="634" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-06: Medical Document Management</text>
+      <text x="690" y="654" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Scan, Camera, Upload, Crop &amp; Categorize)</text>
+    </g>
+  
+  <!-- UC-07 -->
+  
+    <g class="use-case-node" id="uc-07">
+      <ellipse cx="690" cy="720" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="714" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-07: Issue DOH Health Certificates</text>
+      <text x="690" y="734" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Medical, Medico-Legal, Family Planning)</text>
+    </g>
+  
+  <!-- UC-08 -->
+  
+    <g class="use-case-node" id="uc-08">
+      <ellipse cx="1250" cy="720" rx="150" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="1250" y="714" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-08: Generate Security QR Code</text>
+      <text x="1250" y="734" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Cryptographic Anti-Tamper Verification)</text>
+    </g>
+  
+  <!-- UC-09 -->
+  
+    <g class="use-case-node" id="uc-09">
+      <ellipse cx="690" cy="800" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="794" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-09: Generate Census &amp; Morbidity Reports</text>
+      <text x="690" y="814" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(DOH FHSIS, Morbidity &amp; Census Analytics)</text>
+    </g>
+  
+  <!-- UC-10 -->
+  
+    <g class="use-case-node" id="uc-10">
+      <ellipse cx="690" cy="880" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="874" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-10: Monitor &amp; Trigger Cloud Sync</text>
+      <text x="690" y="894" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Supabase Offline Sync Status &amp; Manual Push)</text>
+    </g>
+  
+  <!-- UC-11 -->
+  
+    <g class="use-case-node" id="uc-11">
+      <ellipse cx="690" cy="960" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="954" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-11: Manage Personal Profile</text>
+      <text x="690" y="974" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Update Credentials, Change PIN / Password)</text>
+    </g>
+  
+
+  <!-- Subsystem 3: RHU Administration -->
+  <!-- UC-12 -->
+  
+    <g class="use-case-node" id="uc-12">
+      <ellipse cx="690" cy="1115" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="1109" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-12: Provision &amp; Manage Staff Accounts</text>
+      <text x="690" y="1129" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Create Accounts, Role Permissions, Toggle Status)</text>
+    </g>
+  
+  <!-- UC-13 -->
+  
+    <g class="use-case-node" id="uc-13">
+      <ellipse cx="1250" cy="1115" rx="150" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="1250" y="1109" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-13: Configure RHU Clinic Settings</text>
+      <text x="1250" y="1129" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Clinic Letterhead, Operating Hours, Officials)</text>
+    </g>
+  
+  <!-- UC-14 -->
+  
+    <g class="use-case-node" id="uc-14">
+      <ellipse cx="690" cy="1225" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="1219" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-14: Archive &amp; Recovery Management</text>
+      <text x="690" y="1239" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Soft-Delete, Audit Retention, Permanent Purge)</text>
+    </g>
+  
+  <!-- UC-15 -->
+  
+    <g class="use-case-node" id="uc-15">
+      <ellipse cx="1250" cy="1225" rx="150" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="1250" y="1219" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-15: View &amp; Filter Facility Audit Logs</text>
+      <text x="1250" y="1239" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(DOH &amp; RA 10173 Tamper-Evident Security Log)</text>
+    </g>
+  
+
+  <!-- Subsystem 4: Super Admin Platform Governance -->
+  <!-- UC-16 -->
+  
+    <g class="use-case-node" id="uc-16">
+      <ellipse cx="690" cy="1450" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="1444" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-16: Orchestrate Multi-RHU Facilities</text>
+      <text x="690" y="1464" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Create/Configure Health Centers &amp; RHU Units)</text>
+    </g>
+  
+  <!-- UC-17 -->
+  
+    <g class="use-case-node" id="uc-17">
+      <ellipse cx="1250" cy="1450" rx="150" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="1250" y="1444" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-17: Global User &amp; Facility Assignment</text>
+      <text x="1250" y="1464" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Cross-RHU Reassignments &amp; Credential Resets)</text>
+    </g>
+  
+  <!-- UC-18 -->
+  
+    <g class="use-case-node" id="uc-18">
+      <ellipse cx="690" cy="1565" rx="170" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="1559" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-18: Configure Platform Branding &amp; Security</text>
+      <text x="690" y="1579" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Master Name, Logos, Rate Limits &amp; Storage Quotas)</text>
+    </g>
+  
+  <!-- UC-19 -->
+  
+    <g class="use-case-node" id="uc-19">
+      <ellipse cx="1250" cy="1565" rx="150" ry="28" fill="#F0FDF4" stroke="#059669" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="1250" y="1559" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-19: Inspect Cross-Facility Security Logs</text>
+      <text x="1250" y="1579" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Consolidated Audit Auditing Across All Facilities)</text>
+    </g>
+  
+
+  <!-- Subsystem 5: Session Termination -->
+  <!-- UC-20 -->
+  
+    <g class="use-case-node" id="uc-20">
+      <ellipse cx="690" cy="1790" rx="170" ry="28" fill="#FEF3C7" stroke="#D97706" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="690" y="1784" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-20: Manually Lock Screen</text>
+      <text x="690" y="1804" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Immediate Shoulder-Surfer Defense)</text>
+    </g>
+  
+  <!-- UC-21 -->
+  
+    <g class="use-case-node" id="uc-21">
+      <ellipse cx="1250" cy="1790" rx="150" ry="28" fill="#FEE2E2" stroke="#DC2626" stroke-width="2" filter="url(#drop-shadow)" />
+      <text x="1250" y="1784" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="13.5" font-weight="600" fill="#0F172A">UC-21: Sign Out Securely</text>
+      <text x="1250" y="1804" text-anchor="middle" font-family="Segoe UI, -apple-system, sans-serif" font-size="11" font-weight="500" fill="#0D9488">(Wipe Session Tokens, Flush Cache &amp; Exit)</text>
+    </g>
+  
+
+
+  <!-- ================= INCLUSION & EXTENSION ARROWS ================= -->
+  <!-- UC-01 includes UC-02 -->
+  
+    <g>
+      <line x1="860" y1="305" x2="1100" y2="305" stroke="#059669" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#arrow-emerald)" />
+      <rect x="926" y="294" width="108" height="22" rx="4" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1.2" />
+      <text x="980" y="309" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#047857">&lt;&lt;include&gt;&gt;</text>
+    </g>
+  
+  <!-- UC-01 includes UC-04 -->
+  
+    <g>
+      <line x1="830" y1="328" x2="1120" y2="385" stroke="#059669" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#arrow-emerald)" />
+      <rect x="921" y="345.5" width="108" height="22" rx="4" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1.2" />
+      <text x="975" y="360.5" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#047857">&lt;&lt;include&gt;&gt;</text>
+    </g>
+  
+  <!-- UC-03 extends UC-01 -->
+  
+    <g>
+      <line x1="690" y1="371" x2="690" y2="334" stroke="#D97706" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#arrow-amber)" />
+      <rect x="640" y="341.5" width="100" height="22" rx="4" fill="#FFFFFF" stroke="#FDE68A" stroke-width="1.2" />
+      <text x="690" y="356.5" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#B45309">&lt;&lt;extend&gt;&gt;</text>
+    </g>
+  
+  <!-- UC-07 includes UC-08 -->
+  
+    <g>
+      <line x1="860" y1="720" x2="1100" y2="720" stroke="#059669" stroke-width="1.8" stroke-dasharray="5,4" marker-end="url(#arrow-emerald)" />
+      <rect x="926" y="709" width="108" height="22" rx="4" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="1.2" />
+      <text x="980" y="724" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="11" font-weight="700" fill="#047857">&lt;&lt;include&gt;&gt;</text>
+    </g>
+  
+
+
+  <!-- ================= ACTORS ON THE LEFT ================= -->
+  
+  <!-- Super Admin Actor (Top) -->
+  
+    <g class="actor-node" transform="translate(200, 1480)">
+      <!-- Head -->
+      <circle cx="0" cy="-32" r="16" fill="#FFFFFF" stroke="#0F172A" stroke-width="2.5" />
+      <!-- Torso -->
+      <line x1="0" y1="-16" x2="0" y2="24" stroke="#0F172A" stroke-width="2.5" />
+      <!-- Arms -->
+      <line x1="-26" y1="-2" x2="26" y2="-2" stroke="#0F172A" stroke-width="2.5" />
+      <!-- Left Leg -->
+      <line x1="0" y1="24" x2="-20" y2="60" stroke="#0F172A" stroke-width="2.5" />
+      <!-- Right Leg -->
+      <line x1="0" y1="24" x2="20" y2="60" stroke="#0F172A" stroke-width="2.5" />
+      <!-- Name Tag Badge -->
+      <rect x="-75" y="68" width="150" height="42" rx="8" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.8" filter="url(#actor-shadow)" />
+      <text x="0" y="86" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#0F172A">Super Admin</text>
+      <text x="0" y="101" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10.5" font-weight="500" fill="#64748B">Provincial / Municipal IT</text>
+    </g>
+  
+
+  <!-- Admin Actor (Middle) -->
+  
+    <g class="actor-node" transform="translate(200, 1140)">
+      <!-- Head -->
+      <circle cx="0" cy="-32" r="16" fill="#FFFFFF" stroke="#065F46" stroke-width="2.5" />
+      <!-- Torso -->
+      <line x1="0" y1="-16" x2="0" y2="24" stroke="#065F46" stroke-width="2.5" />
+      <!-- Arms -->
+      <line x1="-26" y1="-2" x2="26" y2="-2" stroke="#065F46" stroke-width="2.5" />
+      <!-- Left Leg -->
+      <line x1="0" y1="24" x2="-20" y2="60" stroke="#065F46" stroke-width="2.5" />
+      <!-- Right Leg -->
+      <line x1="0" y1="24" x2="20" y2="60" stroke="#065F46" stroke-width="2.5" />
+      <!-- Name Tag Badge -->
+      <rect x="-75" y="68" width="150" height="42" rx="8" fill="#FFFFFF" stroke="#065F46" stroke-width="1.8" filter="url(#actor-shadow)" />
+      <text x="0" y="86" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#065F46">Admin</text>
+      <text x="0" y="101" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10.5" font-weight="500" fill="#64748B">RHU Administrator / MHO</text>
+    </g>
+  
+
+  <!-- Staff Actor (Base Provider) -->
+  
+    <g class="actor-node" transform="translate(200, 680)">
+      <!-- Head -->
+      <circle cx="0" cy="-32" r="16" fill="#FFFFFF" stroke="#0D9488" stroke-width="2.5" />
+      <!-- Torso -->
+      <line x1="0" y1="-16" x2="0" y2="24" stroke="#0D9488" stroke-width="2.5" />
+      <!-- Arms -->
+      <line x1="-26" y1="-2" x2="26" y2="-2" stroke="#0D9488" stroke-width="2.5" />
+      <!-- Left Leg -->
+      <line x1="0" y1="24" x2="-20" y2="60" stroke="#0D9488" stroke-width="2.5" />
+      <!-- Right Leg -->
+      <line x1="0" y1="24" x2="20" y2="60" stroke="#0D9488" stroke-width="2.5" />
+      <!-- Name Tag Badge -->
+      <rect x="-75" y="68" width="150" height="42" rx="8" fill="#FFFFFF" stroke="#0D9488" stroke-width="1.8" filter="url(#actor-shadow)" />
+      <text x="0" y="86" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#0D9488">Staff</text>
+      <text x="0" y="101" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10.5" font-weight="500" fill="#64748B">Nurse / Midwife / Encoder</text>
+    </g>
+  
+
+  <!-- Generalization Arrows (Admin -> Staff, SuperAdmin -> Admin) -->
+  
+    <g>
+      <line x1="200" y1="1070" x2="200" y2="816" stroke="#334155" stroke-width="2" />
+      <polygon points="200,800 192,816 208,816" fill="#FFFFFF" stroke="#334155" stroke-width="2" />
+      <rect x="155" y="925" width="90" height="20" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" />
+      <text x="200" y="939" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="600" fill="#475569">&lt;&lt;generalizes&gt;&gt;</text>
+    </g>
+  
+  
+    <g>
+      <line x1="200" y1="1410" x2="200" y2="1276" stroke="#334155" stroke-width="2" />
+      <polygon points="200,1260 192,1276 208,1276" fill="#FFFFFF" stroke="#334155" stroke-width="2" />
+      <rect x="155" y="1325" width="90" height="20" rx="4" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" />
+      <text x="200" y="1339" text-anchor="middle" font-family="Segoe UI, sans-serif" font-size="10" font-weight="600" fill="#475569">&lt;&lt;generalizes&gt;&gt;</text>
+    </g>
+  
+
+
+  <!-- ================= ACTOR ASSOCIATIONS TO USE CASES ================= -->
+  
+  <!-- STAFF ASSOCIATIONS (Shared by all via generalization) -->
+  <!-- Staff to Auth UC-01 -->
+  <line x1="275" y1="660" x2="520" y2="305" stroke="#0D9488" stroke-width="1.5" />
+  <!-- Staff to Auth UC-03 -->
+  <line x1="275" y1="670" x2="520" y2="400" stroke="#0D9488" stroke-width="1.5" />
+  <!-- Staff to Clinical UC-05 -->
+  <line x1="275" y1="680" x2="520" y2="560" stroke="#0D9488" stroke-width="1.5" />
+  <!-- Staff to Clinical UC-06 -->
+  <line x1="275" y1="690" x2="520" y2="640" stroke="#0D9488" stroke-width="1.5" />
+  <!-- Staff to Clinical UC-07 -->
+  <line x1="275" y1="700" x2="520" y2="720" stroke="#0D9488" stroke-width="1.5" />
+  <!-- Staff to Clinical UC-09 -->
+  <line x1="275" y1="710" x2="520" y2="800" stroke="#0D9488" stroke-width="1.5" />
+  <!-- Staff to Clinical UC-10 -->
+  <line x1="275" y1="720" x2="520" y2="880" stroke="#0D9488" stroke-width="1.5" />
+  <!-- Staff to Clinical UC-11 -->
+  <line x1="275" y1="730" x2="520" y2="960" stroke="#0D9488" stroke-width="1.5" />
+  <!-- Staff to Exit UC-20 & UC-21 (Clean left gutter bus line) -->
+  <path d="M 275 750 L 385 750 L 385 1790 L 520 1790" stroke="#0D9488" stroke-width="1.6" fill="none" />
+  <path d="M 385 1790 L 385 1835 L 1250 1835 L 1250 1818" stroke="#0D9488" stroke-width="1.5" stroke-dasharray="4,3" fill="none" />
+
+  <!-- ADMIN SPECIFIC ASSOCIATIONS (Inherits Staff automatically) -->
+  <!-- Admin to UC-12 -->
+  <line x1="275" y1="1130" x2="520" y2="1115" stroke="#065F46" stroke-width="1.5" />
+  <!-- Admin to UC-13 (Skirts cleanly above UC-12) -->
+  <path d="M 275 1120 L 480 1070 L 1100 1070 L 1130 1095" stroke="#065F46" stroke-width="1.5" fill="none" />
+  <!-- Admin to UC-14 -->
+  <line x1="275" y1="1160" x2="520" y2="1225" stroke="#065F46" stroke-width="1.5" />
+  <!-- Admin to UC-15 (Skirts cleanly between UC-12 and UC-14) -->
+  <path d="M 275 1170 L 480 1175 L 1100 1175 L 1130 1205" stroke="#065F46" stroke-width="1.5" fill="none" />
+
+  <!-- SUPER ADMIN SPECIFIC ASSOCIATIONS (Inherits Admin and Staff automatically) -->
+  <!-- Super Admin to UC-16 -->
+  <line x1="275" y1="1470" x2="520" y2="1450" stroke="#0F172A" stroke-width="1.5" />
+  <!-- Super Admin to UC-17 (Skirts cleanly above UC-16) -->
+  <path d="M 275 1460 L 480 1410 L 1100 1410 L 1130 1430" stroke="#0F172A" stroke-width="1.5" fill="none" />
+  <!-- Super Admin to UC-18 -->
+  <line x1="275" y1="1510" x2="520" y2="1565" stroke="#0F172A" stroke-width="1.5" />
+  <!-- Super Admin to UC-19 (Skirts cleanly between UC-16 and UC-18) -->
+  <path d="M 275 1520 L 480 1525 L 1100 1525 L 1130 1545" stroke="#0F172A" stroke-width="1.5" fill="none" />
+
+  <!-- Diagram Legend -->
+  <g transform="translate(60, 1740)">
+    <rect width="320" height="140" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2" filter="url(#drop-shadow)" />
+    <text x="15" y="24" font-family="Segoe UI, sans-serif" font-size="12" font-weight="800" fill="#0F172A">DIAGRAM LEGEND</text>
+    
+    <line x1="15" y1="44" x2="55" y2="44" stroke="#0D9488" stroke-width="2" />
+    <text x="65" y="48" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">Actor Association</text>
+
+    <line x1="15" y1="68" x2="55" y2="68" stroke="#334155" stroke-width="2" />
+    <polygon points="55,68 45,63 45,73" fill="#FFFFFF" stroke="#334155" stroke-width="1.5" />
+    <text x="65" y="72" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">Generalization / Inheritance</text>
+
+    <line x1="15" y1="92" x2="55" y2="92" stroke="#059669" stroke-width="1.8" stroke-dasharray="4,3" marker-end="url(#arrow-emerald)" />
+    <text x="65" y="96" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">&lt;&lt;include&gt;&gt; Dependency</text>
+
+    <line x1="15" y1="116" x2="55" y2="116" stroke="#D97706" stroke-width="1.8" stroke-dasharray="4,3" marker-end="url(#arrow-amber)" />
+    <text x="65" y="120" font-family="Segoe UI, sans-serif" font-size="11" fill="#475569">&lt;&lt;extend&gt;&gt; Alternative Flow</text>
+  </g>
+</svg>

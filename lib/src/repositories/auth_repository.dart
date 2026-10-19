@@ -878,13 +878,27 @@ class AuthRepository {
       );
     }
 
-    final response = await _supabase.functions.invoke(
-      'provision-user',
-      body: {'action': 'delete', 'target_user_id': target.id},
-    );
-    final result = response.data;
-    if (result is! Map || result['deleted'] != true) {
-      throw StateError('The server did not confirm account deletion');
+    try {
+      final response = await _supabase.functions.invoke(
+        'provision-user',
+        body: {'action': 'delete', 'target_user_id': target.id},
+      );
+      final result = response.data;
+      if (result is! Map || result['deleted'] != true) {
+        throw StateError('The server did not confirm account deletion');
+      }
+    } on FunctionException catch (e) {
+      final details = e.details;
+      if (details is Map && details['error'] == 'Unsupported action') {
+        throw StateError(
+          'The Supabase Edge Function "provision-user" on your server has not been deployed with the delete handler. '
+          'Please deploy the updated function to your Supabase project (hcvqmlifeuovxavthmcu).',
+        );
+      }
+      final errorMsg = details is Map && details['error'] != null
+          ? details['error'].toString()
+          : (e.reasonPhrase?.isNotEmpty == true ? e.reasonPhrase! : 'Server error (${e.status})');
+      throw StateError(errorMsg);
     }
 
     await _db.deleteUser(target.id);
