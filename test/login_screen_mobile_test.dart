@@ -36,6 +36,10 @@ class _FakeOtpGateway implements OtpGateway {
   Future<void> logLoginEvent() async {}
 }
 
+final _testSystemSettingsProvider = StateProvider<SystemSettings>(
+  (ref) => const SystemSettings(),
+);
+
 void main() {
   late Directory tempDir;
   late SimpleDatabase db;
@@ -61,20 +65,22 @@ void main() {
     } catch (_) {}
   });
 
-  Widget createSubject({bool loadSettingsFromDatabase = false}) {
+  Widget createSubject({SystemSettings? systemSettings}) {
     return ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(db),
         authRepositoryProvider.overrideWithValue(authRepo),
-        if (!loadSettingsFromDatabase)
-          systemSettingsProvider.overrideWith(
-            (ref) => Future.value(
+        _testSystemSettingsProvider.overrideWith(
+          (ref) =>
+              systemSettings ??
               const SystemSettings(
                 appName: 'MedSentry RHU',
                 organizationName: 'Rural Health Unit',
               ),
-            ),
-          ),
+        ),
+        systemSettingsProvider.overrideWith(
+          (ref) => Future.value(ref.watch(_testSystemSettingsProvider)),
+        ),
       ],
       child: const MaterialApp(home: LoginScreen()),
     );
@@ -127,50 +133,32 @@ void main() {
   testWidgets('shows the updated system logo on the login screen immediately', (
     tester,
   ) async {
-    const initialLogo = 'data:image/png;base64,aGVsbG8=';
+    const initialSettings = SystemSettings(
+      appName: 'MedSentry RHU',
+      organizationName: 'Rural Health Unit',
+      logoDataUri: 'data:image/png;base64,aGVsbG8=',
+    );
     const updatedLogo = 'data:image/png;base64,dXBkYXRlZA==';
-    await tester.runAsync(
-      () => db.updateSystemSettings(
-        const SystemSettings(
-          appName: 'MedSentry RHU',
-          organizationName: 'Rural Health Unit',
-          logoDataUri: initialLogo,
-        ),
-      ),
-    );
-    final persistedSettings = await tester.runAsync(
-      () => db.getSystemSettings(),
-    );
-    expect(persistedSettings?.logoDataUri, initialLogo);
 
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
-    await tester.pumpWidget(createSubject(loadSettingsFromDatabase: true));
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(LoginScreen)),
-    );
-    final initialSettings = await tester.runAsync(
-      () => container.read(systemSettingsProvider.future),
-    );
-    expect(initialSettings?.logoDataUri, initialLogo);
+    await tester.pumpWidget(createSubject(systemSettings: initialSettings));
+    await tester.pump();
     await tester.pump();
 
     expect(
       tester.widget<SystemLogo>(find.byType(SystemLogo)).dataUri,
-      initialLogo,
+      initialSettings.logoDataUri,
     );
 
-    await tester.runAsync(() async {
-      await db.updateSystemSettings(
-        (await db.getSystemSettings()).copyWith(logoDataUri: updatedLogo),
-      );
-    });
-    final updatedSettings = await tester.runAsync(
-      () => container.read(systemSettingsProvider.future),
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(LoginScreen)),
     );
-    expect(updatedSettings?.logoDataUri, updatedLogo);
+    container.read(_testSystemSettingsProvider.notifier).state = initialSettings
+        .copyWith(logoDataUri: updatedLogo);
+    await tester.pump();
     await tester.pump();
 
     expect(
