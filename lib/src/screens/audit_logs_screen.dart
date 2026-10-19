@@ -207,6 +207,19 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
     );
   }
 
+  Widget _buildActionBadge(AuditAction action) {
+    return switch (action) {
+      AuditAction.delete => StatusBadge.critical(text: 'Deleted'),
+      AuditAction.update => StatusBadge.pending(text: 'Updated'),
+      AuditAction.create => StatusBadge.normal(text: 'Created'),
+      AuditAction.login || AuditAction.logout =>
+        StatusBadge.info(text: action == AuditAction.login ? 'Login' : 'Logout'),
+      AuditAction.sync || AuditAction.backup || AuditAction.restore =>
+        StatusBadge.normal(text: action.name.toUpperCase()),
+      _ => StatusBadge.neutral(text: action.name.toUpperCase()),
+    };
+  }
+
   String _actionLabel(AuditAction action) {
     switch (action) {
       case AuditAction.login:

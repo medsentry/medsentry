@@ -20,6 +20,8 @@ class ArchiveScreen extends ConsumerWidget {
     final canDelete = currentUser?.permissions.canDeletePatientRecords ?? false;
     final isMobile = ResponsiveBreakpoints.isMobile(context);
 
+    final t = ScreenTokens.of(context);
+
     return SingleChildScrollView(
       padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
       child: Column(
@@ -57,18 +59,49 @@ class ArchiveScreen extends ConsumerWidget {
                     ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 4,
+                        vertical: 6,
+                      ),
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: t.isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: t.border),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          patient.fullName.isNotEmpty
+                              ? patient.fullName
+                                  .trim()
+                                  .split(' ')
+                                  .map((e) => e.isNotEmpty ? e[0] : '')
+                                  .take(2)
+                                  .join()
+                                  .toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: t.muted,
+                          ),
+                        ),
                       ),
                       title: Text(
                         patient.fullName,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: t.text,
+                        ),
                       ),
                       subtitle: Text(
                         'ID: ${patient.id}'
-                        '${patient.archivedAt != null ? ' • Archived ${formatDateTime12h(patient.archivedAt!)}' : ''}',
+                        '${patient.archivedAt != null ? ' · Archived ${formatDateTime12h(patient.archivedAt!)}' : ''}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: t.muted,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                       trailing: isMobile
@@ -130,24 +163,56 @@ class ArchiveScreen extends ConsumerWidget {
                           : Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                TextButton.icon(
+                                OutlinedButton.icon(
                                   onPressed: () =>
                                       context.go('/patients/${patient.id}'),
                                   icon: const Icon(
                                     Icons.visibility_outlined,
-                                    size: 18,
+                                    size: 16,
                                   ),
                                   label: const Text('View'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: t.text,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    minimumSize: const Size(0, 32),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    side: BorderSide(color: t.control),
+                                    textStyle: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
-                                FilledButton.tonalIcon(
+                                FilledButton.icon(
                                   onPressed: () =>
                                       _restorePatient(context, ref, patient),
                                   icon: const Icon(
                                     Icons.unarchive_outlined,
-                                    size: 18,
+                                    size: 16,
                                   ),
                                   label: const Text('Restore'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: t.accent,
+                                    foregroundColor: t.onAccent,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    minimumSize: const Size(0, 32),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                                 if (canDelete) ...[
                                   const SizedBox(width: 6),
@@ -155,9 +220,10 @@ class ArchiveScreen extends ConsumerWidget {
                                     tooltip: 'Delete Permanently',
                                     icon: const Icon(
                                       Icons.delete_forever_outlined,
-                                      size: 20,
+                                      size: 18,
                                       color: AppColors.dangerRed,
                                     ),
+                                    visualDensity: VisualDensity.compact,
                                     onPressed: () => _permanentlyDeletePatient(
                                       context,
                                       ref,
