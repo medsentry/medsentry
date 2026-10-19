@@ -121,36 +121,34 @@ void main() {
   ) async {
     const initialLogo = 'data:image/png;base64,aGVsbG8=';
     const updatedLogo = 'data:image/png;base64,dXBkYXRlZA==';
-    print('before initial database update');
-    await db.updateSystemSettings(
-      const SystemSettings(
-        appName: 'MedSentry RHU',
-        organizationName: 'Rural Health Unit',
-        logoDataUri: initialLogo,
+    await tester.runAsync(
+      () => db.updateSystemSettings(
+        const SystemSettings(
+          appName: 'MedSentry RHU',
+          organizationName: 'Rural Health Unit',
+          logoDataUri: initialLogo,
+        ),
       ),
     );
-    print('after initial database update');
 
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
     await tester.pumpWidget(createSubject(loadSettingsFromDatabase: true));
-    print('after pumpWidget');
     await tester.pumpAndSettle();
-    print('after initial pumpAndSettle');
 
     expect(
       tester.widget<SystemLogo>(find.byType(SystemLogo)).dataUri,
       initialLogo,
     );
 
-    await db.updateSystemSettings(
-      (await db.getSystemSettings()).copyWith(logoDataUri: updatedLogo),
-    );
-    print('after updated database write');
+    await tester.runAsync(() async {
+      await db.updateSystemSettings(
+        (await db.getSystemSettings()).copyWith(logoDataUri: updatedLogo),
+      );
+    });
     await tester.pumpAndSettle();
-    print('after updated pumpAndSettle');
 
     expect(
       tester.widget<SystemLogo>(find.byType(SystemLogo)).dataUri,
