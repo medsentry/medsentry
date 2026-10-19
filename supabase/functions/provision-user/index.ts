@@ -105,7 +105,9 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: 'Invalid request body' }, 400);
   }
 
-  if (body.action === 'delete') {
+  const action = typeof body.action === 'string' ? body.action.trim().toLowerCase() : '';
+
+  if (['delete', 'delete_user', 'delete-user', 'remove_user', 'remove-user'].includes(action)) {
     const targetProfileId = body.target_user_id;
     if (typeof targetProfileId !== 'string' || !targetProfileId.trim()) {
       return jsonResponse({ error: 'Invalid user request' }, 400);
@@ -166,7 +168,7 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ deleted: true });
   }
 
-  if (body.action === 'set_password') {
+  if (['set_password', 'set-password', 'reset_password', 'reset-password'].includes(action)) {
     const targetProfileId = body.target_user_id;
     const password = body.password;
     if (typeof targetProfileId !== 'string' || typeof password !== 'string' || !isStrongPassword(password)) {
@@ -201,7 +203,9 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ updated: true });
   }
 
-  if (body.action !== 'create') return jsonResponse({ error: 'Unsupported action' }, 400);
+  if (!['create', 'create_user', 'create-user'].includes(action)) {
+    return jsonResponse({ error: 'Unsupported action' }, 400);
+  }
 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
   const password = typeof body.password === 'string' ? body.password : '';
