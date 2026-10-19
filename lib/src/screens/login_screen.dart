@@ -374,143 +374,91 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       backgroundColor: palette.surface,
       body: LayoutBuilder(
-        builder: (context, constraints) => constraints.maxWidth >= 900
-            ? _buildWideLayout(context, constraints, palette)
-            : _buildCompactLayout(context, constraints, palette),
+        builder: (context, constraints) =>
+            _buildCenteredLayout(context, constraints, palette),
       ),
     );
   }
 
-  /// Desktop: clinic photo on the left, a solid sign-in panel on the right.
-  Widget _buildWideLayout(
+  Widget _buildCenteredLayout(
     BuildContext context,
     BoxConstraints constraints,
     _LoginPalette palette,
   ) {
-    final panelWidth = (constraints.maxWidth * 0.4).clamp(440.0, 560.0);
+    final isCompact = constraints.maxWidth < 900;
+    final gutter = constraints.maxWidth < 360 ? 16.0 : 24.0;
+    const topClearance = 64.0;
+    const bottomClearance = 64.0;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
       children: [
-        Expanded(child: _buildPhotoPanel(context, isCompact: false)),
-        SizedBox(
-          width: panelWidth,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: palette.surface,
-              border: Border(left: BorderSide(color: palette.border)),
-            ),
-            child: SafeArea(
-              left: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(48, 20, 48, 0),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: _buildPwaInstallButton(context),
-                    ),
-                  ),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, inner) => SingleChildScrollView(
-                        keyboardDismissBehavior:
-                            ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 48,
-                          vertical: 24,
-                        ),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: (inner.maxHeight - 48).clamp(
-                              0.0,
-                              double.infinity,
-                            ),
-                          ),
-                          child: Center(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 380),
-                              child: _entrance(
-                                context,
-                                _buildAuthForm(
-                                  context,
-                                  palette,
-                                  isTall: inner.maxHeight >= 760,
-                                ),
-                              ),
-                            ),
-                          ),
+        SafeArea(
+          child: LayoutBuilder(
+            builder: (context, viewport) => SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.fromLTRB(
+                gutter,
+                topClearance,
+                gutter,
+                bottomClearance,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight:
+                      (viewport.maxHeight - topClearance - bottomClearance)
+                          .clamp(0.0, double.infinity),
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 430),
+                    child: Container(
+                      key: const ValueKey('login-form-card'),
+                      padding: EdgeInsets.all(isCompact ? 18 : 32),
+                      decoration: BoxDecoration(
+                        color: palette.card,
+                        border: Border.all(color: palette.border),
+                        borderRadius: AppRadius.roundedMd,
+                      ),
+                      child: _entrance(
+                        context,
+                        _buildAuthForm(
+                          context,
+                          palette,
+                          isTall: !isCompact && viewport.maxHeight >= 760,
+                          isMobile: isCompact,
                         ),
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(48, 0, 48, 20),
-                    child: _buildFooter(context, palette),
-                  ),
-                ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.topRight,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(gutter, 12, gutter, 0),
+              child: _buildPwaInstallButton(context, isMobile: isCompact),
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: _buildFooter(context, palette),
               ),
             ),
           ),
         ),
       ],
-    );
-  }
-
-  /// Phones and narrow windows: photo band on top, form below, footer last.
-  Widget _buildCompactLayout(
-    BuildContext context,
-    BoxConstraints constraints,
-    _LoginPalette palette,
-  ) {
-    final gutter = constraints.maxWidth < 360 ? 16.0 : 20.0;
-    final headerHeight = (constraints.maxHeight * 0.28).clamp(150.0, 240.0);
-
-    return SingleChildScrollView(
-      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: constraints.maxHeight),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  height: headerHeight,
-                  child: _buildPhotoPanel(
-                    context,
-                    isCompact: true,
-                    trailing: _buildPwaInstallButton(context, isMobile: true),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(gutter, 28, gutter, 24),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 440),
-                      child: _entrance(
-                        context,
-                        _buildAuthForm(context, palette, isMobile: true),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 16),
-                child: _buildFooter(context, palette),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -530,114 +478,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       ),
       child: child,
-    );
-  }
-
-  Widget _buildPhotoPanel(
-    BuildContext context, {
-    required bool isCompact,
-    Widget? trailing,
-  }) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          'assets/images/rhu_background.jpg',
-          fit: BoxFit.cover,
-          alignment: const Alignment(0.2, 0.1),
-          errorBuilder: (context, error, stackTrace) =>
-              const ColoredBox(color: _LoginPalette.forest),
-        ),
-        // Scrim tinted toward the clinic's green so the brand text reads
-        // cleanly without drop shadows.
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0x2604140F), Color(0x1404140F), Color(0xE004140F)],
-              stops: [0.0, 0.4, 1.0],
-            ),
-          ),
-        ),
-        SafeArea(
-          right: isCompact,
-          bottom: false,
-          child: Padding(
-            padding: EdgeInsets.all(isCompact ? 16 : 40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (trailing != null)
-                  Align(alignment: Alignment.topRight, child: trailing),
-                const Spacer(),
-                _buildRhuBrandSeal(context, isMobile: isCompact),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRhuBrandSeal(BuildContext context, {bool isMobile = false}) {
-    final sealSize = isMobile ? 44.0 : 56.0;
-
-    return Row(
-      children: [
-        Container(
-          width: sealSize,
-          height: sealSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFFF8FAFC),
-            border: Border.all(color: const Color(0xFFF8FAFC), width: 2),
-          ),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/madrid_seal.png',
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.health_and_safety_rounded,
-                color: AppColors.primaryEmeraldDeep,
-                size: 26,
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: isMobile ? 12 : 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Madrid Rural Health Unit',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: const Color(0xFFF8FAFC),
-                  fontWeight: FontWeight.w700,
-                  fontSize: isMobile ? 16 : 22,
-                  letterSpacing: -0.3,
-                  height: 1.2,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '& Family Planning Center',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: const Color(0xFFF8FAFC).withValues(alpha: 0.82),
-                  fontWeight: FontWeight.w500,
-                  fontSize: isMobile ? 13 : 15,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
@@ -1373,6 +1213,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 class _LoginPalette {
   const _LoginPalette({
     required this.surface,
+    required this.card,
     required this.field,
     required this.border,
     required this.text,
@@ -1387,10 +1228,8 @@ class _LoginPalette {
     required this.warning,
   });
 
-  /// Fallback behind the clinic photo while it loads or if it is missing.
-  static const Color forest = Color(0xFF0B231B);
-
   final Color surface;
+  final Color card;
   final Color field;
   final Color border;
   final Color text;
@@ -1406,6 +1245,7 @@ class _LoginPalette {
 
   static const light = _LoginPalette(
     surface: AppColors.lightAppBackground,
+    card: AppColors.lightCardSurface,
     field: AppColors.lightCardSurface,
     border: Color(0xFFCBD5E1),
     text: AppColors.lightTextPrimary,
@@ -1422,6 +1262,7 @@ class _LoginPalette {
 
   static const dark = _LoginPalette(
     surface: AppColors.appBackground,
+    card: AppColors.cardSurface,
     field: AppColors.inputSurface,
     border: AppColors.borderActive,
     text: AppColors.textPrimary,

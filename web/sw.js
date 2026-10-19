@@ -21,6 +21,15 @@ const APP_SHELL_ASSETS = [
   'canvaskit/canvaskit.wasm',
 ];
 
+function isFontAsset(pathname) {
+  return /\.(woff2?|ttf|otf)$/i.test(pathname);
+}
+
+function isRefreshableAsset(pathname) {
+  return isFontAsset(pathname) ||
+    /\/(?:FontManifest\.json|AssetManifest\.bin(?:\.json)?)$/i.test(pathname);
+}
+
 async function cachedAppShell(cache) {
   const shellUrl = new URL('index.html', self.registration.scope);
   return (await cache.match(shellUrl)) ||
@@ -37,7 +46,10 @@ self.addEventListener('install', (event) => {
     await Promise.allSettled(APP_SHELL_ASSETS.map(async (asset) => {
       const url = new URL(asset, self.registration.scope);
       try {
-        const response = await fetch(url);
+        const response = await fetch(
+          url,
+          isRefreshableAsset(url.pathname) ? { cache: 'no-cache' } : undefined,
+        );
         if (response.ok && response.type !== 'opaque') {
           await cache.put(url, response);
         } else {
@@ -67,6 +79,28 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  if (isRefreshableAsset(url.pathname)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const response = await fetch(request, { cache: 'no-cache' });
+        if (response.ok && response.type !== 'opaque') {
+          event.waitUntil(cache.put(request, response.clone()));
+        }
+        return response;
+      } catch (error) {
+        console.warn(`[MedSentry SW] Could not refresh asset ${url.pathname}`, error);
+        return (await cache.match(request, { ignoreSearch: true })) ||
+          new Response('This asset is unavailable offline.', {
+            status: 503,
+            statusText: 'Offline',
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          });
+      }
+    })());
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {

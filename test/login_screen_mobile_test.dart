@@ -91,6 +91,12 @@ void main() {
     expect(find.text('Remember Me'), findsOneWidget);
     expect(find.text('Sign in securely'), findsOneWidget);
     expect(find.textContaining('All Rights Reserved'), findsOneWidget);
+
+    final loginCard = tester.getRect(
+      find.byKey(const ValueKey('login-form-card')),
+    );
+    expect(loginCard.center.dx, closeTo(195, 1));
+    expect(loginCard.center.dy, closeTo(422, 1));
   });
 
   testWidgets('centers sign-in fields in the whole desktop window', (tester) async {
@@ -101,8 +107,11 @@ void main() {
     await tester.pumpWidget(createSubject());
     await tester.pumpAndSettle();
 
-    final emailField = tester.getRect(find.byType(TextField).first);
-    expect(emailField.center.dx, closeTo(720, 1));
+    final loginCard = tester.getRect(
+      find.byKey(const ValueKey('login-form-card')),
+    );
+    expect(loginCard.center.dx, closeTo(720, 1));
+    expect(loginCard.center.dy, closeTo(450, 1));
   });
 
   testWidgets('renders cleanly on narrow mobile portrait (320x568) without overflow', (tester) async {
