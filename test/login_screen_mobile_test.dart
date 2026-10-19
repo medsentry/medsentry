@@ -40,6 +40,18 @@ final _testSystemSettingsProvider = StateProvider<SystemSettings>(
   (ref) => const SystemSettings(),
 );
 
+double _contrastRatio(Color first, Color second) {
+  final firstLuminance = first.computeLuminance();
+  final secondLuminance = second.computeLuminance();
+  final lighter = firstLuminance > secondLuminance
+      ? firstLuminance
+      : secondLuminance;
+  final darker = firstLuminance > secondLuminance
+      ? secondLuminance
+      : firstLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 void main() {
   late Directory tempDir;
   late SimpleDatabase db;
@@ -145,6 +157,26 @@ void main() {
       'assets/images/rhu_background.jpg',
     );
     expect(background.fit, BoxFit.cover);
+  });
+
+  testWidgets('uses high-contrast supporting text in light mode', (
+    tester,
+  ) async {
+    await tester.pumpWidget(createSubject());
+    await tester.pumpAndSettle();
+
+    final supportingText = tester.widget<Text>(
+      find.text('Sign in to securely access your clinic workspace.'),
+    );
+    final emailField = tester.widget<TextField>(find.byType(TextField).first);
+    final supportingTextColor = supportingText.style!.color!;
+    final hintColor = emailField.decoration!.hintStyle!.color!;
+
+    expect(
+      _contrastRatio(supportingTextColor, Colors.white),
+      greaterThanOrEqualTo(7),
+    );
+    expect(_contrastRatio(hintColor, Colors.white), greaterThanOrEqualTo(7));
   });
 
   testWidgets('shows the updated system logo on the login screen immediately', (
