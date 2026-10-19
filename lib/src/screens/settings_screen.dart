@@ -196,46 +196,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           if (currentUser?.canManageSystemData == true) ...[
             const SizedBox(height: 32),
-            Container(
-              decoration: BoxDecoration(
-                color: context.semanticColors.criticalBg,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(
+            Material(
+              color: context.semanticColors.criticalBg,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
                   color: context.semanticColors.critical.withValues(
                     alpha: 0.35,
                   ),
+                  width: 1,
                 ),
               ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Danger Zone',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: context.semanticColors.critical,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ListTile(
-                    leading: Icon(
-                      Icons.delete_forever,
-                      color: context.semanticColors.critical,
-                    ),
-                    title: Text(
-                      'Clear All Data',
-                      style: TextStyle(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Danger Zone',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: context.semanticColors.critical,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    subtitle: const Text(
-                      'This will permanently delete all local data',
+                    const SizedBox(height: 8),
+                    ListTile(
+                      leading: Icon(
+                        Icons.delete_forever,
+                        color: context.semanticColors.critical,
+                      ),
+                      title: Text(
+                        'Clear All Data',
+                        style: TextStyle(
+                          color: context.semanticColors.critical,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'This will permanently delete all local data',
+                      ),
+                      onTap: () => _showClearDataDialog(context, ref),
                     ),
-                    onTap: () => _showClearDataDialog(context, ref),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -448,16 +452,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ),
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.cardSurface : Colors.white,
+        Material(
+          color: isDark ? AppColors.cardSurface : Colors.white,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
+            side: BorderSide(
               color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
               width: 1,
             ),
           ),
-          clipBehavior: Clip.antiAlias,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
