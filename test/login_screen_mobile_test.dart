@@ -10,6 +10,7 @@ import 'package:medsentry/src/repositories/auth_repository.dart';
 import 'package:medsentry/src/repositories/otp_gateway.dart';
 import 'package:medsentry/src/screens/login_screen.dart';
 import 'package:medsentry/src/services/audit_service.dart';
+import 'package:medsentry/src/widgets/system_logo.dart';
 
 class _FakeOtpGateway implements OtpGateway {
   @override
@@ -55,19 +56,20 @@ void main() {
     } catch (_) {}
   });
 
-  Widget createSubject() {
+  Widget createSubject({bool loadSettingsFromDatabase = false}) {
     return ProviderScope(
       overrides: [
         databaseProvider.overrideWithValue(db),
         authRepositoryProvider.overrideWithValue(authRepo),
-        systemSettingsProvider.overrideWith(
-          (ref) => Future.value(
-            const SystemSettings(
-              appName: 'MedSentry RHU',
-              organizationName: 'Rural Health Unit',
+        if (!loadSettingsFromDatabase)
+          systemSettingsProvider.overrideWith(
+            (ref) => Future.value(
+              const SystemSettings(
+                appName: 'MedSentry RHU',
+                organizationName: 'Rural Health Unit',
+              ),
             ),
           ),
-        ),
       ],
       child: const MaterialApp(
         home: LoginScreen(),
@@ -112,6 +114,48 @@ void main() {
     );
     expect(loginCard.center.dx, closeTo(720, 1));
     expect(loginCard.center.dy, closeTo(450, 1));
+  });
+
+  testWidgets('shows the updated system logo on the login screen immediately', (
+    tester,
+  ) async {
+    const initialLogo = 'data:image/png;base64,aGVsbG8=';
+    const updatedLogo = 'data:image/png;base64,dXBkYXRlZA==';
+    print('before initial database update');
+    await db.updateSystemSettings(
+      const SystemSettings(
+        appName: 'MedSentry RHU',
+        organizationName: 'Rural Health Unit',
+        logoDataUri: initialLogo,
+      ),
+    );
+    print('after initial database update');
+
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await tester.pumpWidget(createSubject(loadSettingsFromDatabase: true));
+    print('after pumpWidget');
+    await tester.pumpAndSettle();
+    print('after initial pumpAndSettle');
+
+    expect(
+      tester.widget<SystemLogo>(find.byType(SystemLogo)).dataUri,
+      initialLogo,
+    );
+
+    await db.updateSystemSettings(
+      (await db.getSystemSettings()).copyWith(logoDataUri: updatedLogo),
+    );
+    print('after updated database write');
+    await tester.pumpAndSettle();
+    print('after updated pumpAndSettle');
+
+    expect(
+      tester.widget<SystemLogo>(find.byType(SystemLogo)).dataUri,
+      updatedLogo,
+    );
   });
 
   testWidgets('renders cleanly on narrow mobile portrait (320x568) without overflow', (tester) async {
