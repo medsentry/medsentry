@@ -438,15 +438,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                Colors.white.withValues(alpha: 0.92),
-                                Colors.white.withValues(alpha: 0.82),
-                                Colors.white.withValues(alpha: 0.88),
+                                Colors.white.withValues(alpha: 0.97),
+                                Colors.white.withValues(alpha: 0.94),
+                                Colors.white.withValues(alpha: 0.96),
                               ],
                               stops: const [0.0, 0.45, 1.0],
                             ),
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.85),
+                              color: Colors.white.withValues(alpha: 0.95),
                               width: 1.5,
                             ),
                             boxShadow: [
