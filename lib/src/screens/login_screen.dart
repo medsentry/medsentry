@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,8 +55,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   bool _handleKeyEvent(KeyEvent event) {
-    final capsLockActive = HardwareKeyboard.instance.lockModesEnabled
-        .contains(KeyboardLockMode.capsLock);
+    final capsLockActive = HardwareKeyboard.instance.lockModesEnabled.contains(
+      KeyboardLockMode.capsLock,
+    );
     if (capsLockActive != _isCapsLockOn && mounted) {
       setState(() => _isCapsLockOn = capsLockActive);
     }
@@ -370,206 +369,229 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final palette = _LoginPalette.of(context);
 
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset(
-            'assets/images/rhu_background.jpg',
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => ColoredBox(
-              color: isDark
-                  ? AppColors.appBackground
-                  : AppColors.lightBackground,
-            ),
-          ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x8A00120E),
-                  Color(0x6E000000),
-                  Color(0x9E000F0B),
-                ],
-                stops: [0.0, 0.45, 1.0],
-              ),
-            ),
-          ),
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isMobile = constraints.maxWidth < 600;
-                final isVeryNarrow = constraints.maxWidth < 360;
-                final horizontalPadding = constraints.maxWidth >= 900
-                    ? (constraints.maxWidth * 0.045).clamp(32.0, 88.0)
-                    : (isVeryNarrow ? 12.0 : (isMobile ? 16.0 : 24.0));
-                final verticalPadding = isMobile ? 8.0 : 12.0;
-                final isTall = !isMobile && constraints.maxHeight >= 820;
-                final cardPadding = isVeryNarrow
-                    ? const EdgeInsets.symmetric(horizontal: 16, vertical: 18)
-                    : isMobile
-                    ? const EdgeInsets.symmetric(horizontal: 20, vertical: 22)
-                    : EdgeInsets.all(isTall ? 32 : 28);
-                final minContentHeight =
-                    (constraints.maxHeight - (verticalPadding * 2)).clamp(
-                      0.0,
-                      double.infinity,
-                    );
+      backgroundColor: palette.surface,
+      body: LayoutBuilder(
+        builder: (context, constraints) => constraints.maxWidth >= 900
+            ? _buildWideLayout(context, constraints, palette)
+            : _buildCompactLayout(context, constraints, palette),
+      ),
+    );
+  }
 
-                final card = Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: isMobile ? double.infinity : 440,
+  /// Desktop: clinic photo on the left, a solid sign-in panel on the right.
+  Widget _buildWideLayout(
+    BuildContext context,
+    BoxConstraints constraints,
+    _LoginPalette palette,
+  ) {
+    final panelWidth = (constraints.maxWidth * 0.4).clamp(440.0, 560.0);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: _buildPhotoPanel(context, isCompact: false)),
+        SizedBox(
+          width: panelWidth,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: palette.surface,
+              border: Border(left: BorderSide(color: palette.border)),
+            ),
+            child: SafeArea(
+              left: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(48, 20, 48, 0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: _buildPwaInstallButton(context),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-                        child: Container(
-                          width: double.infinity,
-                          padding: cardPadding,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.white.withValues(alpha: 0.97),
-                                Colors.white.withValues(alpha: 0.94),
-                                Colors.white.withValues(alpha: 0.96),
-                              ],
-                              stops: const [0.0, 0.45, 1.0],
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, inner) => SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 48,
+                          vertical: 24,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: (inner.maxHeight - 48).clamp(
+                              0.0,
+                              double.infinity,
                             ),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.95),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.22),
-                                blurRadius: 40,
-                                offset: const Offset(0, 18),
-                                spreadRadius: 2,
-                              ),
-                              BoxShadow(
-                                color: const Color(0xFF059669).withValues(alpha: 0.08),
-                                blurRadius: 32,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
                           ),
-                          child: Theme(
-                            data: Theme.of(context).copyWith(
-                              brightness: Brightness.light,
-                              colorScheme: Theme.of(context).colorScheme
-                                  .copyWith(
-                                    brightness: Brightness.light,
-                                    surface: Colors.white,
-                                    onSurface: const Color(0xFF0F172A),
-                                    outline: const Color(0xFFCBD5E1),
-                                  ),
-                            ),
-                            child: _buildAuthForm(
-                              context,
-                              isTall: isTall,
-                              isMobile: isMobile,
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 380),
+                              child: _entrance(
+                                context,
+                                _buildAuthForm(
+                                  context,
+                                  palette,
+                                  isTall: inner.maxHeight >= 760,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                );
-
-                return SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: minContentHeight),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: horizontalPadding,
-                            vertical: verticalPadding,
-                          ),
-                          child: Align(
-                            alignment: Alignment.topRight,
-                            child: _buildPwaInstallButton(
-                              context,
-                              isMobile: isMobile,
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: horizontalPadding,
-                            vertical: isMobile ? 10 : 20,
-                          ),
-                          child: card,
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.only(
-                                left: horizontalPadding,
-                                right: horizontalPadding,
-                                bottom: isMobile ? 12 : 16,
-                              ),
-                              child: _buildRhuBrandSeal(
-                                context,
-                                isMobile: isMobile,
-                              ),
-                            ),
-                            _buildBottomBar(
-                              context,
-                              isMobile: isMobile,
-                              horizontalPadding: horizontalPadding,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(48, 0, 48, 20),
+                    child: _buildFooter(context, palette),
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  /// Phones and narrow windows: photo band on top, form below, footer last.
+  Widget _buildCompactLayout(
+    BuildContext context,
+    BoxConstraints constraints,
+    _LoginPalette palette,
+  ) {
+    final gutter = constraints.maxWidth < 360 ? 16.0 : 20.0;
+    final headerHeight = (constraints.maxHeight * 0.28).clamp(150.0, 240.0);
+
+    return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: headerHeight,
+                  child: _buildPhotoPanel(
+                    context,
+                    isCompact: true,
+                    trailing: _buildPwaInstallButton(context, isMobile: true),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(gutter, 28, gutter, 24),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 440),
+                      child: _entrance(
+                        context,
+                        _buildAuthForm(context, palette, isMobile: true),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 16),
+                child: _buildFooter(context, palette),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  /// A single short fade-and-rise when the form first appears, so the eye
+  /// lands on it. Skipped when the platform asks for reduced motion.
+  Widget _entrance(BuildContext context, Widget child) {
+    if (MediaQuery.of(context).disableAnimations) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, (1 - t) * 10),
+          child: child,
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildPhotoPanel(
+    BuildContext context, {
+    required bool isCompact,
+    Widget? trailing,
+  }) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          'assets/images/rhu_background.jpg',
+          fit: BoxFit.cover,
+          alignment: const Alignment(0.2, 0.1),
+          errorBuilder: (context, error, stackTrace) =>
+              const ColoredBox(color: _LoginPalette.forest),
+        ),
+        // Scrim tinted toward the clinic's green so the brand text reads
+        // cleanly without drop shadows.
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x2604140F), Color(0x1404140F), Color(0xE004140F)],
+              stops: [0.0, 0.4, 1.0],
+            ),
+          ),
+        ),
+        SafeArea(
+          right: isCompact,
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.all(isCompact ? 16 : 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (trailing != null)
+                  Align(alignment: Alignment.topRight, child: trailing),
+                const Spacer(),
+                _buildRhuBrandSeal(context, isMobile: isCompact),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildRhuBrandSeal(BuildContext context, {bool isMobile = false}) {
+    final sealSize = isMobile ? 44.0 : 56.0;
+
     return Row(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: isMobile ? 40 : 48,
-          height: isMobile ? 40 : 48,
+          width: sealSize,
+          height: sealSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white,
-            border: Border.all(
-              color: const Color(0xFF10B981),
-              width: 2.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            color: const Color(0xFFF8FAFC),
+            border: Border.all(color: const Color(0xFFF8FAFC), width: 2),
           ),
           child: ClipOval(
             child: Image.asset(
@@ -577,53 +599,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => const Icon(
                 Icons.health_and_safety_rounded,
-                color: Color(0xFF059669),
+                color: AppColors.primaryEmeraldDeep,
                 size: 26,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        Flexible(
+        SizedBox(width: isMobile ? 12 : 16),
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'MADRID RURAL HEALTH UNIT',
+                'Madrid Rural Health Unit',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: isMobile ? 13 : 15,
-                  letterSpacing: 0.6,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withValues(alpha: 0.85),
-                      blurRadius: 6,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
+                  color: const Color(0xFFF8FAFC),
+                  fontWeight: FontWeight.w700,
+                  fontSize: isMobile ? 16 : 22,
+                  letterSpacing: -0.3,
+                  height: 1.2,
                 ),
               ),
-              const SizedBox(height: 1),
+              const SizedBox(height: 2),
               Text(
-                '& FAMILY PLANNING CENTER',
+                '& Family Planning Center',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.95),
-                  fontWeight: FontWeight.w800,
-                  fontSize: isMobile ? 11.5 : 13,
-                  letterSpacing: 0.6,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withValues(alpha: 0.85),
-                      blurRadius: 6,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
+                  color: const Color(0xFFF8FAFC).withValues(alpha: 0.82),
+                  fontWeight: FontWeight.w500,
+                  fontSize: isMobile ? 13 : 15,
                 ),
               ),
             ],
@@ -656,31 +664,81 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               );
             }
           },
-          style: isMobile
-              ? FilledButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                )
-              : null,
-          icon: Icon(
-            Icons.install_desktop_outlined,
-            size: isMobile ? 16 : 18,
+          style: FilledButton.styleFrom(
+            visualDensity: isMobile ? VisualDensity.compact : null,
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 10 : 14,
+              vertical: isMobile ? 6 : 10,
+            ),
+            shape: const RoundedRectangleBorder(
+              borderRadius: AppRadius.roundedMd,
+            ),
+            textStyle: TextStyle(
+              fontSize: isMobile ? 12 : 13,
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          icon: Icon(Icons.install_desktop_outlined, size: isMobile ? 16 : 18),
           label: Text(isMobile ? 'Install' : 'Install App'),
         );
       },
     );
   }
 
+  InputDecoration _fieldDecoration(
+    _LoginPalette palette, {
+    required IconData icon,
+    String? hint,
+    String? error,
+    Widget? suffix,
+  }) {
+    OutlineInputBorder outline(Color color, double width) => OutlineInputBorder(
+      borderRadius: AppRadius.roundedMd,
+      borderSide: BorderSide(color: color, width: width),
+    );
+
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: palette.hint),
+      errorText: error,
+      errorStyle: TextStyle(color: palette.error, fontSize: 12.5),
+      prefixIcon: Icon(icon, size: 20, color: palette.muted),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: palette.field,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: outline(palette.border, 1),
+      enabledBorder: outline(palette.border, 1),
+      focusedBorder: outline(palette.accent, 1.6),
+      errorBorder: outline(palette.error, 1),
+      focusedErrorBorder: outline(palette.error, 1.6),
+    );
+  }
+
+  /// Label sits above its input so it stays readable while typing.
+  Widget _labeledField(_LoginPalette palette, String label, Widget field) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: palette.text,
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        field,
+      ],
+    );
+  }
+
   Widget _buildAuthForm(
-    BuildContext context, {
+    BuildContext context,
+    _LoginPalette palette, {
     bool isTall = false,
     bool isMobile = false,
   }) {
@@ -697,20 +755,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
     }
 
-    final theme = Theme.of(context);
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
-    final primary = AppColors.primaryEmeraldDark;
-    const fieldBg = Color(0xFFF8FAFC);
-    const borderColor = Color(0xFFCBD5E1);
-    const cardTextColor = Color(0xFF0F172A);
-    const cardSecondaryTextColor = Color(0xFF64748B);
-    final fieldPadding = EdgeInsets.symmetric(
-      horizontal: isMobile ? 14 : 16,
-      vertical: isMobile ? 12 : 14,
+    final inputStyle = TextStyle(
+      color: palette.text,
+      fontSize: 14.5,
+      fontWeight: FontWeight.w500,
     );
-
-    final fieldBorderRadius = BorderRadius.circular(12);
+    final linkStyle = TextButton.styleFrom(
+      foregroundColor: palette.accent,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      minimumSize: Size.zero,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+    );
 
     Future<void> toggleRememberMe([bool? val]) async {
       final next = val ?? !_rememberMe;
@@ -724,128 +782,80 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     }
 
+    final showAlternatives =
+        _sessionLocked || ((_isPinLogin) && _canCheckBiometrics);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 9 : 11,
-              vertical: isMobile ? 4 : 5.5,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFFD1FAE5).withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFF10B981).withValues(alpha: 0.35),
-              ),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.lock_outline_rounded,
-                  size: 13,
-                  color: Color(0xFF047857),
-                ),
-                SizedBox(width: 5),
-                Text(
-                  'SECURE CLINIC ACCESS',
-                  style: TextStyle(
-                    color: Color(0xFF047857),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10.5,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: isMobile ? 12 : 16),
-
         Row(
           children: [
             Container(
-              width: isMobile ? 26 : 28,
-              height: isMobile ? 26 : 28,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981),
-                borderRadius: BorderRadius.circular(7),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: palette.accent,
+                borderRadius: AppRadius.roundedMd,
               ),
               child: Icon(
                 Icons.health_and_safety_rounded,
-                color: Colors.white,
-                size: isMobile ? 17 : 19,
+                color: palette.onAccent,
+                size: 20,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Flexible(
               child: Text(
                 settings.appName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: isMobile ? 19 : 21,
-                  fontWeight: FontWeight.w800,
-                  color: cardTextColor,
-                  letterSpacing: -0.4,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: palette.text,
+                  letterSpacing: -0.2,
                 ),
               ),
             ),
           ],
         ),
-        SizedBox(height: isMobile ? 12 : 14),
+        SizedBox(height: isTall ? 40 : (isMobile ? 24 : 32)),
 
         Text(
           _sessionLocked ? 'Screen Locked' : 'Welcome back',
-          textAlign: TextAlign.left,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontSize: isMobile ? 22 : 25,
-            fontWeight: FontWeight.w800,
-            color: cardTextColor,
+          style: TextStyle(
+            fontSize: isMobile ? 26 : 30,
+            fontWeight: FontWeight.w700,
+            color: palette.text,
             letterSpacing: -0.6,
+            height: 1.15,
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 8),
         Text(
           _sessionLocked
               ? (_isPinLogin
                     ? 'Enter your 4-digit PIN to unlock your session.'
                     : 'Sign in again to unlock your session.')
               : 'Sign in to securely access your clinic workspace.',
-          textAlign: TextAlign.left,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: cardSecondaryTextColor,
-            fontSize: isMobile ? 12.5 : 13.5,
-            height: 1.4,
-          ),
+          style: TextStyle(color: palette.muted, fontSize: 14.5, height: 1.45),
         ),
-        SizedBox(height: isMobile ? 16 : 20),
+        SizedBox(height: isMobile ? 24 : 28),
 
         // Session locked banner if returning user
         if ((_isPinLogin || _sessionLocked) && _lastUserEmail != null) ...[
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: primary.withValues(alpha: 0.18)),
+              color: palette.accentSubtle,
+              borderRadius: AppRadius.roundedMd,
             ),
             child: Row(
               children: [
                 Icon(
                   _sessionLocked ? Icons.lock_outline : Icons.person_outline,
-                  color: primary,
+                  color: palette.accent,
                   size: 18,
                 ),
                 const SizedBox(width: 10),
@@ -856,17 +866,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Text(
                         _sessionLocked ? 'Locked session' : 'Current account',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: primary,
+                          color: palette.accent,
                         ),
                       ),
                       Text(
                         _lastUserEmail!,
-                        style: const TextStyle(
-                          color: cardTextColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                        style: TextStyle(
+                          color: palette.text,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -876,331 +886,171 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
         ],
 
-        // Input fields with soft filled styling matching the design system
         if (!_isPinLogin) ...[
           if (!_sessionLocked) ...[
+            _labeledField(
+              palette,
+              'Email Address',
+              TextField(
+                controller: _emailController,
+                focusNode: _emailFocusNode,
+                scrollPadding: const EdgeInsets.only(bottom: 120),
+                style: inputStyle,
+                cursorColor: palette.accent,
+                decoration: _fieldDecoration(
+                  palette,
+                  icon: Icons.mail_outline_rounded,
+                  hint: 'name@rhu.gov.ph',
+                  error: _emailError,
+                ),
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
+                ],
+                autocorrect: false,
+                textCapitalization: TextCapitalization.none,
+                textInputAction: TextInputAction.next,
+                onChanged: (_) {
+                  if (_emailError != null || _error != null) {
+                    setState(() {
+                      _emailError = null;
+                      _error = null;
+                    });
+                  }
+                },
+                onSubmitted: (_) => _submitFromEmailField(),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          _labeledField(
+            palette,
+            'Password',
             TextField(
-              controller: _emailController,
-              focusNode: _emailFocusNode,
+              controller: _passwordController,
+              focusNode: _passwordFocusNode,
               scrollPadding: const EdgeInsets.only(bottom: 120),
-              style: const TextStyle(
-                color: cardTextColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+              style: inputStyle,
+              cursorColor: palette.accent,
+              decoration: _fieldDecoration(
+                palette,
+                icon: Icons.lock_outline_rounded,
+                error: _passwordFieldError,
+                suffix: IconButton(
+                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: palette.muted,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
               ),
-              cursorColor: const Color(0xFF10B981),
-              decoration: InputDecoration(
-                labelText: 'Email Address',
-                labelStyle: const TextStyle(color: cardSecondaryTextColor),
-                floatingLabelStyle: const TextStyle(
-                  color: Color(0xFF059669),
-                  fontWeight: FontWeight.w600,
-                ),
-                hintText: 'name@rhu.gov.ph',
-                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                errorText: _emailError,
-                prefixIcon: const Icon(
-                  Icons.mail_outline_rounded,
-                  size: 20,
-                  color: cardSecondaryTextColor,
-                ),
-                filled: true,
-                fillColor: fieldBg,
-                border: OutlineInputBorder(
-                  borderRadius: fieldBorderRadius,
-                  borderSide: const BorderSide(
-                    color: borderColor,
-                    width: 1.2,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: fieldBorderRadius,
-                  borderSide: const BorderSide(
-                    color: borderColor,
-                    width: 1.2,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: fieldBorderRadius,
-                  borderSide: const BorderSide(
-                    color: Color(0xFF10B981),
-                    width: 1.6,
-                  ),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: fieldBorderRadius,
-                  borderSide: const BorderSide(
-                    color: Color(0xFFEF4444),
-                    width: 1.2,
-                  ),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: fieldBorderRadius,
-                  borderSide: const BorderSide(
-                    color: Color(0xFFEF4444),
-                    width: 1.6,
-                  ),
-                ),
-                contentPadding: fieldPadding,
-              ),
-              keyboardType: TextInputType.emailAddress,
-              autofillHints: const [
-                AutofillHints.username,
-                AutofillHints.email,
-              ],
+              autofillHints: const [AutofillHints.password],
               autocorrect: false,
-              textCapitalization: TextCapitalization.none,
-              textInputAction: TextInputAction.next,
+              enableSuggestions: false,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
               onChanged: (_) {
-                if (_emailError != null || _error != null) {
+                if (_passwordFieldError != null || _error != null) {
                   setState(() {
-                    _emailError = null;
+                    _passwordFieldError = null;
                     _error = null;
                   });
                 }
               },
-              onSubmitted: (_) => _submitFromEmailField(),
+              onSubmitted: (_) => _submitLogin(),
             ),
-            const SizedBox(height: 12),
-          ],
-          TextField(
-            controller: _passwordController,
-            focusNode: _passwordFocusNode,
-            scrollPadding: const EdgeInsets.only(bottom: 120),
-            style: const TextStyle(
-              color: cardTextColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-            cursorColor: const Color(0xFF10B981),
-            decoration: InputDecoration(
-              labelText: 'Password',
-              labelStyle: const TextStyle(color: cardSecondaryTextColor),
-              floatingLabelStyle: const TextStyle(
-                color: Color(0xFF059669),
-                fontWeight: FontWeight.w600,
-              ),
-              errorText: _passwordFieldError,
-              prefixIcon: const Icon(
-                Icons.lock_outline_rounded,
-                size: 20,
-                color: cardSecondaryTextColor,
-              ),
-              suffixIcon: IconButton(
-                tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                icon: Icon(
-                  _obscurePassword
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 20,
-                  color: cardSecondaryTextColor,
-                ),
-                onPressed: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
-                },
-              ),
-              filled: true,
-              fillColor: fieldBg,
-              border: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: borderColor,
-                  width: 1.2,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: borderColor,
-                  width: 1.2,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: Color(0xFF10B981),
-                  width: 1.6,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: Color(0xFFEF4444),
-                  width: 1.2,
-                ),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: Color(0xFFEF4444),
-                  width: 1.6,
-                ),
-              ),
-              contentPadding: fieldPadding,
-            ),
-            autofillHints: const [AutofillHints.password],
-            autocorrect: false,
-            enableSuggestions: false,
-            obscureText: _obscurePassword,
-            textInputAction: TextInputAction.done,
-            onChanged: (_) {
-              if (_passwordFieldError != null || _error != null) {
-                setState(() {
-                  _passwordFieldError = null;
-                  _error = null;
-                });
-              }
-            },
-            onSubmitted: (_) => _submitLogin(),
           ),
           if (_isCapsLockOn) ...[
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.keyboard_capslock, size: 16, color: palette.warning),
+                const SizedBox(width: 6),
+                Text(
+                  'Caps Lock is on',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: palette.warning,
+                  ),
                 ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.keyboard_capslock,
-                    size: 15,
-                    color: Color(0xFFD97706),
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    'Caps Lock is active',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFD97706),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
           ],
           if (_sessionLocked && !_pinLoginAvailable) ...[
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Tip: Enable a PIN in Settings for faster unlock next time.',
-              style: TextStyle(
-                color: cardSecondaryTextColor,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: palette.muted, fontSize: 12.5),
             ),
           ],
         ] else ...[
-          TextField(
-            controller: _pinController,
-            focusNode: _pinFocusNode,
-            scrollPadding: const EdgeInsets.only(bottom: 120),
-            style: const TextStyle(
-              color: cardTextColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 8,
-            ),
-            cursorColor: const Color(0xFF10B981),
-            decoration: InputDecoration(
-              labelText: '4-digit PIN',
-              labelStyle: const TextStyle(color: cardSecondaryTextColor),
-              floatingLabelStyle: const TextStyle(
-                color: Color(0xFF059669),
+          _labeledField(
+            palette,
+            '4-digit PIN',
+            TextField(
+              controller: _pinController,
+              focusNode: _pinFocusNode,
+              scrollPadding: const EdgeInsets.only(bottom: 120),
+              style: inputStyle.copyWith(
+                fontSize: 17,
                 fontWeight: FontWeight.w600,
+                letterSpacing: 8,
               ),
-              hintText: '••••',
-              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-              errorText: _pinFieldError,
-              prefixIcon: const Icon(
-                Icons.pin_outlined,
-                size: 20,
-                color: cardSecondaryTextColor,
-              ),
-              suffixIcon: IconButton(
-                tooltip: _obscurePin ? 'Show PIN' : 'Hide PIN',
-                icon: Icon(
-                  _obscurePin
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 20,
-                  color: cardSecondaryTextColor,
+              cursorColor: palette.accent,
+              decoration: _fieldDecoration(
+                palette,
+                icon: Icons.pin_outlined,
+                hint: '••••',
+                error: _pinFieldError,
+                suffix: IconButton(
+                  tooltip: _obscurePin ? 'Show PIN' : 'Hide PIN',
+                  icon: Icon(
+                    _obscurePin
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: palette.muted,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePin = !_obscurePin;
+                    });
+                  },
                 ),
-                onPressed: () {
+              ).copyWith(counterText: ''),
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              obscureText: _obscurePin,
+              textInputAction: TextInputAction.done,
+              onChanged: (_) {
+                if (_pinFieldError != null || _error != null) {
                   setState(() {
-                    _obscurePin = !_obscurePin;
+                    _pinFieldError = null;
+                    _error = null;
                   });
-                },
-              ),
-              filled: true,
-              fillColor: fieldBg,
-              border: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: borderColor,
-                  width: 1.2,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: borderColor,
-                  width: 1.2,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: Color(0xFF10B981),
-                  width: 1.6,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: Color(0xFFEF4444),
-                  width: 1.2,
-                ),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: fieldBorderRadius,
-                borderSide: const BorderSide(
-                  color: Color(0xFFEF4444),
-                  width: 1.6,
-                ),
-              ),
-              contentPadding: fieldPadding,
+                }
+              },
+              onSubmitted: (_) => _submitLogin(),
             ),
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            keyboardType: TextInputType.number,
-            maxLength: 4,
-            obscureText: _obscurePin,
-            textInputAction: TextInputAction.done,
-            onChanged: (_) {
-              if (_pinFieldError != null || _error != null) {
-                setState(() {
-                  _pinFieldError = null;
-                  _error = null;
-                });
-              }
-            },
-            onSubmitted: (_) => _submitLogin(),
           ),
         ],
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 14),
 
-        // Remember Me & Need Help row
         Wrap(
           alignment: WrapAlignment.spaceBetween,
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -1208,47 +1058,158 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           runSpacing: 4,
           children: [
             InkWell(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppRadius.roundedSm,
               onTap: () => toggleRememberMe(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 22,
-                      height: 22,
+                      width: 20,
+                      height: 20,
                       child: Checkbox(
                         value: _rememberMe,
-                        activeColor: const Color(0xFF059669),
-                        checkColor: Colors.white,
-                        side: const BorderSide(color: Color(0xFF94A3B8), width: 1.3),
+                        activeColor: palette.accent,
+                        checkColor: palette.onAccent,
+                        side: BorderSide(color: palette.hint, width: 1.3),
                         onChanged: toggleRememberMe,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: AppRadius.roundedXs,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                    Text(
                       'Remember Me',
                       style: TextStyle(
-                        color: cardTextColor,
+                        color: palette.text,
                         fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: 13.5,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            Wrap(
-              spacing: 6,
-              runSpacing: 2,
+            TextButton(
+              onPressed: () => _showForgotPasswordDialog(context),
+              style: linkStyle,
+              child: const Text('Forgot Password?'),
+            ),
+          ],
+        ),
+
+        if (_error != null) ...[
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: palette.errorBg,
+              borderRadius: AppRadius.roundedMd,
+              border: Border.all(color: palette.errorBorder),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_pinLoginAvailable) ...[
-                  TextButton(
-                    onPressed: () {
+                Icon(
+                  Icons.error_outline_rounded,
+                  color: palette.error,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      color: palette.error,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 20),
+
+        SizedBox(
+          height: 48,
+          child: FilledButton(
+            onPressed: _isLoading ? null : _login,
+            style: FilledButton.styleFrom(
+              backgroundColor: palette.accent,
+              foregroundColor: palette.onAccent,
+              disabledBackgroundColor: palette.accent.withValues(alpha: 0.55),
+              disabledForegroundColor: palette.onAccent,
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppRadius.roundedMd,
+              ),
+              textStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isLoading) ...[
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: palette.onAccent,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Flexible(
+                  child: Text(
+                    _isLoading
+                        ? 'Signing in...'
+                        : _sessionLocked
+                        ? (_isPinLogin ? 'Unlock with PIN' : 'Unlock session')
+                        : (_isPinLogin
+                              ? 'Continue with PIN'
+                              : 'Sign in securely'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        if (showAlternatives) ...[
+          SizedBox(height: isTall ? 24 : 18),
+          Row(
+            children: [
+              Expanded(child: Divider(color: palette.border)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'Other ways to sign in',
+                  style: TextStyle(color: palette.muted, fontSize: 12.5),
+                ),
+              ),
+              Expanded(child: Divider(color: palette.border)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (_pinLoginAvailable) ...[
+            _buildAlternativeButton(
+              palette,
+              icon: _isPinLogin ? Icons.password_rounded : Icons.pin_outlined,
+              label: _isPinLogin ? 'Use Password' : 'Use PIN',
+              onPressed: _isLoading
+                  ? null
+                  : () {
                       setState(() {
                         _isPinLogin = !_isPinLogin;
                         _error = null;
@@ -1257,395 +1218,105 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         _pinFieldError = null;
                       });
                     },
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 4,
-                      ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      _isPinLogin ? 'Use Password' : 'Use PIN',
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: Color(0xFF0D9488),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-                TextButton(
-                  onPressed: () => _showNeedHelpDialog(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 4,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'Need Help?',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: Color(0xFF0D9488),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => _showForgotPasswordDialog(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 4,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: Color(0xFF0D9488),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
             ),
+            const SizedBox(height: 8),
           ],
-        ),
-
-        if (_error != null) ...[
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: AppRadius.roundedSm,
-              border: Border.all(
-                color: const Color(0xFFFCA5A5),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.error_outline_rounded,
-                  color: Color(0xFFDC2626),
-                  size: 20,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(
-                      color: Color(0xFFB91C1C),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-
-        SizedBox(height: isMobile ? 14 : 16),
-
-        // Primary Login / Sign In Button
-        SizedBox(
-          width: double.infinity,
-          height: isMobile ? 46 : 48,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _login,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF059669),
-              foregroundColor: Colors.white,
-              disabledBackgroundColor:
-                  const Color(0xFF059669).withValues(alpha: 0.6),
-              disabledForegroundColor: Colors.white70,
-              elevation: 2,
-              shadowColor: const Color(0xFF059669).withValues(alpha: 0.4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: _isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 15,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          _isLoading
-                              ? 'Signing in...'
-                              : _sessionLocked
-                              ? (_isPinLogin
-                                  ? 'Unlock with PIN'
-                                  : 'Unlock session')
-                              : (_isPinLogin
-                                  ? 'Continue with PIN'
-                                  : 'Sign in securely'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: isMobile ? 13.5 : 14.5,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 15,
-                        color: Colors.white,
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-
-        // Alternative Login Options
-        if ((_isPinLogin || _sessionLocked) && _canCheckBiometrics ||
-            _sessionLocked) ...[
-          SizedBox(height: isTall ? 18 : 12),
-          const Row(
-            children: [
-              Expanded(
-                child: Divider(
-                  color: borderColor,
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Alternative Login Options',
-                  style: TextStyle(
-                    color: cardSecondaryTextColor,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Divider(
-                  color: borderColor,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isTall ? 14 : 10),
           if (_canCheckBiometrics) ...[
-            OutlinedButton.icon(
+            _buildAlternativeButton(
+              palette,
+              icon: Icons.fingerprint_rounded,
+              label: 'Use Biometrics / Windows Hello',
               onPressed: _isLoading ? null : _loginWithBiometrics,
-              icon: const Icon(
-                Icons.fingerprint_rounded,
-                size: 20,
-                color: cardTextColor,
-              ),
-              label: const Text(
-                'Use Biometrics / Windows Hello',
-                style: TextStyle(
-                  color: cardTextColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                minimumSize: Size.fromHeight(isTall ? 46 : 42),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.roundedSm,
-                ),
-                side: const BorderSide(
-                  color: borderColor,
-                  width: AppColors.borderWidth,
-                ),
-              ),
             ),
             const SizedBox(height: 8),
           ],
           if (_sessionLocked)
             TextButton.icon(
               onPressed: _isLoading ? null : _switchUser,
-              icon: Icon(
-                Icons.switch_account_outlined,
-                size: 18,
-                color: const Color(0xFF059669),
-              ),
-              label: const Text(
-                'Sign in as a different user',
-                style: TextStyle(
-                  color: Color(0xFF059669),
-                  fontWeight: FontWeight.w600,
+              style: linkStyle.copyWith(
+                padding: const WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(vertical: 10),
                 ),
               ),
+              icon: const Icon(Icons.switch_account_outlined, size: 18),
+              label: const Text('Sign in as a different user'),
             ),
         ],
 
-        SizedBox(height: isMobile ? 12 : 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.65),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.9),
-              width: 1.1,
+        SizedBox(height: isTall ? 28 : 20),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              'Trouble signing in?',
+              style: TextStyle(color: palette.muted, fontSize: 13),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.favorite_border_rounded,
-                size: 12.5,
-                color: Color(0xFF64748B),
-              ),
-              SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  'DOH Healthcare Standards • RA 10173 • AES-256 Offline',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF475569),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            TextButton(
+              onPressed: () => _showNeedHelpDialog(context),
+              style: linkStyle,
+              child: const Text('Need Help?'),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildBottomBar(
-    BuildContext context, {
-    bool isMobile = false,
-    double horizontalPadding = 48,
+  Widget _buildAlternativeButton(
+    _LoginPalette palette, {
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
   }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: palette.text,
+        minimumSize: const Size.fromHeight(46),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
+        side: BorderSide(color: palette.border),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _buildFooter(BuildContext context, _LoginPalette palette) {
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
     final orgName = settings.organizationName.isNotEmpty
         ? settings.organizationName
         : 'Madrid Rural Health Unit';
+    final style = TextStyle(color: palette.muted, fontSize: 12, height: 1.4);
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
-        border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.12),
-            width: 1.0,
-          ),
-        ),
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 14 : horizontalPadding,
-        vertical: isMobile ? 8 : 10,
-      ),
-      child: isMobile
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '(C) 2026 $orgName. All Rights Reserved • ${settings.appName} v1.0.0',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 10.5,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.info_outline_rounded,
-                      size: 11.5,
-                      color: Colors.white70,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        'Protected access • Activity is audited',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 10.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            )
-          : Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Text(
-                    '(C) 2026 $orgName. All Rights Reserved • ${settings.appName} v1.0.0',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.info_outline_rounded,
-                      size: 13,
-                      color: Colors.white70,
-                    ),
-                    SizedBox(width: 5),
-                    Text(
-                      'Protected access • Activity is audited',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.verified_user_outlined, size: 14, color: palette.muted),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'RA 10173 compliant. Records are encrypted and access is audited.',
+                textAlign: TextAlign.center,
+                style: style,
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '© 2026 $orgName. All Rights Reserved.',
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        ),
+      ],
     );
   }
 
@@ -1695,4 +1366,76 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+}
+
+/// Light and dark colors for the sign-in screen, built on the app's design
+/// tokens. Every text/background pair meets WCAG AA.
+class _LoginPalette {
+  const _LoginPalette({
+    required this.surface,
+    required this.field,
+    required this.border,
+    required this.text,
+    required this.muted,
+    required this.hint,
+    required this.accent,
+    required this.onAccent,
+    required this.accentSubtle,
+    required this.error,
+    required this.errorBg,
+    required this.errorBorder,
+    required this.warning,
+  });
+
+  /// Fallback behind the clinic photo while it loads or if it is missing.
+  static const Color forest = Color(0xFF0B231B);
+
+  final Color surface;
+  final Color field;
+  final Color border;
+  final Color text;
+  final Color muted;
+  final Color hint;
+  final Color accent;
+  final Color onAccent;
+  final Color accentSubtle;
+  final Color error;
+  final Color errorBg;
+  final Color errorBorder;
+  final Color warning;
+
+  static const light = _LoginPalette(
+    surface: AppColors.lightAppBackground,
+    field: AppColors.lightCardSurface,
+    border: Color(0xFFCBD5E1),
+    text: AppColors.lightTextPrimary,
+    muted: Color(0xFF475569),
+    hint: Color(0xFF64748B),
+    accent: AppColors.primaryEmeraldDeep,
+    onAccent: AppColors.lightAppBackground,
+    accentSubtle: Color(0x14047857),
+    error: Color(0xFFB91C1C),
+    errorBg: Color(0xFFFEF2F2),
+    errorBorder: Color(0xFFFCA5A5),
+    warning: Color(0xFFB45309),
+  );
+
+  static const dark = _LoginPalette(
+    surface: AppColors.appBackground,
+    field: AppColors.inputSurface,
+    border: AppColors.borderActive,
+    text: AppColors.textPrimary,
+    muted: Color(0xFFB4B8C0),
+    hint: AppColors.textSecondary,
+    accent: AppColors.primaryEmerald,
+    onAccent: AppColors.textOnEmerald,
+    accentSubtle: AppColors.primaryEmeraldSubtle,
+    error: AppColors.critical,
+    errorBg: AppColors.criticalBg,
+    errorBorder: AppColors.criticalBorder,
+    warning: Color(0xFFFBBF24),
+  );
+
+  static _LoginPalette of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? dark : light;
 }
