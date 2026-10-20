@@ -239,7 +239,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                     size: 22,
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -276,7 +276,9 @@ class _DocumentsPageHeader extends StatelessWidget {
               final uploadButton = canUpload
                   ? FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primaryEmerald,
+                        backgroundColor: AppColors.accent(
+                    Theme.of(context).brightness == Brightness.dark,
+                  ),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -337,7 +339,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                 size: 15,
                 color: isDark
                     ? AppColors.textTertiary
-                    : const Color(0xFF64748B),
+                    : AppColors.lightTextSecondary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -367,7 +369,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                   fontFeatures: const [FontFeature.tabularFigures()],
                   color: isDark
                       ? AppColors.textSecondary
-                      : const Color(0xFF64748B),
+                      : AppColors.lightTextSecondary,
                 ),
               ),
               if (filteredCount != totalCount) ...[
@@ -457,7 +459,7 @@ class _DocumentsToolbar extends StatelessWidget {
               prefixIcon: Icon(
                 Icons.search_rounded,
                 size: 18,
-                color: isDark ? AppColors.textTertiary : const Color(0xFF64748B),
+                color: isDark ? AppColors.textTertiary : AppColors.lightTextSecondary,
               ),
               prefixIconConstraints: const BoxConstraints(
                 minWidth: 40,
@@ -839,7 +841,7 @@ class _DocumentCard extends ConsumerWidget {
                       size: 18,
                       color: isDark
                           ? AppColors.textSecondary
-                          : const Color(0xFF64748B),
+                          : AppColors.lightTextSecondary,
                     ),
                     onSelected: (value) => _handleAction(context, ref, value),
                     itemBuilder: (context) => [
@@ -930,7 +932,7 @@ class _DocumentCard extends ConsumerWidget {
                           size: 15,
                           color: isDark
                               ? AppColors.textTertiary
-                              : const Color(0xFF94A3B8),
+                              : AppColors.lightTextMuted,
                         ),
                       ],
                     ),
@@ -960,7 +962,7 @@ class _DocumentCard extends ConsumerWidget {
                     fontSize: 12,
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                   ),
                 ),
               ],
@@ -983,7 +985,7 @@ class _DocumentCard extends ConsumerWidget {
                         size: 13,
                         color: isDark
                             ? AppColors.textTertiary
-                            : const Color(0xFF94A3B8),
+                            : AppColors.lightTextMuted,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -993,7 +995,7 @@ class _DocumentCard extends ConsumerWidget {
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: isDark
                               ? AppColors.textSecondary
-                              : const Color(0xFF64748B),
+                              : AppColors.lightTextSecondary,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -1002,7 +1004,7 @@ class _DocumentCard extends ConsumerWidget {
                         size: 13,
                         color: isDark
                             ? AppColors.textTertiary
-                            : const Color(0xFF94A3B8),
+                            : AppColors.lightTextMuted,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -1012,7 +1014,7 @@ class _DocumentCard extends ConsumerWidget {
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: isDark
                               ? AppColors.textSecondary
-                              : const Color(0xFF64748B),
+                              : AppColors.lightTextSecondary,
                         ),
                       ),
                     ],
@@ -1034,7 +1036,7 @@ class _DocumentCard extends ConsumerWidget {
                           size: 16,
                           color: isDark
                               ? AppColors.textSecondary
-                              : const Color(0xFF64748B),
+                              : AppColors.lightTextSecondary,
                         ),
                       ),
                       IconButton(
@@ -1051,7 +1053,7 @@ class _DocumentCard extends ConsumerWidget {
                           size: 16,
                           color: isDark
                               ? AppColors.textSecondary
-                              : const Color(0xFF64748B),
+                              : AppColors.lightTextSecondary,
                         ),
                       ),
                     ],
@@ -2218,7 +2220,9 @@ class _PickedFilePanel extends StatelessWidget {
                   icon: const Icon(Icons.document_scanner_rounded, size: 18),
                   label: const Text('Scan Document (Scanner / Camera)'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryEmerald,
+                    backgroundColor: AppColors.accent(
+                    Theme.of(context).brightness == Brightness.dark,
+                  ),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -2526,7 +2530,7 @@ class _EmptyDocumentsState extends StatelessWidget {
             Icon(
               Icons.folder_open_outlined,
               size: 32,
-              color: isDark ? AppColors.textTertiary : const Color(0xFF94A3B8),
+              color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
             ),
             const SizedBox(height: 12),
             Text(
@@ -2547,14 +2551,16 @@ class _EmptyDocumentsState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
               ),
             ),
             if (!hasFilters && canUpload) ...[
               const SizedBox(height: 16),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryEmerald,
+                  backgroundColor: AppColors.accent(
+                    Theme.of(context).brightness == Brightness.dark,
+                  ),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(

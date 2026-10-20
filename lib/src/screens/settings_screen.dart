@@ -268,7 +268,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
-              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+              color: isDark
+                  ? AppColors.textSecondary
+                  : AppColors.lightTextSecondary,
             ),
           ),
         ),
@@ -302,7 +304,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fontSize: 12,
                   color: isDark
                       ? AppColors.textSecondary
-                      : const Color(0xFF64748B),
+                      : AppColors.lightTextSecondary,
                 ),
               ),
               const SizedBox(height: 12),
@@ -364,7 +366,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fontSize: 12,
                   color: isDark
                       ? AppColors.textSecondary
-                      : const Color(0xFF64748B),
+                      : AppColors.lightTextSecondary,
                 ),
               ),
               const SizedBox(height: 14),
@@ -468,7 +470,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               fontSize: 12,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
-              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+              color: isDark
+                  ? AppColors.textSecondary
+                  : AppColors.lightTextSecondary,
             ),
           ),
         ),
@@ -517,7 +521,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       leading: Icon(
         icon,
         size: 18,
-        color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+        color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
       ),
       minLeadingWidth: 20,
       title: Text(
@@ -532,13 +536,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         subtitle,
         style: TextStyle(
           fontSize: 12,
-          color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+          color: isDark
+              ? AppColors.textSecondary
+              : AppColors.lightTextSecondary,
         ),
       ),
       trailing: Icon(
         Icons.chevron_right,
         size: 18,
-        color: isDark ? AppColors.textSecondary : const Color(0xFF94A3B8),
+        color: isDark ? AppColors.textSecondary : AppColors.lightTextMuted,
       ),
       enabled: onTap != null,
       onTap: onTap,
@@ -1898,14 +1904,14 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                         fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
-                            : const Color(0xFF94A3B8),
+                            : AppColors.lightTextMuted,
                       ),
                       prefixIcon: Icon(
                         Icons.search,
                         size: 16,
                         color: isDark
                             ? AppColors.textSecondary
-                            : const Color(0xFF64748B),
+                            : AppColors.lightTextSecondary,
                       ),
                       suffixIcon: _searchQuery.isEmpty
                           ? null
@@ -1965,7 +1971,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     size: 18,
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                   ),
                   onPressed: () => ref.invalidate(usersProvider),
                 ),
@@ -1989,10 +1995,10 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       color: _selectedClinicFilter == null
-                          ? AppColors.primaryEmerald
+                          ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.textSecondary
-                                : const Color(0xFF64748B)),
+                                : AppColors.lightTextSecondary),
                     ),
                     selected: _selectedClinicFilter == null,
                     shape: RoundedRectangleBorder(
@@ -2000,7 +2006,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     ),
                     side: BorderSide(
                       color: _selectedClinicFilter == null
-                          ? AppColors.primaryEmerald
+                          ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.borderSubtle
                                 : const Color(0xFFCBD5E1)),
@@ -2022,10 +2028,10 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       color: _selectedClinicFilter == _superAdminsFilter
-                          ? AppColors.primaryEmerald
+                          ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.textSecondary
-                                : const Color(0xFF64748B)),
+                                : AppColors.lightTextSecondary),
                     ),
                     selected: _selectedClinicFilter == _superAdminsFilter,
                     shape: RoundedRectangleBorder(
@@ -2033,7 +2039,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     ),
                     side: BorderSide(
                       color: _selectedClinicFilter == _superAdminsFilter
-                          ? AppColors.primaryEmerald
+                          ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.borderSubtle
                                 : const Color(0xFFCBD5E1)),
@@ -2056,10 +2062,10 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       color: _selectedClinicFilter == '__unassigned__'
-                          ? AppColors.primaryEmerald
+                          ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.textSecondary
-                                : const Color(0xFF64748B)),
+                                : AppColors.lightTextSecondary),
                     ),
                     selected: _selectedClinicFilter == '__unassigned__',
                     shape: RoundedRectangleBorder(
@@ -2067,7 +2073,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     ),
                     side: BorderSide(
                       color: _selectedClinicFilter == '__unassigned__'
-                          ? AppColors.primaryEmerald
+                          ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.borderSubtle
                                 : const Color(0xFFCBD5E1)),
@@ -2094,10 +2100,10 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                           fontWeight: FontWeight.w600,
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: isSelected
-                              ? AppColors.primaryEmerald
+                              ? AppColors.accent(isDark)
                               : (isDark
                                     ? AppColors.textSecondary
-                                    : const Color(0xFF64748B)),
+                                    : AppColors.lightTextSecondary),
                         ),
                         selected: isSelected,
                         shape: RoundedRectangleBorder(
@@ -2105,7 +2111,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                         ),
                         side: BorderSide(
                           color: isSelected
-                              ? AppColors.primaryEmerald
+                              ? AppColors.accent(isDark)
                               : (isDark
                                     ? AppColors.borderSubtle
                                     : const Color(0xFFCBD5E1)),
@@ -2161,7 +2167,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                 : const Color(0xFF0F766E),
             unselectedLabelColor: isDark
                 ? AppColors.textSecondary
-                : const Color(0xFF64748B),
+                : AppColors.lightTextSecondary,
             labelStyle: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -2242,7 +2248,9 @@ class _StaffAccountsTab extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: onAddUser,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryEmerald,
+                backgroundColor: AppColors.accent(
+                  Theme.of(context).brightness == Brightness.dark,
+                ),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 minimumSize: const Size(0, 38),
@@ -2587,7 +2595,7 @@ class _UserManagementTile extends ConsumerWidget {
                         fontSize: 12,
                         color: isDark
                             ? AppColors.textSecondary
-                            : const Color(0xFF64748B),
+                            : AppColors.lightTextSecondary,
                       ),
                     ),
                     Container(
@@ -2637,21 +2645,27 @@ class _UserManagementTile extends ConsumerWidget {
                               width: 1,
                             ),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.shield_outlined,
                                 size: 11,
-                                color: AppColors.primaryEmerald,
+                                color: AppColors.accent(
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark,
+                                ),
                               ),
-                              SizedBox(width: 4),
+                              const SizedBox(width: 4),
                               Text(
                                 'All Facilities',
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.primaryEmerald,
+                                  color: AppColors.accent(
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark,
+                                  ),
                                 ),
                               ),
                             ],
@@ -2691,7 +2705,7 @@ class _UserManagementTile extends ConsumerWidget {
                                     size: 11,
                                     color: isDark
                                         ? AppColors.textSecondary
-                                        : const Color(0xFF64748B),
+                                        : AppColors.lightTextSecondary,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
@@ -2766,7 +2780,7 @@ class _UserManagementTile extends ConsumerWidget {
                       size: 18,
                       color: isDark
                           ? AppColors.textSecondary
-                          : const Color(0xFF64748B),
+                          : AppColors.lightTextSecondary,
                     ),
                     tooltip: 'User options',
                     onSelected: (val) {
@@ -2853,7 +2867,7 @@ class _UserManagementTile extends ConsumerWidget {
                     icon: const Icon(Icons.lock_reset_outlined, size: 16),
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                     onPressed: () => _handleResetPassword(context, ref),
                   ),
                 if (canEdit)
@@ -2862,7 +2876,7 @@ class _UserManagementTile extends ConsumerWidget {
                     icon: const Icon(Icons.edit_outlined, size: 16),
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                     onPressed: onEdit,
                   ),
                 if (canDeactivate && user.isActive && onDeactivate != null)
@@ -2871,7 +2885,7 @@ class _UserManagementTile extends ConsumerWidget {
                     icon: const Icon(Icons.person_off_outlined, size: 16),
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                     onPressed: onDeactivate,
                   ),
                 if (canDelete)

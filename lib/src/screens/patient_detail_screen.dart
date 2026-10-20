@@ -685,7 +685,9 @@ class _PatientActionsBar extends StatelessWidget {
                   if (onIssueCertificate != null)
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primaryEmerald,
+                        backgroundColor: AppColors.accent(
+                    Theme.of(context).brightness == Brightness.dark,
+                  ),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -1883,7 +1885,7 @@ class _SectionPanel extends StatelessWidget {
                 size: 16,
                 color: isDark
                     ? AppColors.textSecondary
-                    : const Color(0xFF64748B),
+                    : AppColors.lightTextSecondary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -1936,7 +1938,7 @@ class _InfoRow extends StatelessWidget {
                   style: TextStyle(
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                     fontWeight: FontWeight.w500,
                     fontSize: 12.5,
                   ),
@@ -1990,7 +1992,7 @@ class _InfoChip extends StatelessWidget {
           Icon(
             icon,
             size: 13,
-            color: isDark ? AppColors.textTertiary : const Color(0xFF64748B),
+            color: isDark ? AppColors.textTertiary : AppColors.lightTextSecondary,
           ),
           const SizedBox(width: 5),
           Text(

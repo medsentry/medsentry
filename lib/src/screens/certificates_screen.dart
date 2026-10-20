@@ -120,7 +120,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       size: 22,
                       color: isDark
                           ? AppColors.textSecondary
-                          : const Color(0xFF64748B),
+                          : AppColors.lightTextSecondary,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -174,7 +174,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       size: 15,
                       color: isDark
                           ? AppColors.textTertiary
-                          : const Color(0xFF64748B),
+                          : AppColors.lightTextSecondary,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -203,7 +203,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         fontSize: 12,
                         color: isDark
                             ? AppColors.textSecondary
-                            : const Color(0xFF64748B),
+                            : AppColors.lightTextSecondary,
                       ),
                     ),
                   ],
@@ -305,7 +305,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               Icon(
                 Icons.assignment_outlined,
                 size: 18,
-                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -639,7 +639,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             children: [
               FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryEmerald,
+                  backgroundColor: AppColors.accent(
+                    Theme.of(context).brightness == Brightness.dark,
+                  ),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -751,7 +753,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               Icon(
                 Icons.preview_outlined,
                 size: 16,
-                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
               ),
               const SizedBox(width: 8),
               Text(
@@ -1098,7 +1100,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               prefixIcon: Icon(
                 Icons.search_rounded,
                 size: 18,
-                color: isDark ? AppColors.textTertiary : const Color(0xFF64748B),
+                color: isDark ? AppColors.textTertiary : AppColors.lightTextSecondary,
               ),
               prefixIconConstraints: const BoxConstraints(
                 minWidth: 40,
@@ -1168,7 +1170,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                           Icon(
                             Icons.folder_open_outlined,
                             size: 32,
-                            color: isDark ? AppColors.textTertiary : const Color(0xFF94A3B8),
+                            color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -1188,7 +1190,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 : 'Try clearing the search query to see all issued certificates.',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                              color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                             ),
                           ),
                         ],
@@ -1420,7 +1422,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 fontSize: 12,
                                 color: isDark
                                     ? AppColors.textSecondary
-                                    : const Color(0xFF64748B),
+                                    : AppColors.lightTextSecondary,
                               ),
                             ),
                           ],
@@ -1439,7 +1441,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 size: 13,
                                 color: isDark
                                     ? AppColors.textTertiary
-                                    : const Color(0xFF94A3B8),
+                                    : AppColors.lightTextMuted,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -1451,7 +1453,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   fontWeight: FontWeight.w500,
                                   color: isDark
                                       ? AppColors.textSecondary
-                                      : const Color(0xFF64748B),
+                                      : AppColors.lightTextSecondary,
                                 ),
                               ),
                               if (item.licenseNumber != null &&
@@ -1473,7 +1475,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 size: 12,
                                 color: isDark
                                     ? AppColors.textTertiary
-                                    : const Color(0xFF94A3B8),
+                                    : AppColors.lightTextMuted,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -1485,7 +1487,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   fontFeatures: const [FontFeature.tabularFigures()],
                                   color: isDark
                                       ? AppColors.textSecondary
-                                      : const Color(0xFF64748B),
+                                      : AppColors.lightTextSecondary,
                                 ),
                               ),
                             ],

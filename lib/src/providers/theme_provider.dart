@@ -268,15 +268,17 @@ ThemeData buildMedSentryTheme(
   );
 
   final semanticColors = SemanticColors(
-    normal: isDark ? AppColors.success : const Color(0xFF16A34A),
+    // Light-mode badge text: 6.5:1 on its green tint (was 3.0:1).
+    normal: isDark ? AppColors.success : const Color(0xFF166534),
     normalBg: isDark ? AppColors.successBg : const Color(0xFFDCFCE7),
-    warning: isDark ? AppColors.pending : const Color(0xFFD97706),
+    warning: isDark ? AppColors.pending : const Color(0xFFB45309),
     warningBg: isDark ? AppColors.pendingBg : const Color(0xFFFEF3C7),
     critical: isDark ? AppColors.critical : const Color(0xFFDC2626),
     criticalBg: isDark ? AppColors.criticalBg : const Color(0xFFFEE2E2),
-    info: isDark ? AppColors.info : const Color(0xFF2563EB),
+    // Light-mode badge text: 5.5:1 on its blue tint (was 4.2:1).
+    info: isDark ? AppColors.info : const Color(0xFF1D4ED8),
     infoBg: isDark ? AppColors.infoBg : const Color(0xFFDBEAFE),
-    neutral: isDark ? AppColors.neutral : const Color(0xFF64748B),
+    neutral: isDark ? AppColors.neutral : AppColors.lightTextSecondary,
     neutralBg: isDark ? AppColors.neutralBg : const Color(0xFFF1F5F9),
     analytical: isDark ? AppColors.analytical : const Color(0xFF7C3AED),
     analyticalBg: isDark ? AppColors.analyticalBg : const Color(0xFFEDE9FE),
@@ -325,7 +327,9 @@ ThemeData buildMedSentryTheme(
       filled: true,
       fillColor: isDark ? AppColors.inputSurface : AppColors.lightInputSurface,
       hintStyle: TextStyle(
-        color: textSecondaryColor.withValues(alpha: 0.6),
+        color: isDark
+            ? textSecondaryColor.withValues(alpha: 0.6)
+            : AppColors.lightTextMuted,
         fontSize: 14,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

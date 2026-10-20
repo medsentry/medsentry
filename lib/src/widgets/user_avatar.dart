@@ -56,9 +56,9 @@ class UserAvatar extends StatelessWidget {
 
   Widget _buildFallback(BuildContext context, bool isDark) {
     final bg = backgroundColor ??
-        (isDark ? AppColors.primaryEmeraldSubtle : AppColors.primaryEmerald.withValues(alpha: 0.15));
+        (isDark ? AppColors.primaryEmeraldSubtle : AppColors.primaryEmeraldDeep.withValues(alpha: 0.10));
     final fg = foregroundColor ??
-        (isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark);
+        (isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDeep);
 
     return Container(
       width: radius * 2,

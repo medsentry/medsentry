@@ -128,7 +128,7 @@ class ProfileScreen extends ConsumerWidget {
                         user.email,
                         style: TextStyle(
                           fontSize: 13,
-                          color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -280,7 +280,7 @@ class ProfileScreen extends ConsumerWidget {
                       : 'No 4-digit access PIN is currently configured for this account. Set up a PIN in Settings for fast, single-tap terminal unlock.',
                   style: TextStyle(
                     fontSize: 13,
-                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -357,7 +357,7 @@ class ProfileScreen extends ConsumerWidget {
                   'Personalize your terminal appearance, dark mode, and clinical accent colors.',
                   style: TextStyle(
                     fontSize: 13,
-                    color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -462,7 +462,9 @@ class ProfileScreen extends ConsumerWidget {
                                     ? FontWeight.w700
                                     : FontWeight.w500,
                                 color: isSelected
-                                    ? accent.primaryColor
+                                    ? (isDark
+                                          ? accent.primaryColor
+                                          : Color.lerp(accent.primaryColor, Colors.black, 0.3))
                                     : (isDark ? AppColors.textPrimary : const Color(0xFF334155)),
                               ),
                             ),
@@ -489,7 +491,7 @@ class ProfileScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondaryColor = isDark
         ? AppColors.textSecondary
-        : const Color(0xFF64748B);
+        : AppColors.lightTextSecondary;
     return Row(
       children: [
         Icon(icon, size: 16, color: secondaryColor),
