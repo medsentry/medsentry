@@ -1,7 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/services.dart';
 import 'package:medsentry/src/models/patient.dart';
 import 'package:medsentry/src/models/system_settings.dart';
 import 'package:medsentry/src/services/certificate_service.dart';
@@ -16,9 +16,10 @@ void main() {
   final patient = Patient(id: 'P-1', firstName: 'Ana', lastName: 'Santos');
 
   setUpAll(() async {
-    final asset = await rootBundle.load('assets/images/rhu_doctors.png');
-    logoDataUri =
-        'data:image/png;base64,${base64Encode(asset.buffer.asUint8List())}';
+    // A committed PNG read from disk: rhu_doctors.png never existed in the
+    // repository and only loaded from a stale local build cache.
+    final bytes = File('assets/images/madrid_seal.png').readAsBytesSync();
+    logoDataUri = 'data:image/png;base64,${base64Encode(bytes)}';
     settings = SystemSettings(
       clinicName: 'Madrid Rural Health Unit',
       logoDataUri: logoDataUri,

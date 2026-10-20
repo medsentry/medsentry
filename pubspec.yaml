@@ -104,8 +104,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Only images the app displays are bundled. The folder also holds documents
+  # for the project paper (use-case diagrams, seal) that would otherwise be
+  # downloaded by every user on first load.
   assets:
-    - assets/images/
+    - assets/images/rhu_background.jpg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

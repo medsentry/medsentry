@@ -17,7 +17,6 @@ const APP_SHELL_ASSETS = [
   'assets/AssetManifest.bin.json',
   'assets/FontManifest.json',
   'assets/fonts/MaterialIcons-Regular.otf',
-  'assets/assets/images/rhu_doctors.jpg',
   'canvaskit/canvaskit.js',
   'canvaskit/canvaskit.wasm',
 ];
