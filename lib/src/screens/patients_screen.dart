@@ -123,10 +123,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                 );
                 final filteredPatients = _filterPatients(patients);
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _PatientsPageHeader(
+                final header = _PatientsPageHeader(
                       totalCount: patients.length,
                       filteredCount: filteredPatients.length,
                       barangayCount: barangays.length,
@@ -135,8 +132,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                           : null,
                       onExportRegistry: () =>
                           _exportPatientRegistry(filteredPatients),
-                    ),
-                    _PatientsToolbar(
+                    );
+                final toolbar = _PatientsToolbar(
                       searchController: _searchController,
                       searchQuery: _searchQuery,
                       barangayFilter: _barangayFilter,
@@ -165,19 +162,31 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                       onSortModeChanged: (value) =>
                           setState(() => _sortMode = value),
                       onClearFilters: _clearFilters,
-                    ),
-                    Expanded(
-                      child: filteredPatients.isEmpty
-                          ? _EmptyPatientsState(
-                              hasFilters: _hasActiveFilters,
-                              onClearFilters: _clearFilters,
-                              onAddPatient: canRegisterPatients
-                                  ? () => _showAddPatientDialog(context)
-                                  : null,
-                            )
-                          : _buildMainContent(context, filteredPatients),
-                    ),
-                  ],
+                    );
+                final list = filteredPatients.isEmpty
+                    ? _EmptyPatientsState(
+                        hasFilters: _hasActiveFilters,
+                        onClearFilters: _clearFilters,
+                        onAddPatient: canRegisterPatients
+                            ? () => _showAddPatientDialog(context)
+                            : null,
+                      )
+                    : _buildMainContent(context, filteredPatients);
+
+                // On phones the header and filters take most of the screen;
+                // scroll them away with the list so patients stay visible.
+                if (ResponsiveLayout.isMobile(context)) {
+                  return NestedScrollView(
+                    headerSliverBuilder: (context, _) => [
+                      SliverToBoxAdapter(child: header),
+                      SliverToBoxAdapter(child: toolbar),
+                    ],
+                    body: list,
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [header, toolbar, Expanded(child: list)],
                 );
               },
               loading: () => const LoadingState(),
@@ -637,7 +646,10 @@ class _PatientsPageHeader extends StatelessWidget {
                     : const Color(0xFFE2E8F0),
               ),
             ),
-            child: Row(
+            // Wraps onto a second line on phones instead of overflowing.
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 4,
               children: [
                 Icon(
                   Icons.query_stats_rounded,

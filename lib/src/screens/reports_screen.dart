@@ -172,7 +172,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                 ),
                 child: const Text(
-                  'DOH FHSIS & AO 2021-0037 COMPLIANT',
+                  // Describes the format; compliance itself must be
+                  // confirmed by the RHU / DOH, not asserted by the app.
+                  'BASED ON DOH FHSIS FORMAT',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -312,6 +314,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 height: 40,
                 child: DropdownButtonFormField<ReportDatePreset>(
                   initialValue: _draftFilters.preset,
+                  // Fixed-width field: long preset names truncate instead of
+                  // overflowing.
+                  isExpanded: true,
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),

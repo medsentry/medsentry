@@ -164,7 +164,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
                   ),
                 ),
-                child: Row(
+                // Wraps onto a second line on phones instead of overflowing.
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  runSpacing: 4,
                   children: [
                     Icon(
                       Icons.query_stats_rounded,
@@ -195,31 +198,12 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       ),
                     ),
                     Text(
-                      'DOH AO No. 2021-0037 standard',
+                      'Based on DOH AO No. 2021-0037',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark
                             ? AppColors.textSecondary
                             : const Color(0xFF64748B),
-                      ),
-                    ),
-                    Text(
-                      ' · ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark
-                            ? AppColors.textTertiary
-                            : AppColors.lightTextMuted,
-                      ),
-                    ),
-                    Text(
-                      'Anti-tamper QR active',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? AppColors.primaryEmerald
-                            : const Color(0xFF0F766E),
                       ),
                     ),
                   ],
@@ -374,22 +358,29 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         color: isDark ? AppColors.pending : const Color(0xFFD97706),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        '1-Click Clinical Presets',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.5,
-                          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                      Flexible(
+                        child: Text(
+                          '1-Click Clinical Presets',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                            color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                          ),
                         ),
                       ),
-                      const Spacer(),
-                      Text(
-                        'Tap to prefill findings',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark
-                              ? AppColors.textTertiary
-                              : AppColors.lightTextMuted,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tap to prefill findings',
+                          textAlign: TextAlign.end,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppColors.textTertiary
+                                : AppColors.lightTextMuted,
+                          ),
                         ),
                       ),
                     ],
@@ -772,8 +763,12 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
                 ),
               ),
+              const SizedBox(width: 8),
               const Spacer(),
-              Container(
+              // Long clinic names truncate instead of pushing the row wide.
+              Flexible(
+                flex: 4,
+                child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
@@ -784,6 +779,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 ),
                 child: Text(
                   'A4 Standard • $clinicName',
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10,
                     color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
@@ -791,6 +787,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
+              ),
               ),
             ],
           ),
