@@ -149,6 +149,27 @@ void main() {
     );
   });
 
+  test('signing out clears patient data but keeps clinic branding', () async {
+    await db.insertClinic(
+      const Clinic(id: 'clinic-a', name: 'RHU Parang', code: 'RHU-PARANG'),
+    );
+    await db.updateSystemSettings(
+      (await db.getSystemSettings()).copyWith(clinicName: 'RHU Parang'),
+    );
+    await db.insertPatient(patient('p1'));
+    await db.insertDocument(document('d1', 'p1', '/files/d1.enc'));
+    await db.setSyncCursor('audit_logs:user-1', DateTime.utc(2026, 10, 20));
+
+    final paths = await db.clearSignedInData();
+
+    expect(paths, ['/files/d1.enc']);
+    expect(await db.getAllPatients(includeArchived: true), isEmpty);
+    expect(await db.getDocuments(), isEmpty);
+    expect(await db.getSyncCursor('audit_logs:user-1'), isNull);
+    expect((await db.getSystemSettings()).clinicName, 'RHU Parang');
+    expect(await db.getAllClinics(), hasLength(1));
+  });
+
   test('sync cursors persist per key', () async {
     final at = DateTime.utc(2026, 10, 20, 8);
     await db.setSyncCursor('audit_logs:user-1', at);

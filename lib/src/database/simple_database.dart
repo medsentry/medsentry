@@ -1121,6 +1121,34 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
+  /// Removes patient, document, account and audit records from this device,
+  /// keeping clinic branding and device preferences. Returns the local
+  /// document file paths so the caller can delete the files. Callers must
+  /// first confirm nothing is waiting to sync.
+  Future<List<String>> clearSignedInData() async {
+    await _ensureLoaded();
+    final documentPaths = [
+      for (final document in _documents.values)
+        if (document.filePath.trim().isNotEmpty) document.filePath,
+    ];
+    _patients.clear();
+    _documents.clear();
+    _users.clear();
+    _userPasswordHashes.clear();
+    _auditLogs.clear();
+    _generatedReports.clear();
+    _certificates.clear();
+    _notifications.clear();
+    _syncDeletes.clear();
+    _purgedPatientIds.clear();
+    _lastUserId = null;
+    // Incremental pulls must start over, or the next account would skip
+    // every audit entry and deletion recorded before these cursors.
+    _preferences.removeWhere((key, _) => key.startsWith('sync_cursor:'));
+    await _saveToDisk();
+    return documentPaths;
+  }
+
   Future<int> getTodayPatientCount({String? clinicId}) async {
     await _ensureLoaded();
     final now = DateTime.now();

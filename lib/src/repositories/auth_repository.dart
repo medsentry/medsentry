@@ -9,6 +9,7 @@ import '../models/audit_log.dart';
 import '../models/login_challenge.dart';
 import '../models/user.dart';
 import '../services/audit_service.dart';
+import '../services/document_service.dart';
 import '../utils/password_crypto.dart';
 import 'otp_gateway.dart';
 
@@ -1493,6 +1494,25 @@ class AuthRepository {
         entityId: userId,
         description: 'User logged out',
       );
+    }
+
+    await _clearBrowserDataAfterLogout();
+  }
+
+  /// Browsers are often shared and keep this data readable in developer
+  /// tools, so a full sign-out removes patient data from the browser. It is
+  /// kept while changes are still waiting to sync, so nothing is lost; the
+  /// desktop app keeps its data in the signed-in OS account's folder.
+  Future<void> _clearBrowserDataAfterLogout() async {
+    if (!kIsWeb) return;
+    if (await _db.getPendingSyncCount() > 0) return;
+    final documentPaths = await _db.clearSignedInData();
+    for (final path in documentPaths) {
+      try {
+        await DocumentService.deleteDocument(path);
+      } catch (_) {
+        // A missing file is already the desired end state.
+      }
     }
   }
 
