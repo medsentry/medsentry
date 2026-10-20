@@ -32,6 +32,68 @@ async function clearCacheAndReload() {
 }
 window.clearCacheAndReload = clearCacheAndReload;
 
+// Custom branding set by a Super Admin. The app saves it here so the loading
+// screen can show it before Flutter starts. The logo is shrunk first because
+// an uploaded logo can be several MB and localStorage holds about 5 MB.
+var BRAND_KEY = 'medsentry-brand';
+var BRAND_LOGO_SIZE = 128;
+
+function applyStartupBrand() {
+  var brand;
+  try {
+    brand = JSON.parse(localStorage.getItem(BRAND_KEY) || 'null');
+  } catch (e) {
+    return;
+  }
+  if (!brand) return;
+  var title = document.querySelector('#loading-container .loading-title');
+  if (title && typeof brand.name === 'string' && brand.name.trim()) {
+    title.textContent = brand.name;
+  }
+  if (typeof brand.logo === 'string' && brand.logo.indexOf('data:image/') === 0) {
+    var box = document.querySelector('#loading-container .loading-logo');
+    if (box) {
+      var img = document.createElement('img');
+      img.className = 'loading-logo-image';
+      img.alt = '';
+      img.src = brand.logo;
+      box.replaceChildren(img);
+      box.classList.add('has-custom-logo');
+    }
+    var icon = document.querySelector('link[rel="icon"]');
+    if (icon) icon.setAttribute('href', brand.logo);
+  }
+}
+applyStartupBrand();
+
+function shrinkLogo(dataUri) {
+  return new Promise(function(resolve) {
+    var img = new Image();
+    img.onload = function() {
+      var scale = Math.min(1, BRAND_LOGO_SIZE / Math.max(img.width, img.height));
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = function() { resolve(''); };
+    img.src = dataUri;
+  });
+}
+
+window.medsentryRememberBrand = async function(name, logoDataUri) {
+  var logo = '';
+  if (logoDataUri && logoDataUri.indexOf('data:image/') === 0) {
+    logo = await shrinkLogo(logoDataUri);
+  }
+  try {
+    localStorage.setItem(BRAND_KEY, JSON.stringify({ name: name || '', logo: logo }));
+  } catch (e) {
+    console.warn('[MedSentry] Could not save branding for the loading screen:', e);
+  }
+};
+
 // Keep the shell visible until Flutter confirms that its first frame rendered.
 var loaderHidden = false;
 var bootTimeout;

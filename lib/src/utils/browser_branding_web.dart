@@ -1,3 +1,6 @@
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+
 import 'package:web/web.dart' as web;
 
 void updateBrowserBrand({
@@ -16,4 +19,14 @@ void updateBrowserBrand({
         'href',
         logoDataUri.isEmpty ? 'icons/Icon-192.png' : logoDataUri,
       );
+
+  // Lets the loading screen in index.html show this brand on the next start
+  // (see medsentryRememberBrand in web/app_startup.js).
+  if (globalContext.has('medsentryRememberBrand')) {
+    globalContext.callMethod(
+      'medsentryRememberBrand'.toJS,
+      appName.toJS,
+      logoDataUri.toJS,
+    );
+  }
 }
