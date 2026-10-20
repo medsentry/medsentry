@@ -23,6 +23,9 @@ void main() {
     await Supabase.initialize(
       url: 'http://127.0.0.1:9',
       publishableKey: 'test-key',
+      // No deep-link listener: its plugin does not exist in tests, and its
+      // late error failed whichever test happened to be running.
+      authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
     );
   });
 
