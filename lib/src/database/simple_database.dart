@@ -506,6 +506,41 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
+  /// Failed PIN unlock attempts for [userId]. Kept on disk so closing or
+  /// reloading the app does not reset the lockout.
+  Future<({int recent, int total, DateTime? lockedUntil})> getPinGuard(
+    String userId,
+  ) async {
+    await _ensureLoaded();
+    final raw = _preferences['pin_guard:$userId'];
+    if (raw is! Map) return (recent: 0, total: 0, lockedUntil: null);
+    final until = raw['locked_until'];
+    return (
+      recent: (raw['recent'] as num?)?.toInt() ?? 0,
+      total: (raw['total'] as num?)?.toInt() ?? 0,
+      lockedUntil: until is String ? DateTime.tryParse(until) : null,
+    );
+  }
+
+  Future<void> setPinGuard(
+    String userId, {
+    required int recent,
+    required int total,
+    DateTime? lockedUntil,
+  }) async {
+    await _ensureLoaded();
+    if (recent == 0 && total == 0 && lockedUntil == null) {
+      if (_preferences.remove('pin_guard:$userId') == null) return;
+    } else {
+      _preferences['pin_guard:$userId'] = {
+        'recent': recent,
+        'total': total,
+        'locked_until': lockedUntil?.toIso8601String(),
+      };
+    }
+    await _saveToDisk();
+  }
+
   /// High-water marks for incremental pulls, keyed by table and account.
   Future<DateTime?> getSyncCursor(String key) async {
     await _ensureLoaded();

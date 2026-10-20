@@ -34,8 +34,6 @@ class AuthRepository {
 
   // Store last logged in user ID for PIN login
   String? _lastLoggedInUserId;
-  int _failedPinAttempts = 0;
-  DateTime? _pinLockedUntil;
 
   AuthRepository(this._db, this._auditService, {OtpGateway? otpGateway})
     : _otp = otpGateway ?? SupabaseOtpGateway();
@@ -47,6 +45,9 @@ class AuthRepository {
 
   Future<void> _setCurrentUserId(String userId) async {
     _lastLoggedInUserId = userId;
+    // Every successful sign-in (password, code, PIN or biometrics) clears
+    // the failed PIN attempt history for this account.
+    await _db.setPinGuard(userId, recent: 0, total: 0);
     try {
       await _secureStorage.write(key: _currentUserIdKey, value: userId);
       await _secureStorage.write(key: _lastUserIdKey, value: userId);
@@ -1325,20 +1326,35 @@ class AuthRepository {
   }
 
   // Login with PIN - used by auth provider
+  /// Consecutive failures that lock PIN unlock for [pinLockDuration].
+  static const int pinAttemptsPerLock = 5;
+  static const Duration pinLockDuration = Duration(minutes: 5);
+
+  /// Consecutive failures after which PIN unlock is disabled until the next
+  /// successful sign-in. A 4-digit PIN has only 10,000 values, so timed
+  /// lockouts alone still allow it to be guessed within days.
+  static const int pinAttemptsBeforePasswordRequired = 10;
+
   Future<User?> loginWithPin(String pin) async {
     // Use the last logged in user ID for PIN login
-    final lockedUntil = _pinLockedUntil;
+    final userId = await _getLastLoggedInUserId();
+    if (userId == null) {
+      throw Exception('No recent user found for PIN login.');
+    }
+
+    final guard = await _db.getPinGuard(userId);
+    if (guard.total >= pinAttemptsBeforePasswordRequired) {
+      throw Exception(
+        'Too many incorrect PINs. Sign in with your email and password.',
+      );
+    }
+    final lockedUntil = guard.lockedUntil;
     if (lockedUntil != null && DateTime.now().isBefore(lockedUntil)) {
       final minutes = lockedUntil.difference(DateTime.now()).inMinutes;
       final seconds = lockedUntil.difference(DateTime.now()).inSeconds % 60;
       throw Exception(
         'PIN login locked. Try again in ${minutes}m ${seconds}s.',
       );
-    }
-
-    final userId = await _getLastLoggedInUserId();
-    if (userId == null) {
-      throw Exception('No recent user found for PIN login.');
     }
 
     debugPrint('Attempting PIN login for user: $userId');
@@ -1351,9 +1367,28 @@ class AuthRepository {
     final isValid = await verifyPin(userId, pin);
     if (!isValid) {
       debugPrint('Invalid PIN');
-      _failedPinAttempts++;
-      if (_failedPinAttempts >= 5) {
-        _pinLockedUntil = DateTime.now().add(const Duration(minutes: 5));
+      final recent = guard.recent + 1;
+      final total = guard.total + 1;
+      if (total >= pinAttemptsBeforePasswordRequired) {
+        await _db.setPinGuard(userId, recent: 0, total: total);
+        await _auditService.logAction(
+          userId: userId,
+          action: AuditAction.login,
+          entityType: 'user',
+          entityId: userId,
+          description: 'Failed PIN login attempt - PIN unlock disabled',
+        );
+        throw Exception(
+          'Too many incorrect PINs. Sign in with your email and password.',
+        );
+      }
+      if (recent >= pinAttemptsPerLock) {
+        await _db.setPinGuard(
+          userId,
+          recent: 0,
+          total: total,
+          lockedUntil: DateTime.now().add(pinLockDuration),
+        );
         await _auditService.logAction(
           userId: userId,
           action: AuditAction.login,
@@ -1365,6 +1400,7 @@ class AuthRepository {
           'Too many failed attempts. PIN login locked for 5 minutes.',
         );
       }
+      await _db.setPinGuard(userId, recent: recent, total: total);
       await _auditService.logAction(
         userId: userId,
         action: AuditAction.login,
@@ -1380,8 +1416,6 @@ class AuthRepository {
       // Update last login
       await _db.updateUserLastLogin(userId);
       await _setCurrentUserId(userId);
-      _failedPinAttempts = 0;
-      _pinLockedUntil = null;
       await unlockSession();
       unawaited(ensureOnlineSession());
 
@@ -1416,8 +1450,6 @@ class AuthRepository {
       // Update last login
       await _db.updateUserLastLogin(userId);
       await _setCurrentUserId(userId);
-      _failedPinAttempts = 0;
-      _pinLockedUntil = null;
       await unlockSession();
       unawaited(ensureOnlineSession());
 
@@ -1442,6 +1474,8 @@ class AuthRepository {
 
     final user = await getUserById(userId);
     if (user == null || !user.isActive || !user.pinEnabled) return false;
+    final guard = await _db.getPinGuard(userId);
+    if (guard.total >= pinAttemptsBeforePasswordRequired) return false;
     if (!await _isOtpTrustValid(user)) return false;
     if (user.pinHash != null) return true;
 
@@ -1483,8 +1517,6 @@ class AuthRepository {
     await _db.setLastUserId(null);
     await _clearOtpVerified();
     _lastLoggedInUserId = null;
-    _failedPinAttempts = 0;
-    _pinLockedUntil = null;
 
     if (userId != null) {
       await _auditService.logAction(
