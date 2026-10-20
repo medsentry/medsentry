@@ -69,12 +69,30 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen>
       );
     }
 
-    final staffCount = (ref.watch(usersProvider).valueOrNull ?? const [])
-        .where((user) => user.clinicId == clinic!.id)
+    final facilityId = clinic.id;
+    final staff = (ref.watch(usersProvider).valueOrNull ?? const [])
+        .where((user) => user.clinicId == facilityId)
+        .toList();
+    final staffCount = staff.length;
+    final activeStaff = staff.where((user) => user.isActive).length;
+    final patients = (ref.watch(patientsProvider).valueOrNull ?? const [])
+        .where((patient) => patient.clinicId == facilityId)
+        .toList();
+    final patientCount = patients.length;
+    final now = DateTime.now();
+    final newThisMonth = patients.where((patient) {
+      final created = patient.createdAt?.toLocal();
+      return created != null &&
+          created.year == now.year &&
+          created.month == now.month;
+    }).length;
+    final documentCount = (ref.watch(documentsProvider).valueOrNull ?? const [])
+        .where((document) => document.clinicId == facilityId)
         .length;
-    final patientCount = (ref.watch(patientsProvider).valueOrNull ?? const [])
-        .where((patient) => patient.clinicId == clinic!.id)
-        .length;
+    final certificateCount =
+        (ref.watch(issuedCertificatesProvider).valueOrNull ?? const [])
+            .where((certificate) => certificate.clinicId == facilityId)
+            .length;
 
     return ResponsiveContentContainer(
       child: Column(
@@ -100,6 +118,35 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen>
                 StatusBadge.active(text: 'Active', showDot: true)
               else
                 StatusBadge.inactive(text: 'Inactive', showDot: true),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Compact summary: one or two lines, so the tabs keep their room
+          // on phones.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _SummaryChip(
+                icon: Icons.people_outline,
+                label: _count(patientCount, 'patient'),
+                detail: '+$newThisMonth this month',
+              ),
+              _SummaryChip(
+                icon: Icons.badge_outlined,
+                label: '$activeStaff active staff',
+                detail: staffCount > activeStaff
+                    ? '${staffCount - activeStaff} inactive'
+                    : null,
+              ),
+              _SummaryChip(
+                icon: Icons.folder_outlined,
+                label: _count(documentCount, 'document'),
+              ),
+              _SummaryChip(
+                icon: Icons.verified_outlined,
+                label: _count(certificateCount, 'certificate'),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -147,3 +194,46 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen>
     );
   }
 }
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({required this.icon, required this.label, this.detail});
+
+  final IconData icon;
+  final String label;
+  final String? detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ScreenTokens.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: t.raised,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: t.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: t.muted),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: t.text,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+          if (detail != null) ...[
+            const SizedBox(width: 6),
+            Text(detail!, style: TextStyle(fontSize: 11, color: t.muted)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String _count(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';

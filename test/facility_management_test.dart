@@ -109,6 +109,10 @@ void main() {
     expect(find.text('RHU Madrid'), findsWidgets);
     expect(find.text('Staff (1)'), findsOneWidget);
     expect(find.text('Patients (1)'), findsOneWidget);
+    // Summary counts only this facility's records.
+    expect(find.text('1 patient'), findsOneWidget);
+    expect(find.text('1 active staff'), findsOneWidget);
+    expect(find.text('0 documents'), findsOneWidget);
     expect(find.textContaining('Mara'), findsWidgets);
     expect(find.textContaining('Lito'), findsNothing);
 
