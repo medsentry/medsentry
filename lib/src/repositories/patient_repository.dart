@@ -277,6 +277,7 @@ class PatientRepository {
       lastVisitDate: existing.lastVisitDate,
       syncStatus: existing.syncStatus == 0 ? 2 : existing.syncStatus,
       syncError: null,
+      serverUpdatedAt: existing.serverUpdatedAt,
       category:
           patientCategoryFromDateOfBirth(
             nullable('dateOfBirth', dateOfBirth, existing.dateOfBirth),

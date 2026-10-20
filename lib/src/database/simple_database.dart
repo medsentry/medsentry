@@ -1421,7 +1421,10 @@ class SimpleDatabase {
             )) {
           return;
         }
-        _patients[patient.id] = patient.copyWith(syncStatus: 0);
+        _patients[patient.id] = patient.copyWith(
+          syncStatus: 0,
+          serverUpdatedAt: patient.updatedAt,
+        );
       case 'documents':
         final document = MedicalDocument.fromJson(raw);
         final existing = _documents[document.id];

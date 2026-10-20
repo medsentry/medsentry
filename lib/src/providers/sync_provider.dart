@@ -646,21 +646,61 @@ class SyncService extends StateNotifier<SyncServiceState> {
           final payload = patient.toJson()
             ..remove('sync_status')
             ..remove('sync_error')
+            ..remove('server_updated_at')
             ..remove('updated_at')
             ..['created_at'] ??= DateTime.now().toUtc().toIso8601String();
           payload['clinic_id'] = clinicId;
-          final saved = await _supabase
-              .from('patients')
-              .upsert(payload)
-              .select('updated_at')
-              .single();
+
+          final Map<String, dynamic> saved;
+          final base = patient.serverUpdatedAt;
+          if (base != null) {
+            // Apply the edit only to the version this device last saw, so a
+            // newer edit from another device is never silently overwritten.
+            final rows = await _supabase
+                .from('patients')
+                .update(payload)
+                .eq('id', patient.id)
+                // Postgres keeps microseconds but web DateTime keeps only
+                // milliseconds, so match the millisecond the base falls in.
+                .gte('updated_at', _floorToMillisecond(base).toIso8601String())
+                .lt(
+                  'updated_at',
+                  _floorToMillisecond(
+                    base,
+                  ).add(const Duration(milliseconds: 1)).toIso8601String(),
+                )
+                .select('updated_at');
+            if (rows.isEmpty) {
+              if (await _resolvePatientConflict(db, patient)) {
+                synced++;
+                continue;
+              }
+              // The row is gone without a tombstone yet; upload it again.
+              saved = await _supabase
+                  .from('patients')
+                  .upsert(payload)
+                  .select('updated_at')
+                  .single();
+            } else {
+              saved = rows.first;
+            }
+          } else {
+            saved = await _supabase
+                .from('patients')
+                .upsert(payload)
+                .select('updated_at')
+                .single();
+          }
+
+          final serverUpdatedAt = _serverTimestamp(saved) ?? DateTime.now();
           final currentLocal = await db.getPatientById(patient.id);
           if (currentLocal != null &&
               currentLocal.updatedAt == patient.updatedAt) {
             await db.updatePatient(
               currentLocal.copyWith(
                 clinicId: clinicId,
-                updatedAt: _serverTimestamp(saved) ?? DateTime.now(),
+                updatedAt: serverUpdatedAt,
+                serverUpdatedAt: serverUpdatedAt,
                 syncStatus: _synced,
               ),
             );
@@ -672,6 +712,9 @@ class SyncService extends StateNotifier<SyncServiceState> {
               await db.applyRemoteDelete('patients', patient.id),
             );
             continue;
+          }
+          if (_isDuplicatePatientIdentifier(error)) {
+            await _notifyDuplicatePatient(db, patient);
           }
           debugPrint(
             'Patient sync failed (${patient.id}): $error\n$stackTrace',
@@ -884,6 +927,98 @@ class SyncService extends StateNotifier<SyncServiceState> {
         code == 'P0002' ||
         code == 'MS410' ||
         code == 'PGRST204';
+  }
+
+  static DateTime _floorToMillisecond(DateTime value) =>
+      DateTime.fromMillisecondsSinceEpoch(
+        value.millisecondsSinceEpoch,
+        isUtc: true,
+      );
+
+  /// The server enforces one PhilHealth number and one LGU ID per clinic.
+  static bool _isDuplicatePatientIdentifier(Object error) =>
+      error is PostgrestException &&
+      error.code == '23505' &&
+      '${error.message} ${error.details}'.contains(
+        RegExp('patients_clinic_(philhealth|lgu_id)_uidx'),
+      );
+
+  /// Tells staff which patient cannot upload and why, once per patient,
+  /// instead of the sync failing silently on every attempt.
+  Future<void> _notifyDuplicatePatient(dynamic db, Patient patient) async {
+    final id = 'sync-duplicate-${patient.id}';
+    final existing = await db.getNotifications() as List<SystemNotification>;
+    if (existing.any((notification) => notification.id == id)) return;
+    await db.insertNotification(
+      SystemNotification(
+        id: id,
+        clinicId: patient.clinicId,
+        type: NotificationType.syncFailed,
+        target: NotificationTarget.all,
+        priority: NotificationPriority.high,
+        title: 'Patient record could not sync',
+        message:
+            '${patient.fullName} has a PhilHealth number or LGU ID that is '
+            'already registered to another patient in this RHU. Open the '
+            'record and correct the number, or keep the existing patient '
+            'and delete this duplicate.',
+        actionRoute: '/patients/${patient.id}',
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  /// Handles an edit made to a version that another device has since
+  /// changed. The server copy is kept, the edit made on this device is
+  /// preserved in the audit log, and staff are told. Returns false when the
+  /// patient no longer exists on the server.
+  Future<bool> _resolvePatientConflict(dynamic db, Patient local) async {
+    final row = await _supabase
+        .from('patients')
+        .select()
+        .eq('id', local.id)
+        .maybeSingle();
+    if (row == null) return false;
+
+    final remote = Patient.fromJson(Map<String, dynamic>.from(row));
+    final currentUser = _ref.read(currentUserProvider);
+    await _ref
+        .read(auditServiceProvider)
+        .logAction(
+          userId: currentUser?.id,
+          clinicId: remote.clinicId,
+          action: AuditAction.update,
+          entityType: 'patient',
+          entityId: local.id,
+          patientId: local.id,
+          patientName: local.fullName,
+          description:
+              'Sync conflict: edits made on this device were not applied '
+              'because another user saved this patient first. The unsaved '
+              'version is kept in this entry.',
+          oldValues: jsonEncode(local.toJson()),
+          newValues: jsonEncode(remote.toJson()),
+        );
+    await db.updatePatient(
+      remote.copyWith(syncStatus: _synced, serverUpdatedAt: remote.updatedAt),
+    );
+    await db.insertNotification(
+      SystemNotification(
+        id: 'sync-conflict-${local.id}-${remote.updatedAt?.millisecondsSinceEpoch}',
+        clinicId: remote.clinicId,
+        type: NotificationType.syncFailed,
+        target: NotificationTarget.all,
+        priority: NotificationPriority.high,
+        title: 'Edit not applied: patient changed elsewhere',
+        message:
+            'Another user updated ${remote.fullName} before this device '
+            'synced. Their version was kept. Your changes are saved in the '
+            'Audit Logs; review the record and re-enter anything missing.',
+        actionRoute: '/patients/${local.id}',
+        createdAt: DateTime.now(),
+      ),
+    );
+    return true;
   }
 
   static DateTime? _serverTimestamp(Map<String, dynamic> row) {
@@ -1634,7 +1769,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
                 remoteUpdatedAt != null &&
                 (localUpdatedAt == null ||
                     remoteUpdatedAt.isAfter(localUpdatedAt)))) {
-          await db.updatePatient(remote.copyWith(syncStatus: _synced));
+          await db.updatePatient(
+            remote.copyWith(
+              syncStatus: _synced,
+              serverUpdatedAt: remote.updatedAt,
+            ),
+          );
         }
       }
     });

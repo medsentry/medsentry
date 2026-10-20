@@ -222,6 +222,11 @@ class Patient {
   final DateTime? lastVisitDate;
   final int? syncStatus;
   final String? syncError;
+
+  /// The server updated_at this copy was last synchronized with. Stored
+  /// locally only: an upload succeeds only while the server still has this
+  /// version, so another device's newer edit is never silently overwritten.
+  final DateTime? serverUpdatedAt;
   final PatientCategory? category;
   final bool isArchived;
   final DateTime? archivedAt;
@@ -271,6 +276,7 @@ class Patient {
     this.lastVisitDate,
     this.syncStatus,
     this.syncError,
+    this.serverUpdatedAt,
     this.category,
     this.isArchived = false,
     this.archivedAt,
@@ -349,6 +355,7 @@ class Patient {
     DateTime? lastVisitDate,
     int? syncStatus,
     String? syncError,
+    DateTime? serverUpdatedAt,
     PatientCategory? category,
     bool? isArchived,
     DateTime? archivedAt,
@@ -401,6 +408,7 @@ class Patient {
       lastVisitDate: lastVisitDate ?? this.lastVisitDate,
       syncStatus: syncStatus ?? this.syncStatus,
       syncError: syncError ?? this.syncError,
+      serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
       category: category ?? this.category,
       isArchived: isArchived ?? this.isArchived,
       archivedAt: archivedAt ?? this.archivedAt,
@@ -453,6 +461,7 @@ class Patient {
       'last_visit_date': lastVisitDate?.toIso8601String(),
       'sync_status': syncStatus,
       'sync_error': syncError,
+      'server_updated_at': serverUpdatedAt?.toIso8601String(),
       'category': category?.name,
       'is_archived': isArchived,
       'archived_at': archivedAt?.toIso8601String(),
@@ -511,10 +520,16 @@ class Patient {
       is4PsBeneficiary: json['is_4ps_beneficiary'] as bool? ?? false,
       householdIdNumber: json['household_id_number'] as String?,
       waterSource: json['water_source'] != null
-          ? _safeEnumValue(WaterSourceLevel.values, json['water_source'] as String)
+          ? _safeEnumValue(
+              WaterSourceLevel.values,
+              json['water_source'] as String,
+            )
           : null,
       toiletFacility: json['toilet_facility'] != null
-          ? _safeEnumValue(ToiletFacilityType.values, json['toilet_facility'] as String)
+          ? _safeEnumValue(
+              ToiletFacilityType.values,
+              json['toilet_facility'] as String,
+            )
           : null,
       height: json['height'] != null
           ? (json['height'] as num).toDouble()
@@ -535,6 +550,9 @@ class Patient {
           : null,
       syncStatus: json['sync_status'] as int?,
       syncError: json['sync_error'] as String?,
+      serverUpdatedAt: json['server_updated_at'] is String
+          ? DateTime.tryParse(json['server_updated_at'] as String)
+          : null,
       category: json['category'] != null
           ? _safeEnumValue(PatientCategory.values, json['category'] as String)
           : null,
