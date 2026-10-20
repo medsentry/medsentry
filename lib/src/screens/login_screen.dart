@@ -851,7 +851,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: _fieldDecoration(
                   palette,
                   icon: Icons.mail_outline_rounded,
-                  hint: 'name@rhu.gov.ph',
+                  hint: 'Enter your email',
                   error: _emailError,
                 ),
                 keyboardType: TextInputType.emailAddress,
@@ -961,7 +961,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: _fieldDecoration(
                 palette,
                 icon: Icons.pin_outlined,
-                hint: '••••',
+                hint: 'Enter your password',
                 error: _pinFieldError,
                 suffix: IconButton(
                   tooltip: _obscurePin ? 'Show PIN' : 'Hide PIN',
