@@ -1322,6 +1322,11 @@ class SyncService extends StateNotifier<SyncServiceState> {
         await db.updateDocument(documentToSave);
       }
     }
+    await _deleteLocalFiles(
+      await db.dropSyncedRecordsMissingFrom('documents', {
+        for (final row in rows) row['id'] as String,
+      }),
+    );
   }
 
   String _documentContentType(MedicalDocument document) {
@@ -1783,6 +1788,13 @@ class SyncService extends StateNotifier<SyncServiceState> {
         }
       }
     });
+    // Patients this account can no longer see (for example transferred to
+    // another RHU) leave this device.
+    await _deleteLocalFiles(
+      await db.dropSyncedRecordsMissingFrom('patients', {
+        for (final row in remotePatients) row['id'] as String,
+      }),
+    );
   }
 }
 

@@ -872,13 +872,64 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
+  /// After a complete download of [table] ('patients' or 'documents'),
+  /// removes this device's synced copies that the server no longer shows this
+  /// account, for example a patient transferred to another RHU. Records with
+  /// unsynced changes are kept, and nothing is marked as deleted, so the
+  /// record returns if it becomes visible again (transferred back). Returns
+  /// the local document file paths the caller must delete.
+  Future<List<String>> dropSyncedRecordsMissingFrom(
+    String table,
+    Set<String> serverIds,
+  ) async {
+    await _ensureLoaded();
+    final paths = <String>[];
+    void dropDocument(MedicalDocument document) {
+      _documents.remove(document.id);
+      if (document.filePath.trim().isNotEmpty) paths.add(document.filePath);
+    }
+
+    var changed = false;
+    if (table == 'patients') {
+      final gone = [
+        for (final patient in _patients.values)
+          if ((patient.syncStatus ?? 0) == 0 && !serverIds.contains(patient.id))
+            patient.id,
+      ];
+      for (final id in gone) {
+        _patients.remove(id);
+        for (final document
+            in _documents.values.where((d) => d.patientId == id).toList()) {
+          dropDocument(document);
+        }
+        changed = true;
+      }
+    } else if (table == 'documents') {
+      for (final document in _documents.values.toList()) {
+        final wasUploaded = document.storagePath?.isNotEmpty == true;
+        if ((document.syncStatus ?? 0) == 0 &&
+            wasUploaded &&
+            !serverIds.contains(document.id)) {
+          dropDocument(document);
+          changed = true;
+        }
+      }
+    } else {
+      throw ArgumentError.value(table, 'table', 'Unsupported table');
+    }
+    if (changed) await _saveToDisk();
+    return paths;
+  }
+
   /// Removes this device's clinics, patients and accounts that do not belong
   /// to one of [clinicIds] (the facilities the server lists), keeping Super
   /// Admin accounts, which have no facility by design. Nothing is queued for
   /// deletion on the server: these records either never existed there or
   /// belong to facilities this account cannot see. Returns the local
   /// document file paths the caller must delete.
-  Future<List<String>> removeRecordsOutsideClinics(Set<String> clinicIds) async {
+  Future<List<String>> removeRecordsOutsideClinics(
+    Set<String> clinicIds,
+  ) async {
     await _ensureLoaded();
     bool outside(String? clinicId) =>
         clinicId == null || !clinicIds.contains(clinicId);

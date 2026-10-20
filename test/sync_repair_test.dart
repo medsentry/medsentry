@@ -255,6 +255,28 @@ void main() {
     });
   });
 
+  test('synced patients the server no longer shows leave the device, '
+      'unsynced ones stay', () async {
+    await db.insertPatient(patient('still-visible'));
+    await db.insertPatient(patient('transferred-away'));
+    await db.insertPatient(patient('local-edit', sync: 2));
+    await db.insertDocument(
+      document('doc-away', 'transferred-away', '/files/doc-away.enc'),
+    );
+
+    final paths = await db.dropSyncedRecordsMissingFrom('patients', {
+      'still-visible',
+    });
+
+    final ids = (await db.getAllPatients(
+      includeArchived: true,
+    )).map((p) => p.id).toSet();
+    expect(ids, {'still-visible', 'local-edit'});
+    expect(paths, ['/files/doc-away.enc']);
+    // Not marked deleted: it comes back if transferred back.
+    expect(await db.isPatientPurged('transferred-away'), isFalse);
+  });
+
   test('sync cursors persist per key', () async {
     final at = DateTime.utc(2026, 10, 20, 8);
     await db.setSyncCursor('audit_logs:user-1', at);

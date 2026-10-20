@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 
 import '../models/models.dart';
 import '../providers/providers.dart';
+import '../services/patient_transfer_service.dart';
 import '../services/report_pdf_service.dart';
 import '../utils/date_time_format.dart';
 import '../utils/patient_address_data.dart';
@@ -74,6 +75,9 @@ class PatientDetailScreen extends ConsumerWidget {
               : null,
           onDelete: currentUser?.canManageArchive == true
               ? () => _confirmDeletePatient(context, ref, patient)
+              : null,
+          onTransfer: currentUser?.isSuperAdmin == true && !patient.isArchived
+              ? () => _transferPatient(context, ref, patient)
               : null,
         );
         final tabBar = Container(
@@ -270,6 +274,111 @@ class PatientDetailScreen extends ConsumerWidget {
       context.go('/patients');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Patient record permanently deleted')),
+      );
+    }
+  }
+
+  Future<void> _transferPatient(
+    BuildContext context,
+    WidgetRef ref,
+    Patient patient,
+  ) async {
+    final actor = ref.read(currentUserProvider);
+    if (actor == null) return;
+    final clinics = (await ref.read(clinicsProvider.future))
+        .where((clinic) => clinic.isActive && clinic.id != patient.clinicId)
+        .toList();
+    if (!context.mounted) return;
+    if (clinics.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('There is no other active RHU to move to.'),
+        ),
+      );
+      return;
+    }
+
+    final target = await showDialog<Clinic>(
+      context: context,
+      builder: (dialogContext) {
+        Clinic? selected;
+        return StatefulBuilder(
+          builder: (dialogContext, setState) => AppFormDialog(
+            title: 'Transfer Patient',
+            subtitle: patient.fullName,
+            icon: Icons.swap_horiz,
+            maxWidth: 460,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'The patient and their documents move to the selected RHU. '
+                  'Staff of the current RHU will no longer see this record '
+                  'after their next sync.',
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<Clinic>(
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Move to',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final clinic in clinics)
+                      DropdownMenuItem(value: clinic, child: Text(clinic.name)),
+                  ],
+                  onChanged: (value) => setState(() => selected = value),
+                ),
+              ],
+            ),
+            actions: [
+              AppDialogAction(
+                label: 'Cancel',
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+              AppDialogAction(
+                label: 'Transfer',
+                isPrimary: true,
+                onPressed: selected == null
+                    ? null
+                    : () => Navigator.pop(dialogContext, selected),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (target == null || !context.mounted) return;
+
+    try {
+      final failedUploads = await PatientTransferService(
+        ref.read(databaseProvider),
+        ref.read(auditServiceProvider),
+      ).transfer(patient: patient, target: target, actor: actor);
+      ref.invalidate(patientProvider(patient.id));
+      ref.invalidate(patientsProvider);
+      ref.invalidate(patientDocumentsProvider(patient.id));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            failedUploads == 0
+                ? '${patient.fullName} moved to ${target.name}.'
+                : '${patient.fullName} moved to ${target.name}. '
+                      '$failedUploads document file(s) will finish uploading '
+                      'on the next sync.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Transfer failed: ${error is StateError || error is ArgumentError ? (error as dynamic).message : error}',
+          ),
+        ),
       );
     }
   }
@@ -530,6 +639,7 @@ class _PatientActionsBar extends StatelessWidget {
   final VoidCallback onPrintRecord;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
+  final VoidCallback? onTransfer;
 
   const _PatientActionsBar({
     required this.patient,
@@ -540,6 +650,7 @@ class _PatientActionsBar extends StatelessWidget {
     required this.onPrintRecord,
     this.onArchive,
     this.onDelete,
+    this.onTransfer,
   });
 
   @override
@@ -690,15 +801,27 @@ class _PatientActionsBar extends StatelessWidget {
                     ),
                 ],
               ),
-              if (onArchive != null || onDelete != null)
+              if (onArchive != null || onDelete != null || onTransfer != null)
                 PopupMenuButton<String>(
                   tooltip: 'More Patient Options',
                   icon: const Icon(Icons.more_vert),
                   onSelected: (value) {
+                    if (value == 'transfer') onTransfer?.call();
                     if (value == 'archive') onArchive?.call();
                     if (value == 'delete') onDelete?.call();
                   },
                   itemBuilder: (context) => [
+                    if (onTransfer != null)
+                      const PopupMenuItem(
+                        value: 'transfer',
+                        child: Row(
+                          children: [
+                            Icon(Icons.swap_horiz, size: 18),
+                            SizedBox(width: 8),
+                            Text('Transfer to another RHU'),
+                          ],
+                        ),
+                      ),
                     if (onArchive != null)
                       const PopupMenuItem(
                         value: 'archive',
