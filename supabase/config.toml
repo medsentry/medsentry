@@ -28,7 +28,10 @@ additional_redirect_urls = [
 # The app's code entry (kOtpLength / kOtpLifetime in login_challenge.dart)
 # must match otp_length and otp_expiry. Apply with `supabase config push`.
 [auth.email]
-enable_signup = false
+# This turns the whole email provider on or off (password and OTP login),
+# not only sign-ups. Keep it true; [auth] enable_signup = false above is
+# what closes public sign-up.
+enable_signup = true
 enable_confirmations = true
 otp_length = 6
 otp_expiry = 300
@@ -45,6 +48,9 @@ verify_enabled = true
 # Supabase's built-in mailer only delivers to project team members and is
 # heavily rate limited. Configure custom SMTP (Gmail app password, Resend,
 # etc.) before going live. Keep secrets in env vars.
+# Custom SMTP (Gmail, medsentrymanagement@gmail.com) is configured in the
+# Supabase Dashboard so its app password never enters this public repo.
+# Leave this block commented out: `config push` then leaves it untouched.
 # [auth.email.smtp]
 # enabled = true
 # host = "smtp.resend.com"
