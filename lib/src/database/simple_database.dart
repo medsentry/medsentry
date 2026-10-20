@@ -1120,6 +1120,24 @@ class SimpleDatabase {
     return _auditLogs.values.where((l) => l.patientId == patientId).toList();
   }
 
+  /// Removes this device's copies of audit entries older than
+  /// [retentionDays]. Only entries already stored in the cloud are removed,
+  /// so the full history stays on the server. Returns how many were removed.
+  Future<int> pruneSyncedAuditLogs(int retentionDays, {DateTime? now}) async {
+    await _ensureLoaded();
+    if (retentionDays <= 0) return 0;
+    final cutoff = (now ?? DateTime.now()).subtract(
+      Duration(days: retentionDays),
+    );
+    final before = _auditLogs.length;
+    _auditLogs.removeWhere(
+      (_, log) => log.isSynced && log.timestamp.isBefore(cutoff),
+    );
+    final removed = before - _auditLogs.length;
+    if (removed > 0) await _saveToDisk();
+    return removed;
+  }
+
   Future<List<AuditLog>> getUnsyncedAuditLogs() async {
     await _ensureLoaded();
     return _auditLogs.values.where((l) => !l.isSynced).toList();

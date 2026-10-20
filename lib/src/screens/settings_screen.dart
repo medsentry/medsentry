@@ -930,17 +930,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 12),
                       AppFormField(
-                        label: 'System Motto / Tagline',
-                        hint: 'e.g. Rural Health Unit Information System',
-                        field: TextField(
-                          controller: appTaglineController,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      AppFormField(
                         label: 'Managing Health Authority / Ministry',
                         hint: 'e.g. Department of Health - Caraga Region',
                         field: TextField(
@@ -1182,7 +1171,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 8),
                       AppFormField(
-                        label: 'Audit Log Retention Policy',
+                        label: 'Keep audit logs on this device for',
+                        hint:
+                            'Older entries that are already synced are removed '
+                            'from this device only; the cloud keeps the full '
+                            'audit history.',
                         field: DropdownButtonFormField<int>(
                           initialValue:
                               [365, 730, 2555].contains(dataRetentionDays)
@@ -1459,38 +1452,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Services & Patient Categories',
-                          style: Theme.of(ctx).textTheme.titleSmall,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      AppFormField(
-                        label: 'Services',
-                        hint: 'Separate services with commas',
-                        field: TextField(
-                          controller: servicesController,
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      AppFormField(
-                        label: 'Patient Categories',
-                        hint: 'Separate categories with commas',
-                        field: TextField(
-                          controller: categoriesController,
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
+                      // Services and patient categories are not offered here:
+                      // nothing in the app reads them (patient categories
+                      // come from date of birth), so editing them changed
+                      // nothing.
                       const SizedBox(height: 20),
                       Align(
                         alignment: Alignment.centerLeft,
@@ -1513,18 +1478,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onChanged: (value) =>
                             setDialogState(() => syncEnabled = value),
                       ),
-                      const SizedBox(height: 12),
-                      AppFormField(
-                        label: 'Patient ID Prefix',
-                        field: TextField(
-                          controller: idPrefixController,
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            helperText:
-                                'Next ID: ${settings.generateNextPatientId()}',
-                          ),
-                        ),
-                      ),
+                      // No Patient ID prefix control: patient IDs are not
+                      // generated from it, and per-device numbering would
+                      // collide when several devices register offline.
                     ],
                   ),
                 ),

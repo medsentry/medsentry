@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medsentry/src/database/simple_database.dart';
+import 'package:medsentry/src/models/audit_log.dart';
 import 'package:medsentry/src/models/clinic.dart';
 import 'package:medsentry/src/models/document.dart';
 import 'package:medsentry/src/models/patient.dart';
@@ -168,6 +169,27 @@ void main() {
     expect(await db.getSyncCursor('audit_logs:user-1'), isNull);
     expect((await db.getSystemSettings()).clinicName, 'RHU Parang');
     expect(await db.getAllClinics(), hasLength(1));
+  });
+
+  test('audit retention removes only old entries already in the cloud', () async {
+    final now = DateTime(2026, 10, 20);
+    AuditLog log(String id, DateTime at, {required bool synced}) => AuditLog(
+      id: id,
+      userId: 'u1',
+      action: AuditAction.login,
+      entityType: 'user',
+      timestamp: at,
+      isSynced: synced,
+    );
+    await db.insertAuditLog(log('old-synced', DateTime(2025, 1, 1), synced: true));
+    await db.insertAuditLog(log('old-unsynced', DateTime(2025, 1, 1), synced: false));
+    await db.insertAuditLog(log('recent', DateTime(2026, 10, 1), synced: true));
+
+    final removed = await db.pruneSyncedAuditLogs(365, now: now);
+
+    expect(removed, 1);
+    final ids = (await db.getAllAuditLogs()).map((l) => l.id).toSet();
+    expect(ids, {'old-unsynced', 'recent'});
   });
 
   test('sync cursors persist per key', () async {

@@ -889,6 +889,11 @@ class SyncService extends StateNotifier<SyncServiceState> {
       await _pullRemoteUsers(db);
       await _pullRemoteClinics(db);
       await _pullRemoteAuditLogs(db, profile);
+      // Settings > "Keep audit logs on this device for": drop this device's
+      // older copies; the cloud keeps the full history.
+      await db.pruneSyncedAuditLogs(
+        (await db.getSystemSettings()).dataRetentionDays,
+      );
       await _pullRemoteNotifications(db);
 
       final now = DateTime.now();
