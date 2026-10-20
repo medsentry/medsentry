@@ -273,9 +273,32 @@ class SimpleDatabase {
 
   Future<void>? _activeSave;
   bool _hasPendingSave = false;
+  int _batchDepth = 0;
+  bool _batchDirty = false;
+
+  /// Runs [action] with a single disk write and change notification at the
+  /// end. Every write otherwise re-serializes the whole store and refreshes
+  /// every watching provider, which makes per-row sync pulls quadratic.
+  Future<T> runBatch<T>(Future<T> Function() action) async {
+    await _ensureLoaded();
+    _batchDepth++;
+    try {
+      return await action();
+    } finally {
+      _batchDepth--;
+      if (_batchDepth == 0 && _batchDirty) {
+        _batchDirty = false;
+        await _saveToDisk();
+      }
+    }
+  }
 
   Future<void> _saveToDisk() async {
     await _ensureLoaded();
+    if (_batchDepth > 0) {
+      _batchDirty = true;
+      return;
+    }
     if (_activeSave != null) {
       _hasPendingSave = true;
       await _activeSave;
@@ -371,11 +394,13 @@ class SimpleDatabase {
     final settings = decoded['system_settings'];
     if (settings is Map<String, dynamic>) {
       final parsed = SystemSettings.fromJson(settings);
-      _systemSettings = _systemSettings.logoDataUri.isNotEmpty && parsed.logoDataUri.isEmpty
+      _systemSettings =
+          _systemSettings.logoDataUri.isNotEmpty && parsed.logoDataUri.isEmpty
           ? parsed.copyWith(logoDataUri: _systemSettings.logoDataUri)
           : parsed;
     } else if (settings is SystemSettings) {
-      _systemSettings = _systemSettings.logoDataUri.isNotEmpty && settings.logoDataUri.isEmpty
+      _systemSettings =
+          _systemSettings.logoDataUri.isNotEmpty && settings.logoDataUri.isEmpty
           ? settings.copyWith(logoDataUri: _systemSettings.logoDataUri)
           : settings;
     } else if (_systemSettings.logoDataUri.isEmpty) {
@@ -478,6 +503,21 @@ class SimpleDatabase {
       return;
     }
     _preferences['otp_verified_at'] = value.toIso8601String();
+    await _saveToDisk();
+  }
+
+  /// High-water marks for incremental pulls, keyed by table and account.
+  Future<DateTime?> getSyncCursor(String key) async {
+    await _ensureLoaded();
+    final raw = _preferences['sync_cursor:$key'];
+    return raw is String ? DateTime.tryParse(raw) : null;
+  }
+
+  Future<void> setSyncCursor(String key, DateTime value) async {
+    await _ensureLoaded();
+    final encoded = value.toUtc().toIso8601String();
+    if (_preferences['sync_cursor:$key'] == encoded) return;
+    _preferences['sync_cursor:$key'] = encoded;
     await _saveToDisk();
   }
 
@@ -746,6 +786,55 @@ class SimpleDatabase {
     if (clinicRemoved || usersChanged) {
       await _saveToDisk();
     }
+  }
+
+  /// Replaces a locally invented clinic with its server counterpart and moves
+  /// every record that referenced it. Unsynced records keep their pending
+  /// state so they upload under the real clinic.
+  Future<void> replaceClinicId(String oldId, Clinic replacement) async {
+    await _ensureLoaded();
+    if (oldId == replacement.id) return;
+    final newId = replacement.id;
+    _clinics.remove(oldId);
+    _clinics[newId] = replacement;
+    _syncDeletes.remove('clinics|$oldId');
+    for (final entry in _patients.entries.toList()) {
+      if (entry.value.clinicId == oldId) {
+        _patients[entry.key] = entry.value.copyWith(
+          clinicId: newId,
+          syncStatus: entry.value.syncStatus == 0 ? 2 : entry.value.syncStatus,
+        );
+      }
+    }
+    for (final entry in _documents.entries.toList()) {
+      if (entry.value.clinicId == oldId) {
+        _documents[entry.key] = entry.value.copyWith(
+          clinicId: newId,
+          syncStatus: entry.value.syncStatus == 0 ? 2 : entry.value.syncStatus,
+        );
+      }
+    }
+    for (final entry in _users.entries.toList()) {
+      if (entry.value.clinicId == oldId) {
+        _users[entry.key] = entry.value.copyWith(clinicId: newId);
+      }
+    }
+    for (final entry in _auditLogs.entries.toList()) {
+      if (entry.value.clinicId == oldId) {
+        _auditLogs[entry.key] = entry.value.copyWith(clinicId: newId);
+      }
+    }
+    for (final entry in _generatedReports.entries.toList()) {
+      if (entry.value.clinicId == oldId) {
+        _generatedReports[entry.key] = entry.value.copyWith(clinicId: newId);
+      }
+    }
+    for (final entry in _certificates.entries.toList()) {
+      if (entry.value.clinicId == oldId) {
+        _certificates[entry.key] = entry.value.copyWith(clinicId: newId);
+      }
+    }
+    await _saveToDisk();
   }
 
   bool _sameClinic(Clinic left, Clinic right) =>
@@ -1207,15 +1296,28 @@ class SimpleDatabase {
     if (_syncDeletes.remove('$table|$id') != null) await _saveToDisk();
   }
 
-  Future<String?> applyRemoteDelete(String table, String id) async {
+  /// Applies a server-side deletion locally and returns the local document
+  /// file paths that the caller must remove from disk.
+  Future<List<String>> applyRemoteDelete(String table, String id) async {
     await _ensureLoaded();
-    String? documentPath;
+    final documentPaths = <String>[];
+    void dropDocument(String documentId) {
+      final path = _documents.remove(documentId)?.filePath;
+      _syncDeletes.remove('documents|$documentId');
+      if (path != null && path.trim().isNotEmpty) documentPaths.add(path);
+    }
+
     switch (table) {
       case 'patients':
         _purgedPatientIds.add(id);
         _patients.remove(id);
+        // The server removes a deleted patient's documents with it.
+        for (final document
+            in _documents.values.where((d) => d.patientId == id).toList()) {
+          dropDocument(document.id);
+        }
       case 'documents':
-        documentPath = _documents.remove(id)?.filePath;
+        dropDocument(id);
       case 'clinics':
         _clinics.remove(id);
         for (final entry in _users.entries.toList()) {
@@ -1233,11 +1335,11 @@ class SimpleDatabase {
       case 'generated_reports':
         _generatedReports.remove(id);
       default:
-        return null;
+        return documentPaths;
     }
-    await markSyncDeleteComplete(table, id);
+    _syncDeletes.remove('$table|$id');
     await _saveToDisk();
-    return documentPath;
+    return documentPaths;
   }
 
   Future<void> applyRemoteUpsert(String table, Map<String, dynamic> raw) async {

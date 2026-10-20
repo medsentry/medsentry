@@ -29,42 +29,48 @@ class ClinicRepository {
     return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
   }
 
-  /// Default starter clinics for Surigao del Sur region
+  /// First-run offline clinics. These must match the RHUs seeded by
+  /// supabase/migrations/20260929000000_initial_schema.sql: records created
+  /// under a clinic ID the server does not have can never be uploaded.
   static final List<Clinic> defaultInitialClinics = [
     Clinic(
-      id: 'c1111111-1111-1111-1111-111111111111',
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'RHU Parang',
+      code: 'RHU-PARANG',
+      address: 'Parang, Maguindanao del Norte',
+      contactNumber: '09171110001',
+      status: 'active',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+    Clinic(
+      id: '22222222-2222-4222-8222-222222222222',
+      name: 'RHU Puyat',
+      code: 'RHU-PUYAT',
+      address: 'Puyat, San Agustin, Surigao del Sur',
+      contactNumber: '09172220002',
+      status: 'active',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    ),
+    Clinic(
+      id: '33333333-3333-4333-8333-333333333333',
       name: 'RHU Cantilan',
-      code: 'RHU-CAN',
-      address: 'Poblacion, Cantilan, Surigao del Sur',
-      contactNumber: '0917-111-2222',
-      email: 'cantilan.rhu@gmail.com',
-      status: 'active',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ),
-    Clinic(
-      id: 'c2222222-2222-2222-2222-222222222222',
-      name: 'RHU Madrid',
-      code: 'RHU-MAD',
-      address: 'Poblacion, Madrid, Surigao del Sur',
-      contactNumber: '0917-333-4444',
-      email: 'madrid.rhu@gmail.com',
-      status: 'active',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ),
-    Clinic(
-      id: 'c3333333-3333-3333-3333-333333333333',
-      name: 'RHU Carmen',
-      code: 'RHU-CAR',
-      address: 'Poblacion, Carmen, Surigao del Sur',
-      contactNumber: '0917-555-6666',
-      email: 'carmen.rhu@gmail.com',
+      code: 'RHU-CANTILAN',
+      address: 'Cantilan, Surigao del Sur',
+      contactNumber: '09173330003',
       status: 'active',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     ),
   ];
+
+  /// Clinic IDs shipped by earlier builds that never existed on the server.
+  static const Set<String> _legacyLocalClinicIds = {
+    'c1111111-1111-1111-1111-111111111111',
+    'c2222222-2222-2222-2222-222222222222',
+    'c3333333-3333-3333-3333-333333333333',
+  };
 
   Future<List<Clinic>> getClinics({bool includeInactive = true}) async {
     // Render cached RHUs immediately. A remote refresh updates the cache in
@@ -111,23 +117,47 @@ class ClinicRepository {
           await _db.setClinicsSeeded(true);
         }
 
-        final existing = await _db.getAllClinics();
-        for (final clinic in remote) {
-          final duplicateByName = existing.where(
-            (c) =>
-                c.id != clinic.id &&
-                (c.name.toLowerCase() == clinic.name.toLowerCase() ||
-                    c.code.toLowerCase() == clinic.code.toLowerCase()),
-          );
-          if (duplicateByName.isNotEmpty) {
-            continue;
-          }
-          await _db.insertClinic(clinic);
-        }
+        await reconcileWithRemote(remote);
       }
     } catch (e) {
       debugPrint('ClinicRepository: remote refresh failed: $e');
     }
+  }
+
+  /// Makes the server's clinics authoritative. A local clinic that duplicates
+  /// a server clinic by name or code under a different ID was invented
+  /// offline; it is replaced and its records move to the server ID. Skipping
+  /// the server copy instead would strand those records, because uploads
+  /// fail the clinic foreign key.
+  Future<void> reconcileWithRemote(List<Clinic> remote) async {
+    await _db.runBatch(() async {
+      final remoteIds = {for (final clinic in remote) clinic.id};
+      for (final clinic in remote) {
+        final existing = await _db.getAllClinics();
+        for (final local in existing) {
+          if (local.id == clinic.id || remoteIds.contains(local.id)) continue;
+          final sameName =
+              local.name.toLowerCase() == clinic.name.toLowerCase();
+          final sameCode =
+              local.code.toLowerCase() == clinic.code.toLowerCase();
+          if (sameName || sameCode) {
+            await _db.replaceClinicId(local.id, clinic);
+          }
+        }
+        await _db.insertClinic(clinic);
+      }
+
+      // Unused legacy seed clinics with no server counterpart would only
+      // invite new records that can never upload.
+      final patients = await _db.getAllPatients(includeArchived: true);
+      for (final local in await _db.getAllClinics()) {
+        if (_legacyLocalClinicIds.contains(local.id) &&
+            !remoteIds.contains(local.id) &&
+            !patients.any((patient) => patient.clinicId == local.id)) {
+          await _db.applyRemoteDelete('clinics', local.id);
+        }
+      }
+    });
   }
 
   Future<Clinic?> getClinicById(String id) async {
@@ -176,15 +206,13 @@ class ClinicRepository {
       updatedAt: now,
     );
 
-    // Try Supabase insert
-    try {
-      final client = _supabase;
-      if (client != null && client.auth.currentSession != null) {
-        await client.from('clinics').insert(clinic.toJson());
-      }
-    } catch (e) {
-      debugPrint('ClinicRepository: createClinic remote insert error: $e');
+    // Patients and staff reference clinics by foreign key on the server, so a
+    // clinic that exists only on this device would block all their uploads.
+    final client = _supabase;
+    if (client == null || client.auth.currentSession == null) {
+      throw StateError('Connect to the internet to register a new RHU.');
     }
+    await client.from('clinics').insert(clinic.toJson());
 
     await _db.setClinicsSeeded(true);
     await _db.insertClinic(clinic);
@@ -268,7 +296,9 @@ class ClinicRepository {
               })
               .eq('id', id);
         } catch (softErr) {
-          debugPrint('ClinicRepository: remote soft-deactivate notice: $softErr');
+          debugPrint(
+            'ClinicRepository: remote soft-deactivate notice: $softErr',
+          );
         }
       }
     }

@@ -22,7 +22,7 @@ class SeedCredentials {
     ),
     SeedAccount(
       id: '00000000-0000-4000-8000-000000000002',
-      clinicId: 'c2222222-2222-2222-2222-222222222222',
+      clinicId: '11111111-1111-4111-8111-111111111111',
       email: 'admin@gmail.com',
       firstName: 'Dr. Elena',
       lastName: 'Ramos',
@@ -33,7 +33,7 @@ class SeedCredentials {
     ),
     SeedAccount(
       id: '00000000-0000-4000-8000-000000000003',
-      clinicId: 'c2222222-2222-2222-2222-222222222222',
+      clinicId: '11111111-1111-4111-8111-111111111111',
       email: 'staff@gmail.com',
       firstName: 'Joy',
       lastName: 'Fernandez, RN',

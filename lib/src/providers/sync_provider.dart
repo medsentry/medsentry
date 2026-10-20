@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:uuid/uuid.dart';
 
 import '../models/audit_log.dart';
 import '../models/document.dart';
@@ -222,21 +223,20 @@ class SyncService extends StateNotifier<SyncServiceState> {
           try {
             final db = _ref.read(databaseProvider);
             if (table == 'sync_tombstones') {
-              if (change.eventType != PostgresChangeEvent.delete) {
-                await db.applyRemoteUpsert(table, change.newRecord);
+              final entityType = change.newRecord['entity_type'];
+              final recordId = change.newRecord['record_id'];
+              if (change.eventType != PostgresChangeEvent.delete &&
+                  entityType is String &&
+                  recordId is String) {
+                await _deleteLocalFiles(
+                  await db.applyRemoteDelete(entityType, recordId),
+                );
               }
             } else if (change.eventType == PostgresChangeEvent.delete) {
               final id =
                   change.oldRecord['id'] ?? change.oldRecord['record_id'];
               if (id is String) {
-                final deletedDocumentPath = await db.applyRemoteDelete(
-                  table,
-                  id,
-                );
-                if (deletedDocumentPath != null &&
-                    deletedDocumentPath.isNotEmpty) {
-                  await DocumentService.deleteDocument(deletedDocumentPath);
-                }
+                await _deleteLocalFiles(await db.applyRemoteDelete(table, id));
               }
             } else if (change.newRecord.isNotEmpty) {
               await db.applyRemoteUpsert(table, change.newRecord);
@@ -256,7 +256,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
               } else if (table == 'notifications' &&
                   change.eventType == PostgresChangeEvent.insert) {
                 final title =
-                    change.newRecord['title'] as String? ?? 'System Notification';
+                    change.newRecord['title'] as String? ??
+                    'System Notification';
                 final message = change.newRecord['message'] as String? ?? '';
                 final type = change.newRecord['type'] as String? ?? '';
                 final target = change.newRecord['target'] as String? ?? 'all';
@@ -264,7 +265,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
                 final isAdmin = currentUser?.canManageSystemData == true;
                 final isStaff = !isAdmin;
-                final matchesRole = target == 'all' ||
+                final matchesRole =
+                    target == 'all' ||
                     (target == 'admin' && isAdmin) ||
                     (target == 'super_admin' &&
                         currentUser?.isSuperAdmin == true) ||
@@ -298,7 +300,16 @@ class SyncService extends StateNotifier<SyncServiceState> {
           } catch (e) {
             debugPrint('Error handling realtime change for $table: $e');
           }
-          _scheduleRealtimeRefresh();
+          // The event is already applied locally. Only document metadata
+          // needs a follow-up pull, to download the file itself. A full sync
+          // per event made every device re-download the database whenever
+          // anyone saved anything, including the audit rows its own sync wrote.
+          if (table == 'documents' &&
+              change.eventType != PostgresChangeEvent.delete) {
+            _scheduleRealtimeRefresh();
+          } else if (table != 'audit_logs') {
+            _schedulePendingSync();
+          }
         },
       );
     }
@@ -400,6 +411,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
   }
 
   static const int _synced = 0;
+  static const Uuid _uuid = Uuid();
   bool _isSyncing = false;
   Future<SyncResult>? _activeSyncOperation;
 
@@ -538,13 +550,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
 
       return result;
     } catch (error, stackTrace) {
-      debugPrint('Sync execution encountered unhandled error: $error\n$stackTrace');
+      debugPrint(
+        'Sync execution encountered unhandled error: $error\n$stackTrace',
+      );
       state = state.copyWith(status: SyncStatus.error);
       _scheduleSyncRetry();
-      return SyncResult(
-        message: 'Sync error: $error',
-        success: false,
-      );
+      return SyncResult(message: 'Sync error: $error', success: false);
     } finally {
       _isSyncing = false;
     }
@@ -585,8 +596,8 @@ class SyncService extends StateNotifier<SyncServiceState> {
   Future<SyncResult> _performCloudSync() async {
     try {
       final db = _ref.read(databaseProvider);
-      int synced = 0;
-      int failed = 0;
+      var synced = 0;
+      var failed = 0;
 
       final profile = await _currentCloudProfile();
       if (profile == null) {
@@ -595,41 +606,73 @@ class SyncService extends StateNotifier<SyncServiceState> {
           success: false,
         );
       }
-      await _syncSystemSettings(db, profile);
-      await _syncGeneratedReports(db, profile);
+
+      // Apply server deletions before pushing, so a stale local copy of a
+      // record deleted on another device is dropped instead of re-uploaded.
+      await _pullRemoteDeletions(db, profile);
+
+      // Each phase below is isolated. Previously an exception here (for
+      // example re-inserting a report deleted elsewhere) aborted the whole
+      // sync before deletions were pulled, so every later sync failed too.
+      try {
+        await _syncSystemSettings(db, profile);
+      } catch (error, stackTrace) {
+        debugPrint('System settings sync failed: $error\n$stackTrace');
+        failed++;
+      }
+      try {
+        final reports = await _syncGeneratedReports(db, profile);
+        synced += reports.synced;
+        failed += reports.failed;
+      } catch (error, stackTrace) {
+        debugPrint('Generated report sync failed: $error\n$stackTrace');
+        failed++;
+      }
 
       // Include archived patients so an archive action is synchronized rather
       // than leaving the remote copy active.
       for (final patient in await db.getAllPatients(includeArchived: true)) {
         if (patient.syncStatus == _synced) continue;
         try {
-          final nowDateTime = DateTime.now();
-          final now = nowDateTime.toIso8601String();
           final clinicId = await _clinicIdForUpload(
             'patients',
             patient.id,
             profile,
             recordClinicId: patient.clinicId,
           );
+          // updated_at is assigned by the server and stored locally, so every
+          // device compares versions on the server's clock. Comparing against
+          // device clocks hid remote edits from devices whose clock ran ahead.
           final payload = patient.toJson()
             ..remove('sync_status')
             ..remove('sync_error')
-            ..['created_at'] ??= now
-            ..['updated_at'] = now;
+            ..remove('updated_at')
+            ..['created_at'] ??= DateTime.now().toUtc().toIso8601String();
           payload['clinic_id'] = clinicId;
-          await _supabase.from('patients').upsert(payload);
+          final saved = await _supabase
+              .from('patients')
+              .upsert(payload)
+              .select('updated_at')
+              .single();
           final currentLocal = await db.getPatientById(patient.id);
-          if (currentLocal != null && currentLocal.updatedAt == patient.updatedAt) {
+          if (currentLocal != null &&
+              currentLocal.updatedAt == patient.updatedAt) {
             await db.updatePatient(
               currentLocal.copyWith(
                 clinicId: clinicId,
-                updatedAt: nowDateTime,
+                updatedAt: _serverTimestamp(saved) ?? DateTime.now(),
                 syncStatus: _synced,
               ),
             );
           }
           synced++;
         } catch (error, stackTrace) {
+          if (_isDeletedOnServer(error)) {
+            await _deleteLocalFiles(
+              await db.applyRemoteDelete('patients', patient.id),
+            );
+            continue;
+          }
           debugPrint(
             'Patient sync failed (${patient.id}): $error\n$stackTrace',
           );
@@ -648,8 +691,6 @@ class SyncService extends StateNotifier<SyncServiceState> {
             if (hasStoragePath || document.syncStatus == _synced) continue;
             throw StateError('The local document file is missing.');
           }
-          final nowDateTime = DateTime.now();
-          final now = nowDateTime.toIso8601String();
           final clinicId = await _clinicIdForUpload(
             'documents',
             document.id,
@@ -670,10 +711,10 @@ class SyncService extends StateNotifier<SyncServiceState> {
             ..remove('sync_status')
             ..remove('file_path')
             ..remove('file_url')
-            ..['created_at'] ??= now
-            ..['updated_at'] = now;
+            ..remove('updated_at')
+            ..['created_at'] ??= DateTime.now().toUtc().toIso8601String();
           payload['clinic_id'] = clinicId;
-          await _supabase.from('documents').upsert(payload);
+          final saved = await _upsertDocumentMetadata(payload);
 
           await _supabase.storage
               .from(_documentBucket)
@@ -688,18 +729,25 @@ class SyncService extends StateNotifier<SyncServiceState> {
               );
 
           final currentDoc = await db.getDocumentById(document.id);
-          if (currentDoc != null && currentDoc.updatedAt == document.updatedAt) {
+          if (currentDoc != null &&
+              currentDoc.updatedAt == document.updatedAt) {
             await db.updateDocument(
               currentDoc.copyWith(
                 clinicId: clinicId,
                 storagePath: storagePath,
-                updatedAt: nowDateTime,
+                updatedAt: _serverTimestamp(saved) ?? DateTime.now(),
                 syncStatus: _synced,
               ),
             );
           }
           synced++;
         } catch (error, stackTrace) {
+          if (_isDeletedOnServer(error)) {
+            await _deleteLocalFiles(
+              await db.applyRemoteDelete('documents', document.id),
+            );
+            continue;
+          }
           debugPrint(
             'Document sync failed (${document.id}): $error\n$stackTrace',
           );
@@ -742,114 +790,62 @@ class SyncService extends StateNotifier<SyncServiceState> {
           }
           synced++;
         } catch (error, stackTrace) {
-          debugPrint('User sync non-fatal (${user.id}): $error\n$stackTrace');
-          final current = await db.getUserById(user.id);
-          if (current != null) {
-            await db.updateUser(current.copyWith(syncStatus: _synced));
-          }
-        }
-      }
-
-      for (final log in await db.getUnsyncedAuditLogs()) {
-        try {
-          final validUserId = _isValidUuid(log.userId) ? log.userId : null;
-          final validPatientId =
-              _isValidUuid(log.patientId) ? log.patientId : null;
-          final resolvedClinicId =
-              log.clinicId != null && log.clinicId!.isNotEmpty
-                  ? log.clinicId
-                  : profile['clinic_id'] as String?;
-          final validClinicId =
-              _isValidUuid(resolvedClinicId) ? resolvedClinicId : null;
-
-          Map<String, dynamic>? newVals;
-          if (log.newValues != null && log.newValues!.isNotEmpty) {
-            try {
-              newVals = Map<String, dynamic>.from(jsonDecode(log.newValues!));
-            } catch (_) {
-              newVals = {'raw': log.newValues};
+          debugPrint('User sync failed (${user.id}): $error\n$stackTrace');
+          if (_isPermanentRejection(error)) {
+            // The server refused the change (for example, the account no
+            // longer exists or this role may not edit it); retrying cannot
+            // succeed. Network failures stay pending and are retried.
+            final current = await db.getUserById(user.id);
+            if (current != null) {
+              await db.updateUser(current.copyWith(syncStatus: _synced));
             }
-          }
-          if (validUserId == null && log.userId.isNotEmpty) {
-            newVals ??= <String, dynamic>{};
-            newVals['_actor'] = log.userId;
-            if (log.userName != null) newVals['_user_name'] = log.userName;
-            if (log.userRole != null) newVals['_user_role'] = log.userRole;
-          }
-
-          final payload = <String, dynamic>{
-            'user_id': validUserId,
-            'action': log.action.name,
-            'entity_type': log.entityType,
-            'entity_id': log.entityId,
-            'patient_id': validPatientId,
-            'occurred_at': log.timestamp.toIso8601String(),
-          };
-          if (_isValidUuid(log.id)) {
-            payload['id'] = log.id;
-          }
-          if (validClinicId != null) {
-            payload['clinic_id'] = validClinicId;
-          }
-          if (log.oldValues != null && log.oldValues!.isNotEmpty) {
-            try {
-              payload['old_values'] = jsonDecode(log.oldValues!);
-            } catch (_) {
-              payload['old_values'] = {'raw': log.oldValues};
-            }
-          }
-          if (newVals != null) {
-            payload['new_values'] = newVals;
-          }
-
-          await _supabase.from('audit_logs').upsert(payload);
-          await db.markAuditLogAsSynced(log.id);
-          synced++;
-        } catch (error, stackTrace) {
-          debugPrint('Audit log sync non-fatal (${log.id}): $error\n$stackTrace');
-          await db.markAuditLogAsSynced(log.id);
-        }
-      }
-
-      for (final deletion in await db.getPendingSyncDeletes()) {
-        try {
-          if (deletion['table'] == 'documents') {
-            await _removeRemoteDocumentFile(deletion['record_id']!);
-          }
-          if (deletion['table'] == 'clinics') {
-            await _supabase
-                .from('clinics')
-                .delete()
-                .eq('id', deletion['record_id']!);
           } else {
-            await _supabase.rpc(
-              'medsentry_apply_sync_delete',
-              params: {
-                'entity': deletion['table'],
-                'target_record_id': deletion['record_id'],
-              },
-            );
+            failed++;
           }
-          await db.markSyncDeleteComplete(
-            deletion['table']!,
-            deletion['record_id']!,
-          );
+        }
+      }
+
+      final auditResult = await _pushAuditLogs(db, profile);
+      synced += auditResult.synced;
+      failed += auditResult.failed;
+
+      // Documents first: a storage file can only be removed while its
+      // document row exists, and deleting a patient deletes those rows.
+      final deletions = await db.getPendingSyncDeletes();
+      deletions.sort(
+        (a, b) => _deleteOrder(a['table']).compareTo(_deleteOrder(b['table'])),
+      );
+      for (final deletion in deletions) {
+        final table = deletion['table']!;
+        final recordId = deletion['record_id']!;
+        try {
+          switch (table) {
+            case 'clinics':
+              await _deleteRemoteClinic(recordId);
+            case 'documents':
+              await _removeRemoteDocumentFiles(documentId: recordId);
+              await _applyRemoteSyncDelete(table, recordId);
+            case 'patients':
+              await _removeRemoteDocumentFiles(patientId: recordId);
+              await _applyRemoteSyncDelete(table, recordId);
+            default:
+              await _applyRemoteSyncDelete(table, recordId);
+          }
+          await db.markSyncDeleteComplete(table, recordId);
           synced++;
         } catch (error, stackTrace) {
           debugPrint(
-            'Sync deletion failed (${deletion['table']}/${deletion['record_id']}): '
-            '$error\n$stackTrace',
+            'Sync deletion failed ($table/$recordId): $error\n$stackTrace',
           );
           failed++;
         }
       }
 
-      await _pullRemoteDeletions(db);
       await _pullRemotePatients(db);
       await _pullRemoteDocuments(db);
       await _pullRemoteUsers(db);
       await _pullRemoteClinics(db);
-      await _pullRemoteAuditLogs(db);
+      await _pullRemoteAuditLogs(db, profile);
       await _pullRemoteNotifications(db);
 
       final now = DateTime.now();
@@ -871,23 +867,266 @@ class SyncService extends StateNotifier<SyncServiceState> {
     }
   }
 
-  Future<void> _pullRemoteDeletions(dynamic db) async {
-    final rows = await _selectAllRows(
-      'sync_tombstones',
-      columns: 'entity_type,record_id',
+  /// SQLSTATE raised by the server when a client re-uploads a record that was
+  /// permanently deleted elsewhere.
+  static bool _isDeletedOnServer(Object error) =>
+      error is PostgrestException && error.code == 'MS410';
+
+  /// Server rejections that retrying cannot fix (validation, constraint or
+  /// permission failures), as opposed to network or availability errors.
+  static bool _isPermanentRejection(Object error) {
+    if (error is! PostgrestException) return false;
+    final code = error.code ?? '';
+    return code.startsWith('22') ||
+        code.startsWith('23') ||
+        code == '42501' ||
+        code == '42703' ||
+        code == 'P0002' ||
+        code == 'MS410' ||
+        code == 'PGRST204';
+  }
+
+  static DateTime? _serverTimestamp(Map<String, dynamic> row) {
+    final value = row['updated_at'];
+    return value is String ? DateTime.tryParse(value) : null;
+  }
+
+  static int _deleteOrder(String? table) => switch (table) {
+    'documents' => 0,
+    'patients' => 1,
+    'clinics' => 3,
+    _ => 2,
+  };
+
+  Future<void> _deleteLocalFiles(List<String> paths) async {
+    for (final path in paths) {
+      try {
+        await DocumentService.deleteDocument(path);
+      } catch (error) {
+        debugPrint('Local document file cleanup skipped ($path): $error');
+      }
+    }
+  }
+
+  Future<void> _applyRemoteSyncDelete(String table, String recordId) {
+    return _supabase.rpc(
+      'medsentry_apply_sync_delete',
+      params: {'entity': table, 'target_record_id': recordId},
     );
-    for (final raw in rows) {
-      final deletion = Map<String, dynamic>.from(raw);
-      final table = deletion['entity_type'] as String;
-      final id = deletion['record_id'] as String;
-      if (table == 'documents') {
-        final document = await db.getDocumentById(id);
-        if (document != null && document.filePath.trim().isNotEmpty) {
-          await DocumentService.deleteDocument(document.filePath);
+  }
+
+  /// Clinics referenced by patients or staff cannot be hard-deleted (foreign
+  /// keys are RESTRICT). Retrying the delete forever kept every sync in an
+  /// error state, so a referenced clinic is deactivated instead.
+  Future<void> _deleteRemoteClinic(String clinicId) async {
+    try {
+      await _supabase.from('clinics').delete().eq('id', clinicId);
+    } on PostgrestException catch (error) {
+      if (error.code != '23503') rethrow;
+      await _supabase
+          .from('clinics')
+          .update({'status': 'inactive'})
+          .eq('id', clinicId);
+    }
+  }
+
+  /// Documents sent with a scanner who has no server account (for example a
+  /// legacy local-only user) would fail the scanned_by foreign key forever.
+  Future<Map<String, dynamic>> _upsertDocumentMetadata(
+    Map<String, dynamic> payload,
+  ) async {
+    if (!_isValidUuid(payload['scanned_by'] as String?)) {
+      payload['scanned_by'] = null;
+    }
+    try {
+      return await _supabase
+          .from('documents')
+          .upsert(payload)
+          .select('updated_at')
+          .single();
+    } on PostgrestException catch (error) {
+      final unknownScanner =
+          error.code == '23503' &&
+          '${error.message} ${error.details}'.contains('scanned_by');
+      if (!unknownScanner) rethrow;
+      payload['scanned_by'] = null;
+      return _supabase
+          .from('documents')
+          .upsert(payload)
+          .select('updated_at')
+          .single();
+    }
+  }
+
+  Future<({int synced, int failed})> _pushAuditLogs(
+    dynamic db,
+    Map<String, dynamic> profile,
+  ) async {
+    final logs = await db.getUnsyncedAuditLogs() as List<AuditLog>;
+    var synced = 0;
+    var failed = 0;
+    final payloads = <String, Map<String, dynamic>>{};
+    for (final log in logs) {
+      payloads[log.id] = _auditLogPayload(log, profile);
+    }
+
+    Future<void> markSynced(Iterable<String> ids) async {
+      await db.runBatch(() async {
+        for (final id in ids) {
+          await db.markAuditLogAsSynced(id);
+        }
+      });
+    }
+
+    // Audit rows are immutable and are inserted, never upserted. An upsert
+    // needs UPDATE, which this table never grants, so every upload failed and
+    // was silently discarded. ON CONFLICT DO NOTHING is no better: a conflict
+    // target needs SELECT, which staff do not have on audit logs. A duplicate
+    // key (an earlier upload whose response was lost) counts as uploaded.
+    const chunkSize = 100;
+    final ids = payloads.keys.toList();
+    for (var start = 0; start < ids.length; start += chunkSize) {
+      final chunkIds = ids.sublist(
+        start,
+        (start + chunkSize).clamp(0, ids.length),
+      );
+      try {
+        await _supabase.from('audit_logs').insert([
+          for (final id in chunkIds) payloads[id]!,
+        ]);
+        await markSynced(chunkIds);
+        synced += chunkIds.length;
+        continue;
+      } catch (error) {
+        if (!_isPermanentRejection(error)) {
+          debugPrint('Audit log upload deferred: $error');
+          failed++;
+          continue;
         }
       }
-      await db.applyRemoteDelete(table, id);
+
+      // One rejected row fails its whole chunk; retry individually so only
+      // that row is dropped.
+      for (final id in chunkIds) {
+        try {
+          await _supabase.from('audit_logs').insert(payloads[id]!);
+          await markSynced([id]);
+          synced++;
+        } catch (error) {
+          debugPrint('Audit log sync failed ($id): $error');
+          if (_isPermanentRejection(error)) {
+            await markSynced([id]);
+          } else {
+            failed++;
+          }
+        }
+      }
     }
+    return (synced: synced, failed: failed);
+  }
+
+  Map<String, dynamic> _auditLogPayload(
+    AuditLog log,
+    Map<String, dynamic> profile,
+  ) {
+    final validUserId = _isValidUuid(log.userId) ? log.userId : null;
+    final validPatientId = _isValidUuid(log.patientId) ? log.patientId : null;
+    final resolvedClinicId = log.clinicId != null && log.clinicId!.isNotEmpty
+        ? log.clinicId
+        : profile['clinic_id'] as String?;
+    final validClinicId = _isValidUuid(resolvedClinicId)
+        ? resolvedClinicId
+        : null;
+
+    Map<String, dynamic>? newVals;
+    if (log.newValues != null && log.newValues!.isNotEmpty) {
+      try {
+        newVals = Map<String, dynamic>.from(jsonDecode(log.newValues!));
+      } catch (_) {
+        newVals = {'raw': log.newValues};
+      }
+    }
+    if (validUserId == null && log.userId.isNotEmpty) {
+      newVals ??= <String, dynamic>{};
+      newVals['_actor'] = log.userId;
+      if (log.userName != null) newVals['_user_name'] = log.userName;
+      if (log.userRole != null) newVals['_user_role'] = log.userRole;
+    }
+
+    // Bulk inserts need identical keys in every row.
+    final payload = <String, dynamic>{
+      'id': _isValidUuid(log.id)
+          ? log.id
+          : _uuid.v5(Namespace.url.value, log.id),
+      'clinic_id': validClinicId,
+      'user_id': validUserId,
+      'action': log.action.name,
+      'entity_type': log.entityType,
+      'entity_id': log.entityId,
+      'patient_id': validPatientId,
+      'occurred_at': log.timestamp.toUtc().toIso8601String(),
+      'old_values': null,
+      'new_values': newVals,
+    };
+    if (log.oldValues != null && log.oldValues!.isNotEmpty) {
+      try {
+        payload['old_values'] = jsonDecode(log.oldValues!);
+      } catch (_) {
+        payload['old_values'] = {'raw': log.oldValues};
+      }
+    }
+    return payload;
+  }
+
+  Future<void> _pullRemoteDeletions(
+    dynamic db,
+    Map<String, dynamic> profile,
+  ) async {
+    final cursorKey = 'sync_tombstones:${profile['id']}';
+    final cursor = await db.getSyncCursor(cursorKey) as DateTime?;
+    final rows = await _selectAllRows(
+      'sync_tombstones',
+      columns: 'entity_type,record_id,deleted_at',
+      orderBy: const ['deleted_at', 'record_id'],
+      sinceColumn: 'deleted_at',
+      since: cursor?.subtract(_cursorOverlap),
+    );
+    if (rows.isEmpty) return;
+
+    final paths = <String>[];
+    await db.runBatch(() async {
+      for (final deletion in rows) {
+        paths.addAll(
+          await db.applyRemoteDelete(
+                deletion['entity_type'] as String,
+                deletion['record_id'] as String,
+              )
+              as List<String>,
+        );
+      }
+    });
+    await _deleteLocalFiles(paths);
+    final latest = _latestTimestamp(rows, 'deleted_at');
+    if (latest != null) await db.setSyncCursor(cursorKey, latest);
+  }
+
+  /// Rows committed by a slow transaction can carry an earlier timestamp than
+  /// rows already seen; re-reading this window keeps them from being missed.
+  static const Duration _cursorOverlap = Duration(minutes: 5);
+
+  static DateTime? _latestTimestamp(
+    List<Map<String, dynamic>> rows,
+    String column,
+  ) {
+    DateTime? latest;
+    for (final row in rows) {
+      final value = row[column];
+      final parsed = value is String ? DateTime.tryParse(value) : null;
+      if (parsed != null && (latest == null || parsed.isAfter(latest))) {
+        latest = parsed;
+      }
+    }
+    return latest;
   }
 
   bool _isRemoteVersionNewer(
@@ -954,15 +1193,26 @@ class SyncService extends StateNotifier<SyncServiceState> {
     };
   }
 
-  Future<void> _removeRemoteDocumentFile(String documentId) async {
-    final row = await _supabase
-        .from('documents')
-        .select('storage_path')
-        .eq('id', documentId)
-        .maybeSingle();
-    final storagePath = row?['storage_path'];
-    if (storagePath is String && storagePath.isNotEmpty) {
-      await _supabase.storage.from(_documentBucket).remove([storagePath]);
+  /// Removes stored files for one document or for every document of a
+  /// patient. Must run before the rows are deleted: storage access policies
+  /// look up the document row, so orphaned files could never be removed.
+  Future<void> _removeRemoteDocumentFiles({
+    String? documentId,
+    String? patientId,
+  }) async {
+    var query = _supabase.from('documents').select('storage_path');
+    query = documentId != null
+        ? query.eq('id', documentId)
+        : query.eq('patient_id', patientId!);
+    final rows = await query;
+    final paths = [
+      for (final row in rows)
+        if (row['storage_path'] is String &&
+            (row['storage_path'] as String).isNotEmpty)
+          row['storage_path'] as String,
+    ];
+    if (paths.isNotEmpty) {
+      await _supabase.storage.from(_documentBucket).remove(paths);
     }
   }
 
@@ -971,75 +1221,108 @@ class SyncService extends StateNotifier<SyncServiceState> {
       for (final user in await db.getAllUsers()) user.id: user,
     };
     final rows = await _selectAllRows('users');
-    for (final raw in rows) {
-      final remote = User.fromJson(Map<String, dynamic>.from(raw));
-      final local = localUsers[remote.id];
-      if (local == null ||
-          (local.syncStatus == _synced &&
-              _isRemoteVersionNewer(remote.updatedAt, local.updatedAt))) {
-        final updated = remote.copyWith(
-          pinHash: local?.pinHash,
-          syncStatus: _synced,
-        );
-        if (local == null) {
-          await db.insertUser(updated);
-        } else {
-          await db.updateUser(updated);
-        }
-        final currentUser = _ref.read(currentUserProvider);
-        if (currentUser?.id == remote.id) {
-          if (!updated.isActive) {
-            await _ref.read(authRepositoryProvider).logout();
-            _ref.read(currentUserProvider.notifier).state = null;
+    User? signedInUserUpdate;
+    await db.runBatch(() async {
+      for (final raw in rows) {
+        final remote = User.fromJson(Map<String, dynamic>.from(raw));
+        final local = localUsers[remote.id];
+        if (local == null ||
+            (local.syncStatus == _synced &&
+                _isRemoteVersionNewer(remote.updatedAt, local.updatedAt))) {
+          final updated = remote.copyWith(
+            pinHash: local?.pinHash,
+            syncStatus: _synced,
+          );
+          if (local == null) {
+            await db.insertUser(updated);
           } else {
-            _ref.read(currentUserProvider.notifier).state = updated;
+            await db.updateUser(updated);
+          }
+          if (_ref.read(currentUserProvider)?.id == remote.id) {
+            signedInUserUpdate = updated;
           }
         }
       }
+    });
+
+    final updated = signedInUserUpdate;
+    if (updated == null) return;
+    if (!updated.isActive) {
+      await _ref.read(authRepositoryProvider).logout();
+      _ref.read(currentUserProvider.notifier).state = null;
+    } else {
+      _ref.read(currentUserProvider.notifier).state = updated;
     }
   }
 
   Future<void> _pullRemoteClinics(dynamic db) async {
     final rows = await _selectAllRows('clinics');
-    for (final raw in rows) {
-      final remote = Clinic.fromJson(Map<String, dynamic>.from(raw));
-      await db.insertClinic(remote);
-    }
+    final remote = [
+      for (final raw in rows) Clinic.fromJson(Map<String, dynamic>.from(raw)),
+    ];
+    await _ref.read(clinicRepositoryProvider).reconcileWithRemote(remote);
   }
 
-  Future<void> _pullRemoteAuditLogs(dynamic db) async {
+  Future<void> _pullRemoteAuditLogs(
+    dynamic db,
+    Map<String, dynamic> profile,
+  ) async {
+    final cursorKey = 'audit_logs:${profile['id']}';
+    final cursor = await db.getSyncCursor(cursorKey) as DateTime?;
+    List<Map<String, dynamic>> rows;
+    var incremental = true;
+    try {
+      rows = await _selectAllRows(
+        'audit_logs',
+        orderBy: const ['recorded_at', 'id'],
+        sinceColumn: 'recorded_at',
+        since: cursor?.subtract(_cursorOverlap),
+      );
+    } on PostgrestException catch (error) {
+      // Server not yet migrated (no recorded_at column): full pull.
+      if (error.code != '42703') rethrow;
+      incremental = false;
+      rows = await _selectAllRows('audit_logs');
+    }
+    if (rows.isEmpty) return;
+
     final localIds = {for (final log in await db.getAllAuditLogs()) log.id};
-    final rows = await _selectAllRows('audit_logs');
     final users = {for (final user in await db.getAllUsers()) user.id: user};
 
-    for (final raw in rows) {
-      final row = Map<String, dynamic>.from(raw);
-      final id = row['id'] as String;
-      if (localIds.contains(id)) continue;
-      final userId = row['user_id'] as String? ?? 'system';
-      final user = users[userId];
-      final timestamp = row['occurred_at'] ?? row['timestamp'];
-      if (timestamp is! String) continue;
-      final parsedTimestamp = DateTime.tryParse(timestamp);
-      if (parsedTimestamp == null) continue;
-      await db.insertAuditLog(
-        AuditLog(
-          id: id,
-          clinicId: (row['clinic_id'] as String?) ?? user?.clinicId,
-          userId: userId,
-          userName: user?.fullName,
-          userRole: user?.roleDisplay,
-          action: _auditActionFromRemote(row['action']?.toString() ?? ''),
-          entityType: row['entity_type'] as String? ?? 'system',
-          entityId: row['entity_id'] as String?,
-          patientId: row['patient_id'] as String?,
-          oldValues: _auditJsonValue(row['old_values']),
-          newValues: _auditJsonValue(row['new_values']),
-          timestamp: parsedTimestamp,
-          isSynced: true,
-          syncStatus: _synced,
-        ),
-      );
+    await db.runBatch(() async {
+      for (final row in rows) {
+        final id = row['id'] as String;
+        if (localIds.contains(id)) continue;
+        final userId = row['user_id'] as String? ?? 'system';
+        final user = users[userId];
+        final timestamp = row['occurred_at'] ?? row['timestamp'];
+        if (timestamp is! String) continue;
+        final parsedTimestamp = DateTime.tryParse(timestamp);
+        if (parsedTimestamp == null) continue;
+        await db.insertAuditLog(
+          AuditLog(
+            id: id,
+            clinicId: (row['clinic_id'] as String?) ?? user?.clinicId,
+            userId: userId,
+            userName: user?.fullName,
+            userRole: user?.roleDisplay,
+            action: _auditActionFromRemote(row['action']?.toString() ?? ''),
+            entityType: row['entity_type'] as String? ?? 'system',
+            entityId: row['entity_id'] as String?,
+            patientId: row['patient_id'] as String?,
+            oldValues: _auditJsonValue(row['old_values']),
+            newValues: _auditJsonValue(row['new_values']),
+            timestamp: parsedTimestamp,
+            isSynced: true,
+            syncStatus: _synced,
+          ),
+        );
+      }
+    });
+
+    if (incremental) {
+      final latest = _latestTimestamp(rows, 'recorded_at');
+      if (latest != null) await db.setSyncCursor(cursorKey, latest);
     }
   }
 
@@ -1072,19 +1355,26 @@ class SyncService extends StateNotifier<SyncServiceState> {
   Future<List<Map<String, dynamic>>> _selectAllRows(
     String table, {
     String columns = '*',
-    String? orderBy,
+    List<String>? orderBy,
+    String? sinceColumn,
+    DateTime? since,
   }) async {
     const pageSize = 500;
     final rows = <Map<String, dynamic>>[];
     var offset = 0;
-    final orderCol =
-        orderBy ?? (table == 'sync_tombstones' ? 'deleted_at' : 'id');
+    final orderColumns =
+        orderBy ?? [table == 'sync_tombstones' ? 'deleted_at' : 'id'];
 
     while (true) {
-      final page = await _supabase
-          .from(table)
-          .select(columns)
-          .order(orderCol, ascending: true)
+      var filter = _supabase.from(table).select(columns);
+      if (sinceColumn != null && since != null) {
+        filter = filter.gte(sinceColumn, since.toUtc().toIso8601String());
+      }
+      var ordered = filter.order(orderColumns.first, ascending: true);
+      for (final column in orderColumns.skip(1)) {
+        ordered = ordered.order(column, ascending: true);
+      }
+      final page = await ordered
           .range(offset, offset + pageSize - 1)
           .timeout(const Duration(seconds: 15));
       rows.addAll(List<Map<String, dynamic>>.from(page));
@@ -1099,24 +1389,25 @@ class SyncService extends StateNotifier<SyncServiceState> {
         notification.id: notification,
     };
     final rows = await _selectAllRows('notifications');
-    for (final raw in rows) {
-      final row = Map<String, dynamic>.from(raw);
-      final target = row['target'] == 'super_admin' ? 'admin' : row['target'];
-      final remote = SystemNotification.fromJson({...row, 'target': target});
-      final existing = local[remote.id];
-      if (existing == null) {
-        // New notification — insert
-        await db.insertNotification(remote);
-      } else {
-        final mergedIsRead = existing.isRead || remote.isRead;
-        if (existing.isRead != mergedIsRead ||
-            existing.title != remote.title ||
-            existing.message != remote.message ||
-            existing.priority != remote.priority) {
-          await db.insertNotification(remote.copyWith(isRead: mergedIsRead));
+    await db.runBatch(() async {
+      for (final raw in rows) {
+        final row = Map<String, dynamic>.from(raw);
+        final target = row['target'] == 'super_admin' ? 'admin' : row['target'];
+        final remote = SystemNotification.fromJson({...row, 'target': target});
+        final existing = local[remote.id];
+        if (existing == null) {
+          await db.insertNotification(remote);
+        } else {
+          final mergedIsRead = existing.isRead || remote.isRead;
+          if (existing.isRead != mergedIsRead ||
+              existing.title != remote.title ||
+              existing.message != remote.message ||
+              existing.priority != remote.priority) {
+            await db.insertNotification(remote.copyWith(isRead: mergedIsRead));
+          }
         }
       }
-    }
+    });
   }
 
   Future<Map<String, dynamic>?> _currentCloudProfile() async {
@@ -1167,53 +1458,16 @@ class SyncService extends StateNotifier<SyncServiceState> {
       return activeClinicId;
     }
 
-    // Resolve from local database clinics
-    final db = _ref.read(databaseProvider);
-    final localClinics = await db.getAllClinics();
-    if (localClinics.length == 1) {
-      return localClinics.first.id;
-    }
-    if (localClinics.length > 1) {
-      throw StateError(
-        'Cannot determine clinic for $table record $recordId in a multi-clinic environment. '
-        'An explicit active clinic must be selected.',
-      );
-    }
-
-    // Fallback: resolve from remote Supabase clinics table if only 1 clinic exists
-    try {
-      final remoteClinics = await _supabase
-          .from('clinics')
-          .select('id')
-          .limit(2);
-      if (remoteClinics.length == 1 && remoteClinics.first['id'] != null) {
-        return remoteClinics.first['id'] as String;
-      }
-    } catch (_) {}
-
-    // Fallback: provision a default primary RHU clinic so sync never halts
-    try {
-      const defaultClinicId = '00000000-0000-4000-a000-000000000001';
-      final defaultClinic = Clinic(
-        id: defaultClinicId,
-        name: 'Main Rural Health Unit',
-        code: 'RHU-MAIN',
-        status: 'active',
-      );
-      await db.insertClinic(defaultClinic);
-      await _supabase.from('clinics').upsert({
-        'id': defaultClinicId,
-        'name': defaultClinic.name,
-        'code': defaultClinic.code,
-        'status': 'active',
-      });
-      return defaultClinicId;
-    } catch (e) {
-      debugPrint('Failed to provision default clinic for sync: $e');
+    // Only a single, unambiguous clinic is a safe default. Inventing a
+    // clinic here created tenants on the server that nobody had registered.
+    final remoteClinics = await _supabase.from('clinics').select('id').limit(2);
+    if (remoteClinics.length == 1 && remoteClinics.first['id'] is String) {
+      return remoteClinics.first['id'] as String;
     }
 
     throw StateError(
-      'Cannot sync $table/$recordId because its clinic is not known.',
+      'Cannot sync $table/$recordId because its clinic is not known. '
+      'Assign the record to an RHU first.',
     );
   }
 
@@ -1253,20 +1507,40 @@ class SyncService extends StateNotifier<SyncServiceState> {
       final updatedAt = local.updatedAt ?? DateTime.now();
       final value = local.toJson()
         ..['updated_at'] = updatedAt.toIso8601String();
+      final Map<String, dynamic> saved;
       if (remote != null && remote['id'] != null) {
-        await _supabase.from('system_settings').update({
-          'value': value,
-          'updated_by': profile['id'],
-          'updated_at': updatedAt.toIso8601String(),
-        }).eq('id', remote['id']);
+        saved = await _supabase
+            .from('system_settings')
+            .update({
+              'value': value,
+              'updated_by': profile['id'],
+              'updated_at': updatedAt.toIso8601String(),
+            })
+            .eq('id', remote['id'])
+            .select('updated_at')
+            .single();
       } else {
-        await _supabase.from('system_settings').insert({
-          'clinic_id': clinicId,
-          'key': 'clinic',
-          'value': value,
-          'updated_by': profile['id'],
-          'updated_at': updatedAt.toIso8601String(),
-        });
+        saved = await _supabase
+            .from('system_settings')
+            .insert({
+              'clinic_id': clinicId,
+              'key': 'clinic',
+              'value': value,
+              'updated_by': profile['id'],
+              'updated_at': updatedAt.toIso8601String(),
+            })
+            .select('updated_at')
+            .single();
+      }
+      // Adopt the server's timestamp. Keeping the device time made a device
+      // whose clock ran ahead re-upload its settings on every sync, and each
+      // upload fanned out to every other device as a realtime change.
+      final serverUpdatedAt = _serverTimestamp(saved);
+      final current = await db.getSystemSettings() as SystemSettings;
+      if (serverUpdatedAt != null && current.updatedAt == local.updatedAt) {
+        await db.replaceSyncedSystemSettings(
+          current.copyWith(updatedAt: serverUpdatedAt),
+        );
       }
       return;
     }
@@ -1278,10 +1552,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
     await db.replaceSyncedSystemSettings(SystemSettings.fromJson(value));
   }
 
-  Future<void> _syncGeneratedReports(
+  Future<({int synced, int failed})> _syncGeneratedReports(
     dynamic db,
     Map<String, dynamic> profile,
   ) async {
+    var synced = 0;
+    var failed = 0;
     final localReports =
         await db.getGeneratedReports() as List<GeneratedReport>;
     final localClinics = await db.getAllClinics() as List<Clinic>;
@@ -1293,8 +1569,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
     final remoteReportIds = remoteIds.map((row) => row['id'] as String).toSet();
     for (final report in localReports) {
       if (remoteReportIds.contains(report.id)) continue;
-      final clinicId =
-          (report.clinicId != null && report.clinicId!.isNotEmpty)
+      final clinicId = (report.clinicId != null && report.clinicId!.isNotEmpty)
           ? report.clinicId
           : (profileClinicId != null && profileClinicId.isNotEmpty)
           ? profileClinicId
@@ -1306,49 +1581,63 @@ class SyncService extends StateNotifier<SyncServiceState> {
         );
         continue;
       }
-      await _supabase.from('generated_reports').insert({
-        'id': report.id,
-        'clinic_id': clinicId,
-        'title': report.title,
-        'type': report.type,
-        'generated_at': report.generatedAt.toIso8601String(),
-        'start_date': report.startDate?.toIso8601String(),
-        'end_date': report.endDate?.toIso8601String(),
-        'created_by': profile['id'],
-      });
+      try {
+        // A report deleted on another device is hidden from this device but
+        // still exists; ignoring the duplicate lets its tombstone remove the
+        // local copy instead of failing the insert on every sync.
+        await _supabase.from('generated_reports').upsert({
+          'id': report.id,
+          'clinic_id': clinicId,
+          'title': report.title,
+          'type': report.type,
+          'generated_at': report.generatedAt.toIso8601String(),
+          'start_date': report.startDate?.toIso8601String(),
+          'end_date': report.endDate?.toIso8601String(),
+          'created_by': profile['id'],
+        }, ignoreDuplicates: true);
+        synced++;
+      } catch (error) {
+        debugPrint('Generated report upload failed (${report.id}): $error');
+        if (!_isPermanentRejection(error)) failed++;
+      }
     }
 
     final remoteReports = await _selectAllRows('generated_reports');
     final localReportIds = localReports.map((report) => report.id).toSet();
-    for (final raw in remoteReports) {
-      final data = Map<String, dynamic>.from(raw)..['file_path'] = null;
-      if (!localReportIds.contains(data['id'])) {
-        await db.insertGeneratedReport(GeneratedReport.fromJson(data));
+    await db.runBatch(() async {
+      for (final raw in remoteReports) {
+        final data = Map<String, dynamic>.from(raw)..['file_path'] = null;
+        if (!localReportIds.contains(data['id'])) {
+          await db.insertGeneratedReport(GeneratedReport.fromJson(data));
+        }
       }
-    }
+    });
+    return (synced: synced, failed: failed);
   }
 
   Future<void> _pullRemotePatients(dynamic db) async {
     final remotePatients = await _selectAllRows('patients');
-    for (final raw in remotePatients) {
-      final data = Map<String, dynamic>.from(raw);
-      final remote = Patient.fromJson(data);
-      if (await db.isPatientPurged(remote.id)) {
-        continue;
+    await db.runBatch(() async {
+      for (final raw in remotePatients) {
+        final data = Map<String, dynamic>.from(raw);
+        final remote = Patient.fromJson(data);
+        if (await db.isPatientPurged(remote.id)) {
+          continue;
+        }
+        final existing = await db.getPatientById(remote.id);
+        // Never overwrite an unsynced local edit. For clean local records,
+        // accept only a newer authoritative server version.
+        final remoteUpdatedAt = remote.updatedAt;
+        final localUpdatedAt = existing?.updatedAt;
+        if (existing == null ||
+            (existing.syncStatus == _synced &&
+                remoteUpdatedAt != null &&
+                (localUpdatedAt == null ||
+                    remoteUpdatedAt.isAfter(localUpdatedAt)))) {
+          await db.updatePatient(remote.copyWith(syncStatus: _synced));
+        }
       }
-      final existing = await db.getPatientById(remote.id);
-      // Never overwrite an unsynced local edit. For clean local records,
-      // accept only a newer authoritative server version.
-      final remoteUpdatedAt = remote.updatedAt;
-      final localUpdatedAt = existing?.updatedAt;
-      if (existing == null ||
-          (existing.syncStatus == _synced &&
-              remoteUpdatedAt != null &&
-              (localUpdatedAt == null ||
-                  remoteUpdatedAt.isAfter(localUpdatedAt)))) {
-        await db.updatePatient(remote.copyWith(syncStatus: _synced));
-      }
-    }
+    });
   }
 }
 

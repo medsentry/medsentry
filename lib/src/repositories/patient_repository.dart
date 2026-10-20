@@ -3,6 +3,7 @@ import 'dart:math';
 import '../database/simple_database.dart';
 import '../models/models.dart';
 import '../services/audit_service.dart';
+import '../services/document_service.dart';
 import '../utils/patient_address_data.dart';
 
 class PatientRepository {
@@ -352,7 +353,17 @@ class PatientRepository {
     final patient = await _db.getPatientById(id);
     if (patient == null) return;
 
+    final documents = await _db.getDocumentsForPatient(id);
     await _db.deletePatient(id);
+    // The rows are gone; also remove the encrypted files they pointed to.
+    for (final document in documents) {
+      if (document.filePath.trim().isEmpty) continue;
+      try {
+        await DocumentService.deleteDocument(document.filePath);
+      } catch (_) {
+        // A missing file is already the desired end state.
+      }
+    }
 
     await _auditService.logAction(
       userId: userId,
