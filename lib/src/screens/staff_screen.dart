@@ -33,18 +33,21 @@ class StaffScreen extends ConsumerWidget {
                 color: isDark ? AppColors.cardSurface : Colors.white,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                  color: isDark
+                      ? AppColors.borderSubtle
+                      : const Color(0xFFE2E8F0),
                   width: 1,
                 ),
               ),
               child: StaffManagementPanel(
                 embedded: true,
-                onAddUser: () => _showStaffFormDialog(context, ref),
+                onAddUser: () => StaffActions.showForm(context, ref),
                 onEditUser: (user) =>
-                    _showStaffFormDialog(context, ref, existingUser: user),
+                    StaffActions.showForm(context, ref, existingUser: user),
                 onDeactivateUser: (user) =>
-                    _confirmDeactivateStaff(context, ref, user),
-                onDeleteUser: (user) => _confirmDeleteStaff(context, ref, user),
+                    StaffActions.confirmDeactivate(context, ref, user),
+                onDeleteUser: (user) =>
+                    StaffActions.confirmDelete(context, ref, user),
               ),
             ),
           ),
@@ -52,11 +55,19 @@ class StaffScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Future<void> _showStaffFormDialog(
+/// Add, edit, deactivate and delete for staff accounts, shared by the Staff
+/// page and the facility page.
+class StaffActions {
+  const StaffActions._();
+
+  /// [initialClinicId] pre-selects the RHU for a new account.
+  static Future<void> showForm(
     BuildContext context,
     WidgetRef ref, {
     User? existingUser,
+    String? initialClinicId,
   }) async {
     final currentUser = ref.read(currentUserProvider);
     if (existingUser?.role == UserRole.superAdmin &&
@@ -73,7 +84,10 @@ class StaffScreen extends ConsumerWidget {
 
     final saved = await showDialog<bool>(
       context: context,
-      builder: (_) => StaffFormDialog(existingUser: existingUser),
+      builder: (_) => StaffFormDialog(
+        existingUser: existingUser,
+        initialClinicId: initialClinicId,
+      ),
     );
 
     if (saved == true) {
@@ -89,7 +103,7 @@ class StaffScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmDeactivateStaff(
+  static Future<void> confirmDeactivate(
     BuildContext context,
     WidgetRef ref,
     User user,
@@ -140,7 +154,7 @@ class StaffScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmDeleteStaff(
+  static Future<void> confirmDelete(
     BuildContext context,
     WidgetRef ref,
     User user,

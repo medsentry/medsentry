@@ -872,6 +872,64 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
+  /// Removes this device's clinics, patients and accounts that do not belong
+  /// to one of [clinicIds] (the facilities the server lists), keeping Super
+  /// Admin accounts, which have no facility by design. Nothing is queued for
+  /// deletion on the server: these records either never existed there or
+  /// belong to facilities this account cannot see. Returns the local
+  /// document file paths the caller must delete.
+  Future<List<String>> removeRecordsOutsideClinics(Set<String> clinicIds) async {
+    await _ensureLoaded();
+    bool outside(String? clinicId) =>
+        clinicId == null || !clinicIds.contains(clinicId);
+
+    final removedPatients = <String>{
+      for (final patient in _patients.values)
+        if (outside(patient.clinicId)) patient.id,
+    };
+    final documentPaths = <String>[];
+    for (final document in _documents.values.toList()) {
+      if (removedPatients.contains(document.patientId) ||
+          outside(document.clinicId)) {
+        _documents.remove(document.id);
+        _syncDeletes.remove('documents|${document.id}');
+        if (document.filePath.trim().isNotEmpty) {
+          documentPaths.add(document.filePath);
+        }
+      }
+    }
+    for (final id in removedPatients) {
+      _patients.remove(id);
+      _syncDeletes.remove('patients|$id');
+    }
+
+    final removedUsers = [
+      for (final user in _users.values)
+        if (user.role != UserRole.superAdmin && outside(user.clinicId)) user.id,
+    ];
+    for (final id in removedUsers) {
+      _users.remove(id);
+      _userPasswordHashes.remove(id);
+    }
+
+    final removedClinics = [
+      for (final id in _clinics.keys)
+        if (!clinicIds.contains(id)) id,
+    ];
+    for (final id in removedClinics) {
+      _clinics.remove(id);
+      _syncDeletes.remove('clinics|$id');
+    }
+
+    if (removedPatients.isNotEmpty ||
+        removedUsers.isNotEmpty ||
+        removedClinics.isNotEmpty ||
+        documentPaths.isNotEmpty) {
+      await _saveToDisk();
+    }
+    return documentPaths;
+  }
+
   bool _sameClinic(Clinic left, Clinic right) =>
       jsonEncode(left.toJson()) == jsonEncode(right.toJson());
 

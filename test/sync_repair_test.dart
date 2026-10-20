@@ -192,6 +192,69 @@ void main() {
     expect(ids, {'old-unsynced', 'recent'});
   });
 
+  group('records outside the server facilities', () {
+    User account(String id, UserRole role, String? clinicId) => User(
+      id: id,
+      clinicId: clinicId,
+      email: '$id@example.com',
+      firstName: 'A',
+      lastName: 'B',
+      role: role,
+      isActive: true,
+      pinEnabled: false,
+    );
+
+    Future<ClinicRepository> seed() async {
+      await db.insertClinic(
+        const Clinic(id: 'madrid', name: 'RHU Madrid', code: 'RHU-MAD'),
+      );
+      await db.insertClinic(
+        const Clinic(id: 'phantom', name: 'RHU Nowhere', code: 'RHU-X'),
+      );
+      await db.insertPatient(patient('kept', clinicId: 'madrid'));
+      await db.insertPatient(patient('in-phantom', clinicId: 'phantom'));
+      await db.insertDocument(
+        document('doc-phantom', 'in-phantom', '/files/doc-phantom.enc'),
+      );
+      await db.insertUser(account('staff-ok', UserRole.staff, 'madrid'));
+      await db.insertUser(account('staff-orphan', UserRole.staff, 'phantom'));
+      await db.insertUser(account('boss', UserRole.superAdmin, null));
+      return ClinicRepository(
+        db,
+        AuditService(db),
+        SupabaseClient('http://localhost', 'test-key'),
+      );
+    }
+
+    test('are removed, except Super Admins', () async {
+      final repository = await seed();
+
+      await repository.reconcileWithRemote(const [
+        Clinic(id: 'madrid', name: 'RHU Madrid', code: 'RHU-MAD'),
+      ]);
+
+      final patientIds = (await db.getAllPatients(
+        includeArchived: true,
+      )).map((p) => p.id);
+      final userIds = (await db.getAllUsers()).map((u) => u.id);
+      expect(patientIds, ['kept']);
+      expect(userIds, unorderedEquals(['staff-ok', 'boss']));
+      expect(await db.getDocumentById('doc-phantom'), isNull);
+      expect((await db.getAllClinics()).map((c) => c.id), ['madrid']);
+      // Local cleanup only: nothing is queued for deletion on the server.
+      expect(await db.getPendingSyncDeletes(), isEmpty);
+    });
+
+    test('are kept when the server list came back empty', () async {
+      final repository = await seed();
+
+      await repository.reconcileWithRemote(const []);
+
+      expect(await db.getAllPatients(includeArchived: true), hasLength(2));
+      expect(await db.getAllUsers(), hasLength(3));
+    });
+  });
+
   test('sync cursors persist per key', () async {
     final at = DateTime.utc(2026, 10, 20, 8);
     await db.setSyncCursor('audit_logs:user-1', at);

@@ -7,6 +7,7 @@ import '../database/simple_database.dart';
 import '../models/clinic.dart';
 import '../models/audit_log.dart';
 import '../services/audit_service.dart';
+import '../services/document_service.dart';
 
 class ClinicRepository {
   static const _remoteFetchTimeout = Duration(seconds: 5);
@@ -29,63 +30,15 @@ class ClinicRepository {
     return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
   }
 
-  /// First-run offline clinics. These must match the RHUs seeded by
-  /// supabase/migrations/20260929000000_initial_schema.sql: records created
-  /// under a clinic ID the server does not have can never be uploaded.
-  static final List<Clinic> defaultInitialClinics = [
-    Clinic(
-      id: '11111111-1111-4111-8111-111111111111',
-      name: 'RHU Parang',
-      code: 'RHU-PARANG',
-      address: 'Parang, Maguindanao del Norte',
-      contactNumber: '09171110001',
-      status: 'active',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ),
-    Clinic(
-      id: '22222222-2222-4222-8222-222222222222',
-      name: 'RHU Puyat',
-      code: 'RHU-PUYAT',
-      address: 'Puyat, San Agustin, Surigao del Sur',
-      contactNumber: '09172220002',
-      status: 'active',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ),
-    Clinic(
-      id: '33333333-3333-4333-8333-333333333333',
-      name: 'RHU Cantilan',
-      code: 'RHU-CANTILAN',
-      address: 'Cantilan, Surigao del Sur',
-      contactNumber: '09173330003',
-      status: 'active',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ),
-  ];
-
-  /// Clinic IDs shipped by earlier builds that never existed on the server.
-  static const Set<String> _legacyLocalClinicIds = {
-    'c1111111-1111-1111-1111-111111111111',
-    'c2222222-2222-2222-2222-222222222222',
-    'c3333333-3333-3333-3333-333333333333',
-  };
-
   Future<List<Clinic>> getClinics({bool includeInactive = true}) async {
     // Render cached RHUs immediately. A remote refresh updates the cache in
     // the background and triggers the provider through database changes.
     var list = await _db.getAllClinics();
     unawaited(_refreshRemoteClinics());
 
-    // Seed a first-run offline installation with usable RHU data once.
-    if (list.isEmpty && !(await _db.isClinicsSeeded())) {
-      await _db.setClinicsSeeded(true);
-      for (final def in defaultInitialClinics) {
-        await _db.insertClinic(def);
-        list.add(def);
-      }
-    }
+    // No invented clinics: a first run shows the RHUs once the server list
+    // arrives. Records created under a clinic the server does not have can
+    // never be uploaded.
 
     if (!includeInactive) {
       list = list.where((c) => c.isActive).toList();
@@ -147,14 +100,18 @@ class ClinicRepository {
         await _db.insertClinic(clinic);
       }
 
-      // Unused legacy seed clinics with no server counterpart would only
-      // invite new records that can never upload.
-      final patients = await _db.getAllPatients(includeArchived: true);
-      for (final local in await _db.getAllClinics()) {
-        if (_legacyLocalClinicIds.contains(local.id) &&
-            !remoteIds.contains(local.id) &&
-            !patients.any((patient) => patient.clinicId == local.id)) {
-          await _db.applyRemoteDelete('clinics', local.id);
+      // Every record must belong to a facility the server knows. Clinics
+      // invented on this device, and patients and staff without a real
+      // facility (Super Admins excepted), are removed from this device. An
+      // empty server list means the fetch was incomplete, not that every
+      // facility is gone, so nothing is removed then.
+      if (remoteIds.isEmpty) return;
+      final orphanFiles = await _db.removeRecordsOutsideClinics(remoteIds);
+      for (final path in orphanFiles) {
+        try {
+          await DocumentService.deleteDocument(path);
+        } catch (_) {
+          // A missing file is already the desired end state.
         }
       }
     });
