@@ -452,34 +452,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: Container(
                       key: const ValueKey('login-form-card'),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1E293B).withValues(alpha: 0.75)
-                            : Colors.white.withValues(alpha: 0.88),
+                        color: Colors.white.withValues(alpha: 0.92),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.16)
-                              : Colors.white.withValues(alpha: 0.90),
+                          color: Colors.white.withValues(alpha: 0.90),
                           width: 1.2,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: isDark ? 0.45 : 0.22,
-                            ),
-                            blurRadius: 36,
-                            spreadRadius: -4,
-                            offset: const Offset(0, 16),
-                          ),
-                          BoxShadow(
-                            color: (isDark
-                                    ? AppColors.primaryEmerald
-                                    : const Color(0xFF047857))
-                                .withValues(alpha: 0.08),
-                            blurRadius: 40,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(16),
@@ -491,7 +469,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               context,
                               _buildAuthForm(
                                 context,
-                                palette,
+                                _LoginPalette.light,
                                 isTall: !isCompact && viewport.maxHeight >= 760,
                                 isMobile: isCompact,
                               ),
@@ -887,6 +865,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: _fieldDecoration(
                 palette,
                 icon: Icons.lock_outline_rounded,
+                hint: 'Enter your password',
                 error: _passwordFieldError,
                 suffix: IconButton(
                   tooltip: _obscurePassword ? 'Show password' : 'Hide password',
@@ -961,7 +940,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               decoration: _fieldDecoration(
                 palette,
                 icon: Icons.pin_outlined,
-                hint: 'Enter your password',
+                hint: 'Enter 4-digit PIN',
                 error: _pinFieldError,
                 suffix: IconButton(
                   tooltip: _obscurePin ? 'Show PIN' : 'Hide PIN',
