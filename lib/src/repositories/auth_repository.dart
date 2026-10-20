@@ -21,6 +21,10 @@ class AuthRepository {
     'MEDSENTRY_ALLOW_DEFAULT_ADMIN',
     defaultValue: kDebugMode,
   );
+
+  /// How long sign-in waits for the server. Rural 3G round trips regularly
+  /// exceed the previous 3 seconds.
+  static const Duration _onlineTimeout = Duration(seconds: 15);
   static const String _currentUserIdKey = 'medsentry.current_user_id';
   static const String _lastUserIdKey = 'medsentry.last_user_id';
   static const String _sessionLockedKey = 'medsentry.session_locked';
@@ -364,7 +368,7 @@ class AuthRepository {
         try {
           await _supabase.auth
               .signInWithPassword(email: normalizedEmail, password: password)
-              .timeout(const Duration(seconds: 3));
+              .timeout(_onlineTimeout);
         } catch (e) {
           debugPrint('Supabase background auth warning: $e');
           await ensureOnlineSession();
@@ -382,7 +386,7 @@ class AuthRepository {
         try {
           await _supabase.auth
               .signInWithPassword(email: normalizedEmail, password: password)
-              .timeout(const Duration(seconds: 3));
+              .timeout(_onlineTimeout);
         } catch (e) {
           debugPrint('Supabase background auth warning: $e');
           await ensureOnlineSession();
@@ -395,7 +399,7 @@ class AuthRepository {
     try {
       final response = await _supabase.auth
           .signInWithPassword(email: normalizedEmail, password: password)
-          .timeout(const Duration(seconds: 3));
+          .timeout(_onlineTimeout);
 
       if (response.user == null) {
         return null;
@@ -411,7 +415,7 @@ class AuthRepository {
           )
           .eq('auth_user_id', response.user!.id)
           .maybeSingle()
-          .timeout(const Duration(seconds: 3));
+          .timeout(_onlineTimeout);
 
       if (profile == null) {
         unawaited(_supabase.auth.signOut().catchError((_) {}));
@@ -461,9 +465,13 @@ class AuthRepository {
       return mergedUser;
     } on AuthException catch (e) {
       debugPrint('AuthException during login: ${e.message}');
+      if (_isNetworkError(e)) throw const _ServerUnreachable();
       return null;
     } catch (e) {
       debugPrint('Login exception: $e');
+      // A slow or missing connection is not a wrong password; reporting it
+      // as one made correct credentials look invalid on rural networks.
+      if (_isNetworkError(e)) throw const _ServerUnreachable();
       return null;
     }
   }
@@ -1079,7 +1087,16 @@ class AuthRepository {
     final localUser = await _db.getUserByEmail(normalizedEmail);
 
     if (localUser != null && !localUser.requiresEmailOtp) {
-      final user = await authenticate(normalizedEmail, password);
+      final User? user;
+      try {
+        user = await authenticate(normalizedEmail, password);
+      } on _ServerUnreachable {
+        return const LoginFailure(
+          'Could not reach the MedSentry server. Check your internet '
+          'connection and try again.',
+          isNetworkError: true,
+        );
+      }
       if (user == null) return const LoginFailure('Invalid email or password.');
       unawaited(ensureOnlineSession());
       return LoginSuccess(user);
@@ -1734,4 +1751,10 @@ class AuthRepository {
       );
     }
   }
+}
+
+/// Raised when sign-in cannot reach the server, as opposed to rejected
+/// credentials.
+class _ServerUnreachable implements Exception {
+  const _ServerUnreachable();
 }
