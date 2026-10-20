@@ -29,16 +29,11 @@ From inside build\web:
    npx http-server -p 8080 -c-1
 
 ------------------------------------------------------
-LOGIN CREDENTIALS:
+LOGIN ACCOUNTS:
 ------------------------------------------------------
-Super Admin (All RHUs):
-Email: superadmin@gmail.com
-Password: Password123!
+Accounts are created by an administrator (Settings > Staff). Never write
+passwords in this file: this repository has been public.
 
-RHU Parang Admin:
-Email: admin@gmail.com
-Password: Password123!
-
-RHU Parang Staff:
-Email: staff@gmail.com
-Password: Password123!
+For local debug builds only, the development seed accounts use the
+password passed with --dart-define=MEDSENTRY_SEED_PASSWORD=... .
+Release builds do not create seed accounts.
