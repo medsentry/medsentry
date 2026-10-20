@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:medsentry/src/providers/theme_provider.dart';
+import 'package:medsentry/src/models/models.dart';
+import 'package:medsentry/src/providers/providers.dart';
 import 'package:medsentry/src/screens/patients_screen.dart';
 import 'package:medsentry/src/widgets/app_form_dialog.dart';
 
@@ -89,6 +90,56 @@ void main() {
       // Check actions
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Register Patient'), findsOneWidget);
+    });
+  });
+
+  group('Patient Registration Form - RHU assignment', () {
+    User user(UserRole role, String? clinicId) => User(
+      id: 'u-${role.name}',
+      clinicId: clinicId,
+      email: '${role.name}@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      role: role,
+      isActive: true,
+      pinEnabled: false,
+    );
+
+    Widget buildFor(User current) => ProviderScope(
+      overrides: [
+        currentUserProvider.overrideWith((ref) => current),
+        clinicsProvider.overrideWith(
+          (ref) async => const [
+            Clinic(id: 'clinic-parang', name: 'RHU Parang', code: 'RHU-PARANG'),
+          ],
+        ),
+      ],
+      child: MaterialApp(
+        theme: buildMedSentryTheme(Brightness.light),
+        home: Scaffold(body: PatientRegistrationDialog(onPatientAdded: () {})),
+      ),
+    );
+
+    testWidgets('a super admin must choose the patient RHU', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(buildFor(user(UserRole.superAdmin, null)));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Rural Health Unit'), findsOneWidget);
+    });
+
+    testWidgets('clinic staff register into their own RHU without a picker', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(buildFor(user(UserRole.staff, 'clinic-parang')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Rural Health Unit'), findsNothing);
     });
   });
 }

@@ -1348,6 +1348,14 @@ class _PatientRegistrationDialogState
   bool _showValidationErrors = false;
   bool _isSubmitting = false;
 
+  /// Super Admins have no clinic of their own, so they must choose the RHU a
+  /// patient belongs to. A patient without a clinic can never be uploaded and
+  /// would appear under every RHU.
+  String? _assignedClinicId;
+
+  bool get _needsClinicChoice =>
+      ref.read(currentUserProvider)?.isSuperAdmin == true;
+
   static const List<String> _commonAllergies = [
     'Penicillin',
     'Amoxicillin',
@@ -1584,7 +1592,7 @@ class _PatientRegistrationDialogState
             : null,
         category: patientCategoryFromDateOfBirth(_dateOfBirth),
         userId: currentUser?.id ?? 'system',
-        clinicId: currentUser?.clinicId ?? ref.read(activeClinicIdProvider),
+        clinicId: currentUser?.clinicId ?? _assignedClinicId,
       );
 
       // Notify parent to refresh list
@@ -1700,6 +1708,9 @@ class _PatientRegistrationDialogState
   }
 
   String? _validateBeforeSubmit() {
+    if (_needsClinicChoice && _assignedClinicId == null) {
+      return 'Select the RHU this patient belongs to.';
+    }
     if (!isValidPersonName(_firstNameController.text) ||
         !isValidPersonName(_lastNameController.text)) {
       return 'Enter valid first and last names (2-50 letters).';
@@ -1880,6 +1891,27 @@ class _PatientRegistrationDialogState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (_needsClinicChoice) ...[
+          _buildSectionHeader('Assigned RHU', Icons.local_hospital_outlined),
+          _buildDropdownField(
+            label: 'Rural Health Unit',
+            hint: 'Select the RHU for this patient',
+            required: true,
+            value: _assignedClinicId,
+            items: [
+              for (final clinic in (ref.watch(clinicsProvider).valueOrNull ??
+                      const <Clinic>[])
+                  .where((clinic) => clinic.isActive))
+                DropdownMenuItem(value: clinic.id, child: Text(clinic.name)),
+            ],
+            onChanged: (value) => setState(() => _assignedClinicId = value),
+            errorText: _requiredValueError(_assignedClinicId, 'RHU'),
+            icon: Icons.local_hospital_outlined,
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+        ],
         _buildSectionHeader('Personal Information (Full Name)', Icons.badge_outlined),
         _buildFormRow([
           _buildFormField(
@@ -2630,7 +2662,10 @@ class _PatientRegistrationDialogState
       required: required,
       field: DropdownButtonFormField<String>(
         initialValue: value,
-        hint: Text(hint),
+        // Long hints and option names truncate instead of overflowing on
+        // narrow screens.
+        isExpanded: true,
+        hint: Text(hint, overflow: TextOverflow.ellipsis),
         decoration: InputDecoration(
           border: const OutlineInputBorder(),
           prefixIcon: icon != null ? Icon(icon) : null,
