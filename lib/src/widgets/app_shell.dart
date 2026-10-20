@@ -5,6 +5,7 @@ import '../models/system_settings.dart';
 import '../models/user.dart';
 import '../providers/providers.dart';
 import '../widgets/app_scaffold.dart';
+import 'idle_session_lock.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -199,25 +200,27 @@ class _AppShellState extends ConsumerState<AppShell> {
         ? 'Cloud Sync'
         : 'Dashboard';
 
-    return AppScaffold(
-      title: title,
-      currentIndex: currentIndex,
-      navigationItems: navigationItems,
-      onTabChanged: (index) {
-        if (index < 0 || index >= navigationItems.length) return;
+    return IdleSessionLock(
+      child: AppScaffold(
+        title: title,
+        currentIndex: currentIndex,
+        navigationItems: navigationItems,
+        onTabChanged: (index) {
+          if (index < 0 || index >= navigationItems.length) return;
 
-        final target = navigationItems[index].path;
-        if (target == currentPath) return;
+          final target = navigationItems[index].path;
+          if (target == currentPath) return;
 
-        final branchIndex = _branchIndexForPath(target);
-        if (branchIndex == widget.navigationShell.currentIndex) {
-          GoRouter.of(context).go(target);
-          return;
-        }
+          final branchIndex = _branchIndexForPath(target);
+          if (branchIndex == widget.navigationShell.currentIndex) {
+            GoRouter.of(context).go(target);
+            return;
+          }
 
-        widget.navigationShell.goBranch(branchIndex, initialLocation: true);
-      },
-      body: widget.navigationShell,
+          widget.navigationShell.goBranch(branchIndex, initialLocation: true);
+        },
+        body: widget.navigationShell,
+      ),
     );
   }
 }

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
-import 'package:uuid/uuid.dart';
 
 import '../config/seed_credentials.dart';
 import '../database/simple_database.dart';
@@ -10,15 +9,22 @@ import '../models/audit_log.dart';
 import '../models/login_challenge.dart';
 import '../models/user.dart';
 import '../services/audit_service.dart';
+import '../services/document_service.dart';
 import '../utils/password_crypto.dart';
 import 'otp_gateway.dart';
 
 class AuthRepository {
   static const String _legacyStaffEmail = 'staff@rhu.gov.ph';
+  // Seed accounts share a published password, so they exist only in debug
+  // builds unless explicitly enabled at build time.
   static const bool _allowDefaultAdmin = bool.fromEnvironment(
     'MEDSENTRY_ALLOW_DEFAULT_ADMIN',
-    defaultValue: true,
+    defaultValue: kDebugMode,
   );
+
+  /// How long sign-in waits for the server. Rural 3G round trips regularly
+  /// exceed the previous 3 seconds.
+  static const Duration _onlineTimeout = Duration(seconds: 15);
   static const String _currentUserIdKey = 'medsentry.current_user_id';
   static const String _lastUserIdKey = 'medsentry.last_user_id';
   static const String _sessionLockedKey = 'medsentry.session_locked';
@@ -29,12 +35,9 @@ class AuthRepository {
   final OtpGateway _otp;
   late final SupabaseClient _supabase = Supabase.instance.client;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  final _uuid = const Uuid();
 
   // Store last logged in user ID for PIN login
   String? _lastLoggedInUserId;
-  int _failedPinAttempts = 0;
-  DateTime? _pinLockedUntil;
 
   AuthRepository(this._db, this._auditService, {OtpGateway? otpGateway})
     : _otp = otpGateway ?? SupabaseOtpGateway();
@@ -46,6 +49,9 @@ class AuthRepository {
 
   Future<void> _setCurrentUserId(String userId) async {
     _lastLoggedInUserId = userId;
+    // Every successful sign-in (password, code, PIN or biometrics) clears
+    // the failed PIN attempt history for this account.
+    await _db.setPinGuard(userId, recent: 0, total: 0);
     try {
       await _secureStorage.write(key: _currentUserIdKey, value: userId);
       await _secureStorage.write(key: _lastUserIdKey, value: userId);
@@ -142,10 +148,9 @@ class AuthRepository {
         await _db.updateUser(updatedUser);
         return updatedUser;
       }
-      final existingHash = await _db.getUserPasswordHash(existingUser.id);
-      if (existingHash == null) {
-        await _db.updateUserPassword(existingUser.id, _getSeedPasswordHash());
-      }
+      // Never re-apply the seed password to an existing account: a password
+      // change clears the local hash, and restoring the seed here would make
+      // the published default password valid again offline.
       return existingUser;
     }
 
@@ -187,8 +192,7 @@ class AuthRepository {
   bool _isSeedShortcut(SeedAccount account, String password) {
     if (!kDebugMode || !_allowDefaultAdmin) return false;
     if (account.role != UserRole.superAdmin) return false;
-    return password == SeedCredentials.defaultPassword ||
-        password == 'Password123!';
+    return password == SeedCredentials.defaultPassword;
   }
 
   Future<void> ensureOnlineSession() async {
@@ -254,67 +258,60 @@ class AuthRepository {
       throw ArgumentError('Email already exists');
     }
 
-    // Try to ensure an active Supabase online session if possible
+    // Accounts must exist in Supabase Auth to sign in (staff and admins verify
+    // by emailed code), and the server only learns the password here. A
+    // local-only account could never log in or sync, so creation is online.
     await ensureOnlineSession();
-
-    String? remoteUserId;
-    bool provisionedOnline = false;
-
-    if (_supabase.auth.currentSession != null) {
-      try {
-        final response = await _supabase.functions.invoke(
-          'provision-user',
-          body: {
-            'action': 'create',
-            'email': normalizedEmail,
-            'password': password,
-            'first_name': normalizedFirstName,
-            'last_name': normalizedLastName,
-            'role': role.dbValue,
-            'clinic_id': clinicId,
-            'license_number': licenseNumber,
-            'specialization': specialization,
-            'contact_number': contactNumber,
-          },
-        );
-        if (response.data is Map) {
-          final profile = Map<String, dynamic>.from(response.data as Map);
-          remoteUserId = profile['id'] as String?;
-          provisionedOnline = remoteUserId != null;
-        }
-      } on FunctionException catch (e) {
-        debugPrint(
-          'AuthRepository: FunctionException during provision-user: ${e.status} ${e.details}',
-        );
-        final details = e.details;
-        String? message;
-        if (details is Map && details['error'] != null) {
-          message = details['error'].toString();
-        } else {
-          message = details?.toString();
-        }
-        final lower = (message ?? '').toLowerCase();
-        if (lower.contains('already') ||
-            lower.contains('duplicate') ||
-            lower.contains('exists')) {
-          throw ArgumentError(
-            message ?? 'A user with this email already exists.',
-          );
-        }
-        if (lower.contains('required') || lower.contains('invalid')) {
-          throw ArgumentError(message ?? 'Invalid account details.');
-        }
-      } catch (e) {
-        debugPrint('AuthRepository: online provisioning error: $e');
-        final errStr = e.toString().toLowerCase();
-        if (errStr.contains('already registered') ||
-            errStr.contains('already exists')) {
-          throw ArgumentError('Email already exists in remote database');
-        }
-      }
+    if (_supabase.auth.currentSession == null) {
+      throw StateError(
+        'Connect to the internet to create user accounts. New accounts must '
+        'be registered online before they can sign in.',
+      );
     }
 
-    final id = remoteUserId ?? _uuid.v4();
+    final String remoteUserId;
+    try {
+      final response = await _supabase.functions.invoke(
+        'provision-user',
+        body: {
+          'action': 'create',
+          'email': normalizedEmail,
+          'password': password,
+          'first_name': normalizedFirstName,
+          'last_name': normalizedLastName,
+          'role': role.dbValue,
+          'clinic_id': clinicId,
+          'license_number': licenseNumber,
+          'specialization': specialization,
+          'contact_number': contactNumber,
+        },
+      );
+      final data = response.data;
+      final createdId = data is Map ? data['id'] as String? : null;
+      if (createdId == null) {
+        throw StateError('The server did not confirm the new account.');
+      }
+      remoteUserId = createdId;
+    } on FunctionException catch (e) {
+      debugPrint(
+        'AuthRepository: FunctionException during provision-user: ${e.status} ${e.details}',
+      );
+      final details = e.details;
+      final message = details is Map && details['error'] != null
+          ? details['error'].toString()
+          : 'Server error (${e.status})';
+      final lower = message.toLowerCase();
+      if (lower.contains('already') ||
+          lower.contains('duplicate') ||
+          lower.contains('exists') ||
+          lower.contains('required') ||
+          lower.contains('invalid')) {
+        throw ArgumentError(message);
+      }
+      throw StateError(message);
+    }
+
+    final id = remoteUserId;
     final now = DateTime.now();
     final passwordHash = _hashPassword(password);
 
@@ -334,23 +331,10 @@ class AuthRepository {
       pinHash: pinHash,
       createdAt: now,
       updatedAt: now,
-      syncStatus: provisionedOnline ? 0 : 1,
+      syncStatus: 0,
     );
 
-    if (clinicId != null && provisionedOnline) {
-      try {
-        await _supabase
-            .from('users')
-            .update({'clinic_id': clinicId})
-            .eq('id', id);
-      } catch (e) {
-        debugPrint(
-          'AuthRepository: failed to set clinic_id on remote user: $e',
-        );
-      }
-    }
-
-    if (pinEnabled && pin != null && pin.isNotEmpty && provisionedOnline) {
+    if (pinEnabled && pin != null && pin.isNotEmpty) {
       await _setPinOnline(id, pin, enabled: true);
     }
 
@@ -361,8 +345,7 @@ class AuthRepository {
       action: AuditAction.create,
       entityType: 'user',
       entityId: id,
-      description:
-          'Created user: $normalizedEmail with role ${role.name}${provisionedOnline ? ' (online)' : ' (offline pending sync)'}',
+      description: 'Created user: $normalizedEmail with role ${role.name}',
     );
 
     return user;
@@ -385,7 +368,7 @@ class AuthRepository {
         try {
           await _supabase.auth
               .signInWithPassword(email: normalizedEmail, password: password)
-              .timeout(const Duration(seconds: 3));
+              .timeout(_onlineTimeout);
         } catch (e) {
           debugPrint('Supabase background auth warning: $e');
           await ensureOnlineSession();
@@ -403,7 +386,7 @@ class AuthRepository {
         try {
           await _supabase.auth
               .signInWithPassword(email: normalizedEmail, password: password)
-              .timeout(const Duration(seconds: 3));
+              .timeout(_onlineTimeout);
         } catch (e) {
           debugPrint('Supabase background auth warning: $e');
           await ensureOnlineSession();
@@ -416,7 +399,7 @@ class AuthRepository {
     try {
       final response = await _supabase.auth
           .signInWithPassword(email: normalizedEmail, password: password)
-          .timeout(const Duration(seconds: 3));
+          .timeout(_onlineTimeout);
 
       if (response.user == null) {
         return null;
@@ -432,7 +415,7 @@ class AuthRepository {
           )
           .eq('auth_user_id', response.user!.id)
           .maybeSingle()
-          .timeout(const Duration(seconds: 3));
+          .timeout(_onlineTimeout);
 
       if (profile == null) {
         unawaited(_supabase.auth.signOut().catchError((_) {}));
@@ -482,9 +465,13 @@ class AuthRepository {
       return mergedUser;
     } on AuthException catch (e) {
       debugPrint('AuthException during login: ${e.message}');
+      if (_isNetworkError(e)) throw const _ServerUnreachable();
       return null;
     } catch (e) {
       debugPrint('Login exception: $e');
+      // A slow or missing connection is not a wrong password; reporting it
+      // as one made correct credentials look invalid on rural networks.
+      if (_isNetworkError(e)) throw const _ServerUnreachable();
       return null;
     }
   }
@@ -657,23 +644,28 @@ class AuthRepository {
           'Email $normalizedEmail is already in use by another account',
         );
       }
+      // The sign-in identity and the profile must change together, otherwise
+      // the user signs in with one address while the app shows another.
+      await ensureOnlineSession();
+      if (_supabase.auth.currentSession == null) {
+        throw StateError('Connect to the internet to change an email address');
+      }
       try {
-        await _supabase
-            .from('users')
-            .update({'email': normalizedEmail})
-            .eq('id', id);
-        if (_supabase.auth.currentSession != null) {
-          await _supabase.functions.invoke(
-            'provision-user',
-            body: {
-              'action': 'update_email',
-              'target_user_id': id,
-              'email': normalizedEmail,
-            },
-          );
-        }
-      } catch (e) {
-        debugPrint('Remote email update non-fatal: $e');
+        await _supabase.functions.invoke(
+          'provision-user',
+          body: {
+            'action': 'update_email',
+            'target_user_id': id,
+            'email': normalizedEmail,
+          },
+        );
+      } on FunctionException catch (e) {
+        final details = e.details;
+        throw StateError(
+          details is Map && details['error'] != null
+              ? details['error'].toString()
+              : 'Unable to change the email address (${e.status})',
+        );
       }
     }
 
@@ -897,7 +889,9 @@ class AuthRepository {
       }
       final errorMsg = details is Map && details['error'] != null
           ? details['error'].toString()
-          : (e.reasonPhrase?.isNotEmpty == true ? e.reasonPhrase! : 'Server error (${e.status})');
+          : (e.reasonPhrase?.isNotEmpty == true
+                ? e.reasonPhrase!
+                : 'Server error (${e.status})');
       throw StateError(errorMsg);
     }
 
@@ -1093,7 +1087,16 @@ class AuthRepository {
     final localUser = await _db.getUserByEmail(normalizedEmail);
 
     if (localUser != null && !localUser.requiresEmailOtp) {
-      final user = await authenticate(normalizedEmail, password);
+      final User? user;
+      try {
+        user = await authenticate(normalizedEmail, password);
+      } on _ServerUnreachable {
+        return const LoginFailure(
+          'Could not reach the MedSentry server. Check your internet '
+          'connection and try again.',
+          isNetworkError: true,
+        );
+      }
       if (user == null) return const LoginFailure('Invalid email or password.');
       unawaited(ensureOnlineSession());
       return LoginSuccess(user);
@@ -1340,20 +1343,35 @@ class AuthRepository {
   }
 
   // Login with PIN - used by auth provider
+  /// Consecutive failures that lock PIN unlock for [pinLockDuration].
+  static const int pinAttemptsPerLock = 5;
+  static const Duration pinLockDuration = Duration(minutes: 5);
+
+  /// Consecutive failures after which PIN unlock is disabled until the next
+  /// successful sign-in. A 4-digit PIN has only 10,000 values, so timed
+  /// lockouts alone still allow it to be guessed within days.
+  static const int pinAttemptsBeforePasswordRequired = 10;
+
   Future<User?> loginWithPin(String pin) async {
     // Use the last logged in user ID for PIN login
-    final lockedUntil = _pinLockedUntil;
+    final userId = await _getLastLoggedInUserId();
+    if (userId == null) {
+      throw Exception('No recent user found for PIN login.');
+    }
+
+    final guard = await _db.getPinGuard(userId);
+    if (guard.total >= pinAttemptsBeforePasswordRequired) {
+      throw Exception(
+        'Too many incorrect PINs. Sign in with your email and password.',
+      );
+    }
+    final lockedUntil = guard.lockedUntil;
     if (lockedUntil != null && DateTime.now().isBefore(lockedUntil)) {
       final minutes = lockedUntil.difference(DateTime.now()).inMinutes;
       final seconds = lockedUntil.difference(DateTime.now()).inSeconds % 60;
       throw Exception(
         'PIN login locked. Try again in ${minutes}m ${seconds}s.',
       );
-    }
-
-    final userId = await _getLastLoggedInUserId();
-    if (userId == null) {
-      throw Exception('No recent user found for PIN login.');
     }
 
     debugPrint('Attempting PIN login for user: $userId');
@@ -1366,9 +1384,28 @@ class AuthRepository {
     final isValid = await verifyPin(userId, pin);
     if (!isValid) {
       debugPrint('Invalid PIN');
-      _failedPinAttempts++;
-      if (_failedPinAttempts >= 5) {
-        _pinLockedUntil = DateTime.now().add(const Duration(minutes: 5));
+      final recent = guard.recent + 1;
+      final total = guard.total + 1;
+      if (total >= pinAttemptsBeforePasswordRequired) {
+        await _db.setPinGuard(userId, recent: 0, total: total);
+        await _auditService.logAction(
+          userId: userId,
+          action: AuditAction.login,
+          entityType: 'user',
+          entityId: userId,
+          description: 'Failed PIN login attempt - PIN unlock disabled',
+        );
+        throw Exception(
+          'Too many incorrect PINs. Sign in with your email and password.',
+        );
+      }
+      if (recent >= pinAttemptsPerLock) {
+        await _db.setPinGuard(
+          userId,
+          recent: 0,
+          total: total,
+          lockedUntil: DateTime.now().add(pinLockDuration),
+        );
         await _auditService.logAction(
           userId: userId,
           action: AuditAction.login,
@@ -1380,6 +1417,7 @@ class AuthRepository {
           'Too many failed attempts. PIN login locked for 5 minutes.',
         );
       }
+      await _db.setPinGuard(userId, recent: recent, total: total);
       await _auditService.logAction(
         userId: userId,
         action: AuditAction.login,
@@ -1395,8 +1433,6 @@ class AuthRepository {
       // Update last login
       await _db.updateUserLastLogin(userId);
       await _setCurrentUserId(userId);
-      _failedPinAttempts = 0;
-      _pinLockedUntil = null;
       await unlockSession();
       unawaited(ensureOnlineSession());
 
@@ -1431,8 +1467,6 @@ class AuthRepository {
       // Update last login
       await _db.updateUserLastLogin(userId);
       await _setCurrentUserId(userId);
-      _failedPinAttempts = 0;
-      _pinLockedUntil = null;
       await unlockSession();
       unawaited(ensureOnlineSession());
 
@@ -1457,6 +1491,8 @@ class AuthRepository {
 
     final user = await getUserById(userId);
     if (user == null || !user.isActive || !user.pinEnabled) return false;
+    final guard = await _db.getPinGuard(userId);
+    if (guard.total >= pinAttemptsBeforePasswordRequired) return false;
     if (!await _isOtpTrustValid(user)) return false;
     if (user.pinHash != null) return true;
 
@@ -1498,8 +1534,6 @@ class AuthRepository {
     await _db.setLastUserId(null);
     await _clearOtpVerified();
     _lastLoggedInUserId = null;
-    _failedPinAttempts = 0;
-    _pinLockedUntil = null;
 
     if (userId != null) {
       await _auditService.logAction(
@@ -1509,6 +1543,25 @@ class AuthRepository {
         entityId: userId,
         description: 'User logged out',
       );
+    }
+
+    await _clearBrowserDataAfterLogout();
+  }
+
+  /// Browsers are often shared and keep this data readable in developer
+  /// tools, so a full sign-out removes patient data from the browser. It is
+  /// kept while changes are still waiting to sync, so nothing is lost; the
+  /// desktop app keeps its data in the signed-in OS account's folder.
+  Future<void> _clearBrowserDataAfterLogout() async {
+    if (!kIsWeb) return;
+    if (await _db.getPendingSyncCount() > 0) return;
+    final documentPaths = await _db.clearSignedInData();
+    for (final path in documentPaths) {
+      try {
+        await DocumentService.deleteDocument(path);
+      } catch (_) {
+        // A missing file is already the desired end state.
+      }
     }
   }
 
@@ -1698,4 +1751,10 @@ class AuthRepository {
       );
     }
   }
+}
+
+/// Raised when sign-in cannot reach the server, as opposed to rejected
+/// credentials.
+class _ServerUnreachable implements Exception {
+  const _ServerUnreachable();
 }

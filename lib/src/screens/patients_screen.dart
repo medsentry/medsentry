@@ -20,10 +20,16 @@ class PatientsScreen extends ConsumerStatefulWidget {
   final bool openAddPatient;
   final String? initialSearch;
 
+  /// When set, shows and registers only this facility's patients (used by
+  /// the facility page). Otherwise a Super Admin sees every facility,
+  /// grouped by facility.
+  final String? clinicId;
+
   const PatientsScreen({
     super.key,
     this.openAddPatient = false,
     this.initialSearch,
+    this.clinicId,
   });
 
   @override
@@ -85,6 +91,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
       context: context,
       builder: (dialogContext) => Consumer(
         builder: (context, ref, child) => _PatientRegistrationWizard(
+          initialClinicId: widget.clinicId,
           onPatientAdded: () {
             // Refresh the patients list
             ref.invalidate(patientsProvider);
@@ -96,6 +103,9 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Facility group headers need the clinic names; rebuild when they load,
+    // or every group shows as "No facility assigned".
+    if (_groupsByFacility) ref.watch(clinicsProvider);
     final query = _searchQuery.trim();
     final patientsAsync = query.isEmpty
         ? ref.watch(patientsProvider)
@@ -108,7 +118,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
           Expanded(
             child: patientsAsync.when(
               skipLoadingOnReload: true,
-              data: (patients) {
+              data: (loadedPatients) {
+                final patients = _scopeToClinic(loadedPatients);
                 final barangays = _uniqueSorted(
                   patients.map((patient) => patient.barangay),
                 );
@@ -123,10 +134,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                 );
                 final filteredPatients = _filterPatients(patients);
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _PatientsPageHeader(
+                final header = _PatientsPageHeader(
                       totalCount: patients.length,
                       filteredCount: filteredPatients.length,
                       barangayCount: barangays.length,
@@ -135,8 +143,8 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                           : null,
                       onExportRegistry: () =>
                           _exportPatientRegistry(filteredPatients),
-                    ),
-                    _PatientsToolbar(
+                    );
+                final toolbar = _PatientsToolbar(
                       searchController: _searchController,
                       searchQuery: _searchQuery,
                       barangayFilter: _barangayFilter,
@@ -165,19 +173,31 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
                       onSortModeChanged: (value) =>
                           setState(() => _sortMode = value),
                       onClearFilters: _clearFilters,
-                    ),
-                    Expanded(
-                      child: filteredPatients.isEmpty
-                          ? _EmptyPatientsState(
-                              hasFilters: _hasActiveFilters,
-                              onClearFilters: _clearFilters,
-                              onAddPatient: canRegisterPatients
-                                  ? () => _showAddPatientDialog(context)
-                                  : null,
-                            )
-                          : _buildMainContent(context, filteredPatients),
-                    ),
-                  ],
+                    );
+                final list = filteredPatients.isEmpty
+                    ? _EmptyPatientsState(
+                        hasFilters: _hasActiveFilters,
+                        onClearFilters: _clearFilters,
+                        onAddPatient: canRegisterPatients
+                            ? () => _showAddPatientDialog(context)
+                            : null,
+                      )
+                    : _buildMainContent(context, filteredPatients);
+
+                // On phones the header and filters take most of the screen;
+                // scroll them away with the list so patients stay visible.
+                if (ResponsiveLayout.isMobile(context)) {
+                  return NestedScrollView(
+                    headerSliverBuilder: (context, _) => [
+                      SliverToBoxAdapter(child: header),
+                      SliverToBoxAdapter(child: toolbar),
+                    ],
+                    body: list,
+                  );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [header, toolbar, Expanded(child: list)],
                 );
               },
               loading: () => const LoadingState(),
@@ -365,10 +385,43 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     return filtered;
   }
 
+  /// A Super Admin viewing every facility sees patients grouped by facility,
+  /// then barangay; everyone else groups by barangay, then purok.
+  bool get _groupsByFacility =>
+      widget.clinicId == null &&
+      ref.read(currentUserProvider)?.isSuperAdmin == true;
+
+  String _facilityName(String? clinicId) {
+    final clinics = ref.read(clinicsProvider).valueOrNull ?? const <Clinic>[];
+    for (final clinic in clinics) {
+      if (clinic.id == clinicId) return clinic.name;
+    }
+    return 'No facility assigned';
+  }
+
+  List<Patient> _scopeToClinic(List<Patient> patients) {
+    final clinicId = widget.clinicId;
+    if (clinicId == null) return patients;
+    return patients.where((patient) => patient.clinicId == clinicId).toList();
+  }
+
   Map<String, Map<String, List<Patient>>> _groupPatients(
     List<Patient> patients,
   ) {
     final grouped = <String, Map<String, List<Patient>>>{};
+    if (_groupsByFacility) {
+      for (final patient in patients) {
+        final facility = _facilityName(patient.clinicId);
+        final barangay = _locationLabel(
+          patient.barangay,
+          'Unassigned Barangay',
+        );
+        grouped.putIfAbsent(facility, () => <String, List<Patient>>{});
+        grouped[facility]!.putIfAbsent(barangay, () => <Patient>[]);
+        grouped[facility]![barangay]!.add(patient);
+      }
+      return grouped;
+    }
     for (final patient in patients) {
       final barangay = _locationLabel(patient.barangay, 'Unassigned Barangay');
       final purok = _locationLabel(patient.purokSitio, 'Unassigned Purok');
@@ -397,6 +450,7 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
     final contentView = _PatientsContentView(
       patients: filteredPatients,
       groupedPatients: _groupPatients(filteredPatients),
+      groupsByFacility: _groupsByFacility,
       viewMode: _viewMode,
       sortMode: _sortMode,
       selectedPatientId: selectedPatient?.id,
@@ -637,7 +691,10 @@ class _PatientsPageHeader extends StatelessWidget {
                     : const Color(0xFFE2E8F0),
               ),
             ),
-            child: Row(
+            // Wraps onto a second line on phones instead of overflowing.
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 4,
               children: [
                 Icon(
                   Icons.query_stats_rounded,
@@ -1026,6 +1083,9 @@ class _FilterDropdown<T> extends StatelessWidget {
 class _PatientsContentView extends StatelessWidget {
   final List<Patient> patients;
   final Map<String, Map<String, List<Patient>>> groupedPatients;
+
+  /// True when the top-level groups are facilities rather than barangays.
+  final bool groupsByFacility;
   final _PatientViewMode viewMode;
   final _PatientSortMode sortMode;
   final String? selectedPatientId;
@@ -1034,6 +1094,7 @@ class _PatientsContentView extends StatelessWidget {
   const _PatientsContentView({
     required this.patients,
     required this.groupedPatients,
+    this.groupsByFacility = false,
     required this.viewMode,
     required this.sortMode,
     this.selectedPatientId,
@@ -1091,6 +1152,9 @@ class _PatientsContentView extends StatelessWidget {
               _BarangaySectionHeader(
                 barangay: entry.key,
                 patientCount: sectionPatients.length,
+                icon: groupsByFacility
+                    ? Icons.local_hospital_outlined
+                    : Icons.holiday_village_outlined,
               ),
               const SizedBox(height: 8),
               ...sectionPatients.map(
@@ -1126,10 +1190,12 @@ class _PatientsContentView extends StatelessWidget {
 class _BarangaySectionHeader extends StatelessWidget {
   final String barangay;
   final int patientCount;
+  final IconData icon;
 
   const _BarangaySectionHeader({
     required this.barangay,
     required this.patientCount,
+    this.icon = Icons.holiday_village_outlined,
   });
 
   @override
@@ -1149,7 +1215,7 @@ class _BarangaySectionHeader extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            Icons.holiday_village_outlined,
+            icon,
             size: 18,
             color: primary,
           ),
@@ -1334,7 +1400,15 @@ class _EmptyPatientsState extends StatelessWidget {
 class PatientRegistrationDialog extends ConsumerStatefulWidget {
   final VoidCallback onPatientAdded;
 
-  const PatientRegistrationDialog({super.key, required this.onPatientAdded});
+  /// Pre-selects the RHU (for example when registering from a facility
+  /// page), so a Super Admin is not asked to choose it.
+  final String? initialClinicId;
+
+  const PatientRegistrationDialog({
+    super.key,
+    required this.onPatientAdded,
+    this.initialClinicId,
+  });
 
   @override
   ConsumerState<PatientRegistrationDialog> createState() =>
@@ -1347,6 +1421,15 @@ class _PatientRegistrationDialogState
     extends ConsumerState<PatientRegistrationDialog> {
   bool _showValidationErrors = false;
   bool _isSubmitting = false;
+
+  /// Super Admins have no clinic of their own, so they must choose the RHU a
+  /// patient belongs to. A patient without a clinic can never be uploaded and
+  /// would appear under every RHU.
+  late String? _assignedClinicId = widget.initialClinicId;
+
+  bool get _needsClinicChoice =>
+      widget.initialClinicId == null &&
+      ref.read(currentUserProvider)?.isSuperAdmin == true;
 
   static const List<String> _commonAllergies = [
     'Penicillin',
@@ -1584,7 +1667,7 @@ class _PatientRegistrationDialogState
             : null,
         category: patientCategoryFromDateOfBirth(_dateOfBirth),
         userId: currentUser?.id ?? 'system',
-        clinicId: currentUser?.clinicId ?? ref.read(activeClinicIdProvider),
+        clinicId: currentUser?.clinicId ?? _assignedClinicId,
       );
 
       // Notify parent to refresh list
@@ -1700,6 +1783,9 @@ class _PatientRegistrationDialogState
   }
 
   String? _validateBeforeSubmit() {
+    if (_needsClinicChoice && _assignedClinicId == null) {
+      return 'Select the RHU this patient belongs to.';
+    }
     if (!isValidPersonName(_firstNameController.text) ||
         !isValidPersonName(_lastNameController.text)) {
       return 'Enter valid first and last names (2-50 letters).';
@@ -1880,6 +1966,27 @@ class _PatientRegistrationDialogState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (_needsClinicChoice) ...[
+          _buildSectionHeader('Assigned RHU', Icons.local_hospital_outlined),
+          _buildDropdownField(
+            label: 'Rural Health Unit',
+            hint: 'Select the RHU for this patient',
+            required: true,
+            value: _assignedClinicId,
+            items: [
+              for (final clinic in (ref.watch(clinicsProvider).valueOrNull ??
+                      const <Clinic>[])
+                  .where((clinic) => clinic.isActive))
+                DropdownMenuItem(value: clinic.id, child: Text(clinic.name)),
+            ],
+            onChanged: (value) => setState(() => _assignedClinicId = value),
+            errorText: _requiredValueError(_assignedClinicId, 'RHU'),
+            icon: Icons.local_hospital_outlined,
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+        ],
         _buildSectionHeader('Personal Information (Full Name)', Icons.badge_outlined),
         _buildFormRow([
           _buildFormField(
@@ -2630,7 +2737,10 @@ class _PatientRegistrationDialogState
       required: required,
       field: DropdownButtonFormField<String>(
         initialValue: value,
-        hint: Text(hint),
+        // Long hints and option names truncate instead of overflowing on
+        // narrow screens.
+        isExpanded: true,
+        hint: Text(hint, overflow: TextOverflow.ellipsis),
         decoration: InputDecoration(
           border: const OutlineInputBorder(),
           prefixIcon: icon != null ? Icon(icon) : null,

@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 
 import '../models/models.dart';
 import '../providers/providers.dart';
+import '../services/patient_transfer_service.dart';
 import '../services/report_pdf_service.dart';
 import '../utils/date_time_format.dart';
 import '../utils/patient_address_data.dart';
@@ -46,82 +47,125 @@ class PatientDetailScreen extends ConsumerWidget {
             (currentUser?.canViewAuditLogs ?? false) &&
             (settings?.enableAuditLogs ?? true);
 
+        final identityHeader = _PatientIdentityHeader(
+          patient: patient,
+          onArchive:
+              currentUser?.canManageArchive == true && !patient.isArchived
+              ? () => _archivePatient(context, ref, patient)
+              : null,
+        );
+        final actionsBar = _PatientActionsBar(
+          patient: patient,
+          onUploadDocuments: canUpload
+              ? () => _handleUploadDocuments(context, ref, patient)
+              : null,
+          onAuditHistory: canViewAudit
+              ? () => _handleAuditHistory(context, ref, patient)
+              : null,
+          onIssueCertificate: canIssueCert
+              ? () => context.go('/certificates')
+              : null,
+          onEditDetails: canEdit
+              ? () => _handleEditDetails(context, ref, patient)
+              : null,
+          onPrintRecord: () => _handlePrintRecord(context, ref, patient),
+          onArchive:
+              currentUser?.canManageArchive == true && !patient.isArchived
+              ? () => _archivePatient(context, ref, patient)
+              : null,
+          onDelete: currentUser?.canManageArchive == true
+              ? () => _confirmDeletePatient(context, ref, patient)
+              : null,
+          onTransfer: currentUser?.isSuperAdmin == true && !patient.isArchived
+              ? () => _transferPatient(context, ref, patient)
+              : null,
+        );
+        final tabBar = Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+            borderRadius: AppRadius.roundedSm,
+            border: Border.all(
+              color: isDark
+                  ? AppColors.border
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+          ),
+          child: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            indicatorColor: isDark
+                ? AppColors.primaryEmerald
+                : theme.colorScheme.primary,
+            labelColor: isDark
+                ? AppColors.primaryEmerald
+                : theme.colorScheme.primary,
+            unselectedLabelColor: isDark
+                ? AppColors.textSecondary
+                : theme.colorScheme.onSurfaceVariant,
+            tabs: const [
+              Tab(
+                icon: Icon(Icons.badge_outlined, size: 18),
+                text: 'Demographics & Info',
+              ),
+              Tab(
+                icon: Icon(Icons.attach_file_outlined, size: 18),
+                text: 'Attached Documents',
+              ),
+              Tab(
+                icon: Icon(Icons.history_outlined, size: 18),
+                text: 'Audit Trail',
+              ),
+            ],
+          ),
+        );
+        final tabView = TabBarView(
+          children: [
+            _OverviewTab(patient: patient),
+            _PatientDocumentsList(
+              patient: patient,
+              onUploadDocument: canUpload
+                  ? () => _handleUploadDocuments(context, ref, patient)
+                  : null,
+            ),
+            _PatientAuditTrailList(patient: patient),
+          ],
+        );
+
+        // On phones the header and actions fill most of the screen, which
+        // squeezed the tabs to a sliver; scroll them away with the content.
+        if (ResponsiveLayout.isMobile(context)) {
+          return ResponsiveContentContainer(
+            child: DefaultTabController(
+              length: 3,
+              child: NestedScrollView(
+                headerSliverBuilder: (context, _) => [
+                  SliverToBoxAdapter(child: identityHeader),
+                  SliverToBoxAdapter(child: actionsBar),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  SliverToBoxAdapter(child: tabBar),
+                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                ],
+                body: tabView,
+              ),
+            ),
+          );
+        }
+
         return ResponsiveContentContainer(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _PatientIdentityHeader(
-                patient: patient,
-                onArchive:
-                    currentUser?.canManageArchive == true && !patient.isArchived
-                    ? () => _archivePatient(context, ref, patient)
-                    : null,
-              ),
-              _PatientActionsBar(
-                patient: patient,
-                onUploadDocuments: canUpload
-                    ? () => _handleUploadDocuments(context, ref, patient)
-                    : null,
-                onAuditHistory: canViewAudit
-                    ? () => _handleAuditHistory(context, ref, patient)
-                    : null,
-                onIssueCertificate: canIssueCert
-                    ? () => context.go('/certificates')
-                    : null,
-                onEditDetails: canEdit
-                    ? () => _handleEditDetails(context, ref, patient)
-                    : null,
-                onPrintRecord: () => _handlePrintRecord(context, ref, patient),
-                onArchive:
-                    currentUser?.canManageArchive == true && !patient.isArchived
-                    ? () => _archivePatient(context, ref, patient)
-                    : null,
-                onDelete: currentUser?.canManageArchive == true
-                    ? () => _confirmDeletePatient(context, ref, patient)
-                    : null,
-              ),
+              identityHeader,
+              actionsBar,
               const SizedBox(height: 12),
               Expanded(
                 child: DefaultTabController(
                   length: 3,
                   child: Column(
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
-                          borderRadius: AppRadius.roundedSm,
-                          border: Border.all(
-                            color: isDark ? AppColors.border : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        child: TabBar(
-                          isScrollable: true,
-                          tabAlignment: TabAlignment.start,
-                          indicatorColor: isDark ? AppColors.primaryEmerald : theme.colorScheme.primary,
-                          labelColor: isDark ? AppColors.primaryEmerald : theme.colorScheme.primary,
-                          unselectedLabelColor: isDark ? AppColors.textSecondary : theme.colorScheme.onSurfaceVariant,
-                          tabs: const [
-                            Tab(icon: Icon(Icons.badge_outlined, size: 18), text: 'Demographics & Info'),
-                            Tab(icon: Icon(Icons.attach_file_outlined, size: 18), text: 'Attached Documents'),
-                            Tab(icon: Icon(Icons.history_outlined, size: 18), text: 'Audit Trail'),
-                          ],
-                        ),
-                      ),
+                      tabBar,
                       const SizedBox(height: 12),
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            _OverviewTab(patient: patient),
-                            _PatientDocumentsList(
-                              patient: patient,
-                              onUploadDocument: canUpload
-                                  ? () => _handleUploadDocuments(context, ref, patient)
-                                  : null,
-                            ),
-                            _PatientAuditTrailList(patient: patient),
-                          ],
-                        ),
-                      ),
+                      Expanded(child: tabView),
                     ],
                   ),
                 ),
@@ -182,12 +226,15 @@ class PatientDetailScreen extends ConsumerWidget {
     Patient patient,
   ) {
     final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    ref.read(auditServiceProvider).logAction(
+    ref
+        .read(auditServiceProvider)
+        .logAction(
           userId: userId,
           action: AuditAction.print,
           entityType: 'patient',
           entityId: patient.id,
-          description: 'Opened printable health summary record for ${patient.fullName}',
+          description:
+              'Opened printable health summary record for ${patient.fullName}',
         );
     showDialog(
       context: context,
@@ -227,6 +274,111 @@ class PatientDetailScreen extends ConsumerWidget {
       context.go('/patients');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Patient record permanently deleted')),
+      );
+    }
+  }
+
+  Future<void> _transferPatient(
+    BuildContext context,
+    WidgetRef ref,
+    Patient patient,
+  ) async {
+    final actor = ref.read(currentUserProvider);
+    if (actor == null) return;
+    final clinics = (await ref.read(clinicsProvider.future))
+        .where((clinic) => clinic.isActive && clinic.id != patient.clinicId)
+        .toList();
+    if (!context.mounted) return;
+    if (clinics.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('There is no other active RHU to move to.'),
+        ),
+      );
+      return;
+    }
+
+    final target = await showDialog<Clinic>(
+      context: context,
+      builder: (dialogContext) {
+        Clinic? selected;
+        return StatefulBuilder(
+          builder: (dialogContext, setState) => AppFormDialog(
+            title: 'Transfer Patient',
+            subtitle: patient.fullName,
+            icon: Icons.swap_horiz,
+            maxWidth: 460,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'The patient and their documents move to the selected RHU. '
+                  'Staff of the current RHU will no longer see this record '
+                  'after their next sync.',
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<Clinic>(
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Move to',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final clinic in clinics)
+                      DropdownMenuItem(value: clinic, child: Text(clinic.name)),
+                  ],
+                  onChanged: (value) => setState(() => selected = value),
+                ),
+              ],
+            ),
+            actions: [
+              AppDialogAction(
+                label: 'Cancel',
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+              AppDialogAction(
+                label: 'Transfer',
+                isPrimary: true,
+                onPressed: selected == null
+                    ? null
+                    : () => Navigator.pop(dialogContext, selected),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (target == null || !context.mounted) return;
+
+    try {
+      final failedUploads = await PatientTransferService(
+        ref.read(databaseProvider),
+        ref.read(auditServiceProvider),
+      ).transfer(patient: patient, target: target, actor: actor);
+      ref.invalidate(patientProvider(patient.id));
+      ref.invalidate(patientsProvider);
+      ref.invalidate(patientDocumentsProvider(patient.id));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            failedUploads == 0
+                ? '${patient.fullName} moved to ${target.name}.'
+                : '${patient.fullName} moved to ${target.name}. '
+                      '$failedUploads document file(s) will finish uploading '
+                      'on the next sync.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Transfer failed: ${error is StateError || error is ArgumentError ? (error as dynamic).message : error}',
+          ),
+        ),
       );
     }
   }
@@ -293,9 +445,7 @@ class _PatientIdentityHeader extends StatelessWidget {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark
-              ? AppColors.borderSubtle
-              : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
         ),
       ),
       child: _PatientIdentity(patient: patient),
@@ -489,6 +639,7 @@ class _PatientActionsBar extends StatelessWidget {
   final VoidCallback onPrintRecord;
   final VoidCallback? onArchive;
   final VoidCallback? onDelete;
+  final VoidCallback? onTransfer;
 
   const _PatientActionsBar({
     required this.patient,
@@ -499,6 +650,7 @@ class _PatientActionsBar extends StatelessWidget {
     required this.onPrintRecord,
     this.onArchive,
     this.onDelete,
+    this.onTransfer,
   });
 
   @override
@@ -512,9 +664,7 @@ class _PatientActionsBar extends StatelessWidget {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark
-              ? AppColors.borderSubtle
-              : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
         ),
       ),
       child: LayoutBuilder(
@@ -524,8 +674,9 @@ class _PatientActionsBar extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
-            alignment:
-                isNarrow ? WrapAlignment.start : WrapAlignment.spaceBetween,
+            alignment: isNarrow
+                ? WrapAlignment.start
+                : WrapAlignment.spaceBetween,
             children: [
               Wrap(
                 spacing: 8,
@@ -545,10 +696,16 @@ class _PatientActionsBar extends StatelessWidget {
                         ),
                       ),
                       onPressed: onIssueCertificate,
-                      icon: const Icon(Icons.workspace_premium_outlined, size: 16),
+                      icon: const Icon(
+                        Icons.workspace_premium_outlined,
+                        size: 16,
+                      ),
                       label: const Text(
                         'Issue Certificate',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   if (onUploadDocuments != null)
@@ -569,7 +726,10 @@ class _PatientActionsBar extends StatelessWidget {
                       ),
                       onPressed: onUploadDocuments,
                       icon: const Icon(Icons.upload_file_outlined, size: 16),
-                      label: const Text('Upload Documents', style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        'Upload Documents',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   if (onEditDetails != null)
                     OutlinedButton.icon(
@@ -589,7 +749,10 @@ class _PatientActionsBar extends StatelessWidget {
                       ),
                       onPressed: onEditDetails,
                       icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text('Edit Details', style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        'Edit Details',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
@@ -608,7 +771,10 @@ class _PatientActionsBar extends StatelessWidget {
                     ),
                     onPressed: onPrintRecord,
                     icon: const Icon(Icons.print_outlined, size: 16),
-                    label: const Text('Print Record', style: TextStyle(fontSize: 12)),
+                    label: const Text(
+                      'Print Record',
+                      style: TextStyle(fontSize: 12),
+                    ),
                   ),
                   if (onAuditHistory != null)
                     OutlinedButton.icon(
@@ -628,19 +794,34 @@ class _PatientActionsBar extends StatelessWidget {
                       ),
                       onPressed: onAuditHistory,
                       icon: const Icon(Icons.history_outlined, size: 16),
-                      label: const Text('Audit History', style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        'Audit History',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                 ],
               ),
-              if (onArchive != null || onDelete != null)
+              if (onArchive != null || onDelete != null || onTransfer != null)
                 PopupMenuButton<String>(
                   tooltip: 'More Patient Options',
                   icon: const Icon(Icons.more_vert),
                   onSelected: (value) {
+                    if (value == 'transfer') onTransfer?.call();
                     if (value == 'archive') onArchive?.call();
                     if (value == 'delete') onDelete?.call();
                   },
                   itemBuilder: (context) => [
+                    if (onTransfer != null)
+                      const PopupMenuItem(
+                        value: 'transfer',
+                        child: Row(
+                          children: [
+                            Icon(Icons.swap_horiz, size: 18),
+                            SizedBox(width: 8),
+                            Text('Transfer to another RHU'),
+                          ],
+                        ),
+                      ),
                     if (onArchive != null)
                       const PopupMenuItem(
                         value: 'archive',
@@ -1711,7 +1892,9 @@ class _SectionPanel extends StatelessWidget {
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.1,
-                  color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                  color: isDark
+                      ? AppColors.textPrimary
+                      : const Color(0xFF0F172A),
                 ),
               ),
             ],
@@ -1719,9 +1902,7 @@ class _SectionPanel extends StatelessWidget {
           Divider(
             height: 20,
             thickness: 1,
-            color: isDark
-                ? AppColors.borderSubtle
-                : const Color(0xFFE2E8F0),
+            color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
           ),
           ...children,
         ],
@@ -1836,10 +2017,7 @@ class _PatientDocumentsList extends ConsumerWidget {
   final Patient patient;
   final VoidCallback? onUploadDocument;
 
-  const _PatientDocumentsList({
-    required this.patient,
-    this.onUploadDocument,
-  });
+  const _PatientDocumentsList({required this.patient, this.onUploadDocument});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1874,7 +2052,9 @@ class _PatientDocumentsList extends ConsumerWidget {
                     'Upload lab results, prescriptions, imaging scans, or medical certificates.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: isDark ? AppColors.textSecondary : Colors.grey[700],
+                      color: isDark
+                          ? AppColors.textSecondary
+                          : Colors.grey[700],
                     ),
                   ),
                   if (onUploadDocument != null) ...[
@@ -1913,7 +2093,8 @@ class _PatientDocumentsList extends ConsumerWidget {
               itemCount: docs.length,
               itemBuilder: (context, index) {
                 final doc = docs[index];
-                final isImage = (doc.mimeType?.startsWith('image/') ?? false) ||
+                final isImage =
+                    (doc.mimeType?.startsWith('image/') ?? false) ||
                     doc.filePath.toLowerCase().endsWith('.png') ||
                     doc.filePath.toLowerCase().endsWith('.jpg') ||
                     doc.filePath.toLowerCase().endsWith('.jpeg');
@@ -2078,7 +2259,9 @@ class _PatientAuditTrailList extends ConsumerWidget {
                     'Audit records for creation, edits, documents, and consultations will appear here.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: isDark ? AppColors.textSecondary : Colors.grey[700],
+                      color: isDark
+                          ? AppColors.textSecondary
+                          : Colors.grey[700],
                     ),
                   ),
                 ],
@@ -2212,8 +2395,9 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
     final auditLogsAsync = ref.watch(patientAuditLogsProvider(patient.id));
 
     return Dialog(
-      backgroundColor:
-          isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+      backgroundColor: isDark
+          ? AppColors.cardSurface
+          : theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.roundedLg,
         side: BorderSide(
@@ -2367,8 +2551,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: actionColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(4),
@@ -2442,7 +2625,8 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
     final documents =
         ref.watch(patientDocumentsProvider(patient.id)).valueOrNull ?? [];
 
-    final settings = settingsAsync.valueOrNull ??
+    final settings =
+        settingsAsync.valueOrNull ??
         const SystemSettings(
           clinicName: 'Surigao del Sur Rural Health Unit',
           clinicCode: 'RHU-01',
@@ -2451,8 +2635,9 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
         );
 
     return Dialog(
-      backgroundColor:
-          isDark ? AppColors.cardSurface : theme.colorScheme.surface,
+      backgroundColor: isDark
+          ? AppColors.cardSurface
+          : theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.roundedLg,
         side: BorderSide(
@@ -2523,17 +2708,20 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
                   child: PdfPreview(
                     build: (format) =>
                         ReportPdfService().generateIndividualPatientRecordPdf(
-                      patient: patient,
-                      settings: settings,
-                      preparedByName:
-                          currentUser?.fullName ?? 'Healthcare Staff',
-                      preparedByRole: currentUser?.role.displayName ?? 'Staff',
-                      approvedByName:
-                          currentUser?.fullName ?? 'RHU Physician / Administrator',
-                      approvedByRole:
-                          currentUser?.role.displayName ?? 'RHU Physician / Administrator',
-                      documents: documents,
-                    ),
+                          patient: patient,
+                          settings: settings,
+                          preparedByName:
+                              currentUser?.fullName ?? 'Healthcare Staff',
+                          preparedByRole:
+                              currentUser?.role.displayName ?? 'Staff',
+                          approvedByName:
+                              currentUser?.fullName ??
+                              'RHU Physician / Administrator',
+                          approvedByRole:
+                              currentUser?.role.displayName ??
+                              'RHU Physician / Administrator',
+                          documents: documents,
+                        ),
                     canChangeOrientation: false,
                     canChangePageFormat: false,
                     allowPrinting: true,

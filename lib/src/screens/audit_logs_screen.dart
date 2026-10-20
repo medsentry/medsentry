@@ -80,7 +80,9 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<AuditAction?>(
-          isExpanded: context.isMobile,
+          // Always bounded (full width on phones, 200px beside the search
+          // field), so long action names truncate instead of overflowing.
+          isExpanded: true,
           value: _filterAction,
           hint: const Text('All actions', style: TextStyle(fontSize: 13)),
           style: TextStyle(fontSize: 13, color: t.text),

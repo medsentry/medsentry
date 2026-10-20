@@ -252,7 +252,20 @@ class DocumentService {
     return true;
   }
 
-  static Future<encrypt.Key> _documentKey() async {
+  static Future<encrypt.Key>? _documentKeyFuture;
+
+  // Memoized: two concurrent first calls would otherwise each generate and
+  // store a different key, leaving files encrypted with the lost one
+  // permanently unreadable.
+  static Future<encrypt.Key> _documentKey() {
+    final pending = _documentKeyFuture ??= _loadOrCreateDocumentKey();
+    return pending.catchError((Object error) {
+      _documentKeyFuture = null;
+      throw error;
+    });
+  }
+
+  static Future<encrypt.Key> _loadOrCreateDocumentKey() async {
     final existing = await _secureStorage.read(key: _encryptionKeyName);
     if (existing != null) {
       return encrypt.Key(Uint8List.fromList(base64Decode(existing)));

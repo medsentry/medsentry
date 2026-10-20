@@ -54,10 +54,15 @@ class MetricDelta {
   final bool isPositive;
   final String label;
 
+  /// False when the previous period had none: growth from zero has no
+  /// percentage, and was previously shown as a made-up "+100%".
+  final bool hasBaseline;
+
   const MetricDelta({
     required this.percentChange,
     required this.isPositive,
     required this.label,
+    this.hasBaseline = true,
   });
 
   factory MetricDelta.empty() => const MetricDelta(
@@ -67,6 +72,7 @@ class MetricDelta {
   );
 
   String get formatted {
+    if (!hasBaseline) return 'None last period';
     if (percentChange.abs() < 0.05) return 'No change';
     final sign = percentChange > 0 ? '+' : '';
     return '$sign${percentChange.toStringAsFixed(1)}%';
@@ -111,6 +117,14 @@ MetricDelta _buildDelta({
   required num previous,
   required bool lowerIsBetter,
 }) {
+  if (previous == 0 && current > 0) {
+    return MetricDelta(
+      percentChange: 0,
+      isPositive: !lowerIsBetter,
+      label: 'vs previous period',
+      hasBaseline: false,
+    );
+  }
   final change = _percentChange(current, previous);
   final improved = lowerIsBetter ? change <= 0 : change >= 0;
   return MetricDelta(

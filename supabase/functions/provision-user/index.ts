@@ -36,63 +36,36 @@ Deno.serve(async (request: Request) => {
   const { data: authData, error: authError } = await adminClient.auth.getUser(token);
   if (authError || !authData.user) return jsonResponse({ error: 'Unauthorized' }, 401);
 
+  // The profile table is the only authority for roles. Email addresses and
+  // user_metadata are user-controlled and must never grant privileges.
   let { data: actor } = await adminClient
     .from('users')
     .select('id, role, clinic_id, is_active, auth_user_id')
     .eq('auth_user_id', authData.user.id)
     .maybeSingle();
 
+  // Re-link a profile whose Auth identity was recreated, but only when the
+  // profile is unlinked; a linked profile always belongs to another identity.
   if (!actor && authData.user.email) {
     const { data: byEmail } = await adminClient
       .from('users')
       .select('id, role, clinic_id, is_active, auth_user_id')
-      .ilike('email', authData.user.email)
+      .eq('email', authData.user.email.toLowerCase())
+      .is('auth_user_id', null)
       .maybeSingle();
 
     if (byEmail) {
-      actor = byEmail;
-      if (byEmail.auth_user_id !== authData.user.id) {
-        await adminClient
-          .from('users')
-          .update({ auth_user_id: authData.user.id })
-          .eq('id', byEmail.id);
-      }
+      const { error: linkError } = await adminClient
+        .from('users')
+        .update({ auth_user_id: authData.user.id })
+        .eq('id', byEmail.id)
+        .is('auth_user_id', null);
+      if (!linkError) actor = { ...byEmail, auth_user_id: authData.user.id };
     }
   }
 
-  const isEmailSuperAdmin = authData.user.email?.toLowerCase() === 'superadmin@gmail.com';
-  const isMetaSuperAdmin =
-    authData.user.user_metadata?.role === 'super_admin' ||
-    authData.user.app_metadata?.role === 'super_admin';
-
-  if (!actor && (isEmailSuperAdmin || isMetaSuperAdmin)) {
-    const { data: createdSuperAdmin } = await adminClient
-      .from('users')
-      .upsert(
-        {
-          auth_user_id: authData.user.id,
-          email: authData.user.email ?? 'superadmin@gmail.com',
-          first_name: authData.user.user_metadata?.first_name ?? 'System',
-          last_name: authData.user.user_metadata?.last_name ?? 'SuperAdmin',
-          role: 'super_admin',
-          clinic_id: null,
-          is_active: true,
-        },
-        { onConflict: 'auth_user_id' }
-      )
-      .select('id, role, clinic_id, is_active, auth_user_id')
-      .maybeSingle();
-    if (createdSuperAdmin) {
-      actor = createdSuperAdmin;
-    }
-  }
-
-  const actorRole = (actor?.role || '').toLowerCase();
-  const isAdminOrSuper =
-    actorRole === 'admin' ||
-    actorRole === 'super_admin' ||
-    actorRole === 'superadmin' ||
-    isEmailSuperAdmin;
+  const actorRole = actor?.role ?? '';
+  const isAdminOrSuper = actorRole === 'admin' || actorRole === 'super_admin';
 
   if (!actor || !isAdminOrSuper || actor.is_active === false) {
     return jsonResponse({ error: 'Administrator access required' }, 403);
@@ -133,13 +106,17 @@ Deno.serve(async (request: Request) => {
       }
     }
 
+    // audit_logs has no description column; an unknown column made every
+    // deletion fail here with a 500 before the account was touched.
     const { error: auditError } = await adminClient.from('audit_logs').insert({
       clinic_id: target.clinic_id,
       user_id: actor.id,
-      action: 'DELETE',
-      entity_type: 'user',
+      action: 'DELETE_USER',
+      entity_type: 'users',
       entity_id: target.id,
-      description: `Permanent deletion requested for user account ${target.id}`,
+      new_values: {
+        description: `Permanent deletion requested for user account ${target.id}`,
+      },
     });
     if (auditError) {
       console.error('Account deletion audit error:', auditError);
@@ -182,7 +159,7 @@ Deno.serve(async (request: Request) => {
       .maybeSingle();
     if (targetError || !target?.auth_user_id) return jsonResponse({ error: 'User not found' }, 404);
 
-    if (actorRole === 'admin' && target.clinic_id !== actor.clinic_id) {
+    if (actorRole === 'admin' && (target.role === 'super_admin' || target.clinic_id !== actor.clinic_id)) {
       return jsonResponse({ error: 'Cannot manage users from other clinics' }, 403);
     }
 
@@ -200,6 +177,48 @@ Deno.serve(async (request: Request) => {
     } catch (auditErr) {
       console.error('Audit reset password write error:', auditErr);
     }
+    return jsonResponse({ updated: true });
+  }
+
+  if (['update_email', 'update-email'].includes(action)) {
+    const targetProfileId = body.target_user_id;
+    const newEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    if (typeof targetProfileId !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(newEmail)) {
+      return jsonResponse({ error: 'Invalid email request' }, 400);
+    }
+    if (actorRole !== 'super_admin') {
+      return jsonResponse({ error: 'Only a super administrator can change account email addresses' }, 403);
+    }
+
+    const { data: target, error: targetError } = await adminClient
+      .from('users')
+      .select('id, auth_user_id, clinic_id')
+      .eq('id', targetProfileId)
+      .maybeSingle();
+    if (targetError || !target) return jsonResponse({ error: 'User not found' }, 404);
+
+    if (target.auth_user_id) {
+      const { error } = await adminClient.auth.admin.updateUserById(target.auth_user_id, {
+        email: newEmail,
+        email_confirm: true,
+      });
+      if (error) return jsonResponse({ error: error.message }, 400);
+    }
+
+    const { error: profileError } = await adminClient
+      .from('users')
+      .update({ email: newEmail })
+      .eq('id', target.id);
+    if (profileError) return jsonResponse({ error: profileError.message }, 400);
+
+    await adminClient.from('audit_logs').insert({
+      clinic_id: target.clinic_id,
+      user_id: actor.id,
+      action: 'UPDATE_USER',
+      entity_type: 'users',
+      entity_id: target.id,
+      new_values: { email: newEmail },
+    });
     return jsonResponse({ updated: true });
   }
 
@@ -263,6 +282,10 @@ Deno.serve(async (request: Request) => {
     user_metadata: {
       first_name: firstName,
       last_name: lastName,
+    },
+    // app_metadata is writable only with the service role, so the profile
+    // trigger can trust it.
+    app_metadata: {
       role: role,
       clinic_id: clinicId,
     },

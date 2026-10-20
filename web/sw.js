@@ -1,9 +1,10 @@
 // MedSentry Offline-First Service Worker
 const CACHE_PREFIX = 'medsentry-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v1.0.14`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.0.15`;
 const APP_SHELL_ASSETS = [
   './',
   'index.html',
+  'app_startup.js',
   'flutter_bootstrap.js',
   'main.dart.js',
   'manifest.json',
@@ -16,7 +17,6 @@ const APP_SHELL_ASSETS = [
   'assets/AssetManifest.bin.json',
   'assets/FontManifest.json',
   'assets/fonts/MaterialIcons-Regular.otf',
-  'assets/assets/images/rhu_doctors.png',
   'canvaskit/canvaskit.js',
   'canvaskit/canvaskit.wasm',
 ];

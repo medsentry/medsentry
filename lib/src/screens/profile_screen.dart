@@ -255,15 +255,18 @@ class ProfileScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Terminal Security & Quick Access',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                    Expanded(
+                      child: Text(
+                        'Terminal Security & Quick Access',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     if (user.pinEnabled)
                       StatusBadge.active(text: 'PIN Enabled', showDot: true)
                     else

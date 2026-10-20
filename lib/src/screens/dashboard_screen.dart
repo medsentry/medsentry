@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../providers/providers.dart';
 import '../utils/context_extensions.dart';
 import '../widgets/app_card.dart';
+import '../widgets/layout/responsive_layout.dart';
 import '../widgets/medsentry_command_dialog.dart';
 import '../widgets/screen_kit.dart';
 
@@ -369,7 +370,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
               ),
-              if (canViewReports)
+              if (canViewReports && !ResponsiveLayout.isMobile(context))
                 OutlinedButton.icon(
                   onPressed: () => context.go('/reports'),
                   icon: const Icon(Icons.assessment_outlined, size: 14),
@@ -380,6 +381,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
             ],
           ),
+          // On phones the button gets its own line instead of squeezing the
+          // heading off-screen.
+          if (canViewReports && ResponsiveLayout.isMobile(context)) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => context.go('/reports'),
+              icon: const Icon(Icons.assessment_outlined, size: 14),
+              label: const Text(
+                'Export FHSIS Report',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           if (surveillanceData.isEmpty)
             Padding(
@@ -472,18 +486,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  '$catchmentName · ${(item.$3 * 100).toStringAsFixed(0)}% of cohort',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontFeatures: const [
-                                      FontFeature.tabularFigures(),
-                                    ],
-                                    color: isDark
-                                        ? AppColors.textMuted
-                                        : AppColors.lightTextMuted,
+                                Expanded(
+                                  child: Text(
+                                    '$catchmentName · ${(item.$3 * 100).toStringAsFixed(0)}% of cohort',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures(),
+                                      ],
+                                      color: isDark
+                                          ? AppColors.textMuted
+                                          : AppColors.lightTextMuted,
+                                    ),
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 6,
@@ -647,26 +665,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final allPatients = ref.watch(patientsProvider).valueOrNull ?? [];
 
+    // Patients registered this week (Mon-Fri), split by the same "priority"
+    // rule as the Priority patients card. The app records registrations, not
+    // admissions or emergencies, so the chart reports exactly that.
     final days = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-    final emergencyCounts = [0, 0, 0, 0, 0];
-    final scheduledCounts = [0, 0, 0, 0, 0];
+    final priorityCounts = [0, 0, 0, 0, 0];
+    final otherCounts = [0, 0, 0, 0, 0];
+    final now = DateTime.now();
+    final weekStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
+    final weekEnd = weekStart.add(const Duration(days: 7));
 
     for (final p in allPatients) {
-      final created = p.createdAt ?? DateTime.now();
+      final created = p.createdAt?.toLocal();
+      if (created == null ||
+          created.isBefore(weekStart) ||
+          !created.isBefore(weekEnd)) {
+        continue;
+      }
       final weekday = created.weekday;
       if (weekday >= 1 && weekday <= 5) {
         final idx = weekday - 1;
-        final isEmergency =
+        final isPriority =
             p.isPwd ||
-            (p.allergies?.isNotEmpty == true &&
-                p.medicalHistory?.isNotEmpty == true);
-        if (isEmergency) {
-          emergencyCounts[idx]++;
+            p.category == PatientCategory.senior ||
+            p.category == PatientCategory.seniorCitizen ||
+            (p.allergies?.isNotEmpty == true);
+        if (isPriority) {
+          priorityCounts[idx]++;
         } else {
-          scheduledCounts[idx]++;
+          otherCounts[idx]++;
         }
       }
     }
+    final emergencyCounts = priorityCounts;
+    final scheduledCounts = otherCounts;
 
     return AppCard(
       padding: const EdgeInsets.all(20),
@@ -676,11 +712,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
+              Expanded(
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Weekly Admissions',
+                    'New Registrations This Week',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -691,7 +728,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Emergency vs Scheduled',
+                    'Priority (senior, PWD, allergy) vs other patients',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark
@@ -700,6 +737,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                 ],
+              ),
               ),
             ],
           ),
@@ -738,13 +776,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               _buildLegendItem(
                 color: const Color(0xFF9CA3AF),
-                label: 'Emergency',
+                label: 'Priority',
                 isDark: isDark,
               ),
               const SizedBox(width: 24),
               _buildLegendItem(
                 color: AppColors.primaryEmeraldDark,
-                label: 'Scheduled',
+                label: 'Other',
                 isDark: isDark,
               ),
             ],
@@ -771,7 +809,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return dt == null || !dt.isBefore(cutoff);
     }).toList();
 
-    final cohort = windowedPatients.isNotEmpty ? windowedPatients : allPatients;
+    // Only the selected period. Falling back to all patients when the period
+    // was empty showed all-time figures under a "Last 7 days" label.
+    final cohort = windowedPatients;
 
     int cardiovascular = 0;
     int hypertension = 0;
@@ -779,25 +819,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     int respiratory = 0;
     int general = 0;
 
+    // Whole words only: substring matching counted any word containing "bp"
+    // or "resp" (e.g. "responds") as a condition.
+    bool mentions(String text, String pattern) =>
+        RegExp('\\b(?:$pattern)\\b').hasMatch(text);
+
     for (final p in cohort) {
       final med = (p.medicalHistory ?? '').toLowerCase();
-      if (med.contains('hyper') ||
-          med.contains('bp') ||
-          med.contains('pressure')) {
+      if (mentions(med, r'hypertensi\w*|htn|bp|high blood pressure')) {
         hypertension++;
-      } else if (med.contains('heart') ||
-          med.contains('arrhythm') ||
-          med.contains('cardio') ||
-          med.contains('chf')) {
+      } else if (mentions(med, r'heart|arrhythmi\w*|cardi\w*|chf')) {
         cardiovascular++;
-      } else if (med.contains('diabet') ||
-          med.contains('glucose') ||
-          med.contains('sugar')) {
+      } else if (mentions(med, r'diabet\w*|dm|glucose|high blood sugar')) {
         diabetes++;
-      } else if (med.contains('resp') ||
-          med.contains('asthma') ||
-          med.contains('cough') ||
-          med.contains('copd')) {
+      } else if (mentions(
+        med,
+        r'respirator\w*|asthma|copd|cough|pneumonia|tuberculosis|tb|ptb',
+      )) {
         respiratory++;
       } else {
         general++;
@@ -835,7 +873,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ];
 
     final slices = rawSlices.isEmpty
-        ? const [_DiagnosisSlice('General Care', 1.0, Color(0xFF94A3B8))]
+        ? const [_DiagnosisSlice('No records in period', 1.0, Color(0xFF94A3B8))]
         : rawSlices;
 
     final chronicCount = cardiovascular + hypertension + diabetes + respiratory;
@@ -843,8 +881,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         .map((p) => p.barangay?.trim() ?? '')
         .where((b) => b.isNotEmpty)
         .toSet();
-    final insightSummary = cohort.isEmpty
+    final insightSummary = allPatients.isEmpty
         ? 'No patient records registered yet. Register patients with medical history to populate live cohort analytics.'
+        : cohort.isEmpty
+        ? 'No patient records were added or updated in the ${_diagnosisTimeframe.toLowerCase()}.'
         : 'Out of ${cohort.length} active patients in this cohort, $chronicCount have recorded chronic or respiratory conditions across ${math.max(1, barangaySet.length)} ${barangaySet.length == 1 ? 'barangay' : 'barangays'}.';
 
     return AppCard(
@@ -1258,21 +1298,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           const SizedBox(height: 16),
 
           // Legend
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 16,
+            runSpacing: 6,
             children: [
               _buildLegendItem(
                 color: AppColors.primaryEmeraldDark,
                 label: 'Patients',
                 isDark: isDark,
               ),
-              const SizedBox(width: 16),
               _buildLegendItem(
                 color: const Color(0xFF94A3B8),
                 label: 'Documents',
                 isDark: isDark,
               ),
-              const SizedBox(width: 16),
               _buildLegendItem(
                 color: const Color(0xFF6EE7B7),
                 label: 'Certificates',

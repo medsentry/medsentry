@@ -79,7 +79,10 @@ void main() {
 
     expect(find.text('Elena Ramos'), findsOneWidget);
     expect(find.text('All Facilities (2)'), findsOneWidget);
-    expect(find.text('Unassigned (1)'), findsOneWidget);
+    // Super Admins have their own category instead of counting as
+    // unassigned staff.
+    expect(find.text('Super Admins (1)'), findsOneWidget);
+    expect(find.text('Unassigned (0)'), findsOneWidget);
     expect(find.byTooltip('Delete user permanently'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Delete user permanently'));

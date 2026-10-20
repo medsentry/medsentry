@@ -930,17 +930,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 12),
                       AppFormField(
-                        label: 'System Motto / Tagline',
-                        hint: 'e.g. Rural Health Unit Information System',
-                        field: TextField(
-                          controller: appTaglineController,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      AppFormField(
                         label: 'Managing Health Authority / Ministry',
                         hint: 'e.g. Department of Health - Caraga Region',
                         field: TextField(
@@ -1182,7 +1171,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       const SizedBox(height: 8),
                       AppFormField(
-                        label: 'Audit Log Retention Policy',
+                        label: 'Keep audit logs on this device for',
+                        hint:
+                            'Older entries that are already synced are removed '
+                            'from this device only; the cloud keeps the full '
+                            'audit history.',
                         field: DropdownButtonFormField<int>(
                           initialValue:
                               [365, 730, 2555].contains(dataRetentionDays)
@@ -1459,38 +1452,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Services & Patient Categories',
-                          style: Theme.of(ctx).textTheme.titleSmall,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      AppFormField(
-                        label: 'Services',
-                        hint: 'Separate services with commas',
-                        field: TextField(
-                          controller: servicesController,
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      AppFormField(
-                        label: 'Patient Categories',
-                        hint: 'Separate categories with commas',
-                        field: TextField(
-                          controller: categoriesController,
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
+                      // Services and patient categories are not offered here:
+                      // nothing in the app reads them (patient categories
+                      // come from date of birth), so editing them changed
+                      // nothing.
                       const SizedBox(height: 20),
                       Align(
                         alignment: Alignment.centerLeft,
@@ -1513,18 +1478,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onChanged: (value) =>
                             setDialogState(() => syncEnabled = value),
                       ),
-                      const SizedBox(height: 12),
-                      AppFormField(
-                        label: 'Patient ID Prefix',
-                        field: TextField(
-                          controller: idPrefixController,
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            helperText:
-                                'Next ID: ${settings.generateNextPatientId()}',
-                          ),
-                        ),
-                      ),
+                      // No Patient ID prefix control: patient IDs are not
+                      // generated from it, and per-device numbering would
+                      // collide when several devices register offline.
                     ],
                   ),
                 ),
@@ -1735,6 +1691,10 @@ class StaffManagementPanel extends ConsumerStatefulWidget {
   final void Function(User user) onDeleteUser;
   final bool embedded;
 
+  /// When set, only this facility's accounts are listed and the facility
+  /// filter is hidden (used by the facility page).
+  final String? lockedClinicId;
+
   const StaffManagementPanel({
     super.key,
     required this.onAddUser,
@@ -1742,6 +1702,7 @@ class StaffManagementPanel extends ConsumerStatefulWidget {
     required this.onDeactivateUser,
     required this.onDeleteUser,
     this.embedded = false,
+    this.lockedClinicId,
   });
 
   @override
@@ -1754,8 +1715,9 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
   late final TabController _tabController;
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  static const _superAdminsFilter = '__super_admins__';
   String?
-  _selectedClinicFilter; // null = All, '__unassigned__' = Unassigned, or clinicId
+  _selectedClinicFilter; // null = All, '__unassigned__', _superAdminsFilter, or clinicId
 
   @override
   void initState() {
@@ -1799,11 +1761,19 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                 return false;
               }
             }
+          } else if (widget.lockedClinicId != null) {
+            if (u.clinicId != widget.lockedClinicId) return false;
           } else {
-            // Super Administrator facility filter
+            // Super Administrator facility filter. Super Admins have no
+            // facility by design, so they get their own category rather
+            // than appearing under Unassigned.
             if (_selectedClinicFilter != null) {
-              if (_selectedClinicFilter == '__unassigned__') {
-                if (u.clinicId != null) return false;
+              if (_selectedClinicFilter == _superAdminsFilter) {
+                if (u.role != UserRole.superAdmin) return false;
+              } else if (_selectedClinicFilter == '__unassigned__') {
+                if (u.clinicId != null || u.role == UserRole.superAdmin) {
+                  return false;
+                }
               } else if (u.clinicId != _selectedClinicFilter) {
                 return false;
               }
@@ -1966,7 +1936,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
         ),
 
         // Facility Filter Chips for Super Admin
-        if (isSuperAdmin) ...[
+        if (isSuperAdmin && widget.lockedClinicId == null) ...[
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: SingleChildScrollView(
@@ -1998,8 +1968,37 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                   ),
                   const SizedBox(width: 8),
                   ChoiceChip(
+                    avatar: const Icon(Icons.shield_outlined, size: 14),
                     label: Text(
-                      'Unassigned (${activeUsersList.where((u) => u.clinicId == null).length})',
+                      'Super Admins (${activeUsersList.where((u) => u.role == UserRole.superAdmin).length})',
+                    ),
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                      color: _selectedClinicFilter == _superAdminsFilter
+                          ? AppColors.primaryEmerald
+                          : (isDark ? AppColors.textSecondary : const Color(0xFF64748B)),
+                    ),
+                    selected: _selectedClinicFilter == _superAdminsFilter,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    side: BorderSide(
+                      color: _selectedClinicFilter == _superAdminsFilter
+                          ? AppColors.primaryEmerald
+                          : (isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                    ),
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedClinicFilter = selected
+                            ? _superAdminsFilter
+                            : null;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: Text(
+                      'Unassigned (${activeUsersList.where((u) => u.clinicId == null && u.role != UserRole.superAdmin).length})',
                     ),
                     labelStyle: TextStyle(
                       fontSize: 12,
@@ -2745,7 +2744,11 @@ class _UserManagementTile extends ConsumerWidget {
 class StaffFormDialog extends ConsumerStatefulWidget {
   final User? existingUser;
 
-  const StaffFormDialog({super.key, this.existingUser});
+  /// Pre-selects the RHU of a new account (Super Admin creating from a
+  /// facility page).
+  final String? initialClinicId;
+
+  const StaffFormDialog({super.key, this.existingUser, this.initialClinicId});
 
   @override
   ConsumerState<StaffFormDialog> createState() => _StaffFormDialogState();
@@ -2818,6 +2821,8 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
       final currentUser = ref.read(currentUserProvider);
       if (currentUser?.isSuperAdmin != true) {
         _clinicId = currentUser?.clinicId;
+      } else {
+        _clinicId = widget.initialClinicId;
       }
     }
 

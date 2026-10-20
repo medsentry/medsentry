@@ -16,6 +16,7 @@ import '../screens/archive_screen.dart';
 import '../screens/certificates_screen.dart';
 import '../screens/sync_screen.dart';
 import '../screens/rhu_management_screen.dart';
+import '../screens/facility_detail_screen.dart';
 import '../widgets/app_shell.dart';
 import '../providers/providers.dart';
 import '../models/user.dart';
@@ -324,6 +325,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   state: state,
                   child: const RhuManagementScreen(),
                 ),
+                routes: [
+                  // Covered by the /rhus guard: Super Admin only.
+                  GoRoute(
+                    path: ':id',
+                    name: 'facility_detail',
+                    builder: (context, state) => FacilityDetailScreen(
+                      clinicId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

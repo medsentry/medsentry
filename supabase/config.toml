@@ -1,18 +1,35 @@
 ﻿project_id = "medsentry"
 
 [db]
-major_version = 15
+major_version = 17
+
+[db.pooler]
+default_pool_size = 15
+max_client_conn = 200
+
+[storage.vector]
+enabled = false
 
 [auth]
 enabled = true
+# Accounts are provisioned by administrators through the provision-user
+# function; public self sign-up stays closed.
 enable_signup = false
+# Links in auth emails must point at the production app, not localhost.
+site_url = "https://www.medsentryrhu.com"
+additional_redirect_urls = [
+  "https://www.medsentryrhu.com",
+  "https://medsentryrhu.com",
+  "http://localhost:*",
+  "http://127.0.0.1:*",
+]
 
 # Staff and RHU Admin verify every login with a 6-digit code sent by email.
-# Apply with `supabase config push`, or set the same values in the dashboard
-# (Auth > Sign In / Providers > Email, and Auth > Emails > Magic Link).
+# The app's code entry (kOtpLength / kOtpLifetime in login_challenge.dart)
+# must match otp_length and otp_expiry. Apply with `supabase config push`.
 [auth.email]
 enable_signup = false
-enable_confirmations = false
+enable_confirmations = true
 otp_length = 6
 otp_expiry = 300
 max_frequency = "60s"
@@ -21,8 +38,13 @@ max_frequency = "60s"
 subject = "Your MedSentry verification code"
 content_path = "./supabase/templates/otp.html"
 
-# Supabase's built-in mailer is limited to ~2 emails/hour. Configure custom SMTP
-# (Gmail app password, Resend, etc.) before going live. Keep secrets in env vars.
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+# Supabase's built-in mailer only delivers to project team members and is
+# heavily rate limited. Configure custom SMTP (Gmail app password, Resend,
+# etc.) before going live. Keep secrets in env vars.
 # [auth.email.smtp]
 # enabled = true
 # host = "smtp.resend.com"
