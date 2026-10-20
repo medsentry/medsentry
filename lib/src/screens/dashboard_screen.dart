@@ -714,30 +714,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               Expanded(
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'New Registrations This Week',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: isDark
-                          ? AppColors.textPrimary
-                          : AppColors.lightTextPrimary,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'New Registrations This Week',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.lightTextPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Priority (senior, PWD, allergy) vs other patients',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondary
-                          : AppColors.lightTextSecondary,
+                    const SizedBox(height: 3),
+                    Text(
+                      'Priority (senior, PWD, allergy) vs other patients',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : AppColors.lightTextSecondary,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -873,7 +873,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ];
 
     final slices = rawSlices.isEmpty
-        ? const [_DiagnosisSlice('No records in period', 1.0, Color(0xFF94A3B8))]
+        ? const [
+            _DiagnosisSlice('No records in period', 1.0, Color(0xFF94A3B8)),
+          ]
         : rawSlices;
 
     final chronicCount = cardiovascular + hypertension + diabetes + respiratory;
