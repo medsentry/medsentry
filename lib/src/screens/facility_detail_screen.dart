@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/clinic.dart';
 import '../providers/providers.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/scrolling_tab_layout.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/screen_kit.dart';
@@ -94,10 +95,10 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen>
             .where((certificate) => certificate.clinicId == facilityId)
             .length;
 
+    // The facility summary scrolls away with the open tab.
     return ResponsiveContentContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: ScrollingTabLayout(
+        header: [
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -150,46 +151,43 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen>
             ],
           ),
           const SizedBox(height: 12),
-          TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: [
-              Tab(
-                icon: const Icon(Icons.badge_outlined, size: 18),
-                text: 'Staff ($staffCount)',
-              ),
-              Tab(
-                icon: const Icon(Icons.people_outline, size: 18),
-                text: 'Patients ($patientCount)',
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                StaffManagementPanel(
-                  embedded: true,
-                  lockedClinicId: clinic.id,
-                  onAddUser: () => StaffActions.showForm(
-                    context,
-                    ref,
-                    initialClinicId: widget.clinicId,
-                  ),
-                  onEditUser: (user) =>
-                      StaffActions.showForm(context, ref, existingUser: user),
-                  onDeactivateUser: (user) =>
-                      StaffActions.confirmDeactivate(context, ref, user),
-                  onDeleteUser: (user) =>
-                      StaffActions.confirmDelete(context, ref, user),
-                ),
-                PatientsScreen(clinicId: clinic.id),
-              ],
-            ),
-          ),
         ],
+        tabBar: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          tabs: [
+            Tab(
+              icon: const Icon(Icons.badge_outlined, size: 18),
+              text: 'Staff ($staffCount)',
+            ),
+            Tab(
+              icon: const Icon(Icons.people_outline, size: 18),
+              text: 'Patients ($patientCount)',
+            ),
+          ],
+        ),
+        tabView: TabBarView(
+          controller: _tabController,
+          children: [
+            StaffManagementPanel(
+              embedded: true,
+              lockedClinicId: clinic.id,
+              onAddUser: () => StaffActions.showForm(
+                context,
+                ref,
+                initialClinicId: widget.clinicId,
+              ),
+              onEditUser: (user) =>
+                  StaffActions.showForm(context, ref, existingUser: user),
+              onDeactivateUser: (user) =>
+                  StaffActions.confirmDeactivate(context, ref, user),
+              onDeleteUser: (user) =>
+                  StaffActions.confirmDelete(context, ref, user),
+            ),
+            PatientsScreen(clinicId: clinic.id),
+          ],
+        ),
       ),
     );
   }

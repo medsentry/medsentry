@@ -1,9 +1,12 @@
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../database/simple_database.dart';
+import '../database/storage/store_cipher.dart';
 import '../models/audit_log.dart';
 import '../models/clinic.dart';
 import '../models/user.dart';
@@ -11,6 +14,8 @@ import '../services/app_notification.dart';
 import '../services/document_service.dart';
 import '../providers/providers.dart';
 import '../widgets/app_form_dialog.dart';
+import '../widgets/backup_passphrase_dialog.dart';
+import '../widgets/scrolling_tab_layout.dart';
 import '../widgets/change_pin_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
@@ -610,8 +615,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             isPrimary: true,
             icon: Icons.backup_outlined,
             onPressed: () async {
+              // Browser backups stay inside the browser; desktop backups are
+              // files and are always encrypted.
+              String? passphrase;
+              if (!kIsWeb) {
+                passphrase = await BackupPassphraseDialog.show(
+                  context,
+                  confirm: true,
+                );
+                if (passphrase == null) return;
+              }
               try {
-                final path = await ref.read(databaseProvider).createBackup();
+                final path = await ref
+                    .read(databaseProvider)
+                    .createBackup(passphrase: passphrase);
                 final currentUser = ref.read(currentUserProvider);
                 await ref
                     .read(auditServiceProvider)
@@ -673,7 +690,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onPressed: () async {
               final result = await FilePicker.platform.pickFiles(
                 type: FileType.custom,
-                allowedExtensions: ['json'],
+                // .json is the unencrypted format of earlier releases.
+                allowedExtensions: [BackupCipher.fileExtension, 'json'],
                 allowMultiple: false,
                 withData: true,
               );
@@ -682,11 +700,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               if (bytes == null || bytes.isEmpty) return;
 
               if (!context.mounted) return;
+              String? passphrase;
+              if (SimpleDatabase.isEncryptedBackup(bytes)) {
+                passphrase = await BackupPassphraseDialog.show(
+                  context,
+                  confirm: false,
+                );
+                if (passphrase == null || !context.mounted) return;
+              }
               final confirmed = await _confirmRestore(context);
               if (!confirmed) return;
 
               try {
-                await ref.read(databaseProvider).restoreFromBackup(bytes);
+                await ref
+                    .read(databaseProvider)
+                    .restoreFromBackup(bytes, passphrase: passphrase);
                 final currentUser = ref.read(currentUserProvider);
                 await ref
                     .read(auditServiceProvider)
@@ -1723,6 +1751,15 @@ class StaffManagementPanel extends ConsumerStatefulWidget {
   /// filter is hidden (used by the facility page).
   final String? lockedClinicId;
 
+  /// Lays the panel out as a whole page: [leading], the search and filters
+  /// and the tab bar scroll away with the account list. Used by the Staff
+  /// page; leave it off when the panel sits inside another scrolling tab.
+  final bool scrollsAsPage;
+
+  /// Widgets above the search row when [scrollsAsPage] is set, such as the
+  /// page's title.
+  final List<Widget> leading;
+
   const StaffManagementPanel({
     super.key,
     required this.onAddUser,
@@ -1731,6 +1768,8 @@ class StaffManagementPanel extends ConsumerStatefulWidget {
     required this.onDeleteUser,
     this.embedded = false,
     this.lockedClinicId,
+    this.scrollsAsPage = false,
+    this.leading = const [],
   });
 
   @override
@@ -1877,9 +1916,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
         .where((user) => user.isActive)
         .toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+    final header = <Widget>[
         // Search & Refresh Row
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -2129,8 +2166,9 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
             ),
           ),
         ],
+    ];
 
-        Container(
+    final tabBar = Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             color: isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
@@ -2181,7 +2219,21 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
               Tab(text: 'Inactive Accounts'),
             ],
           ),
-        ),
+        );
+
+    if (widget.scrollsAsPage) {
+      return ScrollingTabLayout(
+        header: [...widget.leading, ...header],
+        tabBar: tabBar,
+        tabView: tabView,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...header,
+        tabBar,
         const SizedBox(height: 12),
         if (widget.embedded)
           Expanded(child: tabView)

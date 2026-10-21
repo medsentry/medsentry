@@ -10,6 +10,7 @@ import '../utils/file_exporter/file_exporter.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
+import '../widgets/scrolling_tab_layout.dart';
 
 class CertificatesScreen extends ConsumerStatefulWidget {
   const CertificatesScreen({super.key});
@@ -90,9 +91,8 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
 
     return ResponsiveContentContainer(
       padding: ResponsiveLayout.pagePadding(context),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final hasBoundedHeight = constraints.maxHeight.isFinite;
+      child: Builder(
+        builder: (context) {
           final tabView = TabBarView(
             controller: _tabController,
             children: [
@@ -101,9 +101,9 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             ],
           );
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+          // The whole page scrolls with the open tab, not just the tab.
+          return ScrollingTabLayout(
+            header: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
@@ -210,7 +210,8 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 ),
               ),
               const SizedBox(height: 12),
-              TabBar(
+            ],
+            tabBar: TabBar(
                 controller: _tabController,
                 isScrollable: true,
                 labelColor: isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark,
@@ -230,12 +231,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              if (hasBoundedHeight)
-                Expanded(child: tabView)
-              else
-                SizedBox(height: 760, child: tabView),
-            ],
+            tabView: tabView,
           );
         },
       ),
@@ -259,23 +255,21 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 6,
-          child: SingleChildScrollView(
+    return SingleChildScrollView(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 6,
             child: _buildCertificateForm(context, isDark, settings),
           ),
-        ),
-        const SizedBox(width: 20),
-        Expanded(
-          flex: 5,
-          child: SingleChildScrollView(
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 5,
             child: _buildLivePreviewCard(context, isDark, settings),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

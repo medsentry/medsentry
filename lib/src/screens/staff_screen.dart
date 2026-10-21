@@ -13,45 +13,26 @@ class StaffScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    // The title, search, filters and tabs scroll away with the account list.
     return ResponsiveContentContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const ScreenHeader(
+      child: StaffManagementPanel(
+        embedded: true,
+        scrollsAsPage: true,
+        leading: const [
+          ScreenHeader(
             icon: Icons.badge_outlined,
             title: 'Staff',
             subtitle:
                 'Administrators and staff accounts, their roles and RHU assignments.',
           ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.cardSurface : Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isDark
-                      ? AppColors.borderSubtle
-                      : AppColors.lightBorder,
-                  width: 1,
-                ),
-              ),
-              child: StaffManagementPanel(
-                embedded: true,
-                onAddUser: () => StaffActions.showForm(context, ref),
-                onEditUser: (user) =>
-                    StaffActions.showForm(context, ref, existingUser: user),
-                onDeactivateUser: (user) =>
-                    StaffActions.confirmDeactivate(context, ref, user),
-                onDeleteUser: (user) =>
-                    StaffActions.confirmDelete(context, ref, user),
-              ),
-            ),
-          ),
+          SizedBox(height: 12),
         ],
+        onAddUser: () => StaffActions.showForm(context, ref),
+        onEditUser: (user) =>
+            StaffActions.showForm(context, ref, existingUser: user),
+        onDeactivateUser: (user) =>
+            StaffActions.confirmDeactivate(context, ref, user),
+        onDeleteUser: (user) => StaffActions.confirmDelete(context, ref, user),
       ),
     );
   }

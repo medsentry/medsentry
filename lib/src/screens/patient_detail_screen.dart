@@ -12,6 +12,7 @@ import '../services/report_pdf_service.dart';
 import '../utils/date_time_format.dart';
 import '../utils/patient_address_data.dart';
 import '../widgets/app_card.dart';
+import '../widgets/scrolling_tab_layout.dart';
 import '../widgets/app_form_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
@@ -131,46 +132,16 @@ class PatientDetailScreen extends ConsumerWidget {
           ],
         );
 
-        // On phones the header and actions fill most of the screen, which
-        // squeezed the tabs to a sliver; scroll them away with the content.
-        if (ResponsiveLayout.isMobile(context)) {
-          return ResponsiveContentContainer(
-            child: DefaultTabController(
-              length: 3,
-              child: NestedScrollView(
-                headerSliverBuilder: (context, _) => [
-                  SliverToBoxAdapter(child: identityHeader),
-                  SliverToBoxAdapter(child: actionsBar),
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                  SliverToBoxAdapter(child: tabBar),
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                ],
-                body: tabView,
-              ),
-            ),
-          );
-        }
-
+        // The header and actions scroll away with the open tab, so the tab
+        // gets the whole screen instead of a small box under them.
         return ResponsiveContentContainer(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              identityHeader,
-              actionsBar,
-              const SizedBox(height: 12),
-              Expanded(
-                child: DefaultTabController(
-                  length: 3,
-                  child: Column(
-                    children: [
-                      tabBar,
-                      const SizedBox(height: 12),
-                      Expanded(child: tabView),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+          child: DefaultTabController(
+            length: 3,
+            child: ScrollingTabLayout(
+              header: [identityHeader, actionsBar, const SizedBox(height: 12)],
+              tabBar: tabBar,
+              tabView: tabView,
+            ),
           ),
         );
       },
@@ -495,7 +466,9 @@ class _PatientIdentity extends StatelessWidget {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
+            color: isDark
+                ? AppColors.inputSurface
+                : AppColors.lightElevatedSurface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
@@ -507,7 +480,9 @@ class _PatientIdentity extends StatelessWidget {
                 ? patient.firstName[0].toUpperCase()
                 : '?',
             style: TextStyle(
-              color: isDark ? AppColors.textPrimary : AppColors.lightTextSecondary,
+              color: isDark
+                  ? AppColors.textPrimary
+                  : AppColors.lightTextSecondary,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -686,9 +661,12 @@ class _PatientActionsBar extends StatelessWidget {
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.accent(
-                    Theme.of(context).brightness == Brightness.dark,
-                  ),
-                        foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
+                          Theme.of(context).brightness == Brightness.dark,
+                        ),
+                        foregroundColor:
+                            Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.textOnEmerald
+                            : Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 9,
@@ -1992,7 +1970,9 @@ class _InfoChip extends StatelessWidget {
           Icon(
             icon,
             size: 13,
-            color: isDark ? AppColors.textTertiary : AppColors.lightTextSecondary,
+            color: isDark
+                ? AppColors.textTertiary
+                : AppColors.lightTextSecondary,
           ),
           const SizedBox(width: 5),
           Text(
@@ -2001,7 +1981,9 @@ class _InfoChip extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w500,
               fontFeatures: const [FontFeature.tabularFigures()],
-              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+              color: isDark
+                  ? AppColors.textPrimary
+                  : AppColors.lightTextPrimary,
             ),
           ),
         ],
