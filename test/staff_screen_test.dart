@@ -106,4 +106,47 @@ void main() {
     expect(authRepository.deletedUserId, inactiveStaff.id);
     expect(find.text('Inactive Staff permanently deleted'), findsOneWidget);
   });
+
+  testWidgets('an RHU Admin cannot manage another Admin', (tester) async {
+    User account(String id, String first, UserRole role) => User(
+      id: id,
+      email: '$first@example.com',
+      firstName: first,
+      lastName: 'Cruz',
+      role: role,
+      clinicId: 'rhu-01',
+      isActive: true,
+      pinEnabled: false,
+    );
+    final me = account('00000000-0000-4000-8000-000000000011', 'Ana', UserRole.admin);
+    final peerAdmin = account('00000000-0000-4000-8000-000000000012', 'Ben', UserRole.admin);
+    final staff = account('00000000-0000-4000-8000-000000000013', 'Carla', UserRole.staff);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentUserProvider.overrideWith((ref) => me),
+          authRepositoryProvider.overrideWithValue(_FakeAuthRepository()),
+          usersProvider.overrideWith(
+            (ref) => Future.value([me, peerAdmin, staff]),
+          ),
+          clinicsProvider.overrideWith((ref) => Future.value(<Clinic>[])),
+        ],
+        child: MaterialApp(
+          theme: buildMedSentryTheme(Brightness.dark),
+          home: const Scaffold(
+            body: SizedBox(width: 1200, height: 800, child: StaffScreen()),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('Ben Cruz'), findsOneWidget);
+    // Delete: only the staff member (never yourself, never a peer Admin).
+    expect(find.byTooltip('Delete user permanently'), findsOneWidget);
+    // Password reset: yourself and the staff member, not the peer Admin.
+    expect(find.byTooltip('Reset Password (Reset PWD)'), findsNWidgets(2));
+  });
 }

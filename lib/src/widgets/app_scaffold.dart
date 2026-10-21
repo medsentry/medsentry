@@ -773,10 +773,12 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     return 'Good evening';
   }
 
-  String _getGreetingIcon() {
+  // An icon rather than an emoji: the web app downloads emoji fonts from
+  // Google, so offline the emoji rendered as an empty box.
+  IconData _getGreetingIcon() {
     final hour = DateTime.now().hour;
-    if (hour >= 6 && hour < 18) return '☀️';
-    return '🌙';
+    if (hour >= 6 && hour < 18) return Icons.wb_sunny_outlined;
+    return Icons.nightlight_outlined;
   }
 
   String _getUserGreetingName(User? user) {
@@ -800,10 +802,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
     final isDashboard = widget.title == 'Dashboard' || widget.title.isEmpty;
     final timeGreeting = _getTimeGreeting();
-    final greetingIcon = _getGreetingIcon();
     final userName = _getUserGreetingName(user);
     final greetingTitle = isDashboard
-        ? '$timeGreeting, $userName $greetingIcon'
+        ? '$timeGreeting, $userName'
         : widget.title;
 
     final facility =
@@ -837,6 +838,16 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 ),
               ),
             ),
+            if (isDashboard) ...[
+              const SizedBox(width: 6),
+              Icon(
+                _getGreetingIcon(),
+                size: 18,
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.lightTextPrimary,
+              ),
+            ],
             const SizedBox(width: 10),
             const _LiveClockPill(),
           ],

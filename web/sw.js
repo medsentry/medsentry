@@ -1,6 +1,6 @@
 // MedSentry Offline-First Service Worker
 const CACHE_PREFIX = 'medsentry-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v1.0.16`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.0.17`;
 const APP_SHELL_ASSETS = [
   './',
   'index.html',
@@ -20,6 +20,56 @@ const APP_SHELL_ASSETS = [
   'canvaskit/canvaskit.js',
   'canvaskit/canvaskit.wasm',
 ];
+
+// Weak rural links often connect and then stall. Without a deadline the
+// installed app waited on the network indefinitely instead of opening from
+// its cache. The deadline covers the wait for the response to start; a slow
+// download that has started still completes from the network.
+const NETWORK_DEADLINE_MS = 4000;
+// Once a request misses the deadline, the requests right behind it would
+// each wait out their own, so the cache answers at once for a while.
+const SLOW_NETWORK_HOLD_MS = 30000;
+let networkSlowUntil = 0;
+
+/**
+ * Network-first with a deadline: answers from the network when it responds
+ * in time, otherwise from the cache. The network copy still refreshes the
+ * cache afterwards. Rejects only if the network fails and nothing is cached.
+ */
+async function networkFirst(event, request, cacheKey, fetchOptions) {
+  const cache = await caches.open(CACHE_NAME);
+  const network = fetch(request, fetchOptions);
+  event.waitUntil(network.then(async (response) => {
+    if (response.ok && response.type !== 'opaque') {
+      await cache.put(cacheKey, response.clone());
+    }
+  }).catch(() => {}));
+
+  if (Date.now() < networkSlowUntil) {
+    const cached = await cache.match(cacheKey, { ignoreSearch: true });
+    if (cached) return cached;
+  }
+
+  let timer;
+  const deadline = new Promise((resolve) => {
+    timer = setTimeout(resolve, NETWORK_DEADLINE_MS, null);
+  });
+  try {
+    const response = await Promise.race([network, deadline]);
+    if (response) {
+      networkSlowUntil = 0;
+      return response;
+    }
+    networkSlowUntil = Date.now() + SLOW_NETWORK_HOLD_MS;
+  } catch (_) {
+    // Offline: fall through to the cached copy.
+  } finally {
+    clearTimeout(timer);
+  }
+  const cached = await cache.match(cacheKey, { ignoreSearch: true });
+  // Nothing cached yet: keep waiting for the network after all.
+  return cached || network;
+}
 
 function isFontAsset(pathname) {
   return /\.(woff2?|ttf|otf)$/i.test(pathname);
@@ -80,21 +130,15 @@ self.addEventListener('fetch', (event) => {
 
   if (isRefreshableAsset(url.pathname)) {
     event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
       try {
-        const response = await fetch(request, { cache: 'no-cache' });
-        if (response.ok && response.type !== 'opaque') {
-          event.waitUntil(cache.put(request, response.clone()));
-        }
-        return response;
+        return await networkFirst(event, request, request, { cache: 'no-cache' });
       } catch (error) {
         console.warn(`[MedSentry SW] Could not refresh asset ${url.pathname}`, error);
-        return (await cache.match(request, { ignoreSearch: true })) ||
-          new Response('This asset is unavailable offline.', {
-            status: 503,
-            statusText: 'Offline',
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          });
+        return new Response('This asset is unavailable offline.', {
+          status: 503,
+          statusText: 'Offline',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
       }
     })());
     return;
@@ -102,15 +146,11 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
+      const shellUrl = new URL('index.html', self.registration.scope);
       try {
-        const response = await fetch(request);
-        if (response.ok) {
-          event.waitUntil(cache.put(new URL('index.html', self.registration.scope), response.clone()));
-        }
-        return response;
+        return await networkFirst(event, request, shellUrl);
       } catch (_) {
-        return cachedAppShell(cache);
+        return cachedAppShell(await caches.open(CACHE_NAME));
       }
     })());
     return;
@@ -123,22 +163,16 @@ self.addEventListener('fetch', (event) => {
 
   if (isEntrypoint) {
     event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
       try {
         // Bypass the HTTP cache: older deploys marked these files immutable,
         // and browsers would otherwise keep running that build.
-        const response = await fetch(request, { cache: 'no-cache' });
-        if (response.ok) {
-          event.waitUntil(cache.put(request, response.clone()));
-        }
-        return response;
+        return await networkFirst(event, request, request, { cache: 'no-cache' });
       } catch (_) {
-        return (await cache.match(request, { ignoreSearch: true })) ||
-          new Response('MedSentry startup files are unavailable offline.', {
-            status: 503,
-            statusText: 'Offline',
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-          });
+        return new Response('MedSentry startup files are unavailable offline.', {
+          status: 503,
+          statusText: 'Offline',
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
       }
     })());
     return;

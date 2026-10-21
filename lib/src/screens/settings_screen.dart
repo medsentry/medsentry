@@ -2507,10 +2507,19 @@ class _UserManagementTile extends ConsumerWidget {
     required this.onDelete,
   });
 
+  /// Another Admin's account, seen by an RHU Admin. Only a Super Admin
+  /// manages Admin accounts; the server refuses these actions too.
+  bool get _isPeerAdminAccount =>
+      currentUser != null &&
+      !currentUser!.isSuperAdmin &&
+      user.id != currentUser!.id &&
+      user.role != UserRole.staff;
+
   bool get canEdit {
     if (currentUser == null) return false;
     if (!currentUser!.canEditUserProfiles) return false;
     if (currentUser!.isSuperAdmin) return true;
+    if (_isPeerAdminAccount) return false;
     if (user.role == UserRole.superAdmin) return false;
     if (currentUser!.clinicId != null &&
         user.clinicId != currentUser!.clinicId) {
@@ -2523,6 +2532,7 @@ class _UserManagementTile extends ConsumerWidget {
     if (currentUser == null) return false;
     if (!currentUser!.canResetUserPasswords) return false;
     if (currentUser!.isSuperAdmin) return true;
+    if (_isPeerAdminAccount) return false;
     if (user.role == UserRole.superAdmin) return false;
     if (currentUser!.clinicId != null &&
         user.clinicId != currentUser!.clinicId) {
@@ -2535,6 +2545,7 @@ class _UserManagementTile extends ConsumerWidget {
     if (currentUser == null) return false;
     if (user.id == currentUser!.id) return false;
     if (currentUser!.isSuperAdmin) return true;
+    if (_isPeerAdminAccount) return false;
     if (user.role == UserRole.superAdmin) return false;
     if (currentUser!.clinicId != null &&
         user.clinicId != currentUser!.clinicId) {
@@ -2547,6 +2558,7 @@ class _UserManagementTile extends ConsumerWidget {
     if (currentUser == null || user.id == currentUser!.id) return false;
     if (!currentUser!.canManageStaffAccounts) return false;
     if (currentUser!.isSuperAdmin) return true;
+    if (_isPeerAdminAccount) return false;
     if (user.role == UserRole.superAdmin) return false;
     return currentUser!.clinicId == null ||
         user.clinicId == currentUser!.clinicId;

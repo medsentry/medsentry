@@ -104,6 +104,11 @@ Deno.serve(async (request: Request) => {
       if (target.clinic_id !== actor.clinic_id) {
         return jsonResponse({ error: 'Cannot manage users from other clinics' }, 403);
       }
+      // Only a Super Admin manages Admin accounts; otherwise one RHU Admin
+      // could remove another.
+      if (target.role !== 'staff') {
+        return jsonResponse({ error: 'Only a super administrator can delete administrator accounts' }, 403);
+      }
     }
 
     // audit_logs has no description column; an unknown column made every
@@ -154,13 +159,18 @@ Deno.serve(async (request: Request) => {
 
     const { data: target, error: targetError } = await adminClient
       .from('users')
-      .select('auth_user_id, clinic_id, role')
+      .select('id, auth_user_id, clinic_id, role')
       .eq('id', targetProfileId)
       .maybeSingle();
     if (targetError || !target?.auth_user_id) return jsonResponse({ error: 'User not found' }, 404);
 
     if (actorRole === 'admin' && (target.role === 'super_admin' || target.clinic_id !== actor.clinic_id)) {
       return jsonResponse({ error: 'Cannot manage users from other clinics' }, 403);
+    }
+    // Setting another Admin's password would let one RHU Admin take over a
+    // peer's account; only a Super Admin manages Admin accounts.
+    if (actorRole === 'admin' && target.role !== 'staff' && target.id !== actor.id) {
+      return jsonResponse({ error: 'Only a super administrator can reset administrator passwords' }, 403);
     }
 
     const { error } = await adminClient.auth.admin.updateUserById(target.auth_user_id, { password });

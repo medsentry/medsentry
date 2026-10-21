@@ -30,3 +30,8 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      # The service worker decides whether the installed web app opens
+      # offline; its tests run on Node, not under flutter test.
+      - name: Run web service worker tests
+        run: node --test test/*.mjs
+
