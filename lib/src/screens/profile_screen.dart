@@ -50,7 +50,7 @@ class ProfileScreen extends ConsumerWidget {
                   side: BorderSide(
                     color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
-                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  textStyle: const TextStyle(fontFamily: AppType.family, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 onPressed: () async {
                   await ref
@@ -71,7 +71,7 @@ class ProfileScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   minimumSize: const Size(0, 36),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  textStyle: const TextStyle(fontFamily: AppType.family, fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 onPressed: () => _editProfile(context, user),
               ),
@@ -294,7 +294,7 @@ class ProfileScreen extends ConsumerWidget {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        textStyle: const TextStyle(fontFamily: AppType.family, fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                       icon: const Icon(Icons.lock_outline, size: 16),
                       label: const Text('Lock Screen Now'),
@@ -316,7 +316,7 @@ class ProfileScreen extends ConsumerWidget {
                         side: BorderSide(
                           color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                         ),
-                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        textStyle: const TextStyle(fontFamily: AppType.family, fontSize: 14, fontWeight: FontWeight.w500),
                       ),
                       icon: const Icon(Icons.pin_outlined, size: 16),
                       label: Text(user.pinEnabled ? 'Change PIN' : 'Setup PIN'),

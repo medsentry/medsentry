@@ -138,7 +138,7 @@ class ScreenHeader extends StatelessWidget {
                 header: true,
                 child: Text(
                   title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 22,
@@ -288,7 +288,11 @@ class MetricStrip extends StatelessWidget {
                         // An odd last cell spans the row instead of leaving
                         // an empty half beside it.
                         flex: slice.length < perRow ? perRow : 1,
-                        child: _MetricCell(metric: slice[i], tokens: t),
+                        child: _MetricCell(
+                          metric: slice[i],
+                          tokens: t,
+                          compact: perRow > 1 && constraints.maxWidth < 640,
+                        ),
                       ),
                     ],
                   ],
@@ -304,10 +308,17 @@ class MetricStrip extends StatelessWidget {
 }
 
 class _MetricCell extends StatelessWidget {
-  const _MetricCell({required this.metric, required this.tokens});
+  const _MetricCell({
+    required this.metric,
+    required this.tokens,
+    this.compact = false,
+  });
 
   final Metric metric;
   final ScreenTokens tokens;
+
+  /// Two cells share a phone-width row, so the figure is set smaller.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +351,7 @@ class _MetricCell extends StatelessWidget {
           Text(
             metric.value,
             style: TextStyle(
-              fontSize: 26,
+              fontSize: compact ? 20 : 26,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.6,
               color: t.text,

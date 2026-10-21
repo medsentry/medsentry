@@ -607,6 +607,7 @@ class _PatientIdentity extends StatelessWidget {
 
 class _PatientActionsBar extends StatelessWidget {
   final Patient patient;
+
   final VoidCallback? onUploadDocuments;
   final VoidCallback? onAuditHistory;
   final VoidCallback? onIssueCertificate;
@@ -628,6 +629,127 @@ class _PatientActionsBar extends StatelessWidget {
     this.onTransfer,
   });
 
+  /// Phones: the main action as a full-width button and every other action
+  /// in one menu, instead of a grid of buttons filling half the screen.
+  Widget _buildCompact(BuildContext context, bool isDark) {
+    final primaryLabel = onIssueCertificate != null
+        ? 'Issue certificate'
+        : 'Upload documents';
+    final primaryAction = onIssueCertificate ?? onUploadDocuments;
+    final menu = <(String, IconData, VoidCallback, bool)>[
+      if (onIssueCertificate != null && onUploadDocuments != null)
+        (
+          'Upload documents',
+          Icons.upload_file_outlined,
+          onUploadDocuments!,
+          false,
+        ),
+      if (onEditDetails != null)
+        ('Edit details', Icons.edit_outlined, onEditDetails!, false),
+      ('Print record', Icons.print_outlined, onPrintRecord, false),
+      if (onAuditHistory != null)
+        ('Audit history', Icons.history_outlined, onAuditHistory!, false),
+      if (onTransfer != null)
+        ('Transfer to another RHU', Icons.swap_horiz, onTransfer!, false),
+      if (onArchive != null)
+        ('Archive patient', Icons.archive_outlined, onArchive!, false),
+      if (onDelete != null)
+        ('Delete record', Icons.delete_outline, onDelete!, true),
+    ];
+
+    return Row(
+      children: [
+        if (primaryAction != null) ...[
+          Expanded(
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accent(isDark),
+                foregroundColor: isDark
+                    ? AppColors.textOnEmerald
+                    : Colors.white,
+                minimumSize: const Size(0, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: primaryAction,
+              icon: Icon(
+                onIssueCertificate != null
+                    ? Icons.workspace_premium_outlined
+                    : Icons.upload_file_outlined,
+                size: 18,
+              ),
+              label: Text(
+                primaryLabel,
+                style: const TextStyle(
+                  fontFamily: AppType.family,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        PopupMenuButton<int>(
+          tooltip: 'More actions',
+          onSelected: (index) => menu[index].$3(),
+          itemBuilder: (context) => [
+            for (var i = 0; i < menu.length; i++)
+              PopupMenuItem(
+                value: i,
+                child: Row(
+                  children: [
+                    Icon(
+                      menu[i].$2,
+                      size: 18,
+                      color: menu[i].$4 ? Colors.redAccent : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      menu[i].$1,
+                      style: TextStyle(
+                        color: menu[i].$4 ? Colors.redAccent : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+          child: Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark
+                    ? AppColors.borderSubtle
+                    : AppColors.lightBorderActive,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Actions',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.expand_more_rounded, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -644,6 +766,7 @@ class _PatientActionsBar extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          if (constraints.maxWidth < 600) return _buildCompact(context, isDark);
           final isNarrow = constraints.maxWidth < 680;
           return Wrap(
             spacing: 8,

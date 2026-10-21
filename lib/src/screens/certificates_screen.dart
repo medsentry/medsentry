@@ -220,14 +220,25 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     : AppColors.lightTextSecondary,
                 indicatorColor: isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark,
                 indicatorWeight: 2,
+                // Shorter labels on phones so both tabs fit on screen.
                 tabs: [
-                  const Tab(
-                    icon: Icon(Icons.edit_document, size: 16),
-                    child: Text('Issue Certificate & Live Preview', style: TextStyle(fontSize: 14)),
+                  Tab(
+                    icon: const Icon(Icons.edit_document, size: 16),
+                    child: Text(
+                      ResponsiveLayout.isMobile(context)
+                          ? 'Issue certificate'
+                          : 'Issue Certificate & Live Preview',
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                   Tab(
                     icon: const Icon(Icons.history_edu, size: 16),
-                    child: Text('Issued Registry ($archiveCount)', style: TextStyle(fontSize: 14)),
+                    child: Text(
+                      ResponsiveLayout.isMobile(context)
+                          ? 'Registry ($archiveCount)'
+                          : 'Issued Registry ($archiveCount)',
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                 ],
               ),

@@ -2027,7 +2027,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                 children: [
                   ChoiceChip(
                     label: Text('All Facilities (${activeUsersList.length})'),
-                    labelStyle: TextStyle(
+                    labelStyle: TextStyle(fontFamily: AppType.family,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
@@ -2060,7 +2060,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     label: Text(
                       'Super Admins (${activeUsersList.where((u) => u.role == UserRole.superAdmin).length})',
                     ),
-                    labelStyle: TextStyle(
+                    labelStyle: TextStyle(fontFamily: AppType.family,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
@@ -2094,7 +2094,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     label: Text(
                       'Unassigned (${activeUsersList.where((u) => u.clinicId == null && u.role != UserRole.superAdmin).length})',
                     ),
-                    labelStyle: TextStyle(
+                    labelStyle: TextStyle(fontFamily: AppType.family,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
@@ -2132,7 +2132,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       padding: const EdgeInsets.only(left: 8),
                       child: ChoiceChip(
                         label: Text('${clinic.name} ($clinicCount)'),
-                        labelStyle: TextStyle(
+                        labelStyle: TextStyle(fontFamily: AppType.family,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           fontFeatures: const [FontFeature.tabularFigures()],
@@ -2206,11 +2206,11 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
             unselectedLabelColor: isDark
                 ? AppColors.textSecondary
                 : AppColors.lightTextSecondary,
-            labelStyle: const TextStyle(
+            labelStyle: const TextStyle(fontFamily: AppType.family,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
-            unselectedLabelStyle: const TextStyle(
+            unselectedLabelStyle: const TextStyle(fontFamily: AppType.family,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),

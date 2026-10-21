@@ -80,7 +80,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      textStyle: const TextStyle(
+                      textStyle: const TextStyle(fontFamily: AppType.family,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),

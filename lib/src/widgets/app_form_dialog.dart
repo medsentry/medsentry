@@ -389,7 +389,7 @@ class AppDialogAction extends StatelessWidget {
               : AppColors.textOnEmerald,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          textStyle: const TextStyle(fontFamily: AppType.family, fontWeight: FontWeight.w600, fontSize: 14),
         ),
       );
     }
@@ -407,7 +407,7 @@ class AppDialogAction extends StatelessWidget {
             : null,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
-        textStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+        textStyle: const TextStyle(fontFamily: AppType.family, fontWeight: FontWeight.w500, fontSize: 14),
       ),
     );
   }

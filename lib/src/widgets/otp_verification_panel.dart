@@ -246,7 +246,7 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
               backgroundColor: primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
-              textStyle: const TextStyle(
+              textStyle: const TextStyle(fontFamily: AppType.family,
                 fontWeight: FontWeight.w700,
                 fontSize: 15,
               ),

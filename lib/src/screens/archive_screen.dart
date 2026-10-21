@@ -182,7 +182,7 @@ class ArchiveScreen extends ConsumerWidget {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     side: BorderSide(color: t.control),
-                                    textStyle: const TextStyle(
+                                    textStyle: const TextStyle(fontFamily: AppType.family,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -208,7 +208,7 @@ class ArchiveScreen extends ConsumerWidget {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(6),
                                     ),
-                                    textStyle: const TextStyle(
+                                    textStyle: const TextStyle(fontFamily: AppType.family,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),

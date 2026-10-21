@@ -766,7 +766,7 @@ class _PatientsPageHeader extends StatelessWidget {
 }
 
 
-class _PatientsToolbar extends StatelessWidget {
+class _PatientsToolbar extends StatefulWidget {
   final TextEditingController searchController;
   final String searchQuery;
   final String? barangayFilter;
@@ -806,203 +806,256 @@ class _PatientsToolbar extends StatelessWidget {
   });
 
   @override
+  State<_PatientsToolbar> createState() => _PatientsToolbarState();
+}
+
+class _PatientsToolbarState extends State<_PatientsToolbar> {
+  /// Phones only: whether the filter and sort controls are shown.
+  bool _filtersOpen = false;
+
+  int get _activeFilterCount => [
+    widget.barangayFilter,
+    widget.purokFilter,
+    widget.categoryFilter,
+  ].where((value) => value != null).length;
+
+  @override
   Widget build(BuildContext context) {
     final hasFilters =
-        searchQuery.trim().isNotEmpty ||
-        barangayFilter != null ||
-        purokFilter != null ||
-        categoryFilter != null;
-
+        widget.searchQuery.trim().isNotEmpty || _activeFilterCount > 0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final searchField = TextField(
+      controller: widget.searchController,
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 11,
+        ),
+        hintText: 'Search by patient name, PhilHealth number, ID, or contact...',
+        hintStyle: TextStyle(
+          fontSize: 15,
+          color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
+        ),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          size: 18,
+          color: isDark ? AppColors.textTertiary : AppColors.lightTextSecondary,
+        ),
+        prefixIconConstraints: const BoxConstraints(
+          minWidth: 40,
+          minHeight: 40,
+        ),
+        suffixIcon: widget.searchQuery.isNotEmpty
+            ? IconButton(
+                tooltip: 'Clear search',
+                icon: const Icon(Icons.clear_rounded, size: 16),
+                onPressed: widget.onClearSearch,
+              )
+            : null,
+        filled: true,
+        fillColor: isDark ? AppColors.inputSurface : Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(
+            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(
+            color: AppColors.primaryEmerald,
+            width: 1.5,
+          ),
+        ),
+      ),
+      onChanged: widget.onSearchChanged,
+    );
+
+    Widget filters(double width) {
+      final isVeryNarrow = width < 420;
+      final isNarrow = width < 600;
+      final dropdownWidth = isVeryNarrow
+          ? width
+          : isNarrow
+          ? (width - 8) / 2
+          : 180.0;
+
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          SizedBox(
+            width: dropdownWidth,
+            child: _FilterDropdown<String>(
+              label: 'Barangay',
+              value: widget.barangayFilter,
+              items: widget.barangays,
+              itemLabel: (value) => value,
+              onChanged: widget.onBarangayChanged,
+            ),
+          ),
+          SizedBox(
+            width: dropdownWidth,
+            child: _FilterDropdown<String>(
+              label: 'Purok',
+              value: widget.purokFilter,
+              items: widget.puroks,
+              itemLabel: (value) => value,
+              onChanged: widget.onPurokChanged,
+            ),
+          ),
+          SizedBox(
+            width: dropdownWidth,
+            child: _FilterDropdown<PatientCategory>(
+              label: 'Category',
+              value: widget.categoryFilter,
+              items: PatientCategory.values,
+              itemLabel: (value) => value.displayName,
+              onChanged: widget.onCategoryChanged,
+            ),
+          ),
+          if (hasFilters)
+            ActionChip(
+              avatar: const Icon(
+                Icons.filter_alt_off_outlined,
+                size: 15,
+                color: AppColors.primaryEmerald,
+              ),
+              label: const Text(
+                'Clear filters',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+              side: BorderSide(
+                color: isDark
+                    ? AppColors.borderSubtle
+                    : AppColors.lightBorderActive,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              onPressed: widget.onClearFilters,
+            ),
+        ],
+      );
+    }
+
+    final segmentShape = ButtonStyle(
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+    final sortButton = SegmentedButton<_PatientSortMode>(
+      style: segmentShape,
+      segments: const [
+        ButtonSegment(
+          value: _PatientSortMode.byLocation,
+          icon: Icon(Icons.map_outlined, size: 15),
+          label: Text('By Barangay', style: TextStyle(fontSize: 14)),
+        ),
+        ButtonSegment(
+          value: _PatientSortMode.alphabetical,
+          icon: Icon(Icons.sort_by_alpha, size: 15),
+          label: Text('A–Z', style: TextStyle(fontSize: 14)),
+        ),
+      ],
+      selected: {widget.sortMode},
+      onSelectionChanged: (value) => widget.onSortModeChanged(value.first),
+    );
+    final viewButton = SegmentedButton<_PatientViewMode>(
+      style: segmentShape,
+      segments: const [
+        ButtonSegment(
+          value: _PatientViewMode.list,
+          icon: Icon(Icons.view_list_outlined, size: 15),
+          label: Text('List', style: TextStyle(fontSize: 14)),
+        ),
+        ButtonSegment(
+          value: _PatientViewMode.grid,
+          icon: Icon(Icons.grid_view_outlined, size: 15),
+          label: Text('Grid', style: TextStyle(fontSize: 14)),
+        ),
+      ],
+      selected: {widget.viewMode},
+      onSelectionChanged: (value) => widget.onViewModeChanged(value.first),
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: searchController,
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 11,
-              ),
-              hintText: 'Search by patient name, PhilHealth number, ID, or contact...',
-              hintStyle: TextStyle(
-                fontSize: 14,
-                color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
-              ),
-              prefixIcon: Icon(
-                Icons.search_rounded,
-                size: 18,
-                color: isDark ? AppColors.textTertiary : AppColors.lightTextSecondary,
-              ),
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
-              ),
-              suffixIcon: searchQuery.isNotEmpty
-                  ? IconButton(
-                      tooltip: 'Clear search',
-                      icon: const Icon(Icons.clear_rounded, size: 16),
-                      onPressed: onClearSearch,
-                    )
-                  : null,
-              filled: true,
-              fillColor: isDark ? AppColors.inputSurface : Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: isDark
-                      ? AppColors.borderSubtle
-                      : AppColors.lightBorderActive,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(
-                  color: isDark
-                      ? AppColors.borderSubtle
-                      : AppColors.lightBorderActive,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(
-                  color: AppColors.primaryEmerald,
-                  width: 1.5,
-                ),
-              ),
-            ),
-            onChanged: onSearchChanged,
-          ),
-          const SizedBox(height: 10),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.maxWidth;
-              final isVeryNarrow = width < 420;
-              final isNarrow = width < 600;
-              final dropdownWidth = isVeryNarrow
-                  ? width
-                  : isNarrow
-                      ? (width - 8) / 2
-                      : 180.0;
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
 
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: dropdownWidth,
-                    child: _FilterDropdown<String>(
-                      label: 'Barangay',
-                      value: barangayFilter,
-                      items: barangays,
-                      itemLabel: (value) => value,
-                      onChanged: onBarangayChanged,
-                    ),
-                  ),
-                  SizedBox(
-                    width: dropdownWidth,
-                    child: _FilterDropdown<String>(
-                      label: 'Purok',
-                      value: purokFilter,
-                      items: puroks,
-                      itemLabel: (value) => value,
-                      onChanged: onPurokChanged,
-                    ),
-                  ),
-                  SizedBox(
-                    width: dropdownWidth,
-                    child: _FilterDropdown<PatientCategory>(
-                      label: 'Category',
-                      value: categoryFilter,
-                      items: PatientCategory.values,
-                      itemLabel: (value) => value.displayName,
-                      onChanged: onCategoryChanged,
-                    ),
-                  ),
-                  if (hasFilters)
-                    ActionChip(
-                      avatar: const Icon(
-                        Icons.filter_alt_off_outlined,
-                        size: 15,
-                        color: AppColors.primaryEmerald,
-                      ),
-                      label: const Text(
-                        'Clear filters',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                      ),
-                      side: BorderSide(
-                        color: isDark
-                            ? AppColors.borderSubtle
-                            : AppColors.lightBorderActive,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      onPressed: onClearFilters,
-                    ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          if (width >= 600) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                searchField,
+                const SizedBox(height: 10),
+                filters(width),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [sortButton, viewButton],
+                ),
+              ],
+            );
+          }
+
+          // Phones: search and a filter button on one row, so patients show
+          // on the first screen. Filters open on demand, or stay open while
+          // one is applied. A one-column grid is the list, so the view
+          // switch is left out.
+          final open = _filtersOpen || _activeFilterCount > 0;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SegmentedButton<_PatientSortMode>(
-                style: ButtonStyle(
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              Row(
+                children: [
+                  Expanded(child: searchField),
+                  const SizedBox(width: 8),
+                  Badge(
+                    isLabelVisible: _activeFilterCount > 0,
+                    label: Text('$_activeFilterCount'),
+                    child: IconButton.outlined(
+                      tooltip: open ? 'Hide filters' : 'Filter and sort',
+                      isSelected: open,
+                      onPressed: () =>
+                          setState(() => _filtersOpen = !_filtersOpen),
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(44, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.borderSubtle
+                              : AppColors.lightBorderActive,
+                        ),
+                      ),
+                      icon: const Icon(Icons.tune_rounded, size: 20),
                     ),
                   ),
-                ),
-                segments: const [
-                  ButtonSegment(
-                    value: _PatientSortMode.byLocation,
-                    icon: Icon(Icons.map_outlined, size: 15),
-                    label: Text('By Barangay', style: TextStyle(fontSize: 13)),
-                  ),
-                  ButtonSegment(
-                    value: _PatientSortMode.alphabetical,
-                    icon: Icon(Icons.sort_by_alpha, size: 15),
-                    label: Text('A–Z', style: TextStyle(fontSize: 13)),
-                  ),
                 ],
-                selected: {sortMode},
-                onSelectionChanged: (value) => onSortModeChanged(value.first),
               ),
-              SegmentedButton<_PatientViewMode>(
-                style: ButtonStyle(
-                  shape: WidgetStatePropertyAll(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                segments: const [
-                  ButtonSegment(
-                    value: _PatientViewMode.list,
-                    icon: Icon(Icons.view_list_outlined, size: 15),
-                    label: Text('List', style: TextStyle(fontSize: 13)),
-                  ),
-                  ButtonSegment(
-                    value: _PatientViewMode.grid,
-                    icon: Icon(Icons.grid_view_outlined, size: 15),
-                    label: Text('Grid', style: TextStyle(fontSize: 13)),
-                  ),
-                ],
-                selected: {viewMode},
-                onSelectionChanged: (value) => onViewModeChanged(value.first),
-              ),
+              if (open) ...[
+                const SizedBox(height: 10),
+                filters(width),
+                const SizedBox(height: 10),
+                Align(alignment: Alignment.centerLeft, child: sortButton),
+              ],
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1033,7 +1086,7 @@ class _FilterDropdown<T> extends StatelessWidget {
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(
+        labelStyle: TextStyle(fontFamily: AppType.family,
           fontSize: 14,
           color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
         ),

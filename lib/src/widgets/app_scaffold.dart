@@ -169,8 +169,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   PreferredSizeWidget _buildMobileAppBar(BuildContext context, User? user) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final settings =
-        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
     final currentPath = GoRouter.maybeOf(context)?.state.uri.path ?? '';
     final isDetailRoute =
         currentPath.startsWith('/patients/') && currentPath != '/patients';
@@ -186,8 +184,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             .length ??
         0;
 
+    // Phones keep the bar to the screen title and the actions used most;
+    // the theme switch stays in Settings, Appearance.
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final showThemeToggle = screenWidth >= 390;
+    final showThemeToggle = screenWidth >= 430;
 
     return AppBar(
       elevation: 0,
@@ -211,35 +211,16 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                 onPressed: () => Scaffold.of(ctx).openDrawer(),
               ),
             ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SystemLogo(
-            dataUri: settings.logoDataUri,
-            size: 28,
-            backgroundColor: isDark
-                ? AppColors.primaryEmeraldSubtle
-                : AppColors.primaryEmeraldDeep.withValues(alpha: 0.15),
-            iconColor: AppColors.primaryEmerald,
-            iconSize: 18,
-            borderRadius: 6,
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              widget.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? AppColors.textPrimary
-                    : AppColors.lightTextPrimary,
-              ),
-            ),
-          ),
-        ],
+      // The logo is in the drawer; here the screen title gets the room.
+      title: Text(
+        widget.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
+        ),
       ),
       actions: [
         IconButton(
@@ -540,10 +521,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                   ),
                   Text(
                     user?.email ?? '',
-                    style: TextStyle(
-                      color: spine.textSecondary,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: spine.textSecondary, fontSize: 14),
                   ),
                 ],
               ),

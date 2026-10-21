@@ -402,7 +402,7 @@ class _DocumentsPageHeader extends StatelessWidget {
   }
 }
 
-class _DocumentsToolbar extends StatelessWidget {
+class _DocumentsToolbar extends StatefulWidget {
   final TextEditingController searchController;
   final DocumentType? typeFilter;
   final _DocumentSortMode sortMode;
@@ -428,22 +428,28 @@ class _DocumentsToolbar extends StatelessWidget {
   });
 
   @override
+  State<_DocumentsToolbar> createState() => _DocumentsToolbarState();
+}
+
+class _DocumentsToolbarState extends State<_DocumentsToolbar> {
+  /// Phones only: whether the type filter and sort controls are shown.
+  bool _filtersOpen = false;
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final searchController = widget.searchController;
+    final typeFilter = widget.typeFilter;
+    final sortMode = widget.sortMode;
+    final viewMode = widget.viewMode;
+    final hasFilters = widget.hasFilters;
+    final onSearchChanged = widget.onSearchChanged;
+    final onTypeChanged = widget.onTypeChanged;
+    final onSortModeChanged = widget.onSortModeChanged;
+    final onViewModeChanged = widget.onViewModeChanged;
+    final onClearFilters = widget.onClearFilters;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardSurface : Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
+    final searchField = TextField(
             controller: searchController,
             decoration: InputDecoration(
               isDense: true,
@@ -502,9 +508,8 @@ class _DocumentsToolbar extends StatelessWidget {
               ),
             ),
             onChanged: onSearchChanged,
-          ),
-          const SizedBox(height: 10),
-          LayoutBuilder(
+          );
+    final filters = LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final isNarrow = width < 500;
@@ -520,13 +525,13 @@ class _DocumentsToolbar extends StatelessWidget {
                     child: DropdownButtonFormField<DocumentType?>(
                       initialValue: typeFilter,
                       isExpanded: true,
-                      style: TextStyle(fontFamily: AppType.family, 
+                      style: TextStyle(fontFamily: AppType.family,
                         fontSize: 14,
                         color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                       ),
                       decoration: InputDecoration(
                         labelText: 'Document Type',
-                        labelStyle: TextStyle(
+                        labelStyle: TextStyle(fontFamily: AppType.family,
                           fontSize: 14,
                           color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                         ),
@@ -593,13 +598,8 @@ class _DocumentsToolbar extends StatelessWidget {
                 ],
               );
             },
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              SegmentedButton<_DocumentSortMode>(
+          );
+    final sortButton = SegmentedButton<_DocumentSortMode>(
                 style: ButtonStyle(
                   shape: WidgetStatePropertyAll(
                     RoundedRectangleBorder(
@@ -626,8 +626,8 @@ class _DocumentsToolbar extends StatelessWidget {
                 ],
                 selected: {sortMode},
                 onSelectionChanged: (value) => onSortModeChanged(value.first),
-              ),
-              SegmentedButton<_DocumentViewMode>(
+              );
+    final viewButton = SegmentedButton<_DocumentViewMode>(
                 style: ButtonStyle(
                   shape: WidgetStatePropertyAll(
                     RoundedRectangleBorder(
@@ -649,10 +649,80 @@ class _DocumentsToolbar extends StatelessWidget {
                 ],
                 selected: {viewMode},
                 onSelectionChanged: (value) => onViewModeChanged(value.first),
+              );
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 600) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                searchField,
+                const SizedBox(height: 10),
+                filters,
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [sortButton, viewButton],
+                ),
+              ],
+            );
+          }
+
+          // Phones: search and a filter button on one row so documents show
+          // on the first screen. The view switch is left out: a one-column
+          // grid is the list.
+          final open = _filtersOpen || typeFilter != null;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: searchField),
+                  const SizedBox(width: 8),
+                  Badge(
+                    isLabelVisible: typeFilter != null,
+                    label: const Text('1'),
+                    child: IconButton.outlined(
+                      tooltip: open ? 'Hide filters' : 'Filter and sort',
+                      isSelected: open,
+                      onPressed: () =>
+                          setState(() => _filtersOpen = !_filtersOpen),
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(44, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.borderSubtle
+                              : AppColors.lightBorderActive,
+                        ),
+                      ),
+                      icon: const Icon(Icons.tune_rounded, size: 20),
+                    ),
+                  ),
+                ],
               ),
+              if (open) ...[
+                const SizedBox(height: 10),
+                filters,
+                const SizedBox(height: 10),
+                Align(alignment: Alignment.centerLeft, child: sortButton),
+              ],
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

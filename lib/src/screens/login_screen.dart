@@ -599,7 +599,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             shape: const RoundedRectangleBorder(
               borderRadius: AppRadius.roundedMd,
             ),
-            textStyle: TextStyle(
+            textStyle: TextStyle(fontFamily: AppType.family,
               fontSize: isMobile ? 13 : 14,
               fontWeight: FontWeight.w600,
             ),
@@ -693,7 +693,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       minimumSize: Size.zero,
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      textStyle: const TextStyle(fontFamily: AppType.family, fontSize: 14, fontWeight: FontWeight.w600),
     );
 
     Future<void> toggleRememberMe([bool? val]) async {
@@ -1070,7 +1070,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               shape: const RoundedRectangleBorder(
                 borderRadius: AppRadius.roundedMd,
               ),
-              textStyle: const TextStyle(
+              textStyle: const TextStyle(fontFamily: AppType.family,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
@@ -1200,7 +1200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         minimumSize: const Size.fromHeight(46),
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
         side: BorderSide(color: palette.border),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontFamily: AppType.family, fontSize: 15, fontWeight: FontWeight.w600),
       ),
     );
   }

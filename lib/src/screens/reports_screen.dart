@@ -343,7 +343,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   // Fixed-width field: long preset names truncate instead of
                   // overflowing.
                   isExpanded: true,
-                  style: TextStyle(fontFamily: AppType.family, 
+                  style: TextStyle(fontFamily: AppType.family,
                     fontSize: 14,
                     color: isDark
                         ? AppColors.textPrimary
@@ -351,7 +351,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                   decoration: InputDecoration(
                     labelText: 'Date Range',
-                    labelStyle: TextStyle(
+                    labelStyle: TextStyle(fontFamily: AppType.family,
                       fontSize: 13,
                       color: isDark
                           ? AppColors.textSecondary
@@ -494,7 +494,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 height: 40,
                 child: DropdownButtonFormField<ReportGrouping>(
                   initialValue: _draftFilters.grouping,
-                  style: TextStyle(fontFamily: AppType.family, 
+                  style: TextStyle(fontFamily: AppType.family,
                     fontSize: 14,
                     color: isDark
                         ? AppColors.textPrimary
@@ -502,7 +502,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   ),
                   decoration: InputDecoration(
                     labelText: 'Group By',
-                    labelStyle: TextStyle(
+                    labelStyle: TextStyle(fontFamily: AppType.family,
                       fontSize: 13,
                       color: isDark
                           ? AppColors.textSecondary
@@ -2115,7 +2115,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: activeTypeFilter,
-                      style: TextStyle(fontFamily: AppType.family, 
+                      style: TextStyle(fontFamily: AppType.family,
                         fontSize: 14,
                         color: isDark
                             ? AppColors.textPrimary
@@ -2156,7 +2156,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _reportSortOrder,
-                    style: TextStyle(fontFamily: AppType.family, 
+                    style: TextStyle(fontFamily: AppType.family,
                       fontSize: 14,
                       color: isDark
                           ? AppColors.textPrimary
@@ -2347,7 +2347,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _auditActionFilter,
-                            style: TextStyle(fontFamily: AppType.family, 
+                            style: TextStyle(fontFamily: AppType.family,
                               fontSize: 14,
                               color: isDark
                                   ? AppColors.textPrimary
