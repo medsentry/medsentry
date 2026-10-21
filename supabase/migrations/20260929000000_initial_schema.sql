@@ -3,8 +3,9 @@
 -- Strict Tenant Isolation, Role-Based Access Control, and Clean Database Setup
 -- No dummy clinical records (patients, queue, consultations, etc.)
 -- Single Super Administrator Provisioned:
---   Email: superadmin@gmail.com
---   Password: Password123!
+--   Email: superadmin@medsentry.invalid (placeholder that cannot receive mail)
+--   Password: random and unknown; set the real email and password from the
+--             Supabase Dashboard (Authentication > Users) after setup.
 --   Role: super_admin
 --   Scope: All RHUs (clinic_id = NULL)
 -- =============================================================================
@@ -1035,7 +1036,10 @@ DECLARE
   super_admin_id uuid := '00000000-0000-4000-8000-000000000001';
   encrypted_pw text;
 BEGIN
-  encrypted_pw := crypt('Password123!', gen_salt('bf', 10));
+  -- No published password: the account stays locked until an operator sets
+  -- one from the Dashboard. The email is a non-deliverable placeholder so a
+  -- stranger cannot claim the account through password recovery.
+  encrypted_pw := crypt(encode(gen_random_bytes(32), 'hex'), gen_salt('bf', 10));
 
   -- Insert/update auth.users
   INSERT INTO auth.users (
@@ -1054,7 +1058,7 @@ BEGIN
   ) VALUES (
     super_admin_id,
     '00000000-0000-0000-0000-000000000000',
-    'superadmin@gmail.com',
+    'superadmin@medsentry.invalid',
     encrypted_pw,
     now(),
     '{"provider":"email","providers":["email"]}'::jsonb,
@@ -1084,7 +1088,7 @@ BEGIN
   ) VALUES (
     super_admin_id,
     super_admin_id,
-    jsonb_build_object('sub', super_admin_id::text, 'email', 'superadmin@gmail.com'),
+    jsonb_build_object('sub', super_admin_id::text, 'email', 'superadmin@medsentry.invalid'),
     'email',
     super_admin_id::text,
     now(),
@@ -1110,7 +1114,7 @@ BEGIN
     super_admin_id,
     super_admin_id,
     NULL,
-    'superadmin@gmail.com',
+    'superadmin@medsentry.invalid',
     'System',
     'SuperAdmin',
     'super_admin',
