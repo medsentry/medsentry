@@ -417,14 +417,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: isDark
-                    ? [
-                        const Color(0xCC0A0F1D),
-                        const Color(0xF2040711),
-                      ]
-                    : [
-                        const Color(0x730F172A),
-                        const Color(0xB30F172A),
-                      ],
+                    ? [const Color(0xCC0A0F1D), const Color(0xF2040711)]
+                    : [const Color(0x730F172A), const Color(0xB30F172A)],
               ),
             ),
           ),
