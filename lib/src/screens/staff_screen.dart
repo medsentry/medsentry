@@ -35,7 +35,7 @@ class StaffScreen extends ConsumerWidget {
                 border: Border.all(
                   color: isDark
                       ? AppColors.borderSubtle
-                      : const Color(0xFFE2E8F0),
+                      : AppColors.lightBorder,
                   width: 1,
                 ),
               ),

@@ -110,7 +110,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   color: isDark ? AppColors.cardSurface : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                   ),
                 ),
                 child: Row(
@@ -161,7 +161,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   color: isDark ? AppColors.cardSurface : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                   ),
                 ),
                 // Wraps onto a second line on phones instead of overflowing.
@@ -185,7 +185,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         fontFeatures: const [FontFeature.tabularFigures()],
                         color: isDark
                             ? AppColors.textPrimary
-                            : const Color(0xFF0F172A),
+                            : AppColors.lightTextPrimary,
                       ),
                     ),
                     Text(
@@ -213,11 +213,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               TabBar(
                 controller: _tabController,
                 isScrollable: true,
-                labelColor: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
+                labelColor: isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark,
                 unselectedLabelColor: isDark
                     ? AppColors.textSecondary
                     : AppColors.lightTextSecondary,
-                indicatorColor: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
+                indicatorColor: isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark,
                 indicatorWeight: 2,
                 tabs: [
                   const Tab(
@@ -294,7 +294,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: Column(
@@ -313,7 +313,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                  color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                 ),
               ),
             ],
@@ -339,12 +339,12 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               decoration: BoxDecoration(
                 color: isDark
                     ? AppColors.inputSurface
-                    : const Color(0xFFF8FAFC),
+                    : AppColors.lightAppBackground,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isDark
                       ? AppColors.borderSubtle
-                      : const Color(0xFFE2E8F0),
+                      : AppColors.lightBorder,
                 ),
               ),
               child: Column(
@@ -365,7 +365,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 12.5,
-                            color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                            color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                           ),
                         ),
                       ),
@@ -394,7 +394,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         avatar: const Icon(Icons.work_outline, size: 14),
                         label: const Text('Fit to Work', style: TextStyle(fontSize: 12)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                        side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                         onPressed: () => _applyPreset(
                           purpose: 'Employment & Return-to-Work Clearance',
                           findings:
@@ -407,7 +407,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         avatar: const Icon(Icons.school_outlined, size: 14),
                         label: const Text('School / P.E.', style: TextStyle(fontSize: 12)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                        side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                         onPressed: () => _applyPreset(
                           purpose: 'School Readmission & P.E. Clearance',
                           findings:
@@ -420,7 +420,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         avatar: const Icon(Icons.bed_outlined, size: 14),
                         label: const Text('Bed Rest (3 Days)', style: TextStyle(fontSize: 12)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                        side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                         onPressed: () => _applyPreset(
                           purpose: 'Medical Excusal / Sick Leave',
                           findings:
@@ -434,7 +434,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         avatar: const Icon(Icons.local_hospital_outlined, size: 14),
                         label: const Text('Referral Slip', style: TextStyle(fontSize: 12)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                        side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                         onPressed: () => _applyPreset(
                           purpose: 'Tertiary Level Evaluation & Diagnostic Work-up',
                           findings:
@@ -455,7 +455,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -473,10 +473,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                  color: isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                   ),
                 ),
                 alignment: Alignment.center,
@@ -485,7 +485,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                    color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                   ),
                 ),
               ),
@@ -515,10 +515,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                color: isDark ? AppColors.inputSurface : AppColors.lightAppBackground,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                 ),
               ),
               child: Row(
@@ -526,7 +526,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   Icon(
                     Icons.person_outline,
                     size: 15,
-                    color: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
+                    color: isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -536,7 +536,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         fontFeatures: const [FontFeature.tabularFigures()],
-                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                        color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                       ),
                     ),
                   ),
@@ -564,7 +564,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
                 ),
                 hintText:
@@ -583,7 +583,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
                 ),
                 hintText:
@@ -603,7 +603,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
                 ),
                 hintText:
@@ -623,7 +623,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
                 ),
                 hintText: 'e.g. 3',
@@ -671,7 +671,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   side: BorderSide(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
                 ),
                 onPressed: _isGenerating || selectedPatient == null
@@ -742,7 +742,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: Column(
@@ -762,7 +762,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   fontWeight: FontWeight.w700,
                   fontSize: 11,
                   letterSpacing: 0.8,
-                  color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+                  color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                 ),
               ),
               const SizedBox(width: 8),
@@ -773,10 +773,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                  color: isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
                 ),
                 child: Text(
@@ -784,7 +784,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10,
-                    color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                     fontWeight: FontWeight.w600,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
@@ -797,10 +797,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF181A22) : Colors.white,
+              color: isDark ? AppColors.modalSurface : Colors.white,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: isDark ? AppColors.borderActive : const Color(0xFFCBD5E1),
+                color: isDark ? AppColors.borderActive : AppColors.lightBorderActive,
                 width: 1,
               ),
             ),
@@ -1007,10 +1007,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppColors.inputSurface
-                          : const Color(0xFFF8FAFC),
+                          : AppColors.lightAppBackground,
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                        color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                        color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                       ),
                     ),
                     child: Row(
@@ -1018,7 +1018,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         Icon(
                           Icons.verified_user_outlined,
                           size: 13,
-                          color: isDark ? AppColors.primaryEmerald : const Color(0xFF0F766E),
+                          color: isDark ? AppColors.primaryEmerald : AppColors.primaryEmeraldDark,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -1077,7 +1077,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: Column(
@@ -1121,13 +1121,13 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                  color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                  color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -1157,10 +1157,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                      color: isDark ? AppColors.inputSurface : AppColors.lightAppBackground,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                        color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                       ),
                     ),
                     child: Center(
@@ -1180,7 +1180,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -1213,7 +1213,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                         border: Border.all(
                           color: isDark
                               ? AppColors.borderSubtle
-                              : const Color(0xFFE2E8F0),
+                              : AppColors.lightBorder,
                         ),
                       ),
                       child: Column(
@@ -1229,10 +1229,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+                                  color: isDark ? AppColors.inputSurface : AppColors.lightAppBackground,
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
-                                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                                   ),
                                 ),
                                 child: Text(
@@ -1240,7 +1240,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
-                                    color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+                                    color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                                   ),
                                 ),
                               ),
@@ -1281,7 +1281,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                  side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                                  side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -1307,7 +1307,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                  side: BorderSide(color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                                  side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                                 ),
                               ),
                               if (canDelete) ...[
@@ -1361,10 +1361,10 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 width: 32,
                                 height: 32,
                                 decoration: BoxDecoration(
-                                  color: isDark ? AppColors.cardSurface : const Color(0xFFF1F5F9),
+                                  color: isDark ? AppColors.cardSurface : AppColors.lightElevatedSurface,
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                    color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                                   ),
                                 ),
                                 alignment: Alignment.center,
@@ -1376,7 +1376,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                     fontWeight: FontWeight.w600,
                                     color: isDark
                                         ? AppColors.textPrimary
-                                        : const Color(0xFF0F172A),
+                                        : AppColors.lightTextPrimary,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -1391,7 +1391,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                       style: TextStyle(
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.w600,
-                                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                                        color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                                       ),
                                     ),
                                     if (item.patientId.isNotEmpty)
@@ -1431,7 +1431,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                           const SizedBox(height: 8),
                           Divider(
                             height: 1,
-                            color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9),
+                            color: isDark ? AppColors.borderSubtle : AppColors.lightElevatedSurface,
                           ),
                           const SizedBox(height: 8),
                           Row(

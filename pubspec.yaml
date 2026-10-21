@@ -110,6 +110,26 @@ flutter:
   assets:
     - assets/images/rhu_background.jpg
 
+  # Atkinson Hyperlegible Next (SIL OFL, see assets/fonts/OFL.txt). Chosen
+  # for its distinct 0/O and 1/l/I shapes, which matter when staff read
+  # patient IDs and dates all day.
+  fonts:
+    - family: Atkinson Hyperlegible Next
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-400.ttf
+          weight: 400
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-400italic.ttf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-500.ttf
+          weight: 500
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-600.ttf
+          weight: 600
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-700.ttf
+          weight: 700
+        - asset: assets/fonts/AtkinsonHyperlegibleNext-800.ttf
+          weight: 800
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

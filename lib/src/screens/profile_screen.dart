@@ -43,12 +43,12 @@ class ProfileScreen extends ConsumerWidget {
                 icon: const Icon(Icons.lock_outline, size: 16),
                 label: const Text('Lock Screen'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                  foregroundColor: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   minimumSize: const Size(0, 36),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   side: BorderSide(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
                   textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 ),
@@ -86,7 +86,7 @@ class ProfileScreen extends ConsumerWidget {
               color: isDark ? AppColors.cardSurface : Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                 width: 1,
               ),
             ),
@@ -111,7 +111,7 @@ class ProfileScreen extends ConsumerWidget {
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: -0.3,
-                                color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                               ),
                             ),
                           ),
@@ -140,10 +140,10 @@ class ProfileScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: isDark
                               ? AppColors.inputSurface
-                              : const Color(0xFFF1F5F9),
+                              : AppColors.lightElevatedSurface,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                             width: 1,
                           ),
                         ),
@@ -153,7 +153,7 @@ class ProfileScreen extends ConsumerWidget {
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.3,
-                            color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+                            color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                           ),
                         ),
                       ),
@@ -172,7 +172,7 @@ class ProfileScreen extends ConsumerWidget {
               color: isDark ? AppColors.cardSurface : Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                 width: 1,
               ),
             ),
@@ -185,7 +185,7 @@ class ProfileScreen extends ConsumerWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
-                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                    color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -195,28 +195,28 @@ class ProfileScreen extends ConsumerWidget {
                   label: 'Full Name',
                   value: user.fullName,
                 ),
-                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : AppColors.lightElevatedSurface),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.email_outlined,
                   label: 'Email Address',
                   value: user.email,
                 ),
-                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : AppColors.lightElevatedSurface),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.phone_outlined,
                   label: 'Contact Number',
                   value: user.contactNumber ?? 'Not provided',
                 ),
-                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : AppColors.lightElevatedSurface),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.medical_services_outlined,
                   label: 'Specialization',
                   value: user.specialization ?? 'General Healthcare',
                 ),
-                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : AppColors.lightElevatedSurface),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.credit_card_outlined,
@@ -226,7 +226,7 @@ class ProfileScreen extends ConsumerWidget {
                       ? user.licenseNumber!
                       : 'Not provided',
                 ),
-                Divider(height: 20, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
+                Divider(height: 20, color: isDark ? AppColors.borderSubtle : AppColors.lightElevatedSurface),
                 _buildProfileDetailRow(
                   context,
                   icon: Icons.admin_panel_settings_outlined,
@@ -245,7 +245,7 @@ class ProfileScreen extends ConsumerWidget {
               color: isDark ? AppColors.cardSurface : Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                 width: 1,
               ),
             ),
@@ -262,7 +262,7 @@ class ProfileScreen extends ConsumerWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           letterSpacing: -0.2,
-                          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                          color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                         ),
                       ),
                     ),
@@ -310,11 +310,11 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                        foregroundColor: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         side: BorderSide(
-                          color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                         ),
                         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
@@ -336,7 +336,7 @@ class ProfileScreen extends ConsumerWidget {
               color: isDark ? AppColors.cardSurface : Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+                color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
                 width: 1,
               ),
             ),
@@ -349,7 +349,7 @@ class ProfileScreen extends ConsumerWidget {
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
-                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                    color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -393,14 +393,14 @@ class ProfileScreen extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 16),
-                Divider(height: 1, color: isDark ? AppColors.borderSubtle : const Color(0xFFF1F5F9)),
+                Divider(height: 1, color: isDark ? AppColors.borderSubtle : AppColors.lightElevatedSurface),
                 const SizedBox(height: 14),
                 Text(
                   'Clinical Accent Color',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                    color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -426,12 +426,12 @@ class ProfileScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: isSelected
                               ? accent.primaryColor.withValues(alpha: 0.1)
-                              : (isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC)),
+                              : (isDark ? AppColors.inputSurface : AppColors.lightAppBackground),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color: isSelected
                                 ? accent.primaryColor
-                                : (isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1)),
+                                : (isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                             width: isSelected ? 1.5 : 1,
                           ),
                         ),
@@ -465,7 +465,7 @@ class ProfileScreen extends ConsumerWidget {
                                     ? (isDark
                                           ? accent.primaryColor
                                           : Color.lerp(accent.primaryColor, Colors.black, 0.3))
-                                    : (isDark ? AppColors.textPrimary : const Color(0xFF334155)),
+                                    : (isDark ? AppColors.textPrimary : AppColors.lightTextSecondary),
                               ),
                             ),
                           ],
@@ -514,7 +514,7 @@ class ProfileScreen extends ConsumerWidget {
               fontSize: 13.5,
               fontWeight: FontWeight.w600,
               fontFeatures: const [FontFeature.tabularFigures()],
-              color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
             ),
           ),
         ),

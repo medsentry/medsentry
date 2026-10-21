@@ -35,8 +35,8 @@ class OtpVerificationPanel extends StatefulWidget {
 
 class _OtpVerificationPanelState extends State<OtpVerificationPanel>
     with SingleTickerProviderStateMixin {
-  static const Color _ink = Color(0xFF0F172A);
-  static const Color _muted = Color(0xFF475569);
+  static const Color _ink = AppColors.lightTextPrimary;
+  static const Color _muted = AppColors.lightTextSecondary;
 
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
@@ -450,13 +450,13 @@ class _Box extends StatelessWidget {
         ? AppColors.critical
         : active
         ? accent
-        : const Color(0xFFCBD5E1);
+        : AppColors.lightBorderActive;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       height: 56,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: char.isEmpty ? const Color(0xFFF8FAFC) : Colors.white,
+        color: char.isEmpty ? AppColors.lightAppBackground : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor, width: active ? 2 : 1.2),
         boxShadow: active
@@ -474,7 +474,7 @@ class _Box extends StatelessWidget {
         style: const TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF0F172A),
+          color: AppColors.lightTextPrimary,
         ),
       ),
     );

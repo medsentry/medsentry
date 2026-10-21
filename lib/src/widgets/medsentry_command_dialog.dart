@@ -240,7 +240,7 @@ class _MedSentryCommandPaletteDialogState
 
     final bgColor = isDark ? AppColors.modalSurface : Colors.white;
     final borderColor = isDark ? AppColors.border : const Color(0xFFE5E7EB);
-    final headerBg = isDark ? const Color(0xFF14161E) : const Color(0xFFF9FAFB);
+    final headerBg = isDark ? AppColors.elevatedSurface : AppColors.lightCardSurface;
 
     return Dialog(
       backgroundColor: isMobile ? bgColor : Colors.transparent,
@@ -531,7 +531,7 @@ class _MedSentryCommandPaletteDialogState
                     ),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? const Color(0xFF111319)
+                          ? AppColors.inputSurface
                           : const Color(0xFFF3F4F6),
                       border: Border(
                         top: BorderSide(

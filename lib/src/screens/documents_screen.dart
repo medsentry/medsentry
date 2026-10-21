@@ -226,7 +226,7 @@ class _DocumentsPageHeader extends StatelessWidget {
             color: isDark ? AppColors.cardSurface : Colors.white,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
             ),
           ),
           child: LayoutBuilder(
@@ -329,7 +329,7 @@ class _DocumentsPageHeader extends StatelessWidget {
             color: isDark ? AppColors.cardSurface : Colors.white,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
             ),
           ),
           child: Row(
@@ -350,7 +350,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                   fontFeatures: const [FontFeature.tabularFigures()],
                   color: isDark
                       ? AppColors.textPrimary
-                      : const Color(0xFF0F172A),
+                      : AppColors.lightTextPrimary,
                 ),
               ),
               Text(
@@ -390,7 +390,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
                         ? AppColors.primaryEmerald
-                        : const Color(0xFF0F766E),
+                        : AppColors.primaryEmeraldDark,
                   ),
                 ),
               ],
@@ -437,7 +437,7 @@ class _DocumentsToolbar extends StatelessWidget {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: Column(
@@ -482,7 +482,7 @@ class _DocumentsToolbar extends StatelessWidget {
                 borderSide: BorderSide(
                   color: isDark
                       ? AppColors.borderSubtle
-                      : const Color(0xFFCBD5E1),
+                      : AppColors.lightBorderActive,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
@@ -490,7 +490,7 @@ class _DocumentsToolbar extends StatelessWidget {
                 borderSide: BorderSide(
                   color: isDark
                       ? AppColors.borderSubtle
-                      : const Color(0xFFCBD5E1),
+                      : AppColors.lightBorderActive,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -520,9 +520,9 @@ class _DocumentsToolbar extends StatelessWidget {
                     child: DropdownButtonFormField<DocumentType?>(
                       initialValue: typeFilter,
                       isExpanded: true,
-                      style: TextStyle(
+                      style: TextStyle(fontFamily: AppType.family, 
                         fontSize: 12.5,
-                        color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                        color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                       ),
                       decoration: InputDecoration(
                         labelText: 'Document Type',
@@ -537,13 +537,13 @@ class _DocumentsToolbar extends StatelessWidget {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(
-                            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(
-                            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -583,7 +583,7 @@ class _DocumentsToolbar extends StatelessWidget {
                       side: BorderSide(
                         color: isDark
                             ? AppColors.borderSubtle
-                            : const Color(0xFFCBD5E1),
+                            : AppColors.lightBorderActive,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -764,7 +764,7 @@ class _DocumentCard extends ConsumerWidget {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: InkWell(
@@ -784,12 +784,12 @@ class _DocumentCard extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppColors.inputSurface
-                          : const Color(0xFFF1F5F9),
+                          : AppColors.lightElevatedSurface,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                         color: isDark
                             ? AppColors.borderSubtle
-                            : const Color(0xFFE2E8F0),
+                            : AppColors.lightBorder,
                       ),
                     ),
                     child: Icon(
@@ -797,7 +797,7 @@ class _DocumentCard extends ConsumerWidget {
                       size: 18,
                       color: isDark
                           ? AppColors.textSecondary
-                          : const Color(0xFF475569),
+                          : AppColors.lightTextSecondary,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -815,7 +815,7 @@ class _DocumentCard extends ConsumerWidget {
                             letterSpacing: -0.1,
                             color: isDark
                                 ? AppColors.textPrimary
-                                : const Color(0xFF0F172A),
+                                : AppColors.lightTextPrimary,
                           ),
                         ),
                         const SizedBox(height: 3),
@@ -911,7 +911,7 @@ class _DocumentCard extends ConsumerWidget {
                           size: 14,
                           color: isDark
                               ? AppColors.primaryEmerald
-                              : const Color(0xFF0F766E),
+                              : AppColors.primaryEmeraldDark,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -923,7 +923,7 @@ class _DocumentCard extends ConsumerWidget {
                               fontWeight: FontWeight.w500,
                               color: isDark
                                   ? AppColors.primaryEmerald
-                                  : const Color(0xFF0F766E),
+                                  : AppColors.primaryEmeraldDark,
                             ),
                           ),
                         ),
@@ -971,7 +971,7 @@ class _DocumentCard extends ConsumerWidget {
                 height: 1,
                 color: isDark
                     ? AppColors.borderSubtle
-                    : const Color(0xFFF1F5F9),
+                    : AppColors.lightElevatedSurface,
               ),
               const SizedBox(height: 8),
               Row(
@@ -1184,16 +1184,16 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+        color: isDark ? AppColors.inputSurface : AppColors.lightAppBackground,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
           fontSize: 11,
           fontWeight: FontWeight.w500,
         ),
@@ -1424,7 +1424,7 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
             Expanded(
               child: Container(
                 color: isDark
-                    ? const Color(0xFF0D0E10)
+                    ? AppColors.appBackground
                     : const Color(0xFFF3F4F6),
                 alignment: Alignment.center,
                 child: FutureBuilder<Uint8List?>(
@@ -2520,7 +2520,7 @@ class _EmptyDocumentsState extends StatelessWidget {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: Center(
@@ -2540,7 +2540,7 @@ class _EmptyDocumentsState extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
               ),
             ),
             const SizedBox(height: 4),

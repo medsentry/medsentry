@@ -94,7 +94,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     final isMobile = ResponsiveLayout.isMobile(context);
     final isTablet = ResponsiveLayout.isTablet(context);
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     if (isMobile) {
       return Scaffold(
@@ -111,13 +110,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       body: Row(
         children: [
           _buildSidebar(context, forceCollapsed: isTablet),
-          VerticalDivider(
-            thickness: AppColors.borderWidth,
-            width: AppColors.borderWidth,
-            color: isDark
-                ? AppColors.borderSubtle
-                : AppColors.lightBorderSubtle,
-          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -140,7 +132,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     return Container(
       height: 72.0,
       decoration: BoxDecoration(
-        color: isDark ? AppColors.sidebarBackground : Colors.white,
+        color: isDark
+            ? AppColors.sidebarBackground
+            : AppColors.lightCardSurface,
         border: Border(
           bottom: BorderSide(
             color: isDark
@@ -191,7 +185,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
 
     return AppBar(
       elevation: 0,
-      backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
+      backgroundColor: isDark
+          ? AppColors.sidebarBackground
+          : AppColors.lightCardSurface,
       foregroundColor: isDark
           ? AppColors.textPrimary
           : AppColors.lightTextPrimary,
@@ -471,29 +467,19 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   }
 
   Widget _buildDrawer(BuildContext context, User? user) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final settings =
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
 
     return Drawer(
-      backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
+      backgroundColor: AppSpine.background,
       child: SafeArea(
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.elevatedSurface
-                    : AppColors.lightElevatedSurface,
-                border: Border(
-                  bottom: BorderSide(
-                    color: isDark
-                        ? AppColors.borderSubtle
-                        : AppColors.lightBorderSubtle,
-                  ),
-                ),
+              decoration: const BoxDecoration(
+                color: AppSpine.raised,
+                border: Border(bottom: BorderSide(color: AppSpine.border)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,10 +489,10 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                       SystemLogo(
                         dataUri: settings.logoDataUri,
                         size: 40,
-                        backgroundColor: AppColors.primaryEmeraldSubtle,
-                        iconColor: AppColors.primaryEmerald,
+                        backgroundColor: AppSpine.tab,
+                        iconColor: AppSpine.tabText,
                         iconSize: 24,
-                        borderRadius: 8,
+                        borderRadius: AppRadius.lg,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -515,24 +501,20 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                           children: [
                             Text(
                               settings.appName,
-                              style: TextStyle(
-                                color: isDark
-                                    ? AppColors.textPrimary
-                                    : AppColors.lightTextPrimary,
+                              style: const TextStyle(
+                                color: AppSpine.text,
                                 fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: -0.2,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3,
                               ),
                             ),
                             Text(
                               user?.isSuperAdmin == true
                                   ? 'Super Admin Network'
                                   : 'Rural Health Unit',
-                              style: TextStyle(
-                                color: isDark
-                                    ? AppColors.textSecondary
-                                    : AppColors.lightTextSecondary,
-                                fontSize: 11,
+                              style: const TextStyle(
+                                color: AppSpine.textSecondary,
+                                fontSize: 12,
                               ),
                             ),
                           ],
@@ -543,21 +525,17 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                   const SizedBox(height: 14),
                   Text(
                     user?.displayName ?? 'User',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColors.textPrimary
-                          : AppColors.lightTextPrimary,
+                    style: const TextStyle(
+                      color: AppSpine.text,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   Text(
                     user?.email ?? '',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppColors.textSecondary
-                          : AppColors.lightTextSecondary,
-                      fontSize: 12,
+                    style: const TextStyle(
+                      color: AppSpine.textSecondary,
+                      fontSize: 12.5,
                     ),
                   ),
                 ],
@@ -602,8 +580,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   }
 
   Widget _buildSidebar(BuildContext context, {bool forceCollapsed = false}) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final isExpanded = !forceCollapsed && _sidebarExpanded;
     final width = isExpanded ? 236.0 : AppDimensions.sidebarCollapsed;
     final settings =
@@ -620,17 +596,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       duration: AppDurations.normal,
       curve: Curves.easeInOut,
       width: width,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.sidebarBackground : Colors.white,
-        border: Border(
-          right: BorderSide(
-            color: isDark
-                ? AppColors.borderSubtle
-                : AppColors.lightBorderSubtle,
-            width: AppColors.borderWidth,
-          ),
-        ),
-      ),
+      color: AppSpine.background,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -647,14 +613,11 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
                       child: Text(
-                        entry.key.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                          color: isDark
-                              ? AppColors.textMuted
-                              : AppColors.lightTextMuted,
+                        _groupLabel(entry.key),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppSpine.textMuted,
                         ),
                       ),
                     )
@@ -674,12 +637,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
           ),
 
           if (!forceCollapsed) ...[
-            Divider(
-              height: 1,
-              color: isDark
-                  ? AppColors.borderSubtle
-                  : AppColors.lightBorderSubtle,
-            ),
+            const Divider(height: 1, color: AppSpine.border),
             _buildSidebarToggle(context),
           ],
         ],
@@ -687,13 +645,16 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     );
   }
 
+  /// Group keys are stored in capitals; the spine shows them in sentence case.
+  String _groupLabel(String key) => key.isEmpty
+      ? key
+      : '${key[0].toUpperCase()}${key.substring(1).toLowerCase()}';
+
   Widget _buildSidebarBrand(
     BuildContext context,
     bool isExpanded,
     SystemSettings settings,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: isExpanded ? 16 : 12,
@@ -704,7 +665,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         child: Tooltip(
           message: '${settings.appName} Clinical System',
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppRadius.roundedLg,
             onTap: () {
               final user = ref.read(currentUserProvider);
               context.go(user?.homePath ?? '/dashboard');
@@ -716,24 +677,15 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF16171D)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF262936)
-                          : AppColors.lightBorder,
-                      width: 1.2,
-                    ),
-                    boxShadow: isDark ? AppShadows.subtle : null,
+                    color: AppSpine.tab,
+                    borderRadius: AppRadius.roundedLg,
                   ),
                   child: Center(
                     child: SystemLogo(
                       dataUri: settings.logoDataUri,
                       size: 26,
                       backgroundColor: Colors.transparent,
-                      iconColor: AppColors.primaryEmerald,
+                      iconColor: AppSpine.tabText,
                       iconSize: 22,
                       borderRadius: 4,
                     ),
@@ -746,11 +698,9 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
                       settings.appName,
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
-                      style: TextStyle(
-                        color: isDark
-                            ? AppColors.textPrimary
-                            : AppColors.lightTextPrimary,
-                        fontSize: 17,
+                      style: const TextStyle(
+                        color: AppSpine.text,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.3,
                       ),
@@ -787,7 +737,6 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
   }
 
   Widget _buildSidebarToggle(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final label = _sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar';
 
     return Tooltip(
@@ -804,23 +753,19 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
               if (_sidebarExpanded)
                 Text(
                   'Collapse',
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: const TextStyle(
+                    fontSize: 12.5,
                     fontWeight: FontWeight.w500,
-                    color: isDark
-                        ? AppColors.textSecondary
-                        : AppColors.lightTextSecondary,
+                    color: AppSpine.textSecondary,
                   ),
                 ),
               AnimatedRotation(
                 turns: _sidebarExpanded ? 0 : 0.5,
                 duration: AppDurations.normal,
-                child: Icon(
+                child: const Icon(
                   Icons.chevron_left,
                   size: 20,
-                  color: isDark
-                      ? AppColors.textSecondary
-                      : AppColors.lightTextSecondary,
+                  color: AppSpine.textSecondary,
                 ),
               ),
             ],
@@ -1367,28 +1312,17 @@ class _SidebarNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final background = selected
-        ? (isDark
-              ? AppColors.primaryEmerald.withValues(alpha: 0.14)
-              : AppColors.primaryEmerald.withValues(alpha: 0.12))
-        : Colors.transparent;
-
-    final foreground = selected
-        ? AppColors.primaryEmerald
-        : (isDark ? const Color(0xFF8E929B) : AppColors.lightTextSecondary);
+    final background = selected ? AppSpine.tab : Colors.transparent;
+    final foreground = selected ? AppSpine.tabText : AppSpine.textSecondary;
 
     final content = Material(
       color: background,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: AppRadius.roundedSm,
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppRadius.roundedSm,
         mouseCursor: SystemMouseCursors.click,
         onTap: onTap,
-        hoverColor: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : AppColors.lightElevatedSurface,
+        hoverColor: selected ? Colors.transparent : AppSpine.hover,
         child: Container(
           constraints: const BoxConstraints(minHeight: 40),
           padding: EdgeInsets.symmetric(
@@ -1403,9 +1337,10 @@ class _SidebarNavItem extends StatelessWidget {
                         width: 3.5,
                         height: 18,
                         margin: const EdgeInsets.only(right: 8),
+                        // The ledger's red margin rule marks the open page.
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(2),
+                          color: AppColors.ledgerRule(false),
+                          borderRadius: BorderRadius.circular(1),
                         ),
                       )
                     else
@@ -1421,9 +1356,9 @@ class _SidebarNavItem extends StatelessWidget {
                         item.label,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 13.5,
                           fontWeight: selected
-                              ? FontWeight.w600
+                              ? FontWeight.w700
                               : FontWeight.w500,
                           color: foreground,
                         ),
@@ -1436,15 +1371,16 @@ class _SidebarNavItem extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: item.badgeColor ?? AppColors.primaryEmerald,
+                          color: item.badgeColor ?? AppColors.ledgerRule(false),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
                           '${item.badgeCount}',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 10.5,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
+                            fontFeatures: AppType.tabular,
                           ),
                         ),
                       ),
@@ -1468,7 +1404,8 @@ class _SidebarNavItem extends StatelessWidget {
                             height: 8,
                             decoration: BoxDecoration(
                               color:
-                                  item.badgeColor ?? AppColors.primaryEmerald,
+                                  item.badgeColor ??
+                                  AppColors.ledgerRule(false),
                               shape: BoxShape.circle,
                             ),
                           ),

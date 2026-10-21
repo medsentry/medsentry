@@ -528,7 +528,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF0F172A).withValues(alpha: 0.70)
+                              ? AppColors.lightTextPrimary.withValues(alpha: 0.70)
                               : Colors.black.withValues(alpha: 0.45),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
@@ -1336,17 +1336,17 @@ class _LoginPalette {
     surface: AppColors.lightAppBackground,
     card: AppColors.lightCardSurface,
     field: AppColors.lightCardSurface,
-    border: Color(0xFFCBD5E1),
+    border: AppColors.lightBorderActive,
     text: AppColors.lightTextPrimary,
-    muted: Color(0xFF334155),
-    hint: Color(0xFF475569),
-    accent: AppColors.primaryEmeraldDeep,
+    muted: AppColors.lightTextSecondary,
+    hint: AppColors.lightTextSecondary,
+    accent: AppColors.primaryEmeraldDark,
     onAccent: AppColors.lightAppBackground,
-    accentSubtle: Color(0x14047857),
-    error: Color(0xFFB91C1C),
-    errorBg: Color(0xFFFEF2F2),
-    errorBorder: Color(0xFFFCA5A5),
-    warning: Color(0xFFB45309),
+    accentSubtle: Color(0x141D5C45),
+    error: Color(0xFFA12C22),
+    errorBg: Color(0xFFF8E1DD),
+    errorBorder: Color(0xFFE2A79F),
+    warning: Color(0xFF8A5A00),
   );
 
   static const dark = _LoginPalette(
@@ -1355,15 +1355,15 @@ class _LoginPalette {
     field: AppColors.inputSurface,
     border: AppColors.borderActive,
     text: AppColors.textPrimary,
-    muted: Color(0xFFB4B8C0),
+    muted: Color(0xFFB9C7BD),
     hint: AppColors.textSecondary,
-    accent: AppColors.primaryEmerald,
+    accent: AppColors.primaryMint,
     onAccent: AppColors.textOnEmerald,
-    accentSubtle: AppColors.primaryEmeraldSubtle,
+    accentSubtle: Color(0x1F86CBA6),
     error: AppColors.critical,
     errorBg: AppColors.criticalBg,
     errorBorder: AppColors.criticalBorder,
-    warning: Color(0xFFFBBF24),
+    warning: AppColors.pending,
   );
 
   static _LoginPalette of(BuildContext context) =>

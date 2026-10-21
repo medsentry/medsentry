@@ -279,7 +279,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             color: isDark ? AppColors.cardSurface : Colors.white,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
               width: 1,
             ),
           ),
@@ -294,7 +294,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fontWeight: FontWeight.w600,
                   color: isDark
                       ? AppColors.textPrimary
-                      : const Color(0xFF0F172A),
+                      : AppColors.lightTextPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -346,7 +346,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 height: 1,
                 color: isDark
                     ? AppColors.borderSubtle
-                    : const Color(0xFFF1F5F9),
+                    : AppColors.lightElevatedSurface,
               ),
               const SizedBox(height: 16),
               Text(
@@ -356,7 +356,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   fontWeight: FontWeight.w600,
                   color: isDark
                       ? AppColors.textPrimary
-                      : const Color(0xFF0F172A),
+                      : AppColors.lightTextPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -393,14 +393,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ? accent.primaryColor.withValues(alpha: 0.1)
                             : (isDark
                                   ? AppColors.inputSurface
-                                  : const Color(0xFFF8FAFC)),
+                                  : AppColors.lightAppBackground),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
                           color: isSelected
                               ? accent.primaryColor
                               : (isDark
                                     ? AppColors.borderSubtle
-                                    : const Color(0xFFCBD5E1)),
+                                    : AppColors.lightBorderActive),
                           width: isSelected ? 1.5 : 1,
                         ),
                       ),
@@ -437,7 +437,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                   ? accent.primaryColor
                                   : (isDark
                                         ? AppColors.textPrimary
-                                        : const Color(0xFF334155)),
+                                        : AppColors.lightTextSecondary),
                             ),
                           ),
                         ],
@@ -482,7 +482,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
             side: BorderSide(
-              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
               width: 1,
             ),
           ),
@@ -496,7 +496,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     thickness: 1,
                     color: isDark
                         ? AppColors.borderSubtle
-                        : const Color(0xFFF1F5F9),
+                        : AppColors.lightElevatedSurface,
                   ),
                 children[i],
               ],
@@ -529,7 +529,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         style: TextStyle(
           fontSize: 13.5,
           fontWeight: FontWeight.w600,
-          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+          color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
         ),
       ),
       subtitle: Text(
@@ -561,7 +561,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+          color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
         ),
       ),
       trailing: Text(
@@ -570,7 +570,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           fontSize: 13,
           fontWeight: FontWeight.w600,
           fontFeatures: const [FontFeature.tabularFigures()],
-          color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+          color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
         ),
       ),
     );
@@ -1895,7 +1895,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       fontSize: 13,
                       color: isDark
                           ? AppColors.textPrimary
-                          : const Color(0xFF0F172A),
+                          : AppColors.lightTextPrimary,
                     ),
                     decoration: InputDecoration(
                       hintText:
@@ -1928,7 +1928,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                         borderSide: BorderSide(
                           color: isDark
                               ? AppColors.borderSubtle
-                              : const Color(0xFFCBD5E1),
+                              : AppColors.lightBorderActive,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
@@ -1936,7 +1936,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                         borderSide: BorderSide(
                           color: isDark
                               ? AppColors.borderSubtle
-                              : const Color(0xFFCBD5E1),
+                              : AppColors.lightBorderActive,
                         ),
                       ),
                       isDense: true,
@@ -1955,12 +1955,12 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppColors.inputSurface
-                      : const Color(0xFFF8FAFC),
+                      : AppColors.lightAppBackground,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isDark
                         ? AppColors.borderSubtle
-                        : const Color(0xFFCBD5E1),
+                        : AppColors.lightBorderActive,
                     width: 1,
                   ),
                 ),
@@ -2009,7 +2009,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                           ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.borderSubtle
-                                : const Color(0xFFCBD5E1)),
+                                : AppColors.lightBorderActive),
                     ),
                     onSelected: (selected) {
                       if (selected) {
@@ -2042,7 +2042,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                           ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.borderSubtle
-                                : const Color(0xFFCBD5E1)),
+                                : AppColors.lightBorderActive),
                     ),
                     onSelected: (selected) {
                       setState(() {
@@ -2076,7 +2076,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                           ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.borderSubtle
-                                : const Color(0xFFCBD5E1)),
+                                : AppColors.lightBorderActive),
                     ),
                     onSelected: (selected) {
                       setState(() {
@@ -2114,7 +2114,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                               ? AppColors.accent(isDark)
                               : (isDark
                                     ? AppColors.borderSubtle
-                                    : const Color(0xFFCBD5E1)),
+                                    : AppColors.lightBorderActive),
                         ),
                         onSelected: (selected) {
                           setState(() {
@@ -2133,10 +2133,10 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
         Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+            color: isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
               width: 1,
             ),
           ),
@@ -2149,7 +2149,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
               border: Border.all(
                 color: isDark
                     ? AppColors.borderSubtle
-                    : const Color(0xFFCBD5E1),
+                    : AppColors.lightBorderActive,
                 width: 1,
               ),
               boxShadow: isDark
@@ -2164,7 +2164,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
             ),
             labelColor: isDark
                 ? AppColors.primaryEmerald
-                : const Color(0xFF0F766E),
+                : AppColors.primaryEmeraldDark,
             unselectedLabelColor: isDark
                 ? AppColors.textSecondary
                 : AppColors.lightTextSecondary,
@@ -2551,7 +2551,7 @@ class _UserManagementTile extends ConsumerWidget {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
           width: 1,
         ),
       ),
@@ -2577,7 +2577,7 @@ class _UserManagementTile extends ConsumerWidget {
                         letterSpacing: -0.2,
                         color: isDark
                             ? AppColors.textPrimary
-                            : const Color(0xFF0F172A),
+                            : AppColors.lightTextPrimary,
                       ),
                     ),
                     _buildStatusBadge(),
@@ -2606,12 +2606,12 @@ class _UserManagementTile extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppColors.inputSurface
-                            : const Color(0xFFF1F5F9),
+                            : AppColors.lightElevatedSurface,
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                           color: isDark
                               ? AppColors.borderSubtle
-                              : const Color(0xFFCBD5E1),
+                              : AppColors.lightBorderActive,
                           width: 1,
                         ),
                       ),
@@ -2622,7 +2622,7 @@ class _UserManagementTile extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                           color: isDark
                               ? AppColors.textSecondary
-                              : const Color(0xFF475569),
+                              : AppColors.lightTextSecondary,
                         ),
                       ),
                     ),
@@ -2688,12 +2688,12 @@ class _UserManagementTile extends ConsumerWidget {
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? AppColors.inputSurface
-                                    : const Color(0xFFF1F5F9),
+                                    : AppColors.lightElevatedSurface,
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
                                   color: isDark
                                       ? AppColors.borderSubtle
-                                      : const Color(0xFFCBD5E1),
+                                      : AppColors.lightBorderActive,
                                   width: 1,
                                 ),
                               ),
@@ -2717,7 +2717,7 @@ class _UserManagementTile extends ConsumerWidget {
                                       fontWeight: FontWeight.w600,
                                       color: isDark
                                           ? AppColors.textSecondary
-                                          : const Color(0xFF475569),
+                                          : AppColors.lightTextSecondary,
                                     ),
                                   ),
                                 ],

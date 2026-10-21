@@ -445,7 +445,7 @@ class _PatientIdentityHeader extends StatelessWidget {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: _PatientIdentity(patient: patient),
@@ -477,7 +477,7 @@ class _PatientIdentity extends StatelessWidget {
               side: BorderSide(
                 color: isDark
                     ? AppColors.borderSubtle
-                    : const Color(0xFFCBD5E1),
+                    : AppColors.lightBorderActive,
               ),
             ),
             tooltip: 'Back to Patients',
@@ -495,10 +495,10 @@ class _PatientIdentity extends StatelessWidget {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+            color: isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
             ),
           ),
           alignment: Alignment.center,
@@ -507,7 +507,7 @@ class _PatientIdentity extends StatelessWidget {
                 ? patient.firstName[0].toUpperCase()
                 : '?',
             style: TextStyle(
-              color: isDark ? AppColors.textPrimary : const Color(0xFF334155),
+              color: isDark ? AppColors.textPrimary : AppColors.lightTextSecondary,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -664,7 +664,7 @@ class _PatientActionsBar extends StatelessWidget {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: LayoutBuilder(
@@ -723,7 +723,7 @@ class _PatientActionsBar extends StatelessWidget {
                         side: BorderSide(
                           color: isDark
                               ? AppColors.borderSubtle
-                              : const Color(0xFFCBD5E1),
+                              : AppColors.lightBorderActive,
                         ),
                       ),
                       onPressed: onUploadDocuments,
@@ -746,7 +746,7 @@ class _PatientActionsBar extends StatelessWidget {
                         side: BorderSide(
                           color: isDark
                               ? AppColors.borderSubtle
-                              : const Color(0xFFCBD5E1),
+                              : AppColors.lightBorderActive,
                         ),
                       ),
                       onPressed: onEditDetails,
@@ -768,7 +768,7 @@ class _PatientActionsBar extends StatelessWidget {
                       side: BorderSide(
                         color: isDark
                             ? AppColors.borderSubtle
-                            : const Color(0xFFCBD5E1),
+                            : AppColors.lightBorderActive,
                       ),
                     ),
                     onPressed: onPrintRecord,
@@ -791,7 +791,7 @@ class _PatientActionsBar extends StatelessWidget {
                         side: BorderSide(
                           color: isDark
                               ? AppColors.borderSubtle
-                              : const Color(0xFFCBD5E1),
+                              : AppColors.lightBorderActive,
                         ),
                       ),
                       onPressed: onAuditHistory,
@@ -1896,7 +1896,7 @@ class _SectionPanel extends StatelessWidget {
                   letterSpacing: -0.1,
                   color: isDark
                       ? AppColors.textPrimary
-                      : const Color(0xFF0F172A),
+                      : AppColors.lightTextPrimary,
                 ),
               ),
             ],
@@ -1904,7 +1904,7 @@ class _SectionPanel extends StatelessWidget {
           Divider(
             height: 20,
             thickness: 1,
-            color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+            color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
           ),
           ...children,
         ],
@@ -1955,7 +1955,7 @@ class _InfoRow extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                     color: isDark
                         ? AppColors.textPrimary
-                        : const Color(0xFF0F172A),
+                        : AppColors.lightTextPrimary,
                   ),
                 ),
               ),
@@ -1980,10 +1980,10 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.inputSurface : const Color(0xFFF8FAFC),
+        color: isDark ? AppColors.inputSurface : AppColors.lightAppBackground,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
         ),
       ),
       child: Row(
@@ -2001,7 +2001,7 @@ class _InfoChip extends StatelessWidget {
               fontSize: 11.5,
               fontWeight: FontWeight.w500,
               fontFeatures: const [FontFeature.tabularFigures()],
-              color: isDark ? AppColors.textPrimary : const Color(0xFF1E293B),
+              color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
             ),
           ),
         ],
@@ -2067,7 +2067,7 @@ class _PatientDocumentsList extends ConsumerWidget {
                             ? AppColors.primaryEmerald
                             : theme.colorScheme.primary,
                         foregroundColor: isDark
-                            ? const Color(0xFF080909)
+                            ? AppColors.appBackground
                             : theme.colorScheme.onPrimary,
                       ),
                       onPressed: onUploadDocument,

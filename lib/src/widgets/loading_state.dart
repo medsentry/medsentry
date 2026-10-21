@@ -99,8 +99,8 @@ class AppSkeletonLoader extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseColor = isDark
         ? AppColors.elevatedSurface
-        : const Color(0xFFE2E8F0);
-    final highlightColor = isDark ? AppColors.border : const Color(0xFFF1F5F9);
+        : AppColors.lightBorder;
+    final highlightColor = isDark ? AppColors.border : AppColors.lightElevatedSurface;
 
     return Shimmer.fromColors(
       baseColor: baseColor,
