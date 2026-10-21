@@ -253,7 +253,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: isPrimary ? FontWeight.w600 : FontWeight.w500,
                   color: isPrimary
                       ? (isDark ? primaryEmerald : AppColors.primaryEmeraldDark)
@@ -355,14 +355,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       'Catchment Barangay & Population Surveillance',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 15,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Real-time barangay distribution from registered patient records ($catchmentName)',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: isDark
                             ? AppColors.textMuted
                             : AppColors.lightTextMuted,
@@ -377,7 +377,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   icon: const Icon(Icons.assessment_outlined, size: 14),
                   label: const Text(
                     'Export FHSIS Report',
-                    style: TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: 13),
                   ),
                 ),
             ],
@@ -391,7 +391,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               icon: const Icon(Icons.assessment_outlined, size: 14),
               label: const Text(
                 'Export FHSIS Report',
-                style: TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 13),
               ),
             ),
           ],
@@ -402,7 +402,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: Text(
                 'No patient catchment records registered yet. Add patients to view live barangay distribution.',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: isDark
                       ? AppColors.textMuted
                       : AppColors.lightTextMuted,
@@ -453,7 +453,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     item.$1,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 12,
+                                      fontSize: 13,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -463,7 +463,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   item.$2,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     fontFeatures: [
                                       FontFeature.tabularFigures(),
                                     ],
@@ -492,7 +492,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     '$catchmentName · ${(item.$3 * 100).toStringAsFixed(0)}% of cohort',
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 12,
                                       fontFeatures: const [
                                         FontFeature.tabularFigures(),
                                       ],
@@ -515,7 +515,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   child: Text(
                                     item.$4,
                                     style: TextStyle(
-                                      fontSize: 9.5,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: item.$5,
                                     ),
@@ -731,7 +731,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Text(
                       'Priority (senior, PWD, allergy) vs other patients',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -912,7 +912,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Text(
                       'Active patient medical history',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -945,7 +945,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     isDense: true,
                     style: TextStyle(
                       fontFamily: AppType.family,
-                      fontSize: 11.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: isDark
                           ? AppColors.textSecondary
@@ -1012,7 +1012,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         Text(
                           'patients',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: isDark
                                 ? AppColors.textSecondary
                                 : AppColors.lightTextSecondary,
@@ -1047,7 +1047,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             child: Text(
                               s.label,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 color: isDark
                                     ? AppColors.textSecondary
                                     : AppColors.lightTextSecondary,
@@ -1058,7 +1058,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           Text(
                             '${(s.ratio * 100).round()}%',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: isDark
                                   ? AppColors.textMuted
@@ -1103,7 +1103,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Text(
                     insightSummary,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       height: 1.45,
                       color: isDark
                           ? AppColors.textMuted
@@ -1196,7 +1196,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Text(
                     'Registrations, uploaded documents & issued certificates',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: isDark
                           ? AppColors.textSecondary
                           : AppColors.lightTextSecondary,
@@ -1238,7 +1238,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       child: Text(
                         tf,
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 13,
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,
@@ -1466,7 +1466,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Text(
                     'Sorted by clinical priority · ${filteredItems.length} patients',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: isDark
                           ? AppColors.textSecondary
                           : AppColors.lightTextSecondary,
@@ -1529,7 +1529,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ? 'No registered patients in registry'
                           : 'No patients matching selected filter',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: isDark
                             ? AppColors.textPrimary
@@ -1542,7 +1542,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ? 'Register a patient to view real-time clinical status and documents.'
                           : 'Try selecting a different filter pill above.',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -1647,7 +1647,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                             item.name,
                                             style: TextStyle(
                                               fontWeight: FontWeight.w600,
-                                              fontSize: 12.5,
+                                              fontSize: 14,
                                               color: isDark
                                                   ? AppColors.textPrimary
                                                   : AppColors.lightTextPrimary,
@@ -1670,7 +1670,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     Text(
                                       item.id,
                                       style: TextStyle(
-                                        fontSize: 10.5,
+                                        fontSize: 12,
                                         color: isDark
                                             ? AppColors.textMuted
                                             : AppColors.lightTextMuted,
@@ -1690,7 +1690,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 color: isDark
                                     ? AppColors.textSecondary
                                     : AppColors.lightTextSecondary,
@@ -1717,7 +1717,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 child: Text(
                                   item.status,
                                   style: TextStyle(
-                                    fontSize: 10.5,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: item.statusColor,
                                   ),
@@ -1733,7 +1733,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               item.barangay,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w500,
                                 color: isDark
                                     ? AppColors.textPrimary
@@ -1749,7 +1749,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               item.philhealth,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 13,
                                 color: isDark
                                     ? AppColors.textSecondary
                                     : AppColors.lightTextSecondary,
@@ -1763,7 +1763,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             child: Text(
                               '${item.documentCount} ${item.documentCount == 1 ? 'file' : 'files'}',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: item.documentCount > 0
                                     ? AppColors.accent(isDark)
@@ -1780,7 +1780,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             child: Text(
                               item.updated,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: isDark
                                     ? AppColors.textMuted
                                     : AppColors.lightTextMuted,
@@ -1820,7 +1820,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 11.5,
+            fontSize: 13,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             color: isSelected
                 ? AppColors.accent(isDark)
@@ -1839,7 +1839,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 12.5,
+          fontSize: 14,
           fontWeight: FontWeight.w700,
           color: isDark
               ? AppColors.textSecondary
@@ -1866,7 +1866,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13,
             color: isDark
                 ? AppColors.textSecondary
                 : AppColors.lightTextSecondary,
@@ -1983,7 +1983,7 @@ class _WeeklyAdmissionsPainter extends CustomPainter {
 
       final textSpan = TextSpan(
         text: '${step.round()}',
-        style: TextStyle(color: textColor, fontSize: 10.5),
+        style: TextStyle(color: textColor, fontSize: 12),
       );
       final textPainter = TextPainter(
         text: textSpan,
@@ -2052,7 +2052,7 @@ class _WeeklyAdmissionsPainter extends CustomPainter {
       // Day label
       final daySpan = TextSpan(
         text: days[i],
-        style: TextStyle(color: textColor, fontSize: 11),
+        style: TextStyle(color: textColor, fontSize: 12),
       );
       final dayPainter = TextPainter(
         text: daySpan,
@@ -2153,7 +2153,7 @@ class _ActivityTrendPainter extends CustomPainter {
 
       final textSpan = TextSpan(
         text: '${step.round()}',
-        style: TextStyle(color: textColor, fontSize: 10.5),
+        style: TextStyle(color: textColor, fontSize: 12),
       );
       final textPainter = TextPainter(
         text: textSpan,
@@ -2208,7 +2208,7 @@ class _ActivityTrendPainter extends CustomPainter {
       final x = leftMargin + (i * stepX);
       final span = TextSpan(
         text: dates[i],
-        style: TextStyle(color: textColor, fontSize: 10.5),
+        style: TextStyle(color: textColor, fontSize: 12),
       );
       final painter = TextPainter(text: span, textDirection: TextDirection.ltr)
         ..layout();

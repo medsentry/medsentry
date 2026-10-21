@@ -487,7 +487,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
           Text(
             label,
             style: TextStyle(
-              fontSize: 12.5,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: isDark ? AppColors.textPrimary : Colors.grey.shade800,
             ),
@@ -496,7 +496,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
             const Text(
               ' *',
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: Colors.redAccent,
               ),
@@ -927,7 +927,7 @@ class _ReportExportDialogState extends ConsumerState<ReportExportDialog>
 
   Widget _buildPresetChip(String label, VoidCallback onSelected) {
     return ActionChip(
-      label: Text(label, style: const TextStyle(fontSize: 11)),
+      label: Text(label, style: const TextStyle(fontSize: 12)),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       onPressed: onSelected,

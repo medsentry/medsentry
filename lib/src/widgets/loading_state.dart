@@ -43,7 +43,7 @@ class LoadingState extends StatelessWidget {
               Text(
                 message,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: isDark
                       ? AppColors.textSecondary
                       : AppColors.lightTextSecondary,
@@ -67,7 +67,7 @@ class LoadingState extends StatelessWidget {
             Text(
               message,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 color: isDark
                     ? AppColors.textSecondary
                     : AppColors.lightTextSecondary,
@@ -243,7 +243,7 @@ class AppErrorState extends StatelessWidget {
             Text(
               message,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 color: isDark
                     ? AppColors.textSecondary
                     : AppColors.lightTextSecondary,

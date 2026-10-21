@@ -175,7 +175,7 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
         const SizedBox(height: 8),
         Text.rich(
           TextSpan(
-            style: const TextStyle(color: _muted, height: 1.45, fontSize: 14),
+            style: const TextStyle(color: _muted, height: 1.45, fontSize: 15),
             children: [
               const TextSpan(text: 'We sent a $kOtpLength-digit code to '),
               TextSpan(
@@ -248,7 +248,7 @@ class _OtpVerificationPanelState extends State<OtpVerificationPanel>
               shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
               textStyle: const TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 14,
+                fontSize: 15,
               ),
             ),
             child: _verifying
@@ -339,7 +339,7 @@ class _StatusLine extends StatelessWidget {
             text,
             style: TextStyle(
               color: color,
-              fontSize: 12.5,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),

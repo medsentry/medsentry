@@ -555,7 +555,7 @@ class _PatientIdentity extends StatelessWidget {
                       child: Text(
                         patient.bloodType!,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: theme.colorScheme.error,
                         ),
@@ -612,7 +612,7 @@ class _PatientIdentity extends StatelessWidget {
                           Text(
                             'Allergy: ${patient.allergies!}',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: theme.colorScheme.error,
                             ),
@@ -705,7 +705,7 @@ class _PatientActionsBar extends StatelessWidget {
                       label: const Text(
                         'Issue Certificate',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -730,7 +730,7 @@ class _PatientActionsBar extends StatelessWidget {
                       icon: const Icon(Icons.upload_file_outlined, size: 16),
                       label: const Text(
                         'Upload Documents',
-                        style: TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: 13),
                       ),
                     ),
                   if (onEditDetails != null)
@@ -753,7 +753,7 @@ class _PatientActionsBar extends StatelessWidget {
                       icon: const Icon(Icons.edit_outlined, size: 16),
                       label: const Text(
                         'Edit Details',
-                        style: TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: 13),
                       ),
                     ),
                   OutlinedButton.icon(
@@ -775,7 +775,7 @@ class _PatientActionsBar extends StatelessWidget {
                     icon: const Icon(Icons.print_outlined, size: 16),
                     label: const Text(
                       'Print Record',
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 13),
                     ),
                   ),
                   if (onAuditHistory != null)
@@ -798,7 +798,7 @@ class _PatientActionsBar extends StatelessWidget {
                       icon: const Icon(Icons.history_outlined, size: 16),
                       label: const Text(
                         'Audit History',
-                        style: TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: 13),
                       ),
                     ),
                 ],
@@ -1891,7 +1891,7 @@ class _SectionPanel extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 13.5,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.1,
                   color: isDark
@@ -1940,7 +1940,7 @@ class _InfoRow extends StatelessWidget {
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
                     fontWeight: FontWeight.w500,
-                    fontSize: 12.5,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -1950,7 +1950,7 @@ class _InfoRow extends StatelessWidget {
                   value?.isNotEmpty == true ? value! : 'Not specified',
                   softWrap: true,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontFeatures: const [FontFeature.tabularFigures()],
                     fontWeight: FontWeight.w500,
                     color: isDark
@@ -1998,7 +1998,7 @@ class _InfoChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               fontFeatures: const [FontFeature.tabularFigures()],
               color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
@@ -2154,7 +2154,7 @@ class _PatientDocumentsList extends ConsumerWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                                  fontSize: 15,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -2174,7 +2174,7 @@ class _PatientDocumentsList extends ConsumerWidget {
                                     child: Text(
                                       doc.typeDisplay,
                                       style: TextStyle(
-                                        fontSize: 10,
+                                        fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         color: isDark
                                             ? AppColors.textSecondary
@@ -2186,7 +2186,7 @@ class _PatientDocumentsList extends ConsumerWidget {
                                   Text(
                                     '$fileSizeKb KB',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 12,
                                       color: isDark
                                           ? AppColors.textSecondary
                                           : Colors.grey[600],
@@ -2198,7 +2198,7 @@ class _PatientDocumentsList extends ConsumerWidget {
                               Text(
                                 DateFormat('yyyy-MM-dd').format(docDate),
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   color: isDark
                                       ? AppColors.textSecondary
                                       : Colors.grey[500],
@@ -2323,7 +2323,7 @@ class _PatientAuditTrailList extends ConsumerWidget {
                         child: Text(
                           log.action.name.toUpperCase(),
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: actionColor,
                           ),
@@ -2333,7 +2333,7 @@ class _PatientAuditTrailList extends ConsumerWidget {
                       Text(
                         '[${log.entityType.toUpperCase()}]',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: isDark
                               ? AppColors.textSecondary
@@ -2344,7 +2344,7 @@ class _PatientAuditTrailList extends ConsumerWidget {
                       Text(
                         dateStr,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: isDark
                               ? AppColors.textSecondary
                               : Colors.grey[600],
@@ -2356,7 +2356,7 @@ class _PatientAuditTrailList extends ConsumerWidget {
                   Text(
                     log.description ?? 'Activity recorded',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: isDark ? AppColors.textPrimary : Colors.black87,
                     ),
@@ -2366,7 +2366,7 @@ class _PatientAuditTrailList extends ConsumerWidget {
                     Text(
                       'Actor: ${log.userId}',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: isDark
                             ? AppColors.textSecondary
                             : Colors.grey[600],
@@ -2446,7 +2446,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
                         Text(
                           '${patient.fullName} (ID: ${patient.id})',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: isDark
                                 ? AppColors.textSecondary
                                 : theme.colorScheme.onSurfaceVariant,
@@ -2562,7 +2562,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
                 child: Text(
                   log.action.name.toUpperCase(),
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: actionColor,
                   ),
@@ -2573,7 +2573,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
                 Text(
                   '[${log.entityType.toUpperCase()}]',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.textSecondary : Colors.grey[700],
                   ),
@@ -2582,7 +2582,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
               Text(
                 dateStr,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   color: isDark ? AppColors.textSecondary : Colors.grey[600],
                 ),
               ),
@@ -2592,7 +2592,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
           Text(
             log.description ?? 'Activity recorded',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: isDark ? AppColors.textPrimary : Colors.black87,
             ),
@@ -2602,7 +2602,7 @@ class _PatientAuditHistoryDialog extends ConsumerWidget {
             Text(
               'Actor: ${log.userId}',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 color: isDark ? AppColors.textSecondary : Colors.grey[600],
               ),
             ),
@@ -2686,7 +2686,7 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
                         Text(
                           'Comprehensive medical profile, history, and document registry for ${patient.fullName}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: isDark
                                 ? AppColors.textSecondary
                                 : theme.colorScheme.onSurfaceVariant,

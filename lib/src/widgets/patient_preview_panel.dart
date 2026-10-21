@@ -61,7 +61,7 @@ class PatientPreviewPanel extends StatelessWidget {
                       Text(
                         'ID: ${patient.id}',
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 13,
                           color: isDark
                               ? AppColors.textMuted
                               : AppColors.lightTextMuted,
@@ -93,7 +93,7 @@ class PatientPreviewPanel extends StatelessWidget {
                     child: Text(
                       patient.category!.displayName,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.primary,
                       ),
@@ -130,7 +130,7 @@ class PatientPreviewPanel extends StatelessWidget {
                         Text(
                           'PWD',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                             color: isDark
                                 ? AppColors.textSecondary
@@ -158,7 +158,7 @@ class PatientPreviewPanel extends StatelessWidget {
                     child: Text(
                       '4Ps',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: context.semanticColors.warning,
                       ),
@@ -245,7 +245,7 @@ class _PreviewSection extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              fontSize: 12.5,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: isDark
                   ? AppColors.textPrimary
@@ -264,7 +264,7 @@ class _PreviewSection extends StatelessWidget {
                     child: Text(
                       row.label,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -275,7 +275,7 @@ class _PreviewSection extends StatelessWidget {
                     child: Text(
                       row.value,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: isDark
                             ? AppColors.textPrimary

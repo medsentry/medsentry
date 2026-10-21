@@ -351,7 +351,7 @@ class AppStatCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 12.5,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
               color: isDark
                   ? AppColors.textSecondary
@@ -396,7 +396,7 @@ class AppStatCard extends StatelessWidget {
                   Text(
                     trendText!,
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: isTrendPositive == true
                           ? AppColors.success
@@ -414,7 +414,7 @@ class AppStatCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textMuted
                             : AppColors.lightTextMuted,

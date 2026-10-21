@@ -220,7 +220,7 @@ class _SummaryChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               color: t.text,
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -228,7 +228,7 @@ class _SummaryChip extends StatelessWidget {
           ),
           if (detail != null) ...[
             const SizedBox(width: 6),
-            Text(detail!, style: TextStyle(fontSize: 11, color: t.muted)),
+            Text(detail!, style: TextStyle(fontSize: 12, color: t.muted)),
           ],
         ],
       ),

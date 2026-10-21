@@ -314,14 +314,14 @@ class _MedSentryCommandPaletteDialogState
                           focusNode: _focusNode,
                           autofocus: true,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.w500,
                             color: isDark ? Colors.white : Colors.black87,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Search patients, navigation, actions...',
                             hintStyle: TextStyle(
-                              fontSize: 13,
+                              fontSize: 14,
                               color: isDark
                                   ? AppColors.textMuted
                                   : Colors.grey.shade500,
@@ -379,7 +379,7 @@ class _MedSentryCommandPaletteDialogState
                           child: Text(
                             'ESC',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
                               color: isDark
@@ -420,7 +420,7 @@ class _MedSentryCommandPaletteDialogState
                               Text(
                                 'No results found',
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                   color: isDark
                                       ? AppColors.textPrimary
@@ -432,7 +432,7 @@ class _MedSentryCommandPaletteDialogState
                                 'No patients, navigation links, or actions match "$_query"',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 13,
                                   color: isDark
                                       ? AppColors.textSecondary
                                       : Colors.grey.shade600,
@@ -548,7 +548,7 @@ class _MedSentryCommandPaletteDialogState
                         Text(
                           'MedSentry RHU Command Palette',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                             color: isDark
                                 ? AppColors.textMuted
@@ -560,7 +560,7 @@ class _MedSentryCommandPaletteDialogState
                             Text(
                               'Tap or press Enter to navigate',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: isDark
                                     ? AppColors.textMuted
                                     : Colors.grey.shade600,
@@ -585,7 +585,7 @@ class _MedSentryCommandPaletteDialogState
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.8,
           color: isDark ? AppColors.textMuted : Colors.grey.shade600,
@@ -633,7 +633,7 @@ class _MedSentryCommandPaletteDialogState
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: isDark
                             ? AppColors.textPrimary
@@ -647,7 +647,7 @@ class _MedSentryCommandPaletteDialogState
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: isDark
                               ? AppColors.textSecondary
                               : Colors.grey.shade600,
@@ -675,7 +675,7 @@ class _MedSentryCommandPaletteDialogState
                   child: Text(
                     trailingBadge,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       fontFamily: 'monospace',
                       color: isDark
                           ? AppColors.textSecondary

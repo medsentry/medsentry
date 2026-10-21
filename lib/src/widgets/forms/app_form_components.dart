@@ -325,7 +325,7 @@ class AppDatePickerField extends StatelessWidget {
                   child: Text(
                     '$age yrs old',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onPrimaryContainer,
                     ),
@@ -835,7 +835,7 @@ class _AppChipsInputState extends State<AppChipsInput> {
               runSpacing: 6,
               children: _values.map((v) {
                 return Chip(
-                  label: Text(v, style: const TextStyle(fontSize: 12)),
+                  label: Text(v, style: const TextStyle(fontSize: 13)),
                   deleteIcon: const Icon(Icons.close, size: 14),
                   onDeleted: () => _remove(v),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -953,7 +953,7 @@ class AppVitalsField extends StatelessWidget {
                   child: Text(
                     warning,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: Colors.amber.shade900,
                       fontWeight: FontWeight.w600,
                     ),

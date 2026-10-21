@@ -81,7 +81,7 @@ class ArchiveScreen extends ConsumerWidget {
                                   .toUpperCase()
                               : '?',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: t.muted,
                           ),
@@ -91,7 +91,7 @@ class ArchiveScreen extends ConsumerWidget {
                         patient.fullName,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                          fontSize: 15,
                           color: t.text,
                         ),
                       ),
@@ -99,7 +99,7 @@ class ArchiveScreen extends ConsumerWidget {
                         'ID: ${patient.id}'
                         '${patient.archivedAt != null ? ' · Archived ${formatDateTime12h(patient.archivedAt!)}' : ''}',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: t.muted,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
@@ -183,7 +183,7 @@ class ArchiveScreen extends ConsumerWidget {
                                     ),
                                     side: BorderSide(color: t.control),
                                     textStyle: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -209,7 +209,7 @@ class ArchiveScreen extends ConsumerWidget {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     textStyle: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),

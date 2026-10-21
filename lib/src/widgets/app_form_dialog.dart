@@ -161,7 +161,7 @@ class AppFormDialog extends StatelessWidget {
                                 color: Theme.of(
                                   context,
                                 ).colorScheme.onSurfaceVariant,
-                                fontSize: isCompactHeight ? 11.5 : 12.5,
+                                fontSize: isCompactHeight ? 13 : 14,
                                 height: 1.3,
                               ),
                             ),
@@ -213,7 +213,7 @@ class AppFormDialog extends StatelessWidget {
                               color: isDark
                                   ? AppColors.textSecondary
                                   : AppColors.lightTextSecondary,
-                              fontSize: 13,
+                              fontSize: 14,
                             ),
                           ),
                         ],
@@ -301,7 +301,7 @@ class AppFormField extends StatelessWidget {
               label,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: 14,
                 color: isDark
                     ? AppColors.textPrimary
                     : AppColors.lightTextPrimary,
@@ -313,7 +313,7 @@ class AppFormField extends StatelessWidget {
                 style: TextStyle(
                   color: context.semanticColors.critical,
                   fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                  fontSize: 14,
                 ),
               ),
           ],
@@ -324,7 +324,7 @@ class AppFormField extends StatelessWidget {
             hint!,
             style: TextStyle(
               color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
-              fontSize: 11.5,
+              fontSize: 13,
             ),
           ),
         ],
@@ -336,7 +336,7 @@ class AppFormField extends StatelessWidget {
             helperText!,
             style: TextStyle(
               color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
-              fontSize: 11.5,
+              fontSize: 13,
             ),
           ),
         ],
@@ -346,7 +346,7 @@ class AppFormField extends StatelessWidget {
             errorText!,
             style: TextStyle(
               color: context.semanticColors.critical,
-              fontSize: 11.5,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -389,7 +389,7 @@ class AppDialogAction extends StatelessWidget {
               : AppColors.textOnEmerald,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         ),
       );
     }
@@ -407,7 +407,7 @@ class AppDialogAction extends StatelessWidget {
             : null,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
-        textStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        textStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
       ),
     );
   }
@@ -464,7 +464,7 @@ class AppInfoCard extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
@@ -474,7 +474,7 @@ class AppInfoCard extends StatelessWidget {
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: isDark
                         ? AppColors.textPrimary
@@ -529,7 +529,7 @@ class AppWarningCard extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: context.semanticColors.critical,
-                    fontSize: 13,
+                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -537,7 +537,7 @@ class AppWarningCard extends StatelessWidget {
                   message,
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 12.5,
+                    fontSize: 14,
                     height: 1.4,
                   ),
                 ),

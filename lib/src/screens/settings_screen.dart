@@ -265,7 +265,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Text(
             'Appearance & Theme',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
               color: isDark
@@ -290,7 +290,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Text(
                 'Theme Mode',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: isDark
                       ? AppColors.textPrimary
@@ -301,7 +301,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Text(
                 'Select your preferred display mode or match your operating system.',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: isDark
                       ? AppColors.textSecondary
                       : AppColors.lightTextSecondary,
@@ -321,17 +321,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ButtonSegment<ThemeMode>(
                     value: ThemeMode.light,
                     icon: Icon(Icons.light_mode_outlined, size: 16),
-                    label: Text('Light', style: TextStyle(fontSize: 12)),
+                    label: Text('Light', style: TextStyle(fontSize: 13)),
                   ),
                   ButtonSegment<ThemeMode>(
                     value: ThemeMode.dark,
                     icon: Icon(Icons.dark_mode_outlined, size: 16),
-                    label: Text('Dark', style: TextStyle(fontSize: 12)),
+                    label: Text('Dark', style: TextStyle(fontSize: 13)),
                   ),
                   ButtonSegment<ThemeMode>(
                     value: ThemeMode.system,
                     icon: Icon(Icons.settings_brightness_outlined, size: 16),
-                    label: Text('System', style: TextStyle(fontSize: 12)),
+                    label: Text('System', style: TextStyle(fontSize: 13)),
                   ),
                 ],
                 selected: {currentThemeMode},
@@ -352,7 +352,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Text(
                 'Clinical Accent Theme',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: isDark
                       ? AppColors.textPrimary
@@ -363,7 +363,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Text(
                 'Choose an accent palette for navigation, buttons, and active indicators.',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: isDark
                       ? AppColors.textSecondary
                       : AppColors.lightTextSecondary,
@@ -429,7 +429,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: isSelected
                                   ? FontWeight.w700
                                   : FontWeight.w500,
@@ -467,7 +467,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
               color: isDark
@@ -527,7 +527,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       title: Text(
         title,
         style: TextStyle(
-          fontSize: 13.5,
+          fontSize: 15,
           fontWeight: FontWeight.w600,
           color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
         ),
@@ -535,7 +535,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       subtitle: Text(
         subtitle,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           color: isDark
               ? AppColors.textSecondary
               : AppColors.lightTextSecondary,
@@ -559,7 +559,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       title: Text(
         label,
         style: TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w500,
           color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
         ),
@@ -567,7 +567,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       trailing: Text(
         value,
         style: TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
           fontFeatures: const [FontFeature.tabularFigures()],
           color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
@@ -1892,7 +1892,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                     controller: _searchController,
                     onChanged: (value) => setState(() => _searchQuery = value),
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       color: isDark
                           ? AppColors.textPrimary
                           : AppColors.lightTextPrimary,
@@ -1901,7 +1901,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       hintText:
                           'Search users by name, email, phone, or role...',
                       hintStyle: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextMuted,
@@ -1991,7 +1991,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                   ChoiceChip(
                     label: Text('All Facilities (${activeUsersList.length})'),
                     labelStyle: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       color: _selectedClinicFilter == null
@@ -2024,7 +2024,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       'Super Admins (${activeUsersList.where((u) => u.role == UserRole.superAdmin).length})',
                     ),
                     labelStyle: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       color: _selectedClinicFilter == _superAdminsFilter
@@ -2058,7 +2058,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       'Unassigned (${activeUsersList.where((u) => u.clinicId == null && u.role != UserRole.superAdmin).length})',
                     ),
                     labelStyle: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       fontFeatures: const [FontFeature.tabularFigures()],
                       color: _selectedClinicFilter == '__unassigned__'
@@ -2096,7 +2096,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       child: ChoiceChip(
                         label: Text('${clinic.name} ($clinicCount)'),
                         labelStyle: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: isSelected
@@ -2169,11 +2169,11 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                 ? AppColors.textSecondary
                 : AppColors.lightTextSecondary,
             labelStyle: const TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
             unselectedLabelStyle: const TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
             tabs: const [
@@ -2262,7 +2262,7 @@ class _StaffAccountsTab extends StatelessWidget {
               icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
               label: const Text(
                 'Add User',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -2573,7 +2573,7 @@ class _UserManagementTile extends ConsumerWidget {
                       user.fullName,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 14,
+                        fontSize: 15,
                         letterSpacing: -0.2,
                         color: isDark
                             ? AppColors.textPrimary
@@ -2592,7 +2592,7 @@ class _UserManagementTile extends ConsumerWidget {
                     Text(
                       user.email,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -2618,7 +2618,7 @@ class _UserManagementTile extends ConsumerWidget {
                       child: Text(
                         user.roleDisplay,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: isDark
                               ? AppColors.textSecondary
@@ -2660,7 +2660,7 @@ class _UserManagementTile extends ConsumerWidget {
                               Text(
                                 'All Facilities',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.accent(
                                     Theme.of(context).brightness ==
@@ -2713,7 +2713,7 @@ class _UserManagementTile extends ConsumerWidget {
                                         clinic?.code ??
                                         'Assigned RHU',
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: isDark
                                           ? AppColors.textSecondary
@@ -2752,7 +2752,7 @@ class _UserManagementTile extends ConsumerWidget {
                               Text(
                                 'Unassigned Facility',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: context.semanticColors.warning,
                                 ),
@@ -2799,7 +2799,7 @@ class _UserManagementTile extends ConsumerWidget {
                             leading: Icon(Icons.edit_outlined, size: 18),
                             title: Text(
                               'Edit user',
-                              style: TextStyle(fontSize: 13),
+                              style: TextStyle(fontSize: 14),
                             ),
                             contentPadding: EdgeInsets.zero,
                             dense: true,
@@ -2812,7 +2812,7 @@ class _UserManagementTile extends ConsumerWidget {
                             leading: Icon(Icons.lock_reset_outlined, size: 18),
                             title: Text(
                               'Reset Password',
-                              style: TextStyle(fontSize: 13),
+                              style: TextStyle(fontSize: 14),
                             ),
                             contentPadding: EdgeInsets.zero,
                             dense: true,
@@ -2831,7 +2831,7 @@ class _UserManagementTile extends ConsumerWidget {
                             ),
                             title: const Text(
                               'Deactivate',
-                              style: TextStyle(fontSize: 13),
+                              style: TextStyle(fontSize: 14),
                             ),
                             contentPadding: EdgeInsets.zero,
                             dense: true,
@@ -2848,7 +2848,7 @@ class _UserManagementTile extends ConsumerWidget {
                             ),
                             title: const Text(
                               'Delete permanently',
-                              style: TextStyle(fontSize: 13),
+                              style: TextStyle(fontSize: 14),
                             ),
                             contentPadding: EdgeInsets.zero,
                             dense: true,

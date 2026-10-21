@@ -55,10 +55,10 @@ class ScreenTokens {
     border: AppColors.border,
     control: AppColors.borderActive,
     text: AppColors.textPrimary,
-    muted: AppColors.textSecondary,
-    accent: AppColors.primaryMint,
+    muted: Color(0xFFA1A5AE),
+    accent: AppColors.primaryEmerald,
     onAccent: AppColors.textOnEmerald,
-    accentSubtle: Color(0x1F86CBA6),
+    accentSubtle: AppColors.primaryEmeraldSubtle,
   );
 
   static ScreenTokens of(BuildContext context) =>
@@ -78,7 +78,7 @@ class ScreenTokens {
     side: BorderSide(color: control),
     textStyle: const TextStyle(
       fontFamily: AppType.family,
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: FontWeight.w500,
     ),
   );
@@ -91,7 +91,7 @@ class ScreenTokens {
     shape: const RoundedRectangleBorder(borderRadius: radius),
     textStyle: const TextStyle(
       fontFamily: AppType.family,
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: FontWeight.w600,
     ),
   );
@@ -153,7 +153,7 @@ class ScreenHeader extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle!,
-                  style: TextStyle(fontSize: 13.5, color: t.muted, height: 1.4),
+                  style: TextStyle(fontSize: 15, color: t.muted, height: 1.4),
                 ),
               ],
             ],
@@ -204,8 +204,8 @@ class ScreenHeader extends StatelessWidget {
 }
 
 /// The double red line printed under the header of a columnar ledger pad.
-/// MedSentry's one recurring mark: it closes each screen header and table
-/// header, and is used nowhere else.
+/// MedSentry's one recurring mark in light mode: it closes each screen
+/// header and table header, and is used nowhere else. Dark mode omits it.
 class LedgerRule extends StatelessWidget {
   const LedgerRule({super.key, required this.isDark});
 
@@ -213,6 +213,7 @@ class LedgerRule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isDark) return const SizedBox.shrink();
     final color = AppColors.ledgerRule(isDark);
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -325,7 +326,7 @@ class _MetricCell extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: t.muted,
                   ),
@@ -353,7 +354,7 @@ class _MetricCell extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 color: metric.noteIsAlert
                     ? (t.isDark ? AppColors.critical : const Color(0xFFA12C22))
                     : t.muted,
@@ -403,7 +404,7 @@ class EmptyPanel extends StatelessWidget {
             message,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: FontWeight.w600,
               color: t.text,
             ),
@@ -413,7 +414,7 @@ class EmptyPanel extends StatelessWidget {
             Text(
               detail!,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: t.muted, height: 1.4),
+              style: TextStyle(fontSize: 14, color: t.muted, height: 1.4),
             ),
           ],
           if (action != null) ...[const SizedBox(height: 14), action!],

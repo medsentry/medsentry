@@ -600,7 +600,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               borderRadius: AppRadius.roundedMd,
             ),
             textStyle: TextStyle(
-              fontSize: isMobile ? 12 : 13,
+              fontSize: isMobile ? 13 : 14,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -627,7 +627,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       hintText: hint,
       hintStyle: TextStyle(color: palette.hint),
       errorText: error,
-      errorStyle: TextStyle(color: palette.error, fontSize: 12.5),
+      errorStyle: TextStyle(color: palette.error, fontSize: 14),
       prefixIcon: Icon(icon, size: 20, color: palette.muted),
       suffixIcon: suffix,
       filled: true,
@@ -652,7 +652,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           label,
           style: TextStyle(
             color: palette.text,
-            fontSize: 13.5,
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -685,7 +685,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
     final inputStyle = TextStyle(
       color: palette.text,
-      fontSize: 14.5,
+      fontSize: 16,
       fontWeight: FontWeight.w500,
     );
     final linkStyle = TextButton.styleFrom(
@@ -693,7 +693,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       minimumSize: Size.zero,
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
     );
 
     Future<void> toggleRememberMe([bool? val]) async {
@@ -732,7 +732,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: palette.text,
                   letterSpacing: -0.2,
@@ -760,7 +760,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ? 'Enter your 4-digit PIN to unlock your session.'
                     : 'Sign in again to unlock your session.')
               : 'Sign in to securely access your clinic workspace.',
-          style: TextStyle(color: palette.muted, fontSize: 14.5, height: 1.45),
+          style: TextStyle(color: palette.muted, fontSize: 16, height: 1.45),
         ),
         SizedBox(height: isMobile ? 24 : 28),
 
@@ -787,7 +787,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Text(
                         _sessionLocked ? 'Locked session' : 'Current account',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: palette.accent,
                         ),
@@ -797,7 +797,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextStyle(
                           color: palette.text,
                           fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
+                          fontSize: 15,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -903,7 +903,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(
                   'Caps Lock is on',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: palette.warning,
                   ),
@@ -915,7 +915,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(height: 8),
             Text(
               'Tip: Enable a PIN in Settings for faster unlock next time.',
-              style: TextStyle(color: palette.muted, fontSize: 12.5),
+              style: TextStyle(color: palette.muted, fontSize: 14),
             ),
           ],
         ] else ...[
@@ -927,7 +927,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               focusNode: _pinFocusNode,
               scrollPadding: const EdgeInsets.only(bottom: 120),
               style: inputStyle.copyWith(
-                fontSize: 17,
+                fontSize: 18,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 8,
               ),
@@ -1007,7 +1007,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: TextStyle(
                         color: palette.text,
                         fontWeight: FontWeight.w500,
-                        fontSize: 13.5,
+                        fontSize: 15,
                       ),
                     ),
                   ],
@@ -1045,7 +1045,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     _error!,
                     style: TextStyle(
                       color: palette.error,
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
                       height: 1.4,
                     ),
@@ -1071,7 +1071,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 borderRadius: AppRadius.roundedMd,
               ),
               textStyle: const TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1117,7 +1117,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
                   'Other ways to sign in',
-                  style: TextStyle(color: palette.muted, fontSize: 12.5),
+                  style: TextStyle(color: palette.muted, fontSize: 14),
                 ),
               ),
               Expanded(child: Divider(color: palette.border)),
@@ -1172,7 +1172,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           children: [
             Text(
               'Trouble signing in?',
-              style: TextStyle(color: palette.muted, fontSize: 13),
+              style: TextStyle(color: palette.muted, fontSize: 14),
             ),
             TextButton(
               onPressed: () => _showNeedHelpDialog(context),
@@ -1200,7 +1200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         minimumSize: const Size.fromHeight(46),
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.roundedMd),
         side: BorderSide(color: palette.border),
-        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -1218,7 +1218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final iconColor = isDark
         ? AppColors.textSecondary
         : Colors.white.withValues(alpha: 0.85);
-    final style = TextStyle(color: textColor, fontSize: 12, height: 1.4);
+    final style = TextStyle(color: textColor, fontSize: 13, height: 1.4);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1355,15 +1355,15 @@ class _LoginPalette {
     field: AppColors.inputSurface,
     border: AppColors.borderActive,
     text: AppColors.textPrimary,
-    muted: Color(0xFFB9C7BD),
+    muted: Color(0xFFB4B8C0),
     hint: AppColors.textSecondary,
-    accent: AppColors.primaryMint,
+    accent: AppColors.primaryEmerald,
     onAccent: AppColors.textOnEmerald,
-    accentSubtle: Color(0x1F86CBA6),
+    accentSubtle: AppColors.primaryEmeraldSubtle,
     error: AppColors.critical,
     errorBg: AppColors.criticalBg,
     errorBorder: AppColors.criticalBorder,
-    warning: AppColors.pending,
+    warning: Color(0xFFFBBF24),
   );
 
   static _LoginPalette of(BuildContext context) =>

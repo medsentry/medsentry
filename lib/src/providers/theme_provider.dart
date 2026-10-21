@@ -263,7 +263,7 @@ ThemeData buildMedSentryTheme(
     surface: surfaceColor,
     onSurface: textPrimaryColor,
     error: isDark ? AppColors.critical : const Color(0xFFB03328),
-    onError: isDark ? const Color(0xFF3A110C) : Colors.white,
+    onError: Colors.white,
     errorContainer: isDark
         ? AppColors.critical.withValues(alpha: 0.18)
         : const Color(0xFFF8E1DD),
@@ -336,7 +336,7 @@ ThemeData buildMedSentryTheme(
         color: isDark
             ? textSecondaryColor.withValues(alpha: 0.6)
             : AppColors.lightTextMuted,
-        fontSize: 14,
+        fontSize: 15,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
@@ -386,7 +386,7 @@ ThemeData buildMedSentryTheme(
         textStyle: const TextStyle(
           fontFamily: AppType.family,
           fontWeight: FontWeight.w600,
-          fontSize: 14,
+          fontSize: 15,
           letterSpacing: -0.1,
         ),
       ),
@@ -402,7 +402,7 @@ ThemeData buildMedSentryTheme(
         textStyle: const TextStyle(
           fontFamily: AppType.family,
           fontWeight: FontWeight.w600,
-          fontSize: 14,
+          fontSize: 15,
           letterSpacing: -0.1,
         ),
       ),
@@ -417,7 +417,7 @@ ThemeData buildMedSentryTheme(
         textStyle: const TextStyle(
           fontFamily: AppType.family,
           fontWeight: FontWeight.w600,
-          fontSize: 14,
+          fontSize: 15,
           letterSpacing: -0.1,
         ),
       ),
@@ -429,7 +429,7 @@ ThemeData buildMedSentryTheme(
         textStyle: const TextStyle(
           fontFamily: AppType.family,
           fontWeight: FontWeight.w600,
-          fontSize: 14,
+          fontSize: 15,
           letterSpacing: -0.1,
         ),
       ),
@@ -444,7 +444,7 @@ ThemeData buildMedSentryTheme(
         fontFamily: AppType.family,
         color: textPrimaryColor,
         fontWeight: FontWeight.w600,
-        fontSize: 12,
+        fontSize: 13,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
     ),
@@ -454,7 +454,7 @@ ThemeData buildMedSentryTheme(
       contentTextStyle: TextStyle(
         fontFamily: AppType.family,
         color: textPrimaryColor,
-        fontSize: 13,
+        fontSize: 14,
       ),
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.roundedSm,
@@ -475,7 +475,9 @@ ThemeData buildMedSentryTheme(
       ),
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: AppSpine.background,
+      backgroundColor: isDark
+          ? AppColors.sidebarBackground
+          : AppSpine.light.background,
       elevation: 0,
       minExtendedWidth: AppDimensions.sidebarExpanded,
       selectedIconTheme: IconThemeData(color: colorScheme.primary, size: 20),
@@ -484,12 +486,12 @@ ThemeData buildMedSentryTheme(
         fontFamily: AppType.family,
         color: colorScheme.primary,
         fontWeight: FontWeight.w600,
-        fontSize: 13,
+        fontSize: 14,
       ),
       unselectedLabelTextStyle: TextStyle(
         fontFamily: AppType.family,
         color: textSecondaryColor,
-        fontSize: 13,
+        fontSize: 14,
       ),
       indicatorColor: colorScheme.primary.withValues(alpha: 0.12),
       indicatorShape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
@@ -502,13 +504,13 @@ ThemeData buildMedSentryTheme(
       headingTextStyle: TextStyle(
         fontFamily: AppType.family,
         color: textSecondaryColor,
-        fontSize: 12.5,
+        fontSize: 14,
         fontWeight: FontWeight.w700,
       ),
       dataTextStyle: TextStyle(
         fontFamily: AppType.family,
         color: textPrimaryColor,
-        fontSize: 13.5,
+        fontSize: 15,
         fontFeatures: AppType.tabular,
       ),
       dividerThickness: 1,
@@ -524,7 +526,7 @@ ThemeData buildMedSentryTheme(
       textStyle: TextStyle(
         fontFamily: AppType.family,
         color: textPrimaryColor,
-        fontSize: 13,
+        fontSize: 14,
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -537,13 +539,14 @@ ThemeData buildMedSentryTheme(
     ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
-        color: AppSpine.background,
+        color: isDark ? AppColors.elevatedSurface : AppSpine.light.background,
         borderRadius: AppRadius.roundedSm,
+        border: isDark ? Border.all(color: AppColors.borderActive) : null,
       ),
-      textStyle: const TextStyle(
+      textStyle: TextStyle(
         fontFamily: AppType.family,
-        color: AppSpine.text,
-        fontSize: 12.5,
+        color: isDark ? AppColors.textPrimary : AppSpine.light.text,
+        fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
     ),
@@ -577,13 +580,13 @@ TextTheme _buildTextTheme(Color primary, Color secondary) {
     headlineMedium: style(24, FontWeight.w800, height: 1.2, spacing: -0.45),
     headlineSmall: style(20, FontWeight.w700, height: 1.25, spacing: -0.3),
     titleLarge: style(18, FontWeight.w700, height: 1.3, spacing: -0.2),
-    titleMedium: style(15, FontWeight.w600, height: 1.35),
-    titleSmall: style(13.5, FontWeight.w600, height: 1.35),
-    bodyLarge: style(15, FontWeight.w400, height: 1.5),
-    bodyMedium: style(14, FontWeight.w400, height: 1.45),
-    bodySmall: style(12.5, FontWeight.w400, height: 1.4, color: secondary),
-    labelLarge: style(14, FontWeight.w600, height: 1.2),
-    labelMedium: style(12.5, FontWeight.w600, height: 1.2),
-    labelSmall: style(11.5, FontWeight.w600, height: 1.2),
+    titleMedium: style(16, FontWeight.w600, height: 1.35),
+    titleSmall: style(15, FontWeight.w600, height: 1.35),
+    bodyLarge: style(16, FontWeight.w400, height: 1.5),
+    bodyMedium: style(15, FontWeight.w400, height: 1.45),
+    bodySmall: style(14, FontWeight.w400, height: 1.4, color: secondary),
+    labelLarge: style(15, FontWeight.w600, height: 1.2),
+    labelMedium: style(14, FontWeight.w600, height: 1.2),
+    labelSmall: style(13, FontWeight.w600, height: 1.2),
   );
 }

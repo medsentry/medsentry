@@ -163,7 +163,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
               const SizedBox(height: 12),
               Text(
                 _lastMessage!,
-                style: TextStyle(fontSize: 13, color: t.muted),
+                style: TextStyle(fontSize: 14, color: t.muted),
               ),
             ],
             const SizedBox(height: 16),
@@ -223,12 +223,12 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             Icon(icon, size: 18, color: t.muted),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(label, style: TextStyle(fontSize: 14, color: t.text)),
+              child: Text(label, style: TextStyle(fontSize: 15, color: t.text)),
             ),
             Text(
               count?.toString() ?? '-',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: count == null ? t.muted : t.text,
                 fontFeatures: const [FontFeature.tabularFigures()],

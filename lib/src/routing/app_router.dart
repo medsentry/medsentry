@@ -376,7 +376,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               Text(
                 state.error?.toString() ??
                     'The requested page could not be located.',
-                style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+                style: const TextStyle(fontSize: 15, color: Color(0xFF9CA3AF)),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),

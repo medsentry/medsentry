@@ -81,7 +81,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       textStyle: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -203,12 +203,12 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                       height: 38,
                       child: TextField(
                         controller: _searchController,
-                        style: const TextStyle(fontSize: 13),
+                        style: const TextStyle(fontSize: 14),
                         decoration: InputDecoration(
                           hintText:
                               'Search facilities by name, code, or location...',
                           hintStyle: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             color:
                                 Theme.of(context).brightness == Brightness.dark
                                 ? AppColors.textSecondary
@@ -274,20 +274,20 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         segments: const [
                           ButtonSegment(
                             value: 'all',
-                            label: Text('All', style: TextStyle(fontSize: 12)),
+                            label: Text('All', style: TextStyle(fontSize: 13)),
                           ),
                           ButtonSegment(
                             value: 'active',
                             label: Text(
                               'Active',
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(fontSize: 13),
                             ),
                           ),
                           ButtonSegment(
                             value: 'inactive',
                             label: Text(
                               'Inactive',
-                              style: TextStyle(fontSize: 12),
+                              style: TextStyle(fontSize: 13),
                             ),
                           ),
                         ],
@@ -467,7 +467,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: isDark
                         ? AppColors.textSecondary
@@ -535,7 +535,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                           clinic.name,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            fontSize: 15,
+                            fontSize: 16,
                             letterSpacing: -0.2,
                             color: isDark
                                 ? AppColors.textPrimary
@@ -565,7 +565,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                           child: Text(
                             clinic.code,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.3,
                               fontFeatures: const [
@@ -609,7 +609,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     child: Text(
                       clinic.address ?? 'No address provided',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -635,7 +635,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     child: Text(
                       clinic.contactNumber ?? 'No contact phone',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontFeatures: const [FontFeature.tabularFigures()],
                         color: isDark
                             ? AppColors.textSecondary
@@ -662,7 +662,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     child: Text(
                       clinic.email ?? 'No email on record',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -702,7 +702,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                           Text(
                             '${assignedStaff.length} Staff · $patientCount Patients',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               color: assignedStaff.isEmpty && patientCount == 0
                                   ? (isDark
                                         ? AppColors.textSecondary

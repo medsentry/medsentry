@@ -45,10 +45,10 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
       child: TextField(
         controller: TextEditingController(text: _searchQuery)
           ..selection = TextSelection.collapsed(offset: _searchQuery.length),
-        style: TextStyle(fontSize: 13, color: t.text),
+        style: TextStyle(fontSize: 14, color: t.text),
         decoration: InputDecoration(
           hintText: 'Search by user, patient, or description',
-          hintStyle: TextStyle(fontSize: 13, color: t.muted),
+          hintStyle: TextStyle(fontSize: 14, color: t.muted),
           prefixIcon: const Icon(Icons.search, size: 18),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
@@ -84,12 +84,12 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
           // field), so long action names truncate instead of overflowing.
           isExpanded: true,
           value: _filterAction,
-          hint: const Text('All actions', style: TextStyle(fontSize: 13)),
-          style: TextStyle(fontFamily: AppType.family, fontSize: 13, color: t.text),
+          hint: const Text('All actions', style: TextStyle(fontSize: 14)),
+          style: TextStyle(fontFamily: AppType.family, fontSize: 14, color: t.text),
           items: [
-            const DropdownMenuItem(value: null, child: Text('All actions', style: TextStyle(fontSize: 13))),
+            const DropdownMenuItem(value: null, child: Text('All actions', style: TextStyle(fontSize: 14))),
             ...AuditAction.values.map(
-              (a) => DropdownMenuItem(value: a, child: Text(_actionLabel(a), style: const TextStyle(fontSize: 13))),
+              (a) => DropdownMenuItem(value: a, child: Text(_actionLabel(a), style: const TextStyle(fontSize: 14))),
             ),
           ],
           onChanged: (v) => setState(() => _filterAction = v),
@@ -173,7 +173,7 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 14,
+                                fontSize: 15,
                                 color: t.text,
                               ),
                             ),
@@ -187,7 +187,7 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
                         '${log.patientName != null ? '. Patient: ${log.patientName}' : ''}'
                         '${log.description != null ? '\n${log.description}' : ''}',
                         style: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 14,
                           color: t.muted,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),

@@ -261,7 +261,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                         Text(
                           'Scanned records, lab results, referrals, and certificates linked to patients',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: isDark
                                 ? AppColors.textSecondary
                                 : AppColors.lightTextSecondary,
@@ -293,7 +293,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                       label: const Text(
                         'Upload Document',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -345,7 +345,7 @@ class _DocumentsPageHeader extends StatelessWidget {
               Text(
                 '$totalCount documents',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   fontFeatures: const [FontFeature.tabularFigures()],
                   color: isDark
@@ -356,7 +356,7 @@ class _DocumentsPageHeader extends StatelessWidget {
               Text(
                 ' · ',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   color: isDark
                       ? AppColors.textTertiary
                       : AppColors.lightTextMuted,
@@ -365,7 +365,7 @@ class _DocumentsPageHeader extends StatelessWidget {
               Text(
                 '$todayCount uploaded today',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontFeatures: const [FontFeature.tabularFigures()],
                   color: isDark
                       ? AppColors.textSecondary
@@ -376,7 +376,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                 Text(
                   ' · ',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textTertiary
                         : AppColors.lightTextMuted,
@@ -385,7 +385,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                 Text(
                   '$filteredCount records showing',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
@@ -453,7 +453,7 @@ class _DocumentsToolbar extends StatelessWidget {
               ),
               hintText: 'Search title, patient, PhilHealth, or type...',
               hintStyle: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
               ),
               prefixIcon: Icon(
@@ -521,13 +521,13 @@ class _DocumentsToolbar extends StatelessWidget {
                       initialValue: typeFilter,
                       isExpanded: true,
                       style: TextStyle(fontFamily: AppType.family, 
-                        fontSize: 12.5,
+                        fontSize: 14,
                         color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                       ),
                       decoration: InputDecoration(
                         labelText: 'Document Type',
                         labelStyle: TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 14,
                           color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                         ),
                         isDense: true,
@@ -578,7 +578,7 @@ class _DocumentsToolbar extends StatelessWidget {
                       ),
                       label: const Text(
                         'Clear filters',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                       side: BorderSide(
                         color: isDark
@@ -611,17 +611,17 @@ class _DocumentsToolbar extends StatelessWidget {
                   ButtonSegment(
                     value: _DocumentSortMode.newest,
                     icon: Icon(Icons.schedule, size: 15),
-                    label: Text('Newest', style: TextStyle(fontSize: 12)),
+                    label: Text('Newest', style: TextStyle(fontSize: 13)),
                   ),
                   ButtonSegment(
                     value: _DocumentSortMode.oldest,
                     icon: Icon(Icons.history, size: 15),
-                    label: Text('Oldest', style: TextStyle(fontSize: 12)),
+                    label: Text('Oldest', style: TextStyle(fontSize: 13)),
                   ),
                   ButtonSegment(
                     value: _DocumentSortMode.title,
                     icon: Icon(Icons.sort_by_alpha, size: 15),
-                    label: Text('Title', style: TextStyle(fontSize: 12)),
+                    label: Text('Title', style: TextStyle(fontSize: 13)),
                   ),
                 ],
                 selected: {sortMode},
@@ -639,12 +639,12 @@ class _DocumentsToolbar extends StatelessWidget {
                   ButtonSegment(
                     value: _DocumentViewMode.list,
                     icon: Icon(Icons.view_list_outlined, size: 15),
-                    label: Text('List', style: TextStyle(fontSize: 12)),
+                    label: Text('List', style: TextStyle(fontSize: 13)),
                   ),
                   ButtonSegment(
                     value: _DocumentViewMode.grid,
                     icon: Icon(Icons.grid_view_outlined, size: 15),
-                    label: Text('Grid', style: TextStyle(fontSize: 12)),
+                    label: Text('Grid', style: TextStyle(fontSize: 13)),
                   ),
                 ],
                 selected: {viewMode},
@@ -810,7 +810,7 @@ class _DocumentCard extends ConsumerWidget {
                           maxLines: compact ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 15,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.1,
                             color: isDark
@@ -849,7 +849,7 @@ class _DocumentCard extends ConsumerWidget {
                         value: 'preview',
                         child: ListTile(
                           leading: Icon(Icons.visibility_outlined, size: 18),
-                          title: Text('Preview file', style: TextStyle(fontSize: 13)),
+                          title: Text('Preview file', style: TextStyle(fontSize: 14)),
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                         ),
@@ -858,7 +858,7 @@ class _DocumentCard extends ConsumerWidget {
                         value: 'open',
                         child: ListTile(
                           leading: Icon(Icons.open_in_new, size: 18),
-                          title: Text('Open with system app', style: TextStyle(fontSize: 13)),
+                          title: Text('Open with system app', style: TextStyle(fontSize: 14)),
                           contentPadding: EdgeInsets.zero,
                           dense: true,
                         ),
@@ -868,7 +868,7 @@ class _DocumentCard extends ConsumerWidget {
                           value: 'edit',
                           child: ListTile(
                             leading: Icon(Icons.edit_outlined, size: 18),
-                            title: Text('Edit details', style: TextStyle(fontSize: 13)),
+                            title: Text('Edit details', style: TextStyle(fontSize: 14)),
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                           ),
@@ -885,7 +885,7 @@ class _DocumentCard extends ConsumerWidget {
                             title: Text(
                               'Delete',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 14,
                                 color: Theme.of(context).colorScheme.error,
                               ),
                             ),
@@ -919,7 +919,7 @@ class _DocumentCard extends ConsumerWidget {
                             patient!.fullName,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 14,
                               fontWeight: FontWeight.w500,
                               color: isDark
                                   ? AppColors.primaryEmerald
@@ -943,7 +943,7 @@ class _DocumentCard extends ConsumerWidget {
                 Text(
                   'Patient ID: ${document.patientId}',
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textTertiary
                         : AppColors.lightTextMuted,
@@ -959,7 +959,7 @@ class _DocumentCard extends ConsumerWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
@@ -991,7 +991,7 @@ class _DocumentCard extends ConsumerWidget {
                       Text(
                         date != null ? _formatDate(date) : 'Unknown date',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: isDark
                               ? AppColors.textSecondary
@@ -1010,7 +1010,7 @@ class _DocumentCard extends ConsumerWidget {
                       Text(
                         DocumentService.formatFileSize(document.fileSize),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: isDark
                               ? AppColors.textSecondary
@@ -1194,7 +1194,7 @@ class _Badge extends StatelessWidget {
         label,
         style: TextStyle(
           color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -1528,7 +1528,7 @@ class _DocumentPreviewDialogState extends ConsumerState<DocumentPreviewDialog> {
                                   Text(
                                     '${(_zoomLevel * 100).toInt()}%',
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -2538,7 +2538,7 @@ class _EmptyDocumentsState extends StatelessWidget {
                   ? 'No documents match the current filter'
                   : 'No documents in archive',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
               ),
@@ -2550,7 +2550,7 @@ class _EmptyDocumentsState extends StatelessWidget {
                   : 'Upload scanned records, lab results, or referrals as PDF, JPG, or PNG files.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
               ),
             ),
@@ -2571,7 +2571,7 @@ class _EmptyDocumentsState extends StatelessWidget {
                 icon: const Icon(Icons.upload_file_outlined, size: 15),
                 label: const Text(
                   'Upload First Document',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
             ],

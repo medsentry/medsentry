@@ -142,7 +142,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                           Text(
                             'Generate DOH-compliant medical certificates, return-to-work clearances, and patient summaries',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               color: isDark
                                   ? AppColors.textSecondary
                                   : AppColors.lightTextSecondary,
@@ -180,7 +180,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     Text(
                       '$archiveCount certificates issued',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         fontFeatures: const [FontFeature.tabularFigures()],
                         color: isDark
@@ -191,7 +191,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     Text(
                       ' · ',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textTertiary
                             : AppColors.lightTextMuted,
@@ -200,7 +200,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     Text(
                       'Based on DOH AO No. 2021-0037',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -222,11 +222,11 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 tabs: [
                   const Tab(
                     icon: Icon(Icons.edit_document, size: 16),
-                    child: Text('Issue Certificate & Live Preview', style: TextStyle(fontSize: 12.5)),
+                    child: Text('Issue Certificate & Live Preview', style: TextStyle(fontSize: 14)),
                   ),
                   Tab(
                     icon: const Icon(Icons.history_edu, size: 16),
-                    child: Text('Issued Registry ($archiveCount)', style: TextStyle(fontSize: 12.5)),
+                    child: Text('Issued Registry ($archiveCount)', style: TextStyle(fontSize: 14)),
                   ),
                 ],
               ),
@@ -311,7 +311,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               Text(
                 'Document Parameters',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                 ),
@@ -326,7 +326,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
-                label: Text(type.displayName, style: const TextStyle(fontSize: 12)),
+                label: Text(type.displayName, style: const TextStyle(fontSize: 13)),
                 selected: _selectedType == type,
                 onSelected: (_) => setState(() => _selectedType = type),
               );
@@ -364,7 +364,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            fontSize: 12.5,
+                            fontSize: 14,
                             color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                           ),
                         ),
@@ -376,7 +376,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                           textAlign: TextAlign.end,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: isDark
                                 ? AppColors.textTertiary
                                 : AppColors.lightTextMuted,
@@ -392,7 +392,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     children: [
                       ActionChip(
                         avatar: const Icon(Icons.work_outline, size: 14),
-                        label: const Text('Fit to Work', style: TextStyle(fontSize: 12)),
+                        label: const Text('Fit to Work', style: TextStyle(fontSize: 13)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                         onPressed: () => _applyPreset(
@@ -405,7 +405,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.school_outlined, size: 14),
-                        label: const Text('School / P.E.', style: TextStyle(fontSize: 12)),
+                        label: const Text('School / P.E.', style: TextStyle(fontSize: 13)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                         onPressed: () => _applyPreset(
@@ -418,7 +418,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.bed_outlined, size: 14),
-                        label: const Text('Bed Rest (3 Days)', style: TextStyle(fontSize: 12)),
+                        label: const Text('Bed Rest (3 Days)', style: TextStyle(fontSize: 13)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                         onPressed: () => _applyPreset(
@@ -432,7 +432,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       ),
                       ActionChip(
                         avatar: const Icon(Icons.local_hospital_outlined, size: 14),
-                        label: const Text('Referral Slip', style: TextStyle(fontSize: 12)),
+                        label: const Text('Referral Slip', style: TextStyle(fontSize: 13)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         side: BorderSide(color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive),
                         onPressed: () => _applyPreset(
@@ -453,7 +453,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
           Text(
             'Target Patient',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
             ),
@@ -483,7 +483,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 child: Text(
                   p.initials,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                   ),
@@ -533,7 +533,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     child: Text(
                       'Selected: ${selectedPatient.fullName} | Age ${selectedPatient.age ?? "—"} | ${selectedPatient.gender ?? "—"} | Brgy. ${selectedPatient.barangay ?? "Unspecified"}',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         fontFeatures: const [FontFeature.tabularFigures()],
                         color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
@@ -546,7 +546,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
                     ),
-                    child: const Text('Change', style: TextStyle(fontSize: 11)),
+                    child: const Text('Change', style: TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
@@ -663,7 +663,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                     : const Icon(Icons.print_outlined, size: 16),
                 label: Text(
                   _isGenerating ? 'Generating...' : 'Generate & Print',
-                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
               OutlinedButton.icon(
@@ -685,7 +685,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                 icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
                 label: const Text(
                   'Export Official PDF',
-                  style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -1094,7 +1094,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
               ),
               hintText: 'Search archive by certificate ID, patient name, or purpose...',
               hintStyle: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
               ),
               prefixIcon: Icon(
@@ -1178,7 +1178,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 ? 'No certificates have been issued yet'
                                 : 'No certificates found matching "$query"',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                             ),
@@ -1189,7 +1189,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 ? 'Issued medical certificates and patient summaries will appear here.'
                                 : 'Try clearing the search query to see all issued certificates.',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                             ),
                           ),
@@ -1238,7 +1238,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 child: Text(
                                   item.certificateType,
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                                   ),
@@ -1248,7 +1248,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                               Text(
                                 'ID: ${item.id}',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontFamily: 'monospace',
                                   fontFeatures: const [FontFeature.tabularFigures()],
                                   fontWeight: FontWeight.w500,
@@ -1271,7 +1271,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 ),
                                 label: const Text(
                                   'Print',
-                                  style: TextStyle(fontSize: 11.5),
+                                  style: TextStyle(fontSize: 13),
                                 ),
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
@@ -1297,7 +1297,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 ),
                                 label: const Text(
                                   'Export PDF',
-                                  style: TextStyle(fontSize: 11.5),
+                                  style: TextStyle(fontSize: 13),
                                 ),
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
@@ -1377,7 +1377,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                     color: isDark
                                         ? AppColors.textPrimary
                                         : AppColors.lightTextPrimary,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                   ),
                                 ),
                               ),
@@ -1389,7 +1389,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                     Text(
                                       item.patientName,
                                       style: TextStyle(
-                                        fontSize: 13.5,
+                                        fontSize: 15,
                                         fontWeight: FontWeight.w600,
                                         color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                                       ),
@@ -1398,7 +1398,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                       Text(
                                         'Patient ID: ${item.patientId}',
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: 12,
                                           fontFeatures: const [FontFeature.tabularFigures()],
                                           color: isDark
                                               ? AppColors.textTertiary
@@ -1419,7 +1419,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 13,
                                 color: isDark
                                     ? AppColors.textSecondary
                                     : AppColors.lightTextSecondary,
@@ -1449,7 +1449,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                     ? item.issuedBy
                                     : 'Attending Officer',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                   color: isDark
                                       ? AppColors.textSecondary
@@ -1461,7 +1461,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                 Text(
                                   ' (PRC #${item.licenseNumber})',
                                   style: TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontFeatures: const [FontFeature.tabularFigures()],
                                     color: isDark
                                         ? AppColors.textTertiary
@@ -1483,7 +1483,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                                   'MMM d, yyyy · h:mm a',
                                 ).format(item.issuedAt),
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontFeatures: const [FontFeature.tabularFigures()],
                                   color: isDark
                                       ? AppColors.textSecondary

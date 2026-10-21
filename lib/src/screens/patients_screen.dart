@@ -585,7 +585,7 @@ class _PatientsPageHeader extends StatelessWidget {
                           Text(
                             'Search, filter, and open clinical records across RHU barangays',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               color: isDark
                                   ? AppColors.textSecondary
                                   : AppColors.lightTextSecondary,
@@ -617,7 +617,7 @@ class _PatientsPageHeader extends StatelessWidget {
                         icon: const Icon(Icons.file_download_outlined, size: 15),
                         label: const Text(
                           'Export CSV',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                         ),
                       )
                     : null;
@@ -641,7 +641,7 @@ class _PatientsPageHeader extends StatelessWidget {
                         icon: const Icon(Icons.person_add_alt_1, size: 15),
                         label: const Text(
                           'Register Patient',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       )
                     : null;
@@ -709,7 +709,7 @@ class _PatientsPageHeader extends StatelessWidget {
                 Text(
                   '$totalCount registered patients',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
@@ -720,7 +720,7 @@ class _PatientsPageHeader extends StatelessWidget {
                 Text(
                   ' · ',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textTertiary
                         : AppColors.lightTextMuted,
@@ -729,7 +729,7 @@ class _PatientsPageHeader extends StatelessWidget {
                 Text(
                   '$barangayCount barangays',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
                         ? AppColors.textSecondary
@@ -739,7 +739,7 @@ class _PatientsPageHeader extends StatelessWidget {
                 Text(
                   ' · ',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textTertiary
                         : AppColors.lightTextMuted,
@@ -748,7 +748,7 @@ class _PatientsPageHeader extends StatelessWidget {
                 Text(
                   '$filteredCount records showing',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
@@ -830,7 +830,7 @@ class _PatientsToolbar extends StatelessWidget {
               ),
               hintText: 'Search by patient name, PhilHealth number, ID, or contact...',
               hintStyle: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
               ),
               prefixIcon: Icon(
@@ -933,7 +933,7 @@ class _PatientsToolbar extends StatelessWidget {
                       ),
                       label: const Text(
                         'Clear filters',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                       side: BorderSide(
                         color: isDark
@@ -966,12 +966,12 @@ class _PatientsToolbar extends StatelessWidget {
                   ButtonSegment(
                     value: _PatientSortMode.byLocation,
                     icon: Icon(Icons.map_outlined, size: 15),
-                    label: Text('By Barangay', style: TextStyle(fontSize: 12)),
+                    label: Text('By Barangay', style: TextStyle(fontSize: 13)),
                   ),
                   ButtonSegment(
                     value: _PatientSortMode.alphabetical,
                     icon: Icon(Icons.sort_by_alpha, size: 15),
-                    label: Text('A–Z', style: TextStyle(fontSize: 12)),
+                    label: Text('A–Z', style: TextStyle(fontSize: 13)),
                   ),
                 ],
                 selected: {sortMode},
@@ -989,12 +989,12 @@ class _PatientsToolbar extends StatelessWidget {
                   ButtonSegment(
                     value: _PatientViewMode.list,
                     icon: Icon(Icons.view_list_outlined, size: 15),
-                    label: Text('List', style: TextStyle(fontSize: 12)),
+                    label: Text('List', style: TextStyle(fontSize: 13)),
                   ),
                   ButtonSegment(
                     value: _PatientViewMode.grid,
                     icon: Icon(Icons.grid_view_outlined, size: 15),
-                    label: Text('Grid', style: TextStyle(fontSize: 12)),
+                    label: Text('Grid', style: TextStyle(fontSize: 13)),
                   ),
                 ],
                 selected: {viewMode},
@@ -1034,7 +1034,7 @@ class _FilterDropdown<T> extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
-          fontSize: 12.5,
+          fontSize: 14,
           color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
         ),
         isDense: true,
@@ -1064,14 +1064,14 @@ class _FilterDropdown<T> extends StatelessWidget {
       items: [
         DropdownMenuItem<T?>(
           value: null,
-          child: Text('All $label', style: const TextStyle(fontSize: 12)),
+          child: Text('All $label', style: const TextStyle(fontSize: 13)),
         ),
         ...items.map(
           (item) => DropdownMenuItem<T?>(
             value: item,
             child: Text(
               itemLabel(item),
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 13),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -1243,7 +1243,7 @@ class _BarangaySectionHeader extends StatelessWidget {
               '$patientCount',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: 12,
+                fontSize: 13,
                 color: isDark ? primary : Color.lerp(primary, Colors.black, 0.3),
               ),
             ),
@@ -1342,7 +1342,7 @@ class _EmptyPatientsState extends StatelessWidget {
             Text(
               hasFilters ? 'No Matching Records' : 'No Patients Registered',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
               ),
@@ -1354,7 +1354,7 @@ class _EmptyPatientsState extends StatelessWidget {
                   : 'Start building the RHU patient cohort by registering the first patient record.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                 height: 1.4,
               ),
@@ -1364,7 +1364,7 @@ class _EmptyPatientsState extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onClearFilters,
                 icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
-                label: const Text('Clear All Filters', style: TextStyle(fontSize: 12)),
+                label: const Text('Clear All Filters', style: TextStyle(fontSize: 13)),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 40),
                   shape: RoundedRectangleBorder(
@@ -1381,7 +1381,7 @@ class _EmptyPatientsState extends StatelessWidget {
                 icon: const Icon(Icons.person_add_alt_1, size: 15),
                 label: const Text(
                   'Register New Patient',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.accent(
@@ -2483,7 +2483,7 @@ class _PatientRegistrationDialogState
         Text(
           'Common Allergies (tap chip to toggle):',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             color: Theme.of(
               context,
@@ -2500,7 +2500,7 @@ class _PatientRegistrationDialogState
                 (allergy == 'No Known Allergies (NKDA)' &&
                     _allergiesController.text.trim() == 'NKDA');
             return FilterChip(
-              label: Text(allergy, style: const TextStyle(fontSize: 11)),
+              label: Text(allergy, style: const TextStyle(fontSize: 12)),
               selected: isSelected,
               onSelected: (_) => _toggleAllergy(allergy),
               selectedColor: const Color(0xFFEF4444).withValues(alpha: 0.15),
@@ -2879,7 +2879,7 @@ class _PatientListTile extends StatelessWidget {
                         ? AppColors.textPrimary
                         : AppColors.lightTextSecondary,
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -2895,7 +2895,7 @@ class _PatientListTile extends StatelessWidget {
                             patient.fullName,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 13.5,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
                               letterSpacing: -0.1,
                               color: isDark
@@ -2929,7 +2929,7 @@ class _PatientListTile extends StatelessWidget {
                                     ? AppColors.textSecondary
                                     : AppColors.lightTextSecondary,
                                 fontWeight: FontWeight.w500,
-                                fontSize: 10,
+                                fontSize: 12,
                               ),
                             ),
                           ),
@@ -2940,7 +2940,7 @@ class _PatientListTile extends StatelessWidget {
                     Text(
                       '${patient.age ?? 'N/A'} yrs · ${patient.gender?.toUpperCase() ?? 'N/A'} · PHN: ${patient.philHealthNumber ?? 'None'}',
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 13,
                         fontFeatures: const [FontFeature.tabularFigures()],
                         color: isDark
                             ? AppColors.textSecondary
@@ -2964,7 +2964,7 @@ class _PatientListTile extends StatelessWidget {
                               '${_locationLabel(patient.barangay, 'Unassigned Barangay')} · ${_locationLabel(patient.purokSitio, 'Unassigned Purok')}',
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: isDark
                                     ? AppColors.textMuted
                                     : AppColors.lightTextMuted,
@@ -3059,7 +3059,7 @@ class _PatientGridCard extends StatelessWidget {
                             ? AppColors.textPrimary
                             : AppColors.lightTextSecondary,
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontSize: 14,
                       ),
                     ),
                   ),
@@ -3070,7 +3070,7 @@ class _PatientGridCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -0.1,
                         color: isDark
@@ -3123,7 +3123,7 @@ class _PatientGridCard extends StatelessWidget {
                           ? AppColors.textSecondary
                           : AppColors.lightTextSecondary,
                       fontWeight: FontWeight.w500,
-                      fontSize: 10,
+                      fontSize: 12,
                     ),
                   ),
                 ),

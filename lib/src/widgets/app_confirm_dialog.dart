@@ -150,7 +150,7 @@ class AppConfirmDialog extends StatelessWidget {
                               color: isDark
                                   ? AppColors.textPrimary
                                   : AppColors.lightTextPrimary,
-                              fontSize: 17,
+                              fontSize: 18,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.2,
                             ),
@@ -162,7 +162,7 @@ class AppConfirmDialog extends StatelessWidget {
                               color: isDark
                                   ? AppColors.textSecondary
                                   : AppColors.lightTextSecondary,
-                              fontSize: 13.5,
+                              fontSize: 15,
                               height: 1.45,
                             ),
                           ),

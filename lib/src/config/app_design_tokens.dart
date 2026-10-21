@@ -5,76 +5,74 @@ import 'package:flutter/material.dart';
 /// radii, component heights, shadows, and animation durations.
 
 abstract final class AppColors {
-  // "Logbook" identity: the app is the RHU's hardbound record book and green
-  // columnar ledger pad. Dark mode is the same book under night-shift light:
-  // deep green-grey surfaces, never neutral black.
-  static const Color appBackground = Color(0xFF121C18);
-  static const Color sidebarBackground = Color(0xFF16221D);
-  static const Color cardSurface = Color(0xFF1A2722);
-  static const Color elevatedSurface = Color(0xFF22322B);
-  static const Color modalSurface = Color(0xFF1C2A24);
-  static const Color inputSurface = Color(0xFF17231E);
+  // Dark mode: the obsidian clinical theme with the emerald accent.
+  static const Color appBackground = Color(0xFF0C0D11);
+  static const Color sidebarBackground = Color(0xFF111216);
+  static const Color cardSurface = Color(0xFF16171D);
+  static const Color elevatedSurface = Color(0xFF1D1F27);
+  static const Color modalSurface = Color(0xFF181A22);
+  static const Color inputSurface = Color(0xFF16171E);
 
-  // Brand greens. [primaryEmerald] is a mid "leaf" green that reads on both
-  // paper (3.4:1, for icons and large text) and night surfaces (4.5:1).
-  static const Color primaryEmerald = Color(0xFF3F9B73);
-  static const Color primaryEmeraldHover = Color(0xFF5CB28B);
+  // Brand greens. [primaryEmerald] is the dark-mode emerald; on light
+  // surfaces use [accent], which switches to bottle green there.
+  static const Color primaryEmerald = Color(0xFF34D399);
+  static const Color primaryEmeraldHover = Color(0xFF6EE7B7);
   static const Color primaryEmeraldDark = Color(0xFF1D5C45); // bottle green
   static const Color primaryEmeraldDeep = Color(0xFF174A38);
-  static const Color primaryMint = Color(0xFF86CBA6);
 
   /// The brand green for text, icons and filled buttons: bottle green on
-  /// paper (7.6:1) and mint on night surfaces (8.2:1).
-  static Color accent(bool isDark) => isDark ? primaryMint : primaryEmeraldDark;
-  static const Color primaryEmeraldSubtle = Color(0x1F3F9B73); // 12% opacity
-  static const Color primaryEmeraldGlow = Color(0x333F9B73); // 20% opacity
+  /// paper (7.6:1) and emerald on obsidian.
+  static Color accent(bool isDark) =>
+      isDark ? primaryEmerald : primaryEmeraldDark;
+  static const Color primaryEmeraldSubtle = Color(0x1F34D399); // 12% opacity
+  static const Color primaryEmeraldGlow = Color(0x3334D399); // 20% opacity
 
-  // Typography & Text (night shift)
-  static const Color textPrimary = Color(0xFFE3EAE2);
-  static const Color textSecondary = Color(0xFFA3B3A8);
-  static const Color textMuted = Color(0xFF8D9E93);
-  static const Color textDisabled = Color(0xFF5E6E64);
-  static const Color textOnEmerald = Color(0xFF0E2A1F);
+  // Typography & Text (dark mode)
+  static const Color textPrimary = Color(0xFFF3F4F6);
+  static const Color textSecondary = Color(0xFF8E929B);
+  static const Color textMuted = Color(0xFF636773);
+  static const Color textDisabled = Color(0xFF4B5563);
+  static const Color textOnEmerald = Color(0xFF064E3B);
 
   // Borders & Dividers
-  static const Color border = Color(0xFF2C3D35);
-  static const Color borderSubtle = Color(0xFF22312A);
-  static const Color borderActive = Color(0xFF3A5045);
-  static const Color borderFocus = primaryMint;
+  static const Color border = Color(0xFF232631);
+  static const Color borderSubtle = Color(0xFF1A1C24);
+  static const Color borderActive = Color(0xFF323645);
+  static const Color borderFocus = primaryEmerald;
   static const double borderWidth = 1.0;
   static const double borderWidthActive = 1.5;
 
-  // Semantic Healthcare Status Colors (night-shift values; the light-mode
+  // Semantic Healthcare Status Colors (dark-mode values; the light-mode
   // values live in [SemanticColors] in theme_provider.dart)
   // Success / Active / Normal
-  static const Color success = primaryMint;
-  static const Color successBg = Color(0x2486CBA6);
-  static const Color successBorder = Color(0x4D86CBA6);
+  static const Color success = primaryEmerald;
+  static const Color successBg = Color(0x1F34D399); // 12% opacity
+  static const Color successBorder = Color(0x4D34D399); // 30% opacity
 
   // Pending / Warning / In Review
-  static const Color pending = Color(0xFFE8B04B);
-  static const Color pendingBg = Color(0x24E8B04B);
-  static const Color pendingBorder = Color(0x4DE8B04B);
+  static const Color pending = Color(0xFFF59E0B);
+  static const Color pendingBg = Color(0x1FF59E0B);
+  static const Color pendingBorder = Color(0x4DF59E0B);
 
   // Critical / Error / Urgent
-  static const Color critical = Color(0xFFF08A7E);
-  static const Color criticalBg = Color(0x24F08A7E);
-  static const Color criticalBorder = Color(0x4DF08A7E);
+  static const Color critical = Color(0xFFF87171);
+  static const Color criticalBg = Color(0x1FF87171);
+  static const Color criticalBorder = Color(0x4DF87171);
 
   // Information / In Progress
-  static const Color info = Color(0xFF8DB8E8);
-  static const Color infoBg = Color(0x248DB8E8);
-  static const Color infoBorder = Color(0x4D8DB8E8);
+  static const Color info = Color(0xFF60A5FA);
+  static const Color infoBg = Color(0x1F60A5FA);
+  static const Color infoBorder = Color(0x4D60A5FA);
 
   // Analytical / Special Accent
-  static const Color analytical = Color(0xFFB9A3E3);
-  static const Color analyticalBg = Color(0x24B9A3E3);
-  static const Color analyticalBorder = Color(0x4DB9A3E3);
+  static const Color analytical = Color(0xFFA78BFA);
+  static const Color analyticalBg = Color(0x1FA78BFA);
+  static const Color analyticalBorder = Color(0x4DA78BFA);
 
   // Neutral / Archived / Disabled
-  static const Color neutral = Color(0xFFA3B3A8);
-  static const Color neutralBg = Color(0x24A3B3A8);
-  static const Color neutralBorder = Color(0x4DA3B3A8);
+  static const Color neutral = Color(0xFF9CA3AF);
+  static const Color neutralBg = Color(0x1F9CA3AF);
+  static const Color neutralBorder = Color(0x4D9CA3AF);
 
   // Light theme: ledger paper and ballpen ink. Text meets WCAG AA (4.5:1)
   // on every light surface, including the elevated rule green (#E4EBE3):
@@ -92,9 +90,10 @@ abstract final class AppColors {
   static const Color lightBorderSubtle = Color(0xFFDCE5DC);
   static const Color lightBorderActive = Color(0xFFA9BBAD);
 
-  /// The ledger pad's red margin rule, drawn under table headers.
+  /// The ledger pad's red margin rule, drawn under table headers in light
+  /// mode. Dark mode keeps its plain border instead.
   static Color ledgerRule(bool isDark) =>
-      isDark ? const Color(0xFF9A4A40) : const Color(0xFFB03328);
+      isDark ? border : const Color(0xFFB03328);
 
   // Backward compatibility & semantic aliases
   static const Color lightBackground = lightAppBackground;
@@ -106,18 +105,71 @@ abstract final class AppColors {
   static const Color accentTeal = primaryEmerald;
 }
 
-/// The sidebar is drawn as the record book's spine: bound in deep green in
-/// both light and dark mode, with the open page shown as a paper tab.
-abstract final class AppSpine {
-  static const Color background = Color(0xFF173D30);
-  static const Color raised = Color(0xFF1F4A3B);
-  static const Color border = Color(0xFF2A5646);
-  static const Color text = Color(0xFFEEF3EC); // 10.7:1
-  static const Color textSecondary = Color(0xFFB5CABC); // 7.0:1
-  static const Color textMuted = Color(0xFF93B3A1); // 5.3:1
-  static const Color hover = Color(0x14EEF3EC);
-  static const Color tab = AppColors.lightAppBackground;
-  static const Color tabText = AppColors.primaryEmeraldDark; // 7.0:1
+/// Sidebar colours. In light mode the sidebar is the record book's spine:
+/// bound in deep green, with the open page shown as a paper tab and a red
+/// margin mark. Dark mode keeps the obsidian sidebar with emerald selection.
+class AppSpine {
+  const AppSpine._({
+    required this.background,
+    required this.raised,
+    required this.border,
+    required this.text,
+    required this.textSecondary,
+    required this.textMuted,
+    required this.hover,
+    required this.tab,
+    required this.tabText,
+    required this.mark,
+    this.tileBorder,
+  });
+
+  final Color background;
+  final Color raised;
+  final Color border;
+  final Color text;
+  final Color textSecondary;
+  final Color textMuted;
+  final Color hover;
+
+  /// The selected item's fill and its label/icon colour.
+  final Color tab;
+  final Color tabText;
+
+  /// The bar beside the selected item and the default badge colour.
+  final Color mark;
+
+  /// Outline of the brand tile, if any.
+  final Color? tileBorder;
+
+  static const light = AppSpine._(
+    background: Color(0xFF173D30),
+    raised: Color(0xFF1F4A3B),
+    border: Color(0xFF2A5646),
+    text: Color(0xFFEEF3EC), // 10.7:1
+    textSecondary: Color(0xFFB5CABC), // 7.0:1
+    textMuted: Color(0xFF93B3A1), // 5.3:1
+    hover: Color(0x14EEF3EC),
+    tab: AppColors.lightAppBackground,
+    tabText: AppColors.primaryEmeraldDark, // 7.0:1
+    mark: Color(0xFFB03328),
+  );
+
+  static const dark = AppSpine._(
+    background: AppColors.sidebarBackground,
+    raised: AppColors.cardSurface,
+    border: AppColors.borderSubtle,
+    text: AppColors.textPrimary,
+    textSecondary: AppColors.textSecondary,
+    textMuted: AppColors.textMuted,
+    hover: Color(0x0AFFFFFF),
+    tab: Color(0x2434D399), // emerald at 14%
+    tabText: AppColors.primaryEmerald,
+    mark: AppColors.primaryEmerald,
+    tileBorder: Color(0xFF262936),
+  );
+
+  static AppSpine of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? dark : light;
 }
 
 /// Standardized Glassmorphism Design Tokens.
@@ -177,40 +229,44 @@ abstract final class AppGlass {
   }
 }
 
-/// Standardized Shadows and Elevation. Pages are separated by rules, not
-/// shadows: only floating layers (menus, dialogs) cast a noticeable one.
+/// Standardized Shadows and Elevation.
 abstract final class AppShadows {
   static const List<BoxShadow> none = [];
 
   static const List<BoxShadow> subtle = [
-    BoxShadow(color: Color(0x140E2A1F), offset: Offset(0, 1), blurRadius: 1),
+    BoxShadow(color: Color(0x33000000), offset: Offset(0, 1), blurRadius: 2),
   ];
 
   static const List<BoxShadow> card = [
-    BoxShadow(color: Color(0x0F0E2A1F), offset: Offset(0, 1), blurRadius: 2),
+    BoxShadow(
+      color: Color(0x4D000000),
+      offset: Offset(0, 2),
+      blurRadius: 6,
+      spreadRadius: -1,
+    ),
   ];
 
   static const List<BoxShadow> elevated = [
     BoxShadow(
-      color: Color(0x1F0E2A1F),
-      offset: Offset(0, 3),
-      blurRadius: 8,
+      color: Color(0x66000000),
+      offset: Offset(0, 4),
+      blurRadius: 12,
       spreadRadius: -2,
     ),
   ];
 
   static const List<BoxShadow> overlay = [
     BoxShadow(
-      color: Color(0x330E2A1F),
-      offset: Offset(0, 10),
-      blurRadius: 28,
-      spreadRadius: -6,
+      color: Color(0x80000000),
+      offset: Offset(0, 8),
+      blurRadius: 24,
+      spreadRadius: -4,
     ),
   ];
 
   static const List<BoxShadow> emeraldGlow = [
     BoxShadow(
-      color: Color(0x333F9B73),
+      color: Color(0x3334D399),
       offset: Offset(0, 0),
       blurRadius: 12,
       spreadRadius: 1,
@@ -315,7 +371,7 @@ enum AppAccentTheme {
     id: 'emerald',
     label: 'Logbook Green',
     primaryColor: AppColors.primaryEmeraldDark,
-    darkPrimaryColor: AppColors.primaryMint,
+    darkPrimaryColor: AppColors.primaryEmerald,
     secondaryColor: AppColors.primaryEmeraldDeep,
   ),
   blue(

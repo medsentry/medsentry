@@ -501,7 +501,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                 Text(
                   'Scan via flatbed/sheet scanner or webcam, enhance, crop, and attach as encrypted PDF',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 14,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
@@ -537,7 +537,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               _errorMessage!,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onErrorContainer,
-                fontSize: 12.5,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -637,7 +637,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
           icon: const Icon(Icons.add_photo_alternate_outlined, size: 17),
           label: const Text(
             'Import Image File',
-            style: TextStyle(fontSize: 12.5),
+            style: TextStyle(fontSize: 14),
           ),
         ),
     ];
@@ -714,7 +714,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                     '${index + 1}',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -769,7 +769,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                 Text(
                   'PAGES (${_pages.length})',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                     color: isDark
@@ -781,7 +781,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                   Text(
                     'Multi-page PDF',
                     style: TextStyle(
-                      fontSize: 10.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.primary,
                     ),
@@ -800,7 +800,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                             : 'No pages yet.\nUse the camera or import an image to add.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: isDark
                               ? AppColors.textMuted
                               : AppColors.lightTextMuted,
@@ -869,7 +869,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                                     Text(
                                       'Page ${index + 1}',
                                       style: TextStyle(
-                                        fontSize: 13,
+                                        fontSize: 14,
                                         fontWeight: isSelected
                                             ? FontWeight.w700
                                             : FontWeight.w500,
@@ -882,7 +882,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                                     Text(
                                       _filters[index].label,
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 12,
                                         color: isDark
                                             ? AppColors.textSecondary
                                             : AppColors.lightTextSecondary,
@@ -932,7 +932,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
             Text(
               _statusMessage ?? 'Processing...',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
                 color: isDark
                     ? AppColors.textPrimary
@@ -964,7 +964,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               Text(
                 'No Pages Captured',
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                   color: isDark
                       ? AppColors.textPrimary
@@ -978,7 +978,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                     : 'Turn on your camera or import an image to begin.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: isDark
                       ? AppColors.textSecondary
                       : AppColors.lightTextSecondary,
@@ -1206,7 +1206,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
     final children = <Widget>[
       Text(
         'Page ${_selectedIndex + 1} of ${_pages.length}',
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
       ),
       if (!_compact) const SizedBox(width: 16),
       if (!_isCropping) ...[
@@ -1233,14 +1233,14 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
           onPressed: _startCrop,
         ),
         if (!_compact) const Spacer(),
-        const Text('Filter: ', style: TextStyle(fontSize: 12.5)),
+        const Text('Filter: ', style: TextStyle(fontSize: 14)),
         const SizedBox(width: 6),
         SegmentedButton<ScanFilter>(
           segments: ScanFilter.values
               .map(
                 (f) => ButtonSegment(
                   value: f,
-                  label: Text(f.label, style: const TextStyle(fontSize: 11.5)),
+                  label: Text(f.label, style: const TextStyle(fontSize: 13)),
                 ),
               )
               .toList(),
@@ -1259,7 +1259,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
       ] else ...[
         const Text(
           'Drag the corners to adjust crop area',
-          style: TextStyle(fontSize: 12, color: AppColors.primaryEmerald),
+          style: TextStyle(fontSize: 13, color: AppColors.primaryEmerald),
         ),
         if (!_compact) const Spacer(),
         TextButton(onPressed: _cancelCrop, child: const Text('Cancel Crop')),
@@ -1314,7 +1314,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
               '${_pages.length} page${_pages.length == 1 ? '' : 's'} scanned • '
               '${_pages.length == 1 ? 'Single Page JPEG' : 'Multi-Page PDF'}',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: isDark
                     ? AppColors.textSecondary

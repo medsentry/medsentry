@@ -178,7 +178,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   // confirmed by the RHU / DOH, not asserted by the app.
                   'BASED ON DOH FHSIS FORMAT',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                     color: AppColors.accent(
@@ -196,7 +196,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               color: isDark
                   ? AppColors.textSecondary
                   : AppColors.lightTextSecondary,
-              fontSize: 13,
+              fontSize: 14,
             ),
           ),
           const SizedBox(height: 10),
@@ -222,7 +222,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: Text(
                   'PERIOD: $startStr - $endStr',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.4,
                     color: isDark
@@ -249,7 +249,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   child: Text(
                     '${stats.newPatients} NEW PATIENTS',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.4,
                       color: AppColors.accent(
@@ -279,7 +279,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   child: Text(
                     '${stats.documentsInRange} DOCUMENTS RECORDED',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.4,
                       color: isDark
@@ -344,7 +344,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   // overflowing.
                   isExpanded: true,
                   style: TextStyle(fontFamily: AppType.family, 
-                    fontSize: 13,
+                    fontSize: 14,
                     color: isDark
                         ? AppColors.textPrimary
                         : AppColors.lightTextPrimary,
@@ -352,7 +352,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   decoration: InputDecoration(
                     labelText: 'Date Range',
                     labelStyle: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: isDark
                           ? AppColors.textSecondary
                           : AppColors.lightTextSecondary,
@@ -385,7 +385,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           value: preset,
                           child: Text(
                             preset.label,
-                            style: const TextStyle(fontSize: 13),
+                            style: const TextStyle(fontSize: 14),
                           ),
                         ),
                       )
@@ -433,7 +433,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       Text(
                         'From ${_formatDate(_draftFilters.startDate)}',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: isDark
@@ -477,7 +477,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       Text(
                         'To ${_formatDate(_draftFilters.endDate)}',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                           fontFeatures: const [FontFeature.tabularFigures()],
                           color: isDark
@@ -495,7 +495,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: DropdownButtonFormField<ReportGrouping>(
                   initialValue: _draftFilters.grouping,
                   style: TextStyle(fontFamily: AppType.family, 
-                    fontSize: 13,
+                    fontSize: 14,
                     color: isDark
                         ? AppColors.textPrimary
                         : AppColors.lightTextPrimary,
@@ -503,7 +503,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   decoration: InputDecoration(
                     labelText: 'Group By',
                     labelStyle: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: isDark
                           ? AppColors.textSecondary
                           : AppColors.lightTextSecondary,
@@ -536,7 +536,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           value: grouping,
                           child: Text(
                             grouping.label,
-                            style: const TextStyle(fontSize: 13),
+                            style: const TextStyle(fontSize: 14),
                           ),
                         ),
                       )
@@ -569,7 +569,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 icon: const Icon(Icons.filter_alt_outlined, size: 16),
                 label: const Text(
                   'Apply Filters',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
               OutlinedButton.icon(
@@ -592,7 +592,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 icon: const Icon(Icons.restart_alt, size: 16),
                 label: const Text(
                   'Reset',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -716,7 +716,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   'No records found for this period',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 14,
                     color: isDark
                         ? AppColors.textPrimary
                         : AppColors.lightTextPrimary,
@@ -725,7 +725,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Text(
                   'Try selecting a wider date range or resetting filter parameters.',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
@@ -748,7 +748,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     : AppColors.lightBorderActive,
               ),
             ),
-            child: const Text('Reset Filters', style: TextStyle(fontSize: 12)),
+            child: const Text('Reset Filters', style: TextStyle(fontSize: 13)),
           ),
         ],
       ),
@@ -816,7 +816,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                 : AppColors.lightTextSecondary,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.8,
-                            fontSize: 10,
+                            fontSize: 12,
                           ),
                         ),
                         Container(
@@ -886,7 +886,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                   color: kpi.delta.isPositive
                                       ? Theme.of(context).extension<SemanticColors>()!.normal
                                       : Theme.of(context).extension<SemanticColors>()!.critical,
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   fontFeatures: const [
                                     FontFeature.tabularFigures(),
@@ -905,7 +905,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                                 color: isDark
                                     ? AppColors.textSecondary
                                     : AppColors.lightTextSecondary,
-                                fontSize: 11,
+                                fontSize: 12,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1017,7 +1017,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       title,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                        fontSize: 16,
                         color: isDark
                             ? AppColors.textPrimary
                             : AppColors.lightTextPrimary,
@@ -1030,7 +1030,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
-                        fontSize: 12,
+                        fontSize: 13,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -1058,7 +1058,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Theme.of(context).brightness == Brightness.dark,
                       ),
                       fontWeight: FontWeight.w700,
-                      fontSize: 11,
+                      fontSize: 12,
                       letterSpacing: 0.4,
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),
@@ -1074,7 +1074,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     child: Text(
                       'No trend observations in range',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         color: isDark
                             ? AppColors.textSecondary
                             : AppColors.lightTextSecondary,
@@ -1100,7 +1100,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Text(
                   startLabel,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
@@ -1110,7 +1110,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 Text(
                   endLabel,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
@@ -1161,7 +1161,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             title,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              fontSize: 15,
+              fontSize: 16,
               color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
             ),
           ),
@@ -1173,7 +1173,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: Text(
                   emptyMessage,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
@@ -1200,7 +1200,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           child: Text(
                             metric.label,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: FontWeight.w500,
                               color: isDark
                                   ? AppColors.textPrimary
@@ -1212,7 +1212,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Text(
                           '${metric.value}',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             fontFeatures: const [FontFeature.tabularFigures()],
                             color: isDark
@@ -1224,7 +1224,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Text(
                           '${metric.percentage.toStringAsFixed(0)}%',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                             fontFeatures: const [FontFeature.tabularFigures()],
                             color: isDark
@@ -1336,7 +1336,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               child: Text(
                 'No reports generated yet. Use the options above to create your first report.',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: isDark
                       ? AppColors.textSecondary
                       : AppColors.lightTextSecondary,
@@ -1408,7 +1408,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     title,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: 15,
                       letterSpacing: -0.2,
                       color: isDark
                           ? AppColors.textPrimary
@@ -1422,7 +1422,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       color: isDark
                           ? AppColors.textSecondary
                           : AppColors.lightTextSecondary,
-                      fontSize: 12,
+                      fontSize: 13,
                     ),
                   ),
                 ],
@@ -1491,7 +1491,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   report.title,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 15,
                     letterSpacing: -0.2,
                     color: isDark
                         ? AppColors.textPrimary
@@ -1506,7 +1506,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       '${_formatDate(report.startDate!)} to ${_formatDate(report.endDate!)}',
                   ].join(' · '),
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextSecondary,
@@ -1544,7 +1544,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   value: 'view',
                   child: ListTile(
                     leading: Icon(Icons.visibility_outlined, size: 18),
-                    title: Text('View Details', style: TextStyle(fontSize: 13)),
+                    title: Text('View Details', style: TextStyle(fontSize: 14)),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
@@ -1554,7 +1554,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     leading: Icon(Icons.download_outlined, size: 18),
                     title: Text(
                       'Open / Export',
-                      style: TextStyle(fontSize: 13),
+                      style: TextStyle(fontSize: 14),
                     ),
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -1570,7 +1570,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     title: Text(
                       'Delete',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
@@ -1735,7 +1735,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               color: isDark
                   ? AppColors.textSecondary
                   : AppColors.lightTextSecondary,
@@ -1747,7 +1747,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: FontWeight.w600,
               fontFeatures: const [FontFeature.tabularFigures()],
               color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
@@ -1919,7 +1919,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             Text(
               title,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                 color: isActive
                     ? (isDark
@@ -2036,7 +2036,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               child: TextField(
                 controller: _reportSearchController,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   color: isDark
                       ? AppColors.textPrimary
                       : AppColors.lightTextPrimary,
@@ -2045,7 +2045,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   isDense: true,
                   hintText: 'Search generated reports...',
                   hintStyle: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: isDark
                         ? AppColors.textSecondary
                         : AppColors.lightTextMuted,
@@ -2116,7 +2116,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                     child: DropdownButton<String>(
                       value: activeTypeFilter,
                       style: TextStyle(fontFamily: AppType.family, 
-                        fontSize: 13,
+                        fontSize: 14,
                         color: isDark
                             ? AppColors.textPrimary
                             : AppColors.lightTextPrimary,
@@ -2157,7 +2157,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   child: DropdownButton<String>(
                     value: _reportSortOrder,
                     style: TextStyle(fontFamily: AppType.family, 
-                      fontSize: 13,
+                      fontSize: 14,
                       color: isDark
                           ? AppColors.textPrimary
                           : AppColors.lightTextPrimary,
@@ -2195,7 +2195,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 child: Text(
                   'Showing $filteredCount of $totalCount',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
@@ -2267,7 +2267,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       child: TextField(
                         controller: _auditSearchController,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: isDark
                               ? AppColors.textPrimary
                               : AppColors.lightTextPrimary,
@@ -2277,7 +2277,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           hintText:
                               'Search audit logs (actor, entity, patient ID)...',
                           hintStyle: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: isDark
                                 ? AppColors.textSecondary
                                 : AppColors.lightTextMuted,
@@ -2348,7 +2348,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           child: DropdownButton<String>(
                             value: _auditActionFilter,
                             style: TextStyle(fontFamily: AppType.family, 
-                              fontSize: 13,
+                              fontSize: 14,
                               color: isDark
                                   ? AppColors.textPrimary
                                   : AppColors.lightTextPrimary,
@@ -2404,7 +2404,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         child: Text(
                           'Showing ${filtered.length} of ${allLogs.length}',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             fontFeatures: const [FontFeature.tabularFigures()],
                             color: isDark
@@ -2446,7 +2446,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       Text(
                         'No audit logs match your search or filters.',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: isDark
                               ? AppColors.textSecondary
                               : AppColors.lightTextSecondary,
@@ -2521,7 +2521,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                               child: Text(
                                 log.action.name.toUpperCase(),
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 0.5,
                                   color: actionColor,
@@ -2532,7 +2532,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             Text(
                               '[${log.entityType.toUpperCase()}]',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: isDark
                                     ? AppColors.textSecondary
@@ -2545,7 +2545,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                               Text(
                                 'PID: ${log.patientId}',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.accent(
                                     Theme.of(context).brightness ==
@@ -2559,7 +2559,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                             Text(
                               dateStr,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 color: isDark
                                     ? AppColors.textSecondary
                                     : AppColors.lightTextSecondary,
@@ -2574,7 +2574,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                         Text(
                           log.description ?? log.details ?? 'Activity recorded',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: isDark
                                 ? AppColors.textPrimary
@@ -2586,7 +2586,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           Text(
                             'Actor: $actorLabel',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: isDark
                                   ? AppColors.textSecondary
                                   : AppColors.lightTextSecondary,
@@ -2636,7 +2636,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             Text(
               'No reports found matching your criteria.',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 color: isDark
                     ? AppColors.textSecondary
                     : AppColors.lightTextSecondary,
@@ -2661,7 +2661,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                       : AppColors.lightBorderActive,
                 ),
               ),
-              child: const Text('Reset Filter', style: TextStyle(fontSize: 12)),
+              child: const Text('Reset Filter', style: TextStyle(fontSize: 13)),
             ),
           ],
         ),

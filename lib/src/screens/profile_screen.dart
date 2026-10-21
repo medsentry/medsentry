@@ -50,7 +50,7 @@ class ProfileScreen extends ConsumerWidget {
                   side: BorderSide(
                     color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
-                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 onPressed: () async {
                   await ref
@@ -71,7 +71,7 @@ class ProfileScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   minimumSize: const Size(0, 36),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 onPressed: () => _editProfile(context, user),
               ),
@@ -127,7 +127,7 @@ class ProfileScreen extends ConsumerWidget {
                       Text(
                         user.email,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                         ),
                       ),
@@ -150,7 +150,7 @@ class ProfileScreen extends ConsumerWidget {
                         child: Text(
                           user.roleDisplay,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.3,
                             color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
@@ -182,7 +182,7 @@ class ProfileScreen extends ConsumerWidget {
                 Text(
                   'Account Information',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
                     color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
@@ -259,7 +259,7 @@ class ProfileScreen extends ConsumerWidget {
                       child: Text(
                         'Terminal Security & Quick Access',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                           letterSpacing: -0.2,
                           color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
@@ -279,7 +279,7 @@ class ProfileScreen extends ConsumerWidget {
                       ? 'Your account has a 4-digit PIN configured. You can lock your workstation screen anytime and resume work without retyping your password.'
                       : 'No 4-digit access PIN is currently configured for this account. Set up a PIN in Settings for fast, single-tap terminal unlock.',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   ),
                 ),
@@ -294,7 +294,7 @@ class ProfileScreen extends ConsumerWidget {
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                       icon: const Icon(Icons.lock_outline, size: 16),
                       label: const Text('Lock Screen Now'),
@@ -316,7 +316,7 @@ class ProfileScreen extends ConsumerWidget {
                         side: BorderSide(
                           color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                         ),
-                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                       ),
                       icon: const Icon(Icons.pin_outlined, size: 16),
                       label: Text(user.pinEnabled ? 'Change PIN' : 'Setup PIN'),
@@ -346,7 +346,7 @@ class ProfileScreen extends ConsumerWidget {
                 Text(
                   'Workstation Display & Theme',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
                     color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
@@ -356,7 +356,7 @@ class ProfileScreen extends ConsumerWidget {
                 Text(
                   'Personalize your terminal appearance, dark mode, and clinical accent colors.',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                   ),
                 ),
@@ -372,17 +372,17 @@ class ProfileScreen extends ConsumerWidget {
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.light,
                       icon: Icon(Icons.light_mode_outlined, size: 16),
-                      label: Text('Light', style: TextStyle(fontSize: 12)),
+                      label: Text('Light', style: TextStyle(fontSize: 13)),
                     ),
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.dark,
                       icon: Icon(Icons.dark_mode_outlined, size: 16),
-                      label: Text('Dark', style: TextStyle(fontSize: 12)),
+                      label: Text('Dark', style: TextStyle(fontSize: 13)),
                     ),
                     ButtonSegment<ThemeMode>(
                       value: ThemeMode.system,
                       icon: Icon(Icons.settings_brightness_outlined, size: 16),
-                      label: Text('System', style: TextStyle(fontSize: 12)),
+                      label: Text('System', style: TextStyle(fontSize: 13)),
                     ),
                   ],
                   selected: {ref.watch(themeModeProvider)},
@@ -398,7 +398,7 @@ class ProfileScreen extends ConsumerWidget {
                 Text(
                   'Clinical Accent Color',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
                   ),
@@ -457,7 +457,7 @@ class ProfileScreen extends ConsumerWidget {
                             Text(
                               accent.label,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: isSelected
                                     ? FontWeight.w700
                                     : FontWeight.w500,
@@ -501,7 +501,7 @@ class ProfileScreen extends ConsumerWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               color: secondaryColor,
               fontWeight: FontWeight.w500,
             ),
@@ -511,7 +511,7 @@ class ProfileScreen extends ConsumerWidget {
           child: Text(
             value,
             style: TextStyle(
-              fontSize: 13.5,
+              fontSize: 15,
               fontWeight: FontWeight.w600,
               fontFeatures: const [FontFeature.tabularFigures()],
               color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
