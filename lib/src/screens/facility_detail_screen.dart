@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/clinic.dart';
 import '../providers/providers.dart';
 import '../widgets/empty_state.dart';
+import '../navigation/navigation_memory.dart';
 import '../widgets/scrolling_tab_layout.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
@@ -28,8 +29,9 @@ class FacilityDetailScreen extends ConsumerStatefulWidget {
 
 class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController = TabController(
-    length: 2,
+  static const _tabs = TabMemory('facility', ['staff', 'patients']);
+  late final TabController _tabController = _tabs.createController(
+    context: context,
     vsync: this,
   );
 
@@ -170,22 +172,24 @@ class _FacilityDetailScreenState extends ConsumerState<FacilityDetailScreen>
         tabView: TabBarView(
           controller: _tabController,
           children: [
-            StaffManagementPanel(
-              embedded: true,
-              lockedClinicId: clinic.id,
-              onAddUser: () => StaffActions.showForm(
-                context,
-                ref,
-                initialClinicId: widget.clinicId,
+            KeepAliveTab(
+              child: StaffManagementPanel(
+                embedded: true,
+                lockedClinicId: clinic.id,
+                onAddUser: () => StaffActions.showForm(
+                  context,
+                  ref,
+                  initialClinicId: widget.clinicId,
+                ),
+                onEditUser: (user) =>
+                    StaffActions.showForm(context, ref, existingUser: user),
+                onDeactivateUser: (user) =>
+                    StaffActions.confirmDeactivate(context, ref, user),
+                onDeleteUser: (user) =>
+                    StaffActions.confirmDelete(context, ref, user),
               ),
-              onEditUser: (user) =>
-                  StaffActions.showForm(context, ref, existingUser: user),
-              onDeactivateUser: (user) =>
-                  StaffActions.confirmDeactivate(context, ref, user),
-              onDeleteUser: (user) =>
-                  StaffActions.confirmDelete(context, ref, user),
             ),
-            PatientsScreen(clinicId: clinic.id),
+            KeepAliveTab(child: PatientsScreen(clinicId: clinic.id)),
           ],
         ),
       ),

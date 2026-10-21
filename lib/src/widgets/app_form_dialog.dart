@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/app_design_tokens.dart';
 import '../utils/context_extensions.dart';
+import 'action_feedback.dart';
 
 export 'app_confirm_dialog.dart';
 export 'forms/app_form_components.dart';
@@ -356,13 +357,18 @@ class AppFormField extends StatelessWidget {
   }
 }
 
-/// A styled action button for dialog footers
+/// A styled action button for dialog footers.
+///
+/// With [isLoading] the button keeps its colour, shows a spinner with
+/// [loadingLabel] and ignores taps, so a save cannot be started twice.
 class AppDialogAction extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool isPrimary;
   final bool isDestructive;
   final IconData? icon;
+  final bool isLoading;
+  final String? loadingLabel;
 
   const AppDialogAction({
     super.key,
@@ -371,25 +377,42 @@ class AppDialogAction extends StatelessWidget {
     this.isPrimary = false,
     this.isDestructive = false,
     this.icon,
+    this.isLoading = false,
+    this.loadingLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     if (isPrimary) {
-      return FilledButton.icon(
-        onPressed: onPressed,
-        icon: icon != null ? Icon(icon, size: 16) : const SizedBox.shrink(),
-        label: Text(label),
-        style: FilledButton.styleFrom(
-          backgroundColor: isDestructive
-              ? AppColors.critical
-              : AppColors.primaryEmerald,
-          foregroundColor: isDestructive
-              ? Colors.white
-              : AppColors.textOnEmerald,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
-          textStyle: const TextStyle(fontFamily: AppType.family, fontWeight: FontWeight.w600, fontSize: 14),
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final foreground = isDestructive
+          ? Colors.white
+          : (isDark ? AppColors.textOnEmerald : Colors.white);
+      return PressScale(
+        enabled: onPressed != null && !isLoading,
+        child: FilledButton(
+          // Kept enabled while loading so it stays coloured; taps do nothing.
+          onPressed: isLoading ? () {} : onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: isDestructive
+                ? AppColors.critical
+                : AppColors.accent(isDark),
+            foregroundColor: foreground,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
+            textStyle: const TextStyle(
+              fontFamily: AppType.family,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          child: ActionButtonContent(
+            phase: isLoading ? ActionPhase.busy : ActionPhase.idle,
+            label: label,
+            busyLabel: loadingLabel,
+            icon: icon,
+            color: foreground,
+          ),
         ),
       );
     }

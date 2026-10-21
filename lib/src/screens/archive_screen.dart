@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/models.dart';
+import '../widgets/action_feedback.dart';
+import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/date_time_format.dart';
 import '../widgets/screen_kit.dart';
@@ -255,16 +257,28 @@ class ArchiveScreen extends ConsumerWidget {
     Patient patient,
   ) async {
     final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    await ref
-        .read(patientRepositoryProvider)
-        .restorePatient(patient.id, userId);
+    try {
+      // The progress dialog stops a double tap restoring twice.
+      await AppProgressDialog.run(
+        context,
+        message: 'Restoring ${patient.fullName}…',
+        action: () => ref
+            .read(patientRepositoryProvider)
+            .restorePatient(patient.id, userId),
+      );
+    } catch (error) {
+      AppNotification.error(
+        title: 'Patient not restored',
+        message: describeActionError(error),
+      );
+      return;
+    }
     ref.invalidate(archivedPatientsProvider);
     ref.invalidate(patientsProvider);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${patient.fullName} restored successfully.')),
-      );
-    }
+    AppNotification.success(
+      title: 'Patient restored',
+      message: '${patient.fullName} is back in the registry.',
+    );
   }
 
   Future<void> _permanentlyDeletePatient(
@@ -272,28 +286,29 @@ class ArchiveScreen extends ConsumerWidget {
     WidgetRef ref,
     Patient patient,
   ) async {
-    final confirmed = await AppConfirmDialog.show(
+    final userId = ref.read(currentUserProvider)?.id ?? 'system';
+    final deleted = await AppConfirmDialog.show(
       context,
       title: 'Permanently Delete Patient Record',
       message:
           'Are you sure you want to permanently delete ${patient.fullName} (${patient.id}) and all associated documents? This action cannot be undone.',
       confirmLabel: 'Delete Forever',
+      busyLabel: 'Deleting…',
+      doneLabel: 'Deleted',
       cancelLabel: 'Cancel',
       isDestructive: true,
       icon: Icons.delete_forever_outlined,
       type: ConfirmDialogType.danger,
+      action: () => ref
+          .read(patientRepositoryProvider)
+          .permanentlyDeletePatient(patient.id, userId),
     );
-    if (confirmed != true) return;
-    final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    await ref
-        .read(patientRepositoryProvider)
-        .permanentlyDeletePatient(patient.id, userId);
+    if (!deleted) return;
     ref.invalidate(archivedPatientsProvider);
     ref.invalidate(patientsProvider);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${patient.fullName} permanently deleted.')),
-      );
-    }
+    AppNotification.success(
+      title: 'Patient deleted',
+      message: '${patient.fullName} was permanently deleted.',
+    );
   }
 }

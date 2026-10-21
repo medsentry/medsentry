@@ -7,6 +7,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
+import 'src/navigation/navigation_memory.dart';
 import 'src/config/supabase_config.dart';
 import 'src/widgets/startup_loading_screen.dart';
 
@@ -26,6 +27,12 @@ Future<void> main() async {
   };
 
   runApp(const ProviderScope(child: _AppBootstrap()));
+}
+
+/// Starts the backend and loads the remembered screen and tabs, so the first
+/// screen can open where the person left off.
+Future<void> _initialize() async {
+  await Future.wait([_initializeSupabase(), NavigationMemory.load()]);
 }
 
 Future<void> _initializeSupabase() async {
@@ -59,12 +66,12 @@ class _AppBootstrapState extends State<_AppBootstrap> {
   @override
   void initState() {
     super.initState();
-    _initialization = _initializeSupabase();
+    _initialization = _initialize();
   }
 
   void _retry() {
     setState(() {
-      _initialization = _initializeSupabase();
+      _initialization = _initialize();
     });
   }
 

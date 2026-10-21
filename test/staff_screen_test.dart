@@ -8,6 +8,7 @@ import 'package:medsentry/src/repositories/auth_repository.dart';
 import 'package:medsentry/src/database/simple_database.dart';
 import 'package:medsentry/src/services/audit_service.dart';
 import 'package:medsentry/src/screens/staff_screen.dart';
+import 'package:toastification/toastification.dart';
 
 class _FakeAuthRepository extends AuthRepository {
   _FakeAuthRepository() : super(SimpleDatabase(), AuditService());
@@ -65,10 +66,13 @@ void main() {
           ),
           clinicsProvider.overrideWith((ref) => Future.value(<Clinic>[])),
         ],
-        child: MaterialApp(
-          theme: buildMedSentryTheme(Brightness.dark),
-          home: const Scaffold(
-            body: SizedBox(width: 1200, height: 800, child: StaffScreen()),
+        // Results are reported as toasts, which need the app's wrapper.
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            theme: buildMedSentryTheme(Brightness.dark),
+            home: const Scaffold(
+              body: SizedBox(width: 1200, height: 800, child: StaffScreen()),
+            ),
           ),
         ),
       ),
@@ -102,9 +106,20 @@ void main() {
     await tester.tap(find.byTooltip('Delete user permanently'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete permanently'));
-    await tester.pumpAndSettle();
+    // Step through the run and the brief "Deleted" state; settling would
+    // also run the toast's animation until it closes itself.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
     expect(authRepository.deletedUserId, inactiveStaff.id);
-    expect(find.text('Inactive Staff permanently deleted'), findsOneWidget);
+    // The dialog ran the delete, showed it finished, and closed.
+    expect(find.text('Delete User Permanently'), findsNothing);
+    expect(find.text('Inactive Staff was permanently deleted.'), findsOneWidget);
+
+    // Let the toast close so no timer outlives the test.
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('an RHU Admin cannot manage another Admin', (tester) async {

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../models/models.dart';
+import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../services/report_service.dart';
 import '../utils/context_extensions.dart';
@@ -1762,36 +1763,37 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     BuildContext context,
     GeneratedReport report,
   ) async {
-    final confirmed = await AppConfirmDialog.show(
+    final deleted = await AppConfirmDialog.show(
       context,
       title: 'Delete Report',
       message:
           'Are you sure you want to delete "${report.title}" from the archive? This action cannot be undone.',
       confirmLabel: 'Delete Report',
+      busyLabel: 'Deleting…',
+      doneLabel: 'Deleted',
       cancelLabel: 'Cancel',
       type: ConfirmDialogType.danger,
       isDestructive: true,
       icon: Icons.delete_outline,
+      action: () async {
+        await ref.read(databaseProvider).deleteGeneratedReport(report.id);
+        await ref
+            .read(auditServiceProvider)
+            .logAction(
+              action: AuditAction.delete,
+              entityType: AuditEntityTypes.report,
+              entityId: report.id,
+              details: 'Deleted generated report "${report.title}"',
+            );
+      },
     );
+    if (!deleted) return;
 
-    if (confirmed != true) return;
-
-    await ref.read(databaseProvider).deleteGeneratedReport(report.id);
-    await ref
-        .read(auditServiceProvider)
-        .logAction(
-          action: AuditAction.delete,
-          entityType: AuditEntityTypes.report,
-          entityId: report.id,
-          details: 'Deleted generated report "${report.title}"',
-        );
     ref.invalidate(generatedReportsProvider);
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Report deleted')));
-    }
+    AppNotification.success(
+      title: 'Report deleted',
+      message: '"${report.title}" was removed from the archive.',
+    );
   }
 
   Future<void> _downloadReport(

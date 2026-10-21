@@ -1284,12 +1284,12 @@ class _ClinicFormModalState extends ConsumerState<_ClinicFormModal> {
             onPressed: _isSaving ? null : _handleCancel,
           ),
           AppDialogAction(
-            label: _isSaving
-                ? 'Saving...'
-                : (existing != null ? 'Update Facility' : 'Register Facility'),
+            label: existing != null ? 'Update Facility' : 'Register Facility',
+            loadingLabel: 'Saving…',
+            isLoading: _isSaving,
             isPrimary: true,
             icon: Icons.save_outlined,
-            onPressed: _isSaving ? null : _save,
+            onPressed: _save,
           ),
         ],
       ),

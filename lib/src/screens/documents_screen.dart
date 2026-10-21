@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/models.dart';
+import '../widgets/action_feedback.dart';
+import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../services/document_service.dart';
 import '../utils/context_extensions.dart';
@@ -1191,54 +1193,56 @@ class _DocumentCard extends ConsumerWidget {
   }
 
   Future<void> _deleteDocument(BuildContext context, WidgetRef ref) async {
-    final confirmed = await AppConfirmDialog.show(
+    String? cleanupError;
+    // The dialog runs the delete, so it cannot be started twice and a
+    // failure is shown in the dialog where it can be retried.
+    final deleted = await AppConfirmDialog.show(
       context,
       title: 'Delete Document',
       message:
           'Are you sure you want to delete "${document.title}"? This cannot be undone.',
       confirmLabel: 'Delete Document',
+      busyLabel: 'Deleting…',
+      doneLabel: 'Deleted',
       cancelLabel: 'Cancel',
       isDestructive: true,
       icon: Icons.delete_outline_rounded,
       type: ConfirmDialogType.danger,
+      action: () async {
+        await ref.read(databaseProvider).deleteDocument(document.id);
+        await ref
+            .read(auditServiceProvider)
+            .logAction(
+              action: AuditAction.delete,
+              entityType: AuditEntityTypes.document,
+              entityId: document.id,
+              patientId: document.patientId,
+              details: 'Deleted document "${document.title}"',
+            );
+        try {
+          await DocumentService.deleteDocument(document.filePath);
+        } catch (e) {
+          cleanupError = describeActionError(e);
+        }
+      },
     );
+    if (!deleted) return;
 
-    if (confirmed != true || !context.mounted) return;
-
-    try {
-      await ref.read(databaseProvider).deleteDocument(document.id);
-      await ref
-          .read(auditServiceProvider)
-          .logAction(
-            action: AuditAction.delete,
-            entityType: AuditEntityTypes.document,
-            entityId: document.id,
-            patientId: document.patientId,
-            details: 'Deleted document "${document.title}"',
-          );
-      String? cleanupError;
-      try {
-        await DocumentService.deleteDocument(document.filePath);
-      } catch (e) {
-        cleanupError = '$e';
-      }
-      onChanged(document.patientId);
-
-      if (context.mounted) {
-        final message = cleanupError == null
-            ? 'Document deleted'
-            : 'Document record was deleted, but its stored file could not be removed: $cleanupError';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to delete document: $e')),
-        );
-      }
+    // A toast, not a snackbar on this card: refreshing removes the card,
+    // which left the old confirmation with nowhere to show.
+    if (cleanupError == null) {
+      AppNotification.success(
+        title: 'Document deleted',
+        message: '"${document.title}" was removed.',
+      );
+    } else {
+      AppNotification.warning(
+        title: 'Document deleted',
+        message:
+            'The record was removed, but its stored file could not be: $cleanupError',
+      );
     }
+    onChanged(document.patientId);
   }
 }
 
@@ -1974,23 +1978,17 @@ class _DocumentUploadDialogState extends ConsumerState<DocumentUploadDialog> {
         ),
       ),
       actions: [
-        OutlinedButton(
+        AppDialogAction(
+          label: 'Cancel',
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
         ),
-        FilledButton.icon(
+        AppDialogAction(
+          label: 'Save Document',
+          loadingLabel: 'Uploading…',
+          isLoading: _isSaving,
+          isPrimary: true,
+          icon: Icons.cloud_upload_outlined,
           onPressed: _canSave ? _saveDocument : null,
-          icon: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.cloud_upload_outlined),
-          label: const Text('Save Document'),
         ),
       ],
     );
@@ -2481,23 +2479,17 @@ class _DocumentEditDialogState extends ConsumerState<_DocumentEditDialog> {
         ],
       ),
       actions: [
-        OutlinedButton(
+        AppDialogAction(
+          label: 'Cancel',
           onPressed: _isSaving ? null : () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
         ),
-        FilledButton.icon(
+        AppDialogAction(
+          label: 'Save Changes',
+          loadingLabel: 'Saving…',
+          isLoading: _isSaving,
+          isPrimary: true,
+          icon: Icons.save_outlined,
           onPressed: _canSave ? _save : null,
-          icon: _isSaving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.save_outlined),
-          label: const Text('Save Changes'),
         ),
       ],
     );

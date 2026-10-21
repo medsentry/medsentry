@@ -8,6 +8,7 @@ import '../providers/providers.dart';
 import '../services/certificate_service.dart';
 import '../utils/file_exporter/file_exporter.dart';
 import '../widgets/app_form_dialog.dart';
+import '../navigation/navigation_memory.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import '../widgets/scrolling_tab_layout.dart';
@@ -22,6 +23,7 @@ class CertificatesScreen extends ConsumerStatefulWidget {
 class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  static const _tabs = TabMemory('certificates', ['issue', 'registry']);
   CertificateType _selectedType = CertificateType.medicalCertificate;
   String? _selectedPatientId;
   final _purposeController = TextEditingController();
@@ -34,7 +36,8 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // Opens on the tab in the address, else the one last used here.
+    _tabController = _tabs.createController(context: context, vsync: this);
     _purposeController.addListener(_onFieldChanged);
     _findingsController.addListener(_onFieldChanged);
     _recommendationsController.addListener(_onFieldChanged);
@@ -95,9 +98,13 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
         builder: (context) {
           final tabView = TabBarView(
             controller: _tabController,
+            // Kept alive so the form and the registry search survive a
+            // switch between tabs.
             children: [
-              _buildIssuanceTab(context, isDark),
-              _buildArchiveTab(context, isDark, archiveAsync),
+              KeepAliveTab(child: _buildIssuanceTab(context, isDark)),
+              KeepAliveTab(
+                child: _buildArchiveTab(context, isDark, archiveAsync),
+              ),
             ],
           );
 

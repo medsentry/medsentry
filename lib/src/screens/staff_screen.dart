@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/user.dart';
+import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../widgets/app_confirm_dialog.dart';
 import '../widgets/layout/responsive_layout.dart';
@@ -109,30 +110,30 @@ class StaffActions {
       return;
     }
 
-    final confirmed = await AppConfirmDialog.show(
+    // The server call can fail offline; the dialog runs it and shows why.
+    final deactivated = await AppConfirmDialog.show(
       context,
       title: 'Deactivate User',
       message:
           'Deactivate ${user.fullName}? They will no longer be able to sign in.',
       confirmLabel: 'Deactivate',
+      busyLabel: 'Deactivating…',
+      doneLabel: 'Deactivated',
       cancelLabel: 'Cancel',
       type: ConfirmDialogType.warning,
       isDestructive: true,
       icon: Icons.person_off_outlined,
+      action: () => ref
+          .read(authRepositoryProvider)
+          .deactivateUser(user.id, currentUser?.id ?? 'system'),
     );
+    if (!deactivated) return;
 
-    if (confirmed != true) return;
-
-    await ref
-        .read(authRepositoryProvider)
-        .deactivateUser(user.id, currentUser?.id ?? 'system');
     ref.invalidate(usersProvider);
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${user.fullName} deactivated')));
-    }
+    AppNotification.success(
+      title: 'User deactivated',
+      message: '${user.fullName} can no longer sign in.',
+    );
   }
 
   static Future<void> confirmDelete(
@@ -166,36 +167,28 @@ class StaffActions {
       return;
     }
 
-    final confirmed = await AppConfirmDialog.show(
+    final deleted = await AppConfirmDialog.show(
       context,
       title: 'Delete User Permanently',
       message:
           'Permanently delete ${user.fullName} (${user.email})? This cannot be undone. Existing clinical records and audit history will be retained.',
       confirmLabel: 'Delete permanently',
+      busyLabel: 'Deleting…',
+      doneLabel: 'Deleted',
       cancelLabel: 'Cancel',
       type: ConfirmDialogType.warning,
       isDestructive: true,
       icon: Icons.delete_forever_outlined,
-    );
-    if (confirmed != true) return;
-
-    try {
-      await ref
+      action: () => ref
           .read(authRepositoryProvider)
-          .deleteUser(user.id, currentUser.id);
-      ref.invalidate(usersProvider);
+          .deleteUser(user.id, currentUser.id),
+    );
+    if (!deleted) return;
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${user.fullName} permanently deleted')),
-        );
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to delete ${user.fullName}: $error')),
-        );
-      }
-    }
+    ref.invalidate(usersProvider);
+    AppNotification.success(
+      title: 'User deleted',
+      message: '${user.fullName} was permanently deleted.',
+    );
   }
 }

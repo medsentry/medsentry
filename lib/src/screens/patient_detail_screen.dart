@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 
 import '../models/models.dart';
+import '../widgets/action_feedback.dart';
+import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../services/patient_transfer_service.dart';
 import '../services/report_pdf_service.dart';
@@ -14,6 +16,7 @@ import '../utils/patient_address_data.dart';
 import '../widgets/app_card.dart';
 import '../widgets/scrolling_tab_layout.dart';
 import '../widgets/app_form_dialog.dart';
+import '../navigation/navigation_memory.dart';
 import '../widgets/layout/responsive_layout.dart';
 import '../widgets/loading_state.dart';
 import 'documents_screen.dart';
@@ -22,6 +25,8 @@ class PatientDetailScreen extends ConsumerWidget {
   final String patientId;
 
   const PatientDetailScreen({super.key, required this.patientId});
+
+  static const _tabs = TabMemory('patient', ['info', 'documents', 'audit']);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,7 +86,7 @@ class PatientDetailScreen extends ConsumerWidget {
               ? () => _transferPatient(context, ref, patient)
               : null,
         );
-        final tabBar = Container(
+        Widget tabBar(TabController controller) => Container(
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardSurface : theme.colorScheme.surface,
             borderRadius: AppRadius.roundedSm,
@@ -92,6 +97,7 @@ class PatientDetailScreen extends ConsumerWidget {
             ),
           ),
           child: TabBar(
+            controller: controller,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             indicatorColor: isDark
@@ -119,28 +125,33 @@ class PatientDetailScreen extends ConsumerWidget {
             ],
           ),
         );
-        final tabView = TabBarView(
+        Widget tabView(TabController controller) => TabBarView(
+          controller: controller,
           children: [
-            _OverviewTab(patient: patient),
-            _PatientDocumentsList(
-              patient: patient,
-              onUploadDocument: canUpload
-                  ? () => _handleUploadDocuments(context, ref, patient)
-                  : null,
+            KeepAliveTab(child: _OverviewTab(patient: patient)),
+            KeepAliveTab(
+              child: _PatientDocumentsList(
+                patient: patient,
+                onUploadDocument: canUpload
+                    ? () => _handleUploadDocuments(context, ref, patient)
+                    : null,
+              ),
             ),
-            _PatientAuditTrailList(patient: patient),
+            KeepAliveTab(child: _PatientAuditTrailList(patient: patient)),
           ],
         );
 
         // The header and actions scroll away with the open tab, so the tab
         // gets the whole screen instead of a small box under them.
         return ResponsiveContentContainer(
-          child: DefaultTabController(
-            length: 3,
-            child: ScrollingTabLayout(
+          // The open tab is remembered and kept in the address
+          // (?tab=documents), so a refresh or a shared link reopens it.
+          child: RememberedTabs(
+            memory: _tabs,
+            builder: (context, controller) => ScrollingTabLayout(
               header: [identityHeader, actionsBar, const SizedBox(height: 12)],
-              tabBar: tabBar,
-              tabView: tabView,
+              tabBar: tabBar(controller),
+              tabView: tabView(controller),
             ),
           ),
         );
@@ -218,35 +229,36 @@ class PatientDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Patient patient,
   ) async {
-    final confirmed = await AppConfirmDialog.show(
+    final userId = ref.read(currentUserProvider)?.id ?? 'system';
+    final deleted = await AppConfirmDialog.show(
       context,
       title: 'Permanently Delete Patient Record',
       message:
           'Are you sure you want to permanently delete the record for ${patient.fullName}? This action cannot be undone and is recorded in the audit trail.',
       confirmLabel: 'Delete Permanently',
+      busyLabel: 'Deleting…',
+      doneLabel: 'Deleted',
       cancelLabel: 'Cancel',
       isDestructive: true,
       icon: Icons.delete_forever_outlined,
       type: ConfirmDialogType.danger,
+      action: () => ref
+          .read(patientRepositoryProvider)
+          .permanentlyDeletePatient(patient.id, userId),
     );
+    if (!deleted || !context.mounted) return;
 
-    if (confirmed != true || !context.mounted) return;
-
-    final userId = ref.read(currentUserProvider)?.id ?? 'system';
-    await ref
-        .read(patientRepositoryProvider)
-        .permanentlyDeletePatient(patient.id, userId);
+    // Leave the record first: refreshing it while it is on screen flashed
+    // "Patient record could not be loaded".
+    context.go('/patients');
     ref.invalidate(patientsProvider);
     ref.invalidate(archivedPatientsProvider);
     ref.invalidate(patientProvider(patient.id));
     ref.invalidate(auditLogsProvider);
-
-    if (context.mounted) {
-      context.go('/patients');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Patient record permanently deleted')),
-      );
-    }
+    AppNotification.success(
+      title: 'Patient deleted',
+      message: '${patient.fullName} was permanently deleted.',
+    );
   }
 
   Future<void> _transferPatient(
@@ -323,33 +335,31 @@ class PatientDetailScreen extends ConsumerWidget {
     if (target == null || !context.mounted) return;
 
     try {
-      final failedUploads = await PatientTransferService(
-        ref.read(databaseProvider),
-        ref.read(auditServiceProvider),
-      ).transfer(patient: patient, target: target, actor: actor);
+      // Transferring uploads documents and can take a while; the progress
+      // dialog shows it is working and stops a second transfer starting.
+      final failedUploads = await AppProgressDialog.run(
+        context,
+        message: 'Moving ${patient.fullName} to ${target.name}…',
+        action: () => PatientTransferService(
+          ref.read(databaseProvider),
+          ref.read(auditServiceProvider),
+        ).transfer(patient: patient, target: target, actor: actor),
+      );
       ref.invalidate(patientProvider(patient.id));
       ref.invalidate(patientsProvider);
       ref.invalidate(patientDocumentsProvider(patient.id));
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            failedUploads == 0
-                ? '${patient.fullName} moved to ${target.name}.'
-                : '${patient.fullName} moved to ${target.name}. '
-                      '$failedUploads document file(s) will finish uploading '
-                      'on the next sync.',
-          ),
-        ),
+      AppNotification.success(
+        title: 'Patient transferred',
+        message: failedUploads == 0
+            ? '${patient.fullName} moved to ${target.name}.'
+            : '${patient.fullName} moved to ${target.name}. '
+                  '$failedUploads document file(s) will finish uploading '
+                  'on the next sync.',
       );
     } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Transfer failed: ${error is StateError || error is ArgumentError ? (error as dynamic).message : error}',
-          ),
-        ),
+      AppNotification.error(
+        title: 'Transfer failed',
+        message: describeActionError(error),
       );
     }
   }
@@ -359,43 +369,34 @@ class PatientDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Patient patient,
   ) async {
-    final confirmed = await AppConfirmDialog.show(
+    final userId = ref.read(currentUserProvider)?.id ?? 'system';
+    final archived = await AppConfirmDialog.show(
       context,
       title: 'Archive Patient Record',
       message:
           'Archive ${patient.fullName}? The record can be restored at any time from the Archive module.',
       confirmLabel: 'Archive Patient',
+      busyLabel: 'Archiving…',
+      doneLabel: 'Archived',
       cancelLabel: 'Cancel',
       isDestructive: false,
       icon: Icons.archive_outlined,
       type: ConfirmDialogType.warning,
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      final userId = ref.read(currentUserProvider)?.id ?? 'system';
-      await ref
+      action: () => ref
           .read(patientRepositoryProvider)
-          .deletePatient(patient.id, userId);
-      ref.invalidate(patientsProvider);
-      ref.invalidate(archivedPatientsProvider);
-      ref.invalidate(auditLogsProvider);
-      ref.invalidate(patientProvider(patient.id));
+          .deletePatient(patient.id, userId),
+    );
+    if (!archived || !context.mounted) return;
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${patient.fullName} archived.')),
-        );
-        context.go('/patients');
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not archive patient: $error')),
-        );
-      }
-    }
+    context.go('/patients');
+    ref.invalidate(patientsProvider);
+    ref.invalidate(archivedPatientsProvider);
+    ref.invalidate(auditLogsProvider);
+    ref.invalidate(patientProvider(patient.id));
+    AppNotification.success(
+      title: 'Patient archived',
+      message: '${patient.fullName} can be restored from Archive.',
+    );
   }
 }
 
@@ -1786,20 +1787,17 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
           ),
         ),
         actions: [
-          TextButton(
+          AppDialogAction(
+            label: 'Cancel',
             onPressed: _isSaving ? null : _handleCancel,
-            child: const Text('Cancel'),
           ),
-          ElevatedButton.icon(
-            onPressed: _isSaving ? null : _save,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined),
-            label: const Text('Save Changes'),
+          AppDialogAction(
+            label: 'Save Changes',
+            loadingLabel: 'Saving…',
+            isLoading: _isSaving,
+            isPrimary: true,
+            icon: Icons.save_outlined,
+            onPressed: _save,
           ),
         ],
       ),
@@ -1950,8 +1948,14 @@ class _PatientEditDialogState extends ConsumerState<_PatientEditDialog> {
 
       if (!mounted) return;
       Navigator.pop(context, true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Patient information saved successfully')),
+      AppNotification.success(
+        title: 'Changes saved',
+        message: 'Patient information was updated.',
+      );
+    } catch (error) {
+      AppNotification.error(
+        title: 'Changes not saved',
+        message: describeActionError(error),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);

@@ -14,6 +14,7 @@ import '../services/app_notification.dart';
 import '../services/document_service.dart';
 import '../providers/providers.dart';
 import '../widgets/app_form_dialog.dart';
+import '../navigation/navigation_memory.dart';
 import '../widgets/backup_passphrase_dialog.dart';
 import '../widgets/scrolling_tab_layout.dart';
 import '../widgets/change_pin_dialog.dart';
@@ -1780,6 +1781,7 @@ class StaffManagementPanel extends ConsumerStatefulWidget {
 class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  static const _tabs = TabMemory('accounts', ['active', 'inactive']);
   final _searchController = TextEditingController();
   String _searchQuery = '';
   static const _superAdminsFilter = '__super_admins__';
@@ -1789,7 +1791,7 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = _tabs.createController(context: context, vsync: this);
   }
 
   @override
@@ -2483,9 +2485,11 @@ class _AdminResetPasswordDialogState extends State<_AdminResetPasswordDialog> {
         ),
         AppDialogAction(
           label: 'Reset Password',
+          loadingLabel: 'Resetting…',
+          isLoading: _isSaving,
           isPrimary: true,
           icon: Icons.check,
-          onPressed: _isSaving ? null : _submit,
+          onPressed: _submit,
         ),
       ],
     );
@@ -3438,18 +3442,18 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
             onPressed: _isSaving ? null : _handleCancel,
           ),
           AppDialogAction(
-            label: _isSaving
-                ? (_isEdit ? 'Saving...' : 'Creating...')
-                : (_isEdit
-                      ? 'Save Changes'
-                      : (_role == UserRole.admin
-                            ? 'Create Admin'
-                            : (_role == UserRole.superAdmin
-                                  ? 'Create Super Admin'
-                                  : 'Create User'))),
+            label: _isEdit
+                ? 'Save Changes'
+                : (_role == UserRole.admin
+                      ? 'Create Admin'
+                      : (_role == UserRole.superAdmin
+                            ? 'Create Super Admin'
+                            : 'Create User')),
+            loadingLabel: _isEdit ? 'Saving…' : 'Creating…',
+            isLoading: _isSaving,
             isPrimary: true,
             icon: Icons.save_outlined,
-            onPressed: _isSaving ? null : _save,
+            onPressed: _save,
           ),
         ],
       ),

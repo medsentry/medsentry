@@ -20,6 +20,7 @@ import '../screens/facility_detail_screen.dart';
 import '../widgets/app_shell.dart';
 import '../providers/providers.dart';
 import '../models/user.dart';
+import '../navigation/navigation_memory.dart';
 
 bool _canAccessRoute(User user, String path) {
   if (path == '/profile') return true;
@@ -72,7 +73,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   });
   ref.onDispose(refreshListenable.dispose);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/login',
     refreshListenable: refreshListenable,
     redirect: (context, state) async {
@@ -114,6 +115,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             if (_canAccessRoute(currentUser, target)) {
               return target;
             }
+          }
+          // After a restart or sign-in, reopen the screen (and tab) this
+          // account last used, when it is still allowed. The module check
+          // below runs again on that location.
+          final remembered = NavigationMemory.instance.lastLocation(
+            currentUser.id,
+          );
+          if (remembered != null &&
+              _canAccessRoute(currentUser, Uri.parse(remembered).path)) {
+            return remembered;
           }
           return currentUser.homePath;
         }
@@ -408,4 +419,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ),
   );
+
+  // Record each screen the signed-in person opens, tab included, so the
+  // next start can return to it.
+  void rememberLocation() {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    NavigationMemory.instance.rememberLocation(
+      user.id,
+      router.routerDelegate.currentConfiguration.uri,
+    );
+  }
+
+  router.routerDelegate.addListener(rememberLocation);
+  ref.onDispose(() => router.routerDelegate.removeListener(rememberLocation));
+  return router;
 });

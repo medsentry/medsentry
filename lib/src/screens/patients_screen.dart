@@ -2007,13 +2007,17 @@ class _PatientRegistrationDialogState
       actions: [
         AppDialogAction(
           label: 'Cancel',
-          onPressed: () => Navigator.pop(context),
+          // Closing mid-save still created the patient while it looked
+          // cancelled, so Cancel waits for the save to finish.
+          onPressed: _isSubmitting ? null : () => Navigator.pop(context),
         ),
         AppDialogAction(
-          label: _isSubmitting ? 'Registering...' : 'Register Patient',
+          label: 'Register Patient',
+          loadingLabel: 'Registering…',
+          isLoading: _isSubmitting,
           isPrimary: true,
-          icon: _isSubmitting ? null : Icons.check_circle_outline,
-          onPressed: _isSubmitting ? null : _submit,
+          icon: Icons.check_circle_outline,
+          onPressed: _submit,
         ),
       ],
     );
