@@ -549,7 +549,7 @@ class _PatientsPageHeader extends StatelessWidget {
               border: Border.all(
                 color: isDark
                     ? AppColors.borderSubtle
-                    : const Color(0xFFE2E8F0),
+                    : AppColors.lightBorder,
               ),
             ),
             child: LayoutBuilder(
@@ -610,7 +610,7 @@ class _PatientsPageHeader extends StatelessWidget {
                           side: BorderSide(
                             color: isDark
                                 ? AppColors.borderSubtle
-                                : const Color(0xFFCBD5E1),
+                                : AppColors.lightBorderActive,
                           ),
                         ),
                         onPressed: onExportRegistry,
@@ -690,7 +690,7 @@ class _PatientsPageHeader extends StatelessWidget {
               border: Border.all(
                 color: isDark
                     ? AppColors.borderSubtle
-                    : const Color(0xFFE2E8F0),
+                    : AppColors.lightBorder,
               ),
             ),
             // Wraps onto a second line on phones instead of overflowing.
@@ -714,7 +714,7 @@ class _PatientsPageHeader extends StatelessWidget {
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
                         ? AppColors.textPrimary
-                        : const Color(0xFF0F172A),
+                        : AppColors.lightTextPrimary,
                   ),
                 ),
                 Text(
@@ -753,7 +753,7 @@ class _PatientsPageHeader extends StatelessWidget {
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
                         ? AppColors.primaryEmerald
-                        : const Color(0xFF0F766E),
+                        : AppColors.primaryEmeraldDark,
                   ),
                 ),
               ],
@@ -856,7 +856,7 @@ class _PatientsToolbar extends StatelessWidget {
                 borderSide: BorderSide(
                   color: isDark
                       ? AppColors.borderSubtle
-                      : const Color(0xFFCBD5E1),
+                      : AppColors.lightBorderActive,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
@@ -864,7 +864,7 @@ class _PatientsToolbar extends StatelessWidget {
                 borderSide: BorderSide(
                   color: isDark
                       ? AppColors.borderSubtle
-                      : const Color(0xFFCBD5E1),
+                      : AppColors.lightBorderActive,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
@@ -938,7 +938,7 @@ class _PatientsToolbar extends StatelessWidget {
                       side: BorderSide(
                         color: isDark
                             ? AppColors.borderSubtle
-                            : const Color(0xFFCBD5E1),
+                            : AppColors.lightBorderActive,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -1044,13 +1044,13 @@ class _FilterDropdown<T> extends StatelessWidget {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
-            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(
-            color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+            color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -1327,7 +1327,7 @@ class _EmptyPatientsState extends StatelessWidget {
           color: isDark ? AppColors.cardSurface : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+            color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
           ),
         ),
         child: Column(
@@ -1344,7 +1344,7 @@ class _EmptyPatientsState extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textPrimary : const Color(0xFF0F172A),
+                color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary,
               ),
             ),
             const SizedBox(height: 6),
@@ -1371,7 +1371,7 @@ class _EmptyPatientsState extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   side: BorderSide(
-                    color: isDark ? AppColors.borderSubtle : const Color(0xFFCBD5E1),
+                    color: isDark ? AppColors.borderSubtle : AppColors.lightBorderActive,
                   ),
                 ),
               )
@@ -2846,7 +2846,7 @@ class _PatientListTile extends StatelessWidget {
               ? AppColors.primaryEmerald
               : (isDark
                   ? AppColors.borderSubtle
-                  : const Color(0xFFE2E8F0)),
+                  : AppColors.lightBorder),
           width: isSelected ? 1.5 : 1.0,
         ),
       ),
@@ -2863,12 +2863,12 @@ class _PatientListTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppColors.inputSurface
-                      : const Color(0xFFF1F5F9),
+                      : AppColors.lightElevatedSurface,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isDark
                         ? AppColors.borderSubtle
-                        : const Color(0xFFE2E8F0),
+                        : AppColors.lightBorder,
                   ),
                 ),
                 alignment: Alignment.center,
@@ -2877,7 +2877,7 @@ class _PatientListTile extends StatelessWidget {
                   style: TextStyle(
                     color: isDark
                         ? AppColors.textPrimary
-                        : const Color(0xFF334155),
+                        : AppColors.lightTextSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -2914,12 +2914,12 @@ class _PatientListTile extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: isDark
                                   ? AppColors.elevatedSurface
-                                  : const Color(0xFFF8FAFC),
+                                  : AppColors.lightAppBackground,
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
                                 color: isDark
                                     ? AppColors.borderSubtle
-                                    : const Color(0xFFE2E8F0),
+                                    : AppColors.lightBorder,
                               ),
                             ),
                             child: Text(
@@ -2927,7 +2927,7 @@ class _PatientListTile extends StatelessWidget {
                               style: TextStyle(
                                 color: isDark
                                     ? AppColors.textSecondary
-                                    : const Color(0xFF475569),
+                                    : AppColors.lightTextSecondary,
                                 fontWeight: FontWeight.w500,
                                 fontSize: 10,
                               ),
@@ -3023,7 +3023,7 @@ class _PatientGridCard extends StatelessWidget {
               ? AppColors.primaryEmerald
               : (isDark
                   ? AppColors.borderSubtle
-                  : const Color(0xFFE2E8F0)),
+                  : AppColors.lightBorder),
           width: isSelected ? 1.5 : 1.0,
         ),
       ),
@@ -3043,12 +3043,12 @@ class _PatientGridCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppColors.inputSurface
-                          : const Color(0xFFF1F5F9),
+                          : AppColors.lightElevatedSurface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: isDark
                             ? AppColors.borderSubtle
-                            : const Color(0xFFE2E8F0),
+                            : AppColors.lightBorder,
                       ),
                     ),
                     alignment: Alignment.center,
@@ -3057,7 +3057,7 @@ class _PatientGridCard extends StatelessWidget {
                       style: TextStyle(
                         color: isDark
                             ? AppColors.textPrimary
-                            : const Color(0xFF334155),
+                            : AppColors.lightTextSecondary,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -3108,12 +3108,12 @@ class _PatientGridCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppColors.elevatedSurface
-                        : const Color(0xFFF8FAFC),
+                        : AppColors.lightAppBackground,
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
                       color: isDark
                           ? AppColors.borderSubtle
-                          : const Color(0xFFE2E8F0),
+                          : AppColors.lightBorder,
                     ),
                   ),
                   child: Text(
@@ -3121,7 +3121,7 @@ class _PatientGridCard extends StatelessWidget {
                     style: TextStyle(
                       color: isDark
                           ? AppColors.textSecondary
-                          : const Color(0xFF475569),
+                          : AppColors.lightTextSecondary,
                       fontWeight: FontWeight.w500,
                       fontSize: 10,
                     ),

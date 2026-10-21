@@ -85,7 +85,7 @@ class _AuditLogsScreenState extends ConsumerState<AuditLogsScreen> {
           isExpanded: true,
           value: _filterAction,
           hint: const Text('All actions', style: TextStyle(fontSize: 13)),
-          style: TextStyle(fontSize: 13, color: t.text),
+          style: TextStyle(fontFamily: AppType.family, fontSize: 13, color: t.text),
           items: [
             const DropdownMenuItem(value: null, child: Text('All actions', style: TextStyle(fontSize: 13))),
             ...AuditAction.values.map(

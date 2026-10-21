@@ -65,7 +65,7 @@ class ArchiveScreen extends ConsumerWidget {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: t.isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+                          color: t.isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: t.border),
                         ),

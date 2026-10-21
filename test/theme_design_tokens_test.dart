@@ -15,13 +15,14 @@ void main() {
     });
 
     test(
-      'AppRadius constants provide consistent healthcare rounded corners',
+      'AppRadius constants keep the small index-card corners',
       () {
-        expect(AppRadius.xs, equals(4.0));
-        expect(AppRadius.sm, equals(6.0));
-        expect(AppRadius.md, equals(10.0));
-        expect(AppRadius.lg, equals(14.0));
-        expect(AppRadius.xl, equals(20.0));
+        expect(AppRadius.xs, equals(3.0));
+        expect(AppRadius.sm, equals(4.0));
+        expect(AppRadius.md, equals(6.0));
+        expect(AppRadius.lg, equals(8.0));
+        expect(AppRadius.card, equals(8.0));
+        expect(AppRadius.xl, equals(12.0));
         expect(AppRadius.pill, equals(999.0));
       },
     );

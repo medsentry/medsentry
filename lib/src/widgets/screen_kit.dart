@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../config/app_design_tokens.dart';
 
 /// Shared colours for the flat app-screen style used across MedSentry's
-/// working screens: white (or charcoal) panels, a 1px border, an 8px radius,
-/// grey chrome and the emerald accent kept for data and the one primary action.
+/// working screens: leaf-paper (or night-shift) panels, a 1px rule-green
+/// border, a 6px radius, and bottle green kept for data and the one primary
+/// action.
 class ScreenTokens {
   const ScreenTokens._({
     required this.isDark,
@@ -32,19 +33,19 @@ class ScreenTokens {
   final Color onAccent;
   final Color accentSubtle;
 
-  static const radius = BorderRadius.all(Radius.circular(8));
+  static const radius = BorderRadius.all(Radius.circular(AppRadius.md));
 
   static const _light = ScreenTokens._(
     isDark: false,
-    surface: Colors.white,
-    raised: AppColors.lightAppBackground,
+    surface: AppColors.lightCardSurface,
+    raised: AppColors.lightElevatedSurface,
     border: AppColors.lightBorder,
-    control: Color(0xFFCBD5E1),
+    control: AppColors.lightBorderActive,
     text: AppColors.lightTextPrimary,
-    muted: Color(0xFF475569),
-    accent: AppColors.primaryEmeraldDeep,
+    muted: AppColors.lightTextSecondary,
+    accent: AppColors.primaryEmeraldDark,
     onAccent: Colors.white,
-    accentSubtle: Color(0x14047857),
+    accentSubtle: Color(0x141D5C45),
   );
 
   static const _dark = ScreenTokens._(
@@ -54,10 +55,10 @@ class ScreenTokens {
     border: AppColors.border,
     control: AppColors.borderActive,
     text: AppColors.textPrimary,
-    muted: Color(0xFFA1A5AE),
-    accent: AppColors.primaryEmerald,
+    muted: AppColors.textSecondary,
+    accent: AppColors.primaryMint,
     onAccent: AppColors.textOnEmerald,
-    accentSubtle: AppColors.primaryEmeraldSubtle,
+    accentSubtle: Color(0x1F86CBA6),
   );
 
   static ScreenTokens of(BuildContext context) =>
@@ -75,7 +76,11 @@ class ScreenTokens {
     minimumSize: const Size(0, 36),
     shape: const RoundedRectangleBorder(borderRadius: radius),
     side: BorderSide(color: control),
-    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+    textStyle: const TextStyle(
+      fontFamily: AppType.family,
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+    ),
   );
 
   ButtonStyle get filledButton => FilledButton.styleFrom(
@@ -84,13 +89,18 @@ class ScreenTokens {
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
     minimumSize: const Size(0, 36),
     shape: const RoundedRectangleBorder(borderRadius: radius),
-    textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+    textStyle: const TextStyle(
+      fontFamily: AppType.family,
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+    ),
   );
 }
 
 /// The title row every working screen opens with: a plain grey icon, the
 /// screen's name as its heading, one grey line about the data, and the
 /// screen's real actions on the right (wrapping under the title when narrow).
+/// It is ruled off from the page below by the ledger's double red line.
 class ScreenHeader extends StatelessWidget {
   const ScreenHeader({
     super.key,
@@ -114,7 +124,7 @@ class ScreenHeader extends StatelessWidget {
       children: [
         if (icon != null) ...[
           Padding(
-            padding: const EdgeInsets.only(top: 1),
+            padding: const EdgeInsets.only(top: 3),
             child: Icon(icon, size: 22, color: t.muted),
           ),
           const SizedBox(width: 12),
@@ -131,9 +141,10 @@ class ScreenHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                    letterSpacing: -0.5,
                     color: t.text,
                   ),
                 ),
@@ -142,7 +153,7 @@ class ScreenHeader extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle!,
-                  style: TextStyle(fontSize: 12.5, color: t.muted, height: 1.4),
+                  style: TextStyle(fontSize: 13.5, color: t.muted, height: 1.4),
                 ),
               ],
             ],
@@ -151,9 +162,8 @@ class ScreenHeader extends StatelessWidget {
       ],
     );
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: t.panel,
+    final body = Padding(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 15),
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (actions.isEmpty) return heading;
@@ -176,6 +186,42 @@ class ScreenHeader extends StatelessWidget {
           );
         },
       ),
+    );
+
+    return Container(
+      decoration: t.panel,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          body,
+          LedgerRule(isDark: t.isDark),
+        ],
+      ),
+    );
+  }
+}
+
+/// The double red line printed under the header of a columnar ledger pad.
+/// MedSentry's one recurring mark: it closes each screen header and table
+/// header, and is used nowhere else.
+class LedgerRule extends StatelessWidget {
+  const LedgerRule({super.key, required this.isDark});
+
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColors.ledgerRule(isDark);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(height: 1, color: color),
+        const SizedBox(height: 2),
+        Container(height: 1, color: color),
+      ],
     );
   }
 }
@@ -232,7 +278,11 @@ class MetricStrip extends StatelessWidget {
                   children: [
                     for (var i = 0; i < slice.length; i++) ...[
                       if (i > 0)
-                        VerticalDivider(width: 1, thickness: 1, color: t.border),
+                        VerticalDivider(
+                          width: 1,
+                          thickness: 1,
+                          color: t.border,
+                        ),
                       Expanded(
                         // An odd last cell spans the row instead of leaving
                         // an empty half beside it.
@@ -289,11 +339,11 @@ class _MetricCell extends StatelessWidget {
           Text(
             metric.value,
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.4,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.6,
               color: t.text,
-              fontFeatures: const [FontFeature.tabularFigures()],
+              fontFeatures: AppType.tabular,
             ),
           ),
           if (metric.note != null) ...[
@@ -305,7 +355,7 @@ class _MetricCell extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 color: metric.noteIsAlert
-                    ? (t.isDark ? AppColors.critical : const Color(0xFFB91C1C))
+                    ? (t.isDark ? AppColors.critical : const Color(0xFFA12C22))
                     : t.muted,
               ),
             ),

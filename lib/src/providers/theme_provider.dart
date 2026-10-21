@@ -145,11 +145,12 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
 }
 
 /// Theme Mode state notifier with SharedPreferences persistence.
-/// Defaults to [ThemeMode.dark] to embody the premium dark healthcare foundation.
+/// Defaults to [ThemeMode.light]: the paper logbook suits bright clinic rooms
+/// and long data-entry sessions. Dark mode is the night-shift variant.
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   static const _key = 'medsentry_theme_mode';
 
-  ThemeModeNotifier() : super(ThemeMode.dark) {
+  ThemeModeNotifier() : super(ThemeMode.light) {
     _load();
   }
 
@@ -255,38 +256,45 @@ ThemeData buildMedSentryTheme(
     onPrimaryContainer: isDark ? primary : accentTheme.primaryColor,
     secondary: secondary,
     onSecondary: Colors.white,
+    // Selected chips and segments fill with this. Left unset it falls back to
+    // [secondary], which puts green labels on a solid green fill.
+    secondaryContainer: primary.withValues(alpha: isDark ? 0.18 : 0.12),
+    onSecondaryContainer: isDark ? primary : accentTheme.primaryColor,
     surface: surfaceColor,
     onSurface: textPrimaryColor,
-    error: isDark ? AppColors.critical : const Color(0xFFDC2626),
-    onError: Colors.white,
+    error: isDark ? AppColors.critical : const Color(0xFFB03328),
+    onError: isDark ? const Color(0xFF3A110C) : Colors.white,
     errorContainer: isDark
         ? AppColors.critical.withValues(alpha: 0.18)
-        : const Color(0xFFFEE2E2),
-    onErrorContainer: isDark ? AppColors.critical : const Color(0xFF991B1B),
+        : const Color(0xFFF8E1DD),
+    onErrorContainer: isDark ? AppColors.critical : const Color(0xFF7E2219),
     outline: borderColor,
     outlineVariant: borderSubtleColor,
   );
 
+  // Light-mode badge text is at least 5:1 on its own tint.
   final semanticColors = SemanticColors(
-    // Light-mode badge text: 6.5:1 on its green tint (was 3.0:1).
-    normal: isDark ? AppColors.success : const Color(0xFF166534),
-    normalBg: isDark ? AppColors.successBg : const Color(0xFFDCFCE7),
-    warning: isDark ? AppColors.pending : const Color(0xFFB45309),
-    warningBg: isDark ? AppColors.pendingBg : const Color(0xFFFEF3C7),
-    critical: isDark ? AppColors.critical : const Color(0xFFDC2626),
-    criticalBg: isDark ? AppColors.criticalBg : const Color(0xFFFEE2E2),
-    // Light-mode badge text: 5.5:1 on its blue tint (was 4.2:1).
-    info: isDark ? AppColors.info : const Color(0xFF1D4ED8),
-    infoBg: isDark ? AppColors.infoBg : const Color(0xFFDBEAFE),
+    normal: isDark ? AppColors.success : const Color(0xFF1E6B4A),
+    normalBg: isDark ? AppColors.successBg : const Color(0xFFDCEFE2),
+    warning: isDark ? AppColors.pending : const Color(0xFF8A5A00),
+    warningBg: isDark ? AppColors.pendingBg : const Color(0xFFF7EBCF),
+    critical: isDark ? AppColors.critical : const Color(0xFFA12C22),
+    criticalBg: isDark ? AppColors.criticalBg : const Color(0xFFF8E1DD),
+    info: isDark ? AppColors.info : const Color(0xFF1F4F8A),
+    infoBg: isDark ? AppColors.infoBg : const Color(0xFFDDE8F5),
     neutral: isDark ? AppColors.neutral : AppColors.lightTextSecondary,
-    neutralBg: isDark ? AppColors.neutralBg : const Color(0xFFF1F5F9),
-    analytical: isDark ? AppColors.analytical : const Color(0xFF7C3AED),
-    analyticalBg: isDark ? AppColors.analyticalBg : const Color(0xFFEDE9FE),
+    neutralBg: isDark ? AppColors.neutralBg : AppColors.lightElevatedSurface,
+    analytical: isDark ? AppColors.analytical : const Color(0xFF5B3F9A),
+    analyticalBg: isDark ? AppColors.analyticalBg : const Color(0xFFECE6F6),
   );
+
+  final textTheme = _buildTextTheme(textPrimaryColor, textSecondaryColor);
 
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
+    fontFamily: AppType.family,
+    textTheme: textTheme,
     colorScheme: colorScheme,
     scaffoldBackgroundColor: scaffoldColor,
     primaryColor: colorScheme.primary,
@@ -298,20 +306,17 @@ ThemeData buildMedSentryTheme(
     appBarTheme: AppBarTheme(
       elevation: 0,
       centerTitle: false,
-      backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
+      backgroundColor: isDark
+          ? AppColors.sidebarBackground
+          : AppColors.lightCardSurface,
       foregroundColor: textPrimaryColor,
       surfaceTintColor: Colors.transparent,
-      titleTextStyle: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        color: textPrimaryColor,
-        letterSpacing: -0.2,
-      ),
+      titleTextStyle: textTheme.titleLarge,
     ),
     cardTheme: CardThemeData(
       color: surfaceColor,
       elevation: 0,
-      shadowColor: Colors.black.withValues(alpha: 0.2),
+      shadowColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.roundedCard,
         side: BorderSide(color: borderColor, width: AppColors.borderWidth),
@@ -327,6 +332,7 @@ ThemeData buildMedSentryTheme(
       filled: true,
       fillColor: isDark ? AppColors.inputSurface : AppColors.lightInputSurface,
       hintStyle: TextStyle(
+        fontFamily: AppType.family,
         color: isDark
             ? textSecondaryColor.withValues(alpha: 0.6)
             : AppColors.lightTextMuted,
@@ -378,6 +384,7 @@ ThemeData buildMedSentryTheme(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
         textStyle: const TextStyle(
+          fontFamily: AppType.family,
           fontWeight: FontWeight.w600,
           fontSize: 14,
           letterSpacing: -0.1,
@@ -393,6 +400,7 @@ ThemeData buildMedSentryTheme(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
         textStyle: const TextStyle(
+          fontFamily: AppType.family,
           fontWeight: FontWeight.w600,
           fontSize: 14,
           letterSpacing: -0.1,
@@ -407,6 +415,7 @@ ThemeData buildMedSentryTheme(
         shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
         side: BorderSide(color: borderColor, width: AppColors.borderWidth),
         textStyle: const TextStyle(
+          fontFamily: AppType.family,
           fontWeight: FontWeight.w600,
           fontSize: 14,
           letterSpacing: -0.1,
@@ -418,6 +427,7 @@ ThemeData buildMedSentryTheme(
         foregroundColor: colorScheme.primary,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedSm),
         textStyle: const TextStyle(
+          fontFamily: AppType.family,
           fontWeight: FontWeight.w600,
           fontSize: 14,
           letterSpacing: -0.1,
@@ -428,7 +438,10 @@ ThemeData buildMedSentryTheme(
       shape: RoundedRectangleBorder(borderRadius: AppRadius.roundedPill),
       side: BorderSide(color: borderColor, width: AppColors.borderWidth),
       backgroundColor: elevatedSurfaceColor,
+      selectedColor: primary.withValues(alpha: isDark ? 0.18 : 0.12),
+      checkmarkColor: isDark ? primary : accentTheme.primaryColor,
       labelStyle: TextStyle(
+        fontFamily: AppType.family,
         color: textPrimaryColor,
         fontWeight: FontWeight.w600,
         fontSize: 12,
@@ -438,7 +451,11 @@ ThemeData buildMedSentryTheme(
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: elevatedSurfaceColor,
-      contentTextStyle: TextStyle(color: textPrimaryColor, fontSize: 13),
+      contentTextStyle: TextStyle(
+        fontFamily: AppType.family,
+        color: textPrimaryColor,
+        fontSize: 13,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.roundedSm,
         side: BorderSide(color: borderColor, width: AppColors.borderWidth),
@@ -452,30 +469,25 @@ ThemeData buildMedSentryTheme(
         borderRadius: AppRadius.roundedLg,
         side: BorderSide(color: borderColor, width: AppColors.borderWidth),
       ),
-      titleTextStyle: TextStyle(
-        color: textPrimaryColor,
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.2,
-      ),
-      contentTextStyle: TextStyle(
+      titleTextStyle: textTheme.headlineSmall,
+      contentTextStyle: textTheme.bodyMedium?.copyWith(
         color: textSecondaryColor,
-        fontSize: 14,
-        height: 1.5,
       ),
     ),
     navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: isDark ? AppColors.sidebarBackground : Colors.white,
+      backgroundColor: AppSpine.background,
       elevation: 0,
       minExtendedWidth: AppDimensions.sidebarExpanded,
       selectedIconTheme: IconThemeData(color: colorScheme.primary, size: 20),
       unselectedIconTheme: IconThemeData(color: textSecondaryColor, size: 20),
       selectedLabelTextStyle: TextStyle(
+        fontFamily: AppType.family,
         color: colorScheme.primary,
         fontWeight: FontWeight.w600,
         fontSize: 13,
       ),
       unselectedLabelTextStyle: TextStyle(
+        fontFamily: AppType.family,
         color: textSecondaryColor,
         fontSize: 13,
       ),
@@ -486,13 +498,19 @@ ThemeData buildMedSentryTheme(
       headingRowHeight: AppDimensions.tableHeaderHeight,
       dataRowMinHeight: AppDimensions.tableRowHeight,
       dataRowMaxHeight: AppDimensions.tableRowHeight,
+      headingRowColor: WidgetStatePropertyAll(elevatedSurfaceColor),
       headingTextStyle: TextStyle(
+        fontFamily: AppType.family,
         color: textSecondaryColor,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.2,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w700,
       ),
-      dataTextStyle: TextStyle(color: textPrimaryColor, fontSize: 13),
+      dataTextStyle: TextStyle(
+        fontFamily: AppType.family,
+        color: textPrimaryColor,
+        fontSize: 13.5,
+        fontFeatures: AppType.tabular,
+      ),
       dividerThickness: 1,
     ),
     popupMenuTheme: PopupMenuThemeData(
@@ -503,7 +521,11 @@ ThemeData buildMedSentryTheme(
         borderRadius: AppRadius.roundedMd,
         side: BorderSide(color: borderColor, width: AppColors.borderWidth),
       ),
-      textStyle: TextStyle(color: textPrimaryColor, fontSize: 13),
+      textStyle: TextStyle(
+        fontFamily: AppType.family,
+        color: textPrimaryColor,
+        fontSize: 13,
+      ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: colorScheme.primary,
@@ -513,5 +535,55 @@ ThemeData buildMedSentryTheme(
     progressIndicatorTheme: ProgressIndicatorThemeData(
       color: colorScheme.primary,
     ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: AppSpine.background,
+        borderRadius: AppRadius.roundedSm,
+      ),
+      textStyle: const TextStyle(
+        fontFamily: AppType.family,
+        color: AppSpine.text,
+        fontSize: 12.5,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  );
+}
+
+/// The type scale. One family carries the hierarchy through weight: screen
+/// titles are set heavy and tight like the label on a record book's cover,
+/// while body text stays at regular weight with generous leading.
+TextTheme _buildTextTheme(Color primary, Color secondary) {
+  TextStyle style(
+    double size,
+    FontWeight weight, {
+    double height = 1.3,
+    double spacing = 0,
+    Color? color,
+  }) => TextStyle(
+    fontFamily: AppType.family,
+    fontSize: size,
+    fontWeight: weight,
+    height: height,
+    letterSpacing: spacing,
+    color: color ?? primary,
+  );
+
+  return TextTheme(
+    displayLarge: style(48, FontWeight.w800, height: 1.08, spacing: -1.2),
+    displayMedium: style(40, FontWeight.w800, height: 1.1, spacing: -1.0),
+    displaySmall: style(32, FontWeight.w800, height: 1.12, spacing: -0.7),
+    headlineLarge: style(28, FontWeight.w800, height: 1.15, spacing: -0.6),
+    headlineMedium: style(24, FontWeight.w800, height: 1.2, spacing: -0.45),
+    headlineSmall: style(20, FontWeight.w700, height: 1.25, spacing: -0.3),
+    titleLarge: style(18, FontWeight.w700, height: 1.3, spacing: -0.2),
+    titleMedium: style(15, FontWeight.w600, height: 1.35),
+    titleSmall: style(13.5, FontWeight.w600, height: 1.35),
+    bodyLarge: style(15, FontWeight.w400, height: 1.5),
+    bodyMedium: style(14, FontWeight.w400, height: 1.45),
+    bodySmall: style(12.5, FontWeight.w400, height: 1.4, color: secondary),
+    labelLarge: style(14, FontWeight.w600, height: 1.2),
+    labelMedium: style(12.5, FontWeight.w600, height: 1.2),
+    labelSmall: style(11.5, FontWeight.w600, height: 1.2),
   );
 }

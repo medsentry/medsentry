@@ -233,7 +233,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             border: Border.all(
               color: isPrimary
                   ? primaryEmerald.withValues(alpha: 0.35)
-                  : (isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0)),
+                  : (isDark ? AppColors.borderSubtle : AppColors.lightBorder),
               width: 1,
             ),
           ),
@@ -256,10 +256,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   fontSize: 12,
                   fontWeight: isPrimary ? FontWeight.w600 : FontWeight.w500,
                   color: isPrimary
-                      ? (isDark ? primaryEmerald : const Color(0xFF0F766E))
+                      ? (isDark ? primaryEmerald : AppColors.primaryEmeraldDark)
                       : (isDark
                             ? AppColors.textPrimary
-                            : const Color(0xFF1E293B)),
+                            : AppColors.lightTextPrimary),
                 ),
               ),
             ],
@@ -308,15 +308,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
       if (ratio >= 0.35) {
         statusLabel = 'High Volume Cluster';
-        densityColor = const Color(0xFF0F766E); // Primary deep emerald/teal
+        densityColor =
+            AppColors.primaryEmeraldDark; // Primary deep emerald/teal
       } else if (ratio >= 0.15) {
         statusLabel = 'Active Catchment';
-        densityColor = const Color(0xFF0D9488); // Mid teal
+        densityColor = AppColors.primaryEmerald; // Mid teal
       } else {
         statusLabel = 'Monitored Baseline';
         densityColor = isDark
-            ? const Color(0xFF94A3B8)
-            : const Color(0xFF64748B); // Slate neutral
+            ? AppColors.neutral
+            : AppColors.lightTextMuted; // Slate neutral
       }
 
       return (
@@ -475,7 +476,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               value: item.$3,
                               backgroundColor: isDark
                                   ? AppColors.borderSubtle
-                                  : const Color(0xFFE2E8F0),
+                                  : AppColors.lightBorder,
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 item.$5,
                               ),
@@ -759,7 +760,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     : AppColors.lightTextMuted,
                 emergencyColor: isDark
                     ? const Color(0xFF282B36)
-                    : const Color(0xFFE2E8F0),
+                    : AppColors.lightBorder,
                 emergencyCapColor: isDark
                     ? const Color(0xFFE5E7EB)
                     : AppColors.lightTextSecondary,
@@ -848,13 +849,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _DiagnosisSlice(
           'Cardiovascular',
           cardiovascular / total,
-          const Color(0xFF047857),
+          AppColors.primaryEmeraldDark,
         ),
       if (hypertension > 0)
         _DiagnosisSlice(
           'Hypertension',
           hypertension / total,
-          const Color(0xFF10B981),
+          AppColors.primaryEmerald,
         ),
       if (diabetes > 0)
         _DiagnosisSlice('Diabetes', diabetes / total, const Color(0xFF6EE7B7)),
@@ -865,16 +866,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           const Color(0xFFA7F3D0),
         ),
       if (general > 0)
-        _DiagnosisSlice(
-          'General Care',
-          general / total,
-          const Color(0xFF94A3B8),
-        ),
+        _DiagnosisSlice('General Care', general / total, AppColors.neutral),
     ];
 
     final slices = rawSlices.isEmpty
         ? const [
-            _DiagnosisSlice('No records in period', 1.0, Color(0xFF94A3B8)),
+            _DiagnosisSlice('No records in period', 1.0, AppColors.neutral),
           ]
         : rawSlices;
 
@@ -947,6 +944,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     value: _diagnosisTimeframe,
                     isDense: true,
                     style: TextStyle(
+                      fontFamily: AppType.family,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                       color: isDark
@@ -1081,7 +1079,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF121318) : const Color(0xFFF1F5F9),
+              color: isDark
+                  ? AppColors.inputSurface
+                  : AppColors.lightElevatedSurface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark
@@ -1311,7 +1311,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 isDark: isDark,
               ),
               _buildLegendItem(
-                color: const Color(0xFF94A3B8),
+                color: AppColors.neutral,
                 label: 'Documents',
                 isDark: isDark,
               ),
@@ -1362,11 +1362,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           if (isCritical) {
             status = 'Critical';
-            statusColor = isDark ? const Color(0xFFF43F5E) : const Color(0xFFBE123C);
+            statusColor = isDark
+                ? const Color(0xFFF43F5E)
+                : const Color(0xFFBE123C);
             priorityWeight = 3;
           } else if (isMonitored) {
             status = 'Monitored';
-            statusColor = isDark ? const Color(0xFFF59E0B) : const Color(0xFFB45309);
+            statusColor = isDark
+                ? const Color(0xFFF59E0B)
+                : const Color(0xFFB45309);
             priorityWeight = 2;
           } else {
             status = 'Active';
@@ -1581,26 +1585,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   },
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   children: [
-                    // Table Header
+                    // Table Header, ruled off in the ledger's margin red
                     TableRow(
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : Colors.black.withValues(alpha: 0.08),
-                            width: 1,
+                            color: AppColors.ledgerRule(isDark),
+                            width: 1.5,
                           ),
                         ),
                       ),
                       children: [
-                        _buildTableHeaderCell('PATIENT', isDark),
-                        _buildTableHeaderCell('CLINICAL / ALERTS', isDark),
-                        _buildTableHeaderCell('STATUS', isDark),
-                        _buildTableHeaderCell('BARANGAY', isDark),
-                        _buildTableHeaderCell('PHILHEALTH', isDark),
-                        _buildTableHeaderCell('DOCUMENTS', isDark),
-                        _buildTableHeaderCell('UPDATED', isDark),
+                        _buildTableHeaderCell('Patient', isDark),
+                        _buildTableHeaderCell('Clinical alerts', isDark),
+                        _buildTableHeaderCell('Status', isDark),
+                        _buildTableHeaderCell('Barangay', isDark),
+                        _buildTableHeaderCell('PhilHealth', isDark),
+                        _buildTableHeaderCell('Documents', isDark),
+                        _buildTableHeaderCell('Updated', isDark),
                       ],
                     ),
 
@@ -1837,10 +1839,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 10.5,
+          fontSize: 12.5,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.8,
-          color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
+          color: isDark
+              ? AppColors.textSecondary
+              : AppColors.lightTextSecondary,
         ),
       ),
     );
@@ -2197,7 +2200,7 @@ class _ActivityTrendPainter extends CustomPainter {
       canvas.drawCircle(last, 3.5, dotPaint);
     }
 
-    drawSmoothLine(toOffsets(documentSeries), const Color(0xFF94A3B8));
+    drawSmoothLine(toOffsets(documentSeries), AppColors.neutral);
     drawSmoothLine(toOffsets(certificateSeries), const Color(0xFF6EE7B7));
     drawSmoothLine(toOffsets(patientSeries), AppColors.primaryEmeraldDark);
 

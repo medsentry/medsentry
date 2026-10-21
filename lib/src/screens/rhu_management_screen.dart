@@ -188,7 +188,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                   border: Border.all(
                     color: Theme.of(context).brightness == Brightness.dark
                         ? AppColors.borderSubtle
-                        : const Color(0xFFE2E8F0),
+                        : AppColors.lightBorder,
                     width: 1,
                   ),
                 ),
@@ -238,7 +238,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                                   Theme.of(context).brightness ==
                                       Brightness.dark
                                   ? AppColors.borderSubtle
-                                  : const Color(0xFFE2E8F0),
+                                  : AppColors.lightBorder,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
@@ -248,7 +248,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                                   Theme.of(context).brightness ==
                                       Brightness.dark
                                   ? AppColors.borderSubtle
-                                  : const Color(0xFFE2E8F0),
+                                  : AppColors.lightBorder,
                             ),
                           ),
                         ),
@@ -432,7 +432,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
         color: isDark ? AppColors.cardSurface : Colors.white,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+          color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
           width: 1,
         ),
       ),
@@ -443,18 +443,18 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.inputSurface : const Color(0xFFF1F5F9),
+              color: isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
                 color: isDark
                     ? AppColors.borderSubtle
-                    : const Color(0xFFCBD5E1),
+                    : AppColors.lightBorderActive,
                 width: 1,
               ),
             ),
             child: Icon(
               icon,
-              color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
+              color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
               size: 16,
             ),
           ),
@@ -484,7 +484,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
                         ? AppColors.textPrimary
-                        : const Color(0xFF0F172A),
+                        : AppColors.lightTextPrimary,
                   ),
                 ),
               ],
@@ -516,7 +516,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
             color: isDark ? AppColors.cardSurface : Colors.white,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isDark ? AppColors.borderSubtle : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
               width: 1,
             ),
           ),
@@ -539,7 +539,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                             letterSpacing: -0.2,
                             color: isDark
                                 ? AppColors.textPrimary
-                                : const Color(0xFF0F172A),
+                                : AppColors.lightTextPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -553,12 +553,12 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                           decoration: BoxDecoration(
                             color: isDark
                                 ? AppColors.inputSurface
-                                : const Color(0xFFF1F5F9),
+                                : AppColors.lightElevatedSurface,
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
                               color: isDark
                                   ? AppColors.borderSubtle
-                                  : const Color(0xFFCBD5E1),
+                                  : AppColors.lightBorderActive,
                               width: 1,
                             ),
                           ),
@@ -573,7 +573,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                               ],
                               color: isDark
                                   ? AppColors.textSecondary
-                                  : const Color(0xFF475569),
+                                  : AppColors.lightTextSecondary,
                             ),
                           ),
                         ),
@@ -591,7 +591,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                 height: 20,
                 color: isDark
                     ? AppColors.borderSubtle
-                    : const Color(0xFFF1F5F9),
+                    : AppColors.lightElevatedSurface,
               ),
 
               // Contact / Location info

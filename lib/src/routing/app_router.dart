@@ -342,7 +342,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
-      backgroundColor: const Color(0xFF080909),
+      backgroundColor: AppColors.appBackground,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -387,7 +387,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF34D399),
-                  foregroundColor: const Color(0xFF080909),
+                  foregroundColor: AppColors.appBackground,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 12,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show Brightness, ThemeMode;
+import 'package:flutter/material.dart' show Brightness, TextStyle, ThemeMode;
 import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../config/app_design_tokens.dart';
 
@@ -20,23 +20,28 @@ shad.ThemeData buildShadcnTheme(
   AppAccentTheme accentTheme = AppAccentTheme.emerald,
 }) {
   final isDark = brightness == Brightness.dark;
-  final baseScheme =
-      isDark ? shad.ColorSchemes.darkZinc : shad.ColorSchemes.lightZinc;
+  final baseScheme = isDark
+      ? shad.ColorSchemes.darkZinc
+      : shad.ColorSchemes.lightZinc;
 
-  final primaryColor =
-      isDark ? accentTheme.darkPrimaryColor : accentTheme.primaryColor;
+  final primaryColor = isDark
+      ? accentTheme.darkPrimaryColor
+      : accentTheme.primaryColor;
 
-  final customScheme = baseScheme.copyWith(
-    primary: () => primaryColor,
+  final customScheme = baseScheme.copyWith(primary: () => primaryColor);
+  final typography = const shad.Typography.geist().copyWith(
+    sans: () => const TextStyle(fontFamily: AppType.family),
   );
 
   return isDark
       ? shad.ThemeData.dark(
           colorScheme: customScheme,
-          radius: 0.5,
+          radius: 0.35,
+          typography: typography,
         )
       : shad.ThemeData(
           colorScheme: customScheme,
-          radius: 0.5,
+          radius: 0.35,
+          typography: typography,
         );
 }

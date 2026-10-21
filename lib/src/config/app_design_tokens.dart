@@ -5,91 +5,96 @@ import 'package:flutter/material.dart';
 /// radii, component heights, shadows, and animation durations.
 
 abstract final class AppColors {
-  // Application Foundations (Dark Healthcare Aesthetic - Obsidian Clinical Theme)
-  static const Color appBackground = Color(0xFF0C0D11);
-  static const Color sidebarBackground = Color(0xFF111216);
-  static const Color cardSurface = Color(0xFF16171D);
-  static const Color elevatedSurface = Color(0xFF1D1F27);
-  static const Color modalSurface = Color(0xFF181A22);
-  static const Color inputSurface = Color(0xFF16171E);
+  // "Logbook" identity: the app is the RHU's hardbound record book and green
+  // columnar ledger pad. Dark mode is the same book under night-shift light:
+  // deep green-grey surfaces, never neutral black.
+  static const Color appBackground = Color(0xFF121C18);
+  static const Color sidebarBackground = Color(0xFF16221D);
+  static const Color cardSurface = Color(0xFF1A2722);
+  static const Color elevatedSurface = Color(0xFF22322B);
+  static const Color modalSurface = Color(0xFF1C2A24);
+  static const Color inputSurface = Color(0xFF17231E);
 
-  // Primary Emerald Accent
-  static const Color primaryEmerald = Color(0xFF34D399);
-  static const Color primaryEmeraldHover = Color(0xFF6EE7B7);
-  static const Color primaryEmeraldDark = Color(0xFF059669);
-  static const Color primaryEmeraldDeep = Color(0xFF047857);
+  // Brand greens. [primaryEmerald] is a mid "leaf" green that reads on both
+  // paper (3.4:1, for icons and large text) and night surfaces (4.5:1).
+  static const Color primaryEmerald = Color(0xFF3F9B73);
+  static const Color primaryEmeraldHover = Color(0xFF5CB28B);
+  static const Color primaryEmeraldDark = Color(0xFF1D5C45); // bottle green
+  static const Color primaryEmeraldDeep = Color(0xFF174A38);
+  static const Color primaryMint = Color(0xFF86CBA6);
 
-  /// The brand green for text, icons and filled buttons. The bright green
-  /// (#34D399) is only legible on dark surfaces: on white it is 1.9:1, so
-  /// light mode uses the deep green (5.5:1 as text on white and behind white
-  /// text).
-  static Color accent(bool isDark) =>
-      isDark ? primaryEmerald : primaryEmeraldDeep;
-  static const Color primaryEmeraldSubtle = Color(0x1F34D399); // 12% opacity
-  static const Color primaryEmeraldGlow = Color(0x3334D399); // 20% opacity
+  /// The brand green for text, icons and filled buttons: bottle green on
+  /// paper (7.6:1) and mint on night surfaces (8.2:1).
+  static Color accent(bool isDark) => isDark ? primaryMint : primaryEmeraldDark;
+  static const Color primaryEmeraldSubtle = Color(0x1F3F9B73); // 12% opacity
+  static const Color primaryEmeraldGlow = Color(0x333F9B73); // 20% opacity
 
-  // Typography & Text
-  static const Color textPrimary = Color(0xFFF3F4F6);
-  static const Color textSecondary = Color(0xFF8E929B);
-  static const Color textMuted = Color(0xFF636773);
-  static const Color textDisabled = Color(0xFF4B5563);
-  static const Color textOnEmerald = Color(0xFF064E3B);
+  // Typography & Text (night shift)
+  static const Color textPrimary = Color(0xFFE3EAE2);
+  static const Color textSecondary = Color(0xFFA3B3A8);
+  static const Color textMuted = Color(0xFF8D9E93);
+  static const Color textDisabled = Color(0xFF5E6E64);
+  static const Color textOnEmerald = Color(0xFF0E2A1F);
 
   // Borders & Dividers
-  static const Color border = Color(0xFF232631);
-  static const Color borderSubtle = Color(0xFF1A1C24);
-  static const Color borderActive = Color(0xFF323645);
-  static const Color borderFocus = Color(0xFF34D399);
+  static const Color border = Color(0xFF2C3D35);
+  static const Color borderSubtle = Color(0xFF22312A);
+  static const Color borderActive = Color(0xFF3A5045);
+  static const Color borderFocus = primaryMint;
   static const double borderWidth = 1.0;
   static const double borderWidthActive = 1.5;
 
-  // Semantic Healthcare Status Colors
+  // Semantic Healthcare Status Colors (night-shift values; the light-mode
+  // values live in [SemanticColors] in theme_provider.dart)
   // Success / Active / Normal
-  static const Color success = Color(0xFF34D399);
-  static const Color successBg = Color(0x1F34D399); // 12% opacity
-  static const Color successBorder = Color(0x4D34D399); // 30% opacity
+  static const Color success = primaryMint;
+  static const Color successBg = Color(0x2486CBA6);
+  static const Color successBorder = Color(0x4D86CBA6);
 
   // Pending / Warning / In Review
-  static const Color pending = Color(0xFFF59E0B);
-  static const Color pendingBg = Color(0x1FF59E0B);
-  static const Color pendingBorder = Color(0x4DF59E0B);
+  static const Color pending = Color(0xFFE8B04B);
+  static const Color pendingBg = Color(0x24E8B04B);
+  static const Color pendingBorder = Color(0x4DE8B04B);
 
   // Critical / Error / Urgent
-  static const Color critical = Color(0xFFF87171);
-  static const Color criticalBg = Color(0x1FF87171);
-  static const Color criticalBorder = Color(0x4DF87171);
+  static const Color critical = Color(0xFFF08A7E);
+  static const Color criticalBg = Color(0x24F08A7E);
+  static const Color criticalBorder = Color(0x4DF08A7E);
 
   // Information / In Progress
-  static const Color info = Color(0xFF60A5FA);
-  static const Color infoBg = Color(0x1F60A5FA);
-  static const Color infoBorder = Color(0x4D60A5FA);
+  static const Color info = Color(0xFF8DB8E8);
+  static const Color infoBg = Color(0x248DB8E8);
+  static const Color infoBorder = Color(0x4D8DB8E8);
 
   // Analytical / Special Accent
-  static const Color analytical = Color(0xFFA78BFA);
-  static const Color analyticalBg = Color(0x1FA78BFA);
-  static const Color analyticalBorder = Color(0x4DA78BFA);
+  static const Color analytical = Color(0xFFB9A3E3);
+  static const Color analyticalBg = Color(0x24B9A3E3);
+  static const Color analyticalBorder = Color(0x4DB9A3E3);
 
   // Neutral / Archived / Disabled
-  static const Color neutral = Color(0xFF9CA3AF);
-  static const Color neutralBg = Color(0x1F9CA3AF);
-  static const Color neutralBorder = Color(0x4D9CA3AF);
+  static const Color neutral = Color(0xFFA3B3A8);
+  static const Color neutralBg = Color(0x24A3B3A8);
+  static const Color neutralBorder = Color(0x4DA3B3A8);
 
-  // Light Theme Overrides (for dual-theme support)
-  static const Color lightAppBackground = Color(0xFFF8FAFC);
-  static const Color lightSidebarBackground = Color(0xFFFFFFFF);
-  static const Color lightCardSurface = Color(0xFFFFFFFF);
-  static const Color lightElevatedSurface = Color(0xFFF1F5F9);
-  static const Color lightModalSurface = Color(0xFFFFFFFF);
-  static const Color lightInputSurface = Color(0xFFF8FAFC);
-  static const Color lightTextPrimary = Color(0xFF0F172A);
-  // Light-mode text meets WCAG AA (4.5:1) on every light surface, including
-  // the grey elevated surface (#F1F5F9): secondary 6.9:1, muted 5.2:1.
-  // The previous muted grey (#94A3B8) was 2.3:1 and hard to read.
-  static const Color lightTextSecondary = Color(0xFF475569);
-  static const Color lightTextMuted = Color(0xFF5B6779);
-  static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightBorderSubtle = Color(0xFFF1F5F9);
-  static const Color lightBorderActive = Color(0xFFCBD5E1);
+  // Light theme: ledger paper and ballpen ink. Text meets WCAG AA (4.5:1)
+  // on every light surface, including the elevated rule green (#E4EBE3):
+  // primary 14.5:1, secondary 7.2:1, muted 5.1:1.
+  static const Color lightAppBackground = Color(0xFFEEF2EC);
+  static const Color lightSidebarBackground = Color(0xFFF9FBF8);
+  static const Color lightCardSurface = Color(0xFFF9FBF8);
+  static const Color lightElevatedSurface = Color(0xFFE4EBE3);
+  static const Color lightModalSurface = Color(0xFFF9FBF8);
+  static const Color lightInputSurface = Color(0xFFFFFFFF);
+  static const Color lightTextPrimary = Color(0xFF16202C);
+  static const Color lightTextSecondary = Color(0xFF44515E);
+  static const Color lightTextMuted = Color(0xFF56636F);
+  static const Color lightBorder = Color(0xFFC9D6CB);
+  static const Color lightBorderSubtle = Color(0xFFDCE5DC);
+  static const Color lightBorderActive = Color(0xFFA9BBAD);
+
+  /// The ledger pad's red margin rule, drawn under table headers.
+  static Color ledgerRule(bool isDark) =>
+      isDark ? const Color(0xFF9A4A40) : const Color(0xFFB03328);
 
   // Backward compatibility & semantic aliases
   static const Color lightBackground = lightAppBackground;
@@ -99,6 +104,20 @@ abstract final class AppColors {
   static const Color textTertiary = textMuted;
   static const Color dangerRed = critical;
   static const Color accentTeal = primaryEmerald;
+}
+
+/// The sidebar is drawn as the record book's spine: bound in deep green in
+/// both light and dark mode, with the open page shown as a paper tab.
+abstract final class AppSpine {
+  static const Color background = Color(0xFF173D30);
+  static const Color raised = Color(0xFF1F4A3B);
+  static const Color border = Color(0xFF2A5646);
+  static const Color text = Color(0xFFEEF3EC); // 10.7:1
+  static const Color textSecondary = Color(0xFFB5CABC); // 7.0:1
+  static const Color textMuted = Color(0xFF93B3A1); // 5.3:1
+  static const Color hover = Color(0x14EEF3EC);
+  static const Color tab = AppColors.lightAppBackground;
+  static const Color tabText = AppColors.primaryEmeraldDark; // 7.0:1
 }
 
 /// Standardized Glassmorphism Design Tokens.
@@ -158,44 +177,40 @@ abstract final class AppGlass {
   }
 }
 
-/// Standardized Shadows and Elevation.
+/// Standardized Shadows and Elevation. Pages are separated by rules, not
+/// shadows: only floating layers (menus, dialogs) cast a noticeable one.
 abstract final class AppShadows {
   static const List<BoxShadow> none = [];
 
   static const List<BoxShadow> subtle = [
-    BoxShadow(color: Color(0x33000000), offset: Offset(0, 1), blurRadius: 2),
+    BoxShadow(color: Color(0x140E2A1F), offset: Offset(0, 1), blurRadius: 1),
   ];
 
   static const List<BoxShadow> card = [
-    BoxShadow(
-      color: Color(0x4D000000),
-      offset: Offset(0, 2),
-      blurRadius: 6,
-      spreadRadius: -1,
-    ),
+    BoxShadow(color: Color(0x0F0E2A1F), offset: Offset(0, 1), blurRadius: 2),
   ];
 
   static const List<BoxShadow> elevated = [
     BoxShadow(
-      color: Color(0x66000000),
-      offset: Offset(0, 4),
-      blurRadius: 12,
+      color: Color(0x1F0E2A1F),
+      offset: Offset(0, 3),
+      blurRadius: 8,
       spreadRadius: -2,
     ),
   ];
 
   static const List<BoxShadow> overlay = [
     BoxShadow(
-      color: Color(0x80000000),
-      offset: Offset(0, 8),
-      blurRadius: 24,
-      spreadRadius: -4,
+      color: Color(0x330E2A1F),
+      offset: Offset(0, 10),
+      blurRadius: 28,
+      spreadRadius: -6,
     ),
   ];
 
   static const List<BoxShadow> emeraldGlow = [
     BoxShadow(
-      color: Color(0x3334D399),
+      color: Color(0x333F9B73),
       offset: Offset(0, 0),
       blurRadius: 12,
       spreadRadius: 1,
@@ -216,14 +231,15 @@ abstract final class AppSpacing {
   static const double huge = 40.0;
 }
 
-/// Consistent Border Radii.
+/// Consistent Border Radii: the slight corners of index cards and folder
+/// tabs, kept small so records read as paper rather than app tiles.
 abstract final class AppRadius {
-  static const double xs = 4.0;
-  static const double sm = 6.0;
-  static const double md = 10.0;
-  static const double lg = 14.0;
-  static const double card = 16.0;
-  static const double xl = 20.0;
+  static const double xs = 3.0;
+  static const double sm = 4.0;
+  static const double md = 6.0;
+  static const double lg = 8.0;
+  static const double card = 8.0;
+  static const double xl = 12.0;
   static const double pill = 999.0;
 
   static const Radius radiusXs = Radius.circular(xs);
@@ -277,6 +293,15 @@ abstract final class AppDimensions {
   static const double dialogWidthXl = 920.0;
 }
 
+/// Typography: one family, Atkinson Hyperlegible Next, chosen for its
+/// unambiguous 0/O and 1/l/I in patient IDs, dates and dosages.
+abstract final class AppType {
+  static const String family = 'Atkinson Hyperlegible Next';
+
+  /// Tabular figures so numbers line up in tables, counts and IDs.
+  static const List<FontFeature> tabular = [FontFeature.tabularFigures()];
+}
+
 /// Unified Animation Durations.
 abstract final class AppDurations {
   static const Duration fast = Duration(milliseconds: 150);
@@ -288,10 +313,10 @@ abstract final class AppDurations {
 enum AppAccentTheme {
   emerald(
     id: 'emerald',
-    label: 'MedSentry Green',
-    primaryColor: Color(0xFF15803D),
-    darkPrimaryColor: Color(0xFF34D399),
-    secondaryColor: Color(0xFF047857),
+    label: 'Logbook Green',
+    primaryColor: AppColors.primaryEmeraldDark,
+    darkPrimaryColor: AppColors.primaryMint,
+    secondaryColor: AppColors.primaryEmeraldDeep,
   ),
   blue(
     id: 'blue',
