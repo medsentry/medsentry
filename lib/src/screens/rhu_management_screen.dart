@@ -212,7 +212,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                             color:
                                 Theme.of(context).brightness == Brightness.dark
                                 ? AppColors.textSecondary
-                                : const Color(0xFF94A3B8),
+                                : AppColors.lightTextMuted,
                           ),
                           prefixIcon: const Icon(Icons.search, size: 18),
                           suffixIcon: _searchQuery.isNotEmpty
@@ -471,7 +471,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     fontWeight: FontWeight.w500,
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -602,7 +602,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     size: 15,
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -612,7 +612,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         fontSize: 12,
                         color: isDark
                             ? AppColors.textSecondary
-                            : const Color(0xFF64748B),
+                            : AppColors.lightTextSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -628,7 +628,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     size: 15,
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -639,7 +639,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         fontFeatures: const [FontFeature.tabularFigures()],
                         color: isDark
                             ? AppColors.textSecondary
-                            : const Color(0xFF64748B),
+                            : AppColors.lightTextSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -655,7 +655,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     size: 15,
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -665,7 +665,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                         fontSize: 12,
                         color: isDark
                             ? AppColors.textSecondary
-                            : const Color(0xFF64748B),
+                            : AppColors.lightTextSecondary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -695,8 +695,8 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                             color: assignedStaff.isEmpty
                                 ? (isDark
                                       ? AppColors.textSecondary
-                                      : const Color(0xFF64748B))
-                                : AppColors.primaryEmerald,
+                                      : AppColors.lightTextSecondary)
+                                : AppColors.accent(isDark),
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -706,8 +706,8 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                               color: assignedStaff.isEmpty && patientCount == 0
                                   ? (isDark
                                         ? AppColors.textSecondary
-                                        : const Color(0xFF64748B))
-                                  : AppColors.primaryEmerald,
+                                        : AppColors.lightTextSecondary)
+                                  : AppColors.accent(isDark),
                               fontWeight: FontWeight.w600,
                               fontFeatures: const [
                                 FontFeature.tabularFigures(),
@@ -725,7 +725,7 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                     tooltip: 'Edit Facility',
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                     onPressed: () => _showEditClinicDialog(context, clinic),
                   ),
                   IconButton(
@@ -734,10 +734,10 @@ class _RhuManagementScreenState extends ConsumerState<RhuManagementScreen> {
                       isActive ? Icons.toggle_on : Icons.toggle_off_outlined,
                       size: 22,
                       color: isActive
-                          ? AppColors.primaryEmerald
+                          ? AppColors.accent(isDark)
                           : (isDark
                                 ? AppColors.textSecondary
-                                : const Color(0xFF64748B)),
+                                : AppColors.lightTextSecondary),
                     ),
                     tooltip: isActive
                         ? 'Deactivate Facility'

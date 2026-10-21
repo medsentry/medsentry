@@ -214,7 +214,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     bool isPrimary = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryEmerald = AppColors.primaryEmerald;
+    final primaryEmerald = AppColors.accent(isDark);
 
     return Material(
       color: Colors.transparent,
@@ -247,7 +247,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ? primaryEmerald
                     : (isDark
                           ? AppColors.textSecondary
-                          : const Color(0xFF64748B)),
+                          : AppColors.lightTextSecondary),
               ),
               const SizedBox(width: 7),
               Text(
@@ -444,7 +444,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   size: 15,
                                   color: isDark
                                       ? AppColors.textTertiary
-                                      : const Color(0xFF64748B),
+                                      : AppColors.lightTextSecondary,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
@@ -714,30 +714,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               Expanded(
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'New Registrations This Week',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: isDark
-                          ? AppColors.textPrimary
-                          : AppColors.lightTextPrimary,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'New Registrations This Week',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.lightTextPrimary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Priority (senior, PWD, allergy) vs other patients',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark
-                          ? AppColors.textSecondary
-                          : AppColors.lightTextSecondary,
+                    const SizedBox(height: 3),
+                    Text(
+                      'Priority (senior, PWD, allergy) vs other patients',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : AppColors.lightTextSecondary,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -762,7 +762,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     : const Color(0xFFE2E8F0),
                 emergencyCapColor: isDark
                     ? const Color(0xFFE5E7EB)
-                    : const Color(0xFF64748B),
+                    : AppColors.lightTextSecondary,
                 scheduledColor: AppColors.primaryEmeraldDark,
               ),
               child: const SizedBox.expand(),
@@ -873,7 +873,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ];
 
     final slices = rawSlices.isEmpty
-        ? const [_DiagnosisSlice('No records in period', 1.0, Color(0xFF94A3B8))]
+        ? const [
+            _DiagnosisSlice('No records in period', 1.0, Color(0xFF94A3B8)),
+          ]
         : rawSlices;
 
     final chronicCount = cardiovascular + hypertension + diabetes + respiratory;
@@ -1219,8 +1221,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         color: isSelected
                             ? (isDark
                                   ? AppColors.elevatedSurface
-                                  : AppColors.primaryEmerald.withValues(
-                                      alpha: 0.15,
+                                  : AppColors.primaryEmeraldDeep.withValues(
+                                      alpha: 0.10,
                                     ))
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(16),
@@ -1228,7 +1230,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           color: isSelected
                               ? (isDark
                                     ? AppColors.borderActive
-                                    : AppColors.primaryEmerald)
+                                    : AppColors.primaryEmeraldDeep)
                               : Colors.transparent,
                           width: 1,
                         ),
@@ -1243,7 +1245,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           color: isSelected
                               ? (isDark
                                     ? AppColors.textPrimary
-                                    : AppColors.primaryEmerald)
+                                    : AppColors.primaryEmeraldDeep)
                               : (isDark
                                     ? AppColors.textMuted
                                     : AppColors.lightTextMuted),
@@ -1360,15 +1362,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           if (isCritical) {
             status = 'Critical';
-            statusColor = const Color(0xFFF43F5E);
+            statusColor = isDark ? const Color(0xFFF43F5E) : const Color(0xFFBE123C);
             priorityWeight = 3;
           } else if (isMonitored) {
             status = 'Monitored';
-            statusColor = const Color(0xFFF59E0B);
+            statusColor = isDark ? const Color(0xFFF59E0B) : const Color(0xFFB45309);
             priorityWeight = 2;
           } else {
             status = 'Active';
-            statusColor = AppColors.primaryEmerald;
+            statusColor = AppColors.accent(
+              Theme.of(context).brightness == Brightness.dark,
+            );
             priorityWeight = 1;
           }
 
@@ -1704,7 +1708,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: item.statusColor.withValues(
-                                    alpha: 0.14,
+                                    alpha: isDark ? 0.14 : 0.10,
                                   ),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
@@ -1760,7 +1764,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: item.documentCount > 0
-                                    ? AppColors.primaryEmerald
+                                    ? AppColors.accent(isDark)
                                     : (isDark
                                           ? AppColors.textMuted
                                           : AppColors.lightTextMuted),
@@ -1801,12 +1805,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primaryEmerald.withValues(alpha: 0.15)
+              ? AppColors.accent(isDark).withValues(alpha: isDark ? 0.15 : 0.10)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
-                ? AppColors.primaryEmerald
+                ? AppColors.accent(isDark)
                 : (isDark ? AppColors.border : AppColors.lightBorder),
             width: 1,
           ),
@@ -1817,7 +1821,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             color: isSelected
-                ? AppColors.primaryEmerald
+                ? AppColors.accent(isDark)
                 : (isDark
                       ? AppColors.textSecondary
                       : AppColors.lightTextSecondary),

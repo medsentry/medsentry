@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/system_settings.dart';
 import '../providers/providers.dart';
 import 'system_logo.dart';
 
@@ -10,8 +9,7 @@ class StartupLoadingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings =
-        ref.watch(systemSettingsProvider).valueOrNull ?? const SystemSettings();
+    final logo = ref.watch(brandLogoDataUriProvider).valueOrNull ?? '';
 
     return Scaffold(
       body: Center(
@@ -19,7 +17,7 @@ class StartupLoadingScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SystemLogo(
-              dataUri: settings.logoDataUri,
+              dataUri: logo,
               size: 56,
               backgroundColor: AppColors.primaryEmeraldSubtle,
               iconColor: AppColors.primaryEmerald,

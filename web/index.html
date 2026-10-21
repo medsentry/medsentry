@@ -67,6 +67,12 @@
       justify-content: center;
       box-shadow: 0 10px 25px -5px rgba(52, 211, 153, 0.25);
       margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .loading-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
     .loading-spinner {
       width: 32px;
@@ -96,7 +102,7 @@
 </head>
 <body>
   <div id="loading-container">
-    <div class="loading-logo">
+    <div class="loading-logo" id="ms-loading-logo">
       <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 6v12M6 12h12"/>
       </svg>
@@ -110,7 +116,7 @@
     </div>
   </div>
 
-  <script src="app_startup.js?v=1.0.13"></script>
-  <script src="flutter_bootstrap.js?v=1.0.13" async></script>
+  <script src="app_startup.js?v=1.0.14"></script>
+  <script src="flutter_bootstrap.js?v=1.0.14" async></script>
 </body>
 </html>

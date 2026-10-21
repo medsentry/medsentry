@@ -253,6 +253,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('hides the footer while the soft keyboard is open', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+    addTearDown(() => tester.view.resetViewInsets());
+
+    await tester.pumpWidget(createSubject());
+    await tester.pumpAndSettle();
+    expect(find.textContaining('All Rights Reserved'), findsOneWidget);
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('All Rights Reserved'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('tapping Remember Me label toggles checkbox on mobile', (
     tester,
   ) async {

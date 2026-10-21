@@ -32,6 +32,28 @@ async function clearCacheAndReload() {
 }
 window.clearCacheAndReload = clearCacheAndReload;
 
+// Show the admin's logo (cached by the app in localStorage) on the loader and
+// browser tab before Flutter starts.
+(function showCachedBrandLogo() {
+  var logo;
+  try {
+    logo = window.localStorage.getItem('medsentry_brand_logo');
+  } catch (e) {
+    return;
+  }
+  if (!logo || logo.indexOf('data:image/') !== 0) return;
+
+  var box = document.getElementById('ms-loading-logo');
+  if (box) {
+    var img = document.createElement('img');
+    img.src = logo;
+    img.alt = '';
+    box.replaceChildren(img);
+  }
+  var icon = document.querySelector('link[rel="icon"]');
+  if (icon) icon.setAttribute('href', logo);
+})();
+
 // Keep the shell visible until Flutter confirms that its first frame rendered.
 var loaderHidden = false;
 var bootTimeout;

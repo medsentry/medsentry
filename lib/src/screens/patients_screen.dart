@@ -563,7 +563,7 @@ class _PatientsPageHeader extends StatelessWidget {
                       size: 22,
                       color: isDark
                           ? AppColors.textSecondary
-                          : const Color(0xFF64748B),
+                          : AppColors.lightTextSecondary,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -625,8 +625,10 @@ class _PatientsPageHeader extends StatelessWidget {
                 final registerButton = onAddPatient != null
                     ? FilledButton.icon(
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primaryEmerald,
-                          foregroundColor: Colors.white,
+                          backgroundColor: AppColors.accent(
+                    Theme.of(context).brightness == Brightness.dark,
+                  ),
+                          foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 8,
@@ -701,7 +703,7 @@ class _PatientsPageHeader extends StatelessWidget {
                   size: 15,
                   color: isDark
                       ? AppColors.textTertiary
-                      : const Color(0xFF64748B),
+                      : AppColors.lightTextSecondary,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -731,7 +733,7 @@ class _PatientsPageHeader extends StatelessWidget {
                     fontFeatures: const [FontFeature.tabularFigures()],
                     color: isDark
                         ? AppColors.textSecondary
-                        : const Color(0xFF64748B),
+                        : AppColors.lightTextSecondary,
                   ),
                 ),
                 Text(
@@ -834,7 +836,7 @@ class _PatientsToolbar extends StatelessWidget {
               prefixIcon: Icon(
                 Icons.search_rounded,
                 size: 18,
-                color: isDark ? AppColors.textTertiary : const Color(0xFF64748B),
+                color: isDark ? AppColors.textTertiary : AppColors.lightTextSecondary,
               ),
               prefixIconConstraints: const BoxConstraints(
                 minWidth: 40,
@@ -1242,7 +1244,7 @@ class _BarangaySectionHeader extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
-                color: primary,
+                color: isDark ? primary : Color.lerp(primary, Colors.black, 0.3),
               ),
             ),
           ),
@@ -1334,7 +1336,7 @@ class _EmptyPatientsState extends StatelessWidget {
             Icon(
               hasFilters ? Icons.search_off_rounded : Icons.people_outline_rounded,
               size: 38,
-              color: isDark ? AppColors.textTertiary : const Color(0xFF94A3B8),
+              color: isDark ? AppColors.textTertiary : AppColors.lightTextMuted,
             ),
             const SizedBox(height: 16),
             Text(
@@ -1353,7 +1355,7 @@ class _EmptyPatientsState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
-                color: isDark ? AppColors.textSecondary : const Color(0xFF64748B),
+                color: isDark ? AppColors.textSecondary : AppColors.lightTextSecondary,
                 height: 1.4,
               ),
             ),
@@ -1382,8 +1384,10 @@ class _EmptyPatientsState extends StatelessWidget {
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryEmerald,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppColors.accent(
+                    Theme.of(context).brightness == Brightness.dark,
+                  ),
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
                   minimumSize: const Size(double.infinity, 40),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -2952,7 +2956,7 @@ class _PatientListTile extends StatelessWidget {
                             size: 13,
                             color: isDark
                                 ? AppColors.textTertiary
-                                : const Color(0xFF64748B),
+                                : AppColors.lightTextSecondary,
                           ),
                           const SizedBox(width: 4),
                           Expanded(
@@ -2981,7 +2985,7 @@ class _PatientListTile extends StatelessWidget {
                     ? AppColors.primaryEmerald
                     : (isDark
                         ? AppColors.textTertiary
-                        : const Color(0xFF94A3B8)),
+                        : AppColors.lightTextMuted),
               ),
             ],
           ),

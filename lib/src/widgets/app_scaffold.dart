@@ -217,7 +217,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
             size: 28,
             backgroundColor: isDark
                 ? AppColors.primaryEmeraldSubtle
-                : AppColors.primaryEmerald.withValues(alpha: 0.15),
+                : AppColors.primaryEmeraldDeep.withValues(alpha: 0.15),
             iconColor: AppColors.primaryEmerald,
             iconSize: 18,
             borderRadius: 6,

@@ -18,6 +18,13 @@ abstract final class AppColors {
   static const Color primaryEmeraldHover = Color(0xFF6EE7B7);
   static const Color primaryEmeraldDark = Color(0xFF059669);
   static const Color primaryEmeraldDeep = Color(0xFF047857);
+
+  /// The brand green for text, icons and filled buttons. The bright green
+  /// (#34D399) is only legible on dark surfaces: on white it is 1.9:1, so
+  /// light mode uses the deep green (5.5:1 as text on white and behind white
+  /// text).
+  static Color accent(bool isDark) =>
+      isDark ? primaryEmerald : primaryEmeraldDeep;
   static const Color primaryEmeraldSubtle = Color(0x1F34D399); // 12% opacity
   static const Color primaryEmeraldGlow = Color(0x3334D399); // 20% opacity
 
@@ -75,8 +82,11 @@ abstract final class AppColors {
   static const Color lightModalSurface = Color(0xFFFFFFFF);
   static const Color lightInputSurface = Color(0xFFF8FAFC);
   static const Color lightTextPrimary = Color(0xFF0F172A);
-  static const Color lightTextSecondary = Color(0xFF64748B);
-  static const Color lightTextMuted = Color(0xFF94A3B8);
+  // Light-mode text meets WCAG AA (4.5:1) on every light surface, including
+  // the grey elevated surface (#F1F5F9): secondary 6.9:1, muted 5.2:1.
+  // The previous muted grey (#94A3B8) was 2.3:1 and hard to read.
+  static const Color lightTextSecondary = Color(0xFF475569);
+  static const Color lightTextMuted = Color(0xFF5B6779);
   static const Color lightBorder = Color(0xFFE2E8F0);
   static const Color lightBorderSubtle = Color(0xFFF1F5F9);
   static const Color lightBorderActive = Color(0xFFCBD5E1);
