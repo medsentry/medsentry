@@ -390,8 +390,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   ) {
     final isCompact = constraints.maxWidth < 900;
     final gutter = constraints.maxWidth < 360 ? 16.0 : 24.0;
+    // An open soft keyboard leaves too little room for the footer, which would
+    // otherwise float over the fields being typed in. Read the raw view: the
+    // Scaffold consumes the inset, so MediaQuery reports zero in its body.
+    final keyboardOpen = View.of(context).viewInsets.bottom > 0;
     const topClearance = 64.0;
-    const bottomClearance = 64.0;
+    final bottomClearance = keyboardOpen ? 16.0 : 64.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Stack(
@@ -443,37 +447,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 430),
-                    // The fill sits above the blur; painting it beneath would
-                    // smear the dark backdrop into the card edges.
-                    child: ClipRRect(
+                    // Solid fill, no backdrop blur: the blur darkened the card
+                    // edges on web renderers.
+                    child: DecoratedBox(
                       key: const ValueKey('login-form-card'),
-                      borderRadius: BorderRadius.circular(16),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(
-                          sigmaX: 20,
-                          sigmaY: 20,
-                          tileMode: TileMode.clamp,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.96),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.90),
+                          width: 1.2,
                         ),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.90),
-                              width: 1.2,
-                            ),
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.all(isCompact ? 20 : 32),
-                            child: _entrance(
-                              context,
-                              _buildAuthForm(
-                                context,
-                                _LoginPalette.light,
-                                isTall: !isCompact && viewport.maxHeight >= 760,
-                                isMobile: isCompact,
-                              ),
-                            ),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(isCompact ? 20 : 32),
+                        child: _entrance(
+                          context,
+                          _buildAuthForm(
+                            context,
+                            _LoginPalette.light,
+                            isTall: !isCompact && viewport.maxHeight >= 760,
+                            isMobile: isCompact,
                           ),
                         ),
                       ),
@@ -514,41 +508,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
 
         // Footer Banner (Frosted Glass Pill)
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 12),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF0F172A).withValues(alpha: 0.70)
-                            : Colors.black.withValues(alpha: 0.45),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          width: 1,
+        if (!keyboardOpen)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 8,
                         ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF0F172A).withValues(alpha: 0.70)
+                              : Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            width: 1,
+                          ),
+                        ),
+                        child: _buildFooter(context, palette),
                       ),
-                      child: _buildFooter(context, palette),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -723,7 +718,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         Row(
           children: [
             SystemLogo(
-              dataUri: settings.logoDataUri,
+              dataUri: ref.watch(brandLogoDataUriProvider).valueOrNull ?? '',
               size: 32,
               backgroundColor: palette.accent,
               iconColor: palette.onAccent,

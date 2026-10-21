@@ -1,5 +1,8 @@
 import 'package:web/web.dart' as web;
 
+/// Read by web/app_startup.js to show the logo before Flutter starts.
+const _startupLogoKey = 'medsentry_brand_logo';
+
 void updateBrowserBrand({
   required String appName,
   required String logoDataUri,
@@ -16,4 +19,14 @@ void updateBrowserBrand({
         'href',
         logoDataUri.isEmpty ? 'icons/Icon-192.png' : logoDataUri,
       );
+
+  try {
+    if (logoDataUri.isEmpty) {
+      web.window.localStorage.removeItem(_startupLogoKey);
+    } else {
+      web.window.localStorage.setItem(_startupLogoKey, logoDataUri);
+    }
+  } catch (_) {
+    // Storage can be full or blocked; the loader then shows its default mark.
+  }
 }

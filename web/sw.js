@@ -1,6 +1,6 @@
 // MedSentry Offline-First Service Worker
 const CACHE_PREFIX = 'medsentry-cache-';
-const CACHE_NAME = `${CACHE_PREFIX}v1.0.15`;
+const CACHE_NAME = `${CACHE_PREFIX}v1.0.16`;
 const APP_SHELL_ASSETS = [
   './',
   'index.html',
@@ -46,10 +46,8 @@ self.addEventListener('install', (event) => {
     await Promise.allSettled(APP_SHELL_ASSETS.map(async (asset) => {
       const url = new URL(asset, self.registration.scope);
       try {
-        const response = await fetch(
-          url,
-          isRefreshableAsset(url.pathname) ? { cache: 'no-cache' } : undefined,
-        );
+        // Revalidate so a stale HTTP-cached file never seeds a new cache.
+        const response = await fetch(url, { cache: 'no-cache' });
         if (response.ok && response.type !== 'opaque') {
           await cache.put(url, response);
         } else {
@@ -119,6 +117,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   const isEntrypoint =
+    url.pathname.endsWith('/app_startup.js') ||
     url.pathname.endsWith('/flutter_bootstrap.js') ||
     url.pathname.endsWith('/main.dart.js');
 
@@ -126,7 +125,9 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       try {
-        const response = await fetch(request);
+        // Bypass the HTTP cache: older deploys marked these files immutable,
+        // and browsers would otherwise keep running that build.
+        const response = await fetch(request, { cache: 'no-cache' });
         if (response.ok) {
           event.waitUntil(cache.put(request, response.clone()));
         }

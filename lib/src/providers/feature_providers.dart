@@ -57,10 +57,7 @@ final extendedDashboardStatsProvider = FutureProvider<ExtendedDashboardStats>((
     db.getTodayDocumentCount(clinicId: clinicId),
     db.getPendingSyncCount(),
     db.getActiveStaffCount(clinicId: clinicId),
-    db.getFailedLoginCount(
-      within: const Duration(days: 1),
-      clinicId: clinicId,
-    ),
+    db.getFailedLoginCount(within: const Duration(days: 1), clinicId: clinicId),
     db.getArchivedPatientCount(clinicId: clinicId),
     db.getUnreadNotificationCount(notificationTarget, clinicId: clinicId),
     db.getRecentlyUpdatedPatients(5, clinicId: clinicId),
@@ -109,13 +106,22 @@ class SettingsChangesNotifier extends StateNotifier<int> {
 
 final settingsChangesProvider =
     StateNotifierProvider<SettingsChangesNotifier, int>((ref) {
-  final db = ref.watch(databaseProvider);
-  return SettingsChangesNotifier(db);
-});
+      final db = ref.watch(databaseProvider);
+      return SettingsChangesNotifier(db);
+    });
 
 final systemSettingsProvider = FutureProvider<SystemSettings>((ref) async {
   ref.watch(settingsChangesProvider);
   return ref.watch(databaseProvider).getSystemSettings();
+});
+
+/// The logo to display: the device's settings logo, or else the super admin's
+/// public logo cached before sign-in. Display-only; settings screens keep
+/// reading [systemSettingsProvider] so the fallback is never saved.
+final brandLogoDataUriProvider = FutureProvider<String>((ref) async {
+  final settings = await ref.watch(systemSettingsProvider.future);
+  if (settings.logoDataUri.isNotEmpty) return settings.logoDataUri;
+  return ref.watch(databaseProvider).getPublicLogoDataUri();
 });
 
 final notificationsProvider =
@@ -125,10 +131,9 @@ final notificationsProvider =
     ) async {
       ref.watch(databaseChangesProvider);
       final clinicId = ref.watch(activeClinicIdProvider);
-      return ref.watch(databaseProvider).getNotifications(
-        target: target,
-        clinicId: clinicId,
-      );
+      return ref
+          .watch(databaseProvider)
+          .getNotifications(target: target, clinicId: clinicId);
     });
 
 final archivedPatientsProvider = FutureProvider<List<Patient>>((ref) async {

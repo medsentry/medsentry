@@ -1532,6 +1532,9 @@ class AuthRepository {
       // ignore secure storage errors
     }
     await _db.setLastUserId(null);
+    // Signing out forgets the email; Remember Me only keeps it while the
+    // session lives or is locked.
+    await _db.setRememberedEmail(null);
     await _clearOtpVerified();
     _lastLoggedInUserId = null;
 

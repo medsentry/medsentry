@@ -488,6 +488,26 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
+  /// The super admin's logo, fetched before sign-in so devices that have never
+  /// synced settings still show it. Kept across sign-out, like the settings.
+  Future<String> getPublicLogoDataUri() async {
+    await _ensureLoaded();
+    final raw = _preferences['public_logo_data_uri'];
+    return raw is String ? raw : '';
+  }
+
+  Future<void> setPublicLogoDataUri(String dataUri) async {
+    await _ensureLoaded();
+    if ((_preferences['public_logo_data_uri'] ?? '') == dataUri) return;
+    if (dataUri.isEmpty) {
+      _preferences.remove('public_logo_data_uri');
+    } else {
+      _preferences['public_logo_data_uri'] = dataUri;
+    }
+    await _saveToDisk();
+    notifySettingsChanges();
+  }
+
   Future<DateTime?> getOtpVerifiedAt() async {
     await _ensureLoaded();
     final raw = _preferences['otp_verified_at'];
