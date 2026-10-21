@@ -221,7 +221,7 @@ class AuthRepository {
     await _requireSystemManager(createdByUserId);
     final creator = await _db.getUserById(createdByUserId);
     if (creator != null && !creator.isSuperAdmin) {
-      if (role != UserRole.staff) {
+      if (role == UserRole.superAdmin) {
         throw StateError('Only a super administrator can create this role');
       }
       if (creator.clinicId == null ||

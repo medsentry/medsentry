@@ -272,11 +272,6 @@ Deno.serve(async (request: Request) => {
     if (role === 'super_admin') {
       return jsonResponse({ error: 'Administrator cannot create super administrators' }, 403);
     }
-    // Only a Super Admin creates Admin accounts, as only a Super Admin
-    // manages them afterwards.
-    if (role !== 'staff') {
-      return jsonResponse({ error: 'Only a super administrator can create administrator accounts' }, 403);
-    }
     if (clinicId !== actor.clinic_id) {
       return jsonResponse({ error: 'Administrator can only create users in their assigned clinic' }, 403);
     }
