@@ -449,20 +449,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 430),
-                    child: Container(
+                    // The fill sits above the blur; painting it beneath would
+                    // smear the dark backdrop into the card edges.
+                    child: ClipRRect(
                       key: const ValueKey('login-form-card'),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.90),
-                          width: 1.2,
+                      borderRadius: BorderRadius.circular(16),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(
+                          sigmaX: 20,
+                          sigmaY: 20,
+                          tileMode: TileMode.clamp,
                         ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.90),
+                              width: 1.2,
+                            ),
+                          ),
                           child: Padding(
                             padding: EdgeInsets.all(isCompact ? 20 : 32),
                             child: _entrance(

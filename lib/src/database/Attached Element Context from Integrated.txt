@@ -1,0 +1,41 @@
+Attached Element Context from Integrated Browser
+
+Element: flutter-view
+
+URL: http://localhost:58968/login
+
+HTML Path: flutter-view
+
+Outer HTML:
+```html
+<flutter-view flt-view-id="0" tabindex="-1" style="position: absolute; inset: 0px; width: 1027px; height: 749px;"><flt-glass-pane></flt-glass-pane><flt-text-editing-host></flt-text-editing-host><flt-semantics-host style="position: absolute; transform-origin: 0px 0px 0px; transform: scale(1);"></flt-semantics-host><style id="flt-text-editing-stylesheet">flutter-view flt-scene-host {  font: normal normal 14px sans-serif;}flutter-view flt-semantics input[type=range] {  appearance: none;  -webkit-appearance: none;  width: 100%;  position: absolute;  border: none;  top: 0;  right: 0;  bottom: 0;  left: 0;}flutter-view input::selection {  background-color: transparent;}flutter-view textarea::selection {  background-color: transparent;}flutter-view flt-semantics input,flutter-view flt-semantics textarea,flutter-view flt-semantics [contentEditable="true"] {  caret-color: transparent;}flutter-view .flt-text-editing::placeholder {  opacity: 0;}flutter-view:focus { outline: rgb(0, 0, 0) none 0px;}flutter-view .transparentTextEditing:-webkit-autofill,flutter-view .transparentTextEditing:-webkit-autofill:hover,flutter-view .transparentTextEditing:-webkit-autofill:focus,flutter-view .transparentTextEditing:-webkit-autofill:active {  opacity: 0 !important;}</style></flutter-view>
+```
+
+Dimensions:
+- top: 0px
+- left: 0px
+- width: 1027px
+- height: 749px
+
+CSS:
+```css
+element { position: absolute; inset: 0px; width: 1027px; height: 749px; }
+flutter-view:focus { outline: rgb(0, 0, 0) none 0px; }
+
+/* Inherited */
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif }
+
+/* Resolved values */
+bottom: 0px;
+display: block;
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+height: 749px;
+left: 0px;
+outline-color: rgb(0, 0, 0);
+outline-style: none;
+outline-width: 0px;
+position: absolute;
+right: 0px;
+top: 0px;
+width: 1027px;
+```
