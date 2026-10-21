@@ -558,7 +558,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   backgroundColor: AppColors.accent(
                     Theme.of(context).brightness == Brightness.dark,
                   ),
-                  foregroundColor: Colors.white,
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
                   elevation: 0,
                   minimumSize: const Size(0, 40),
                   padding: const EdgeInsets.symmetric(horizontal: 16),

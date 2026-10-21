@@ -49,6 +49,11 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
   bool _isCameraMode = false;
   bool _isInitializingCamera = false;
 
+  /// Phones and narrow windows: the layout stacks instead of using a sidebar.
+  bool _compact = false;
+
+  bool get _canScanHardware => _scannerService.isSupported;
+
   @override
   void initState() {
     super.initState();
@@ -385,10 +390,13 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    _compact = MediaQuery.sizeOf(context).width < 720;
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: _compact
+          ? const EdgeInsets.all(8)
+          : const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Container(
         width: 1060,
         height: 740,
@@ -406,21 +414,33 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
           children: [
             _buildHeader(isDark),
             if (_errorMessage != null) _buildErrorBanner(),
-            Expanded(
-              child: Row(
-                children: [
-                  _buildSidebar(isDark),
-                  VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    color: isDark
-                        ? AppColors.borderSubtle
-                        : AppColors.lightBorderSubtle,
-                  ),
-                  Expanded(child: _buildMainArea(isDark)),
-                ],
+            if (_compact) ...[
+              _buildCompactCaptureBar(isDark),
+              if (_pages.isNotEmpty && !_isCameraMode) _buildPageStrip(isDark),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: isDark
+                    ? AppColors.borderSubtle
+                    : AppColors.lightBorderSubtle,
               ),
-            ),
+              Expanded(child: _buildMainArea(isDark)),
+            ] else
+              Expanded(
+                child: Row(
+                  children: [
+                    _buildSidebar(isDark),
+                    VerticalDivider(
+                      width: 1,
+                      thickness: 1,
+                      color: isDark
+                          ? AppColors.borderSubtle
+                          : AppColors.lightBorderSubtle,
+                    ),
+                    Expanded(child: _buildMainArea(isDark)),
+                  ],
+                ),
+              ),
             _buildFooter(isDark),
           ],
         ),
@@ -537,6 +557,187 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
     );
   }
 
+  /// Scanner, camera and import buttons. The scanner button only appears where
+  /// a scanner can be driven (Windows desktop); elsewhere the camera leads.
+  List<Widget> _buildCaptureButtons({bool compact = false}) {
+    final busy = _isScanning || _isProcessing;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+    );
+    final padding = EdgeInsets.symmetric(
+      vertical: compact ? 8 : 11,
+      horizontal: compact ? 8 : 16,
+    );
+    final cameraLabel = _isCameraMode
+        ? (compact ? 'Close' : 'Close Camera')
+        : (compact
+              ? 'Camera'
+              : (_canScanHardware ? 'Use Webcam' : 'Use Camera'));
+    final cameraIcon = Icon(
+      _isCameraMode ? Icons.videocam_off_outlined : Icons.photo_camera_outlined,
+      size: 18,
+    );
+    final onCamera = busy ? null : (_isCameraMode ? _stopCamera : _startCamera);
+
+    return [
+      if (_canScanHardware)
+        FilledButton.icon(
+          onPressed: busy ? null : _scanFromHardware,
+          icon: _isScanning
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.scanner_outlined, size: 18),
+          label: Text(
+            _isScanning
+                ? 'Scanning...'
+                : (compact ? 'Scan' : 'Scan Page (WIA)'),
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primaryEmeraldDark,
+            foregroundColor: Colors.white,
+            padding: padding,
+            shape: shape,
+          ),
+        ),
+      if (_canScanHardware)
+        OutlinedButton.icon(
+          onPressed: onCamera,
+          icon: cameraIcon,
+          label: Text(cameraLabel),
+          style: OutlinedButton.styleFrom(padding: padding, shape: shape),
+        )
+      else
+        FilledButton.icon(
+          onPressed: onCamera,
+          icon: cameraIcon,
+          label: Text(cameraLabel),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primaryEmeraldDark,
+            foregroundColor: Colors.white,
+            padding: padding,
+            shape: shape,
+          ),
+        ),
+      if (compact)
+        OutlinedButton.icon(
+          onPressed: busy ? null : _importImageFile,
+          icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
+          label: const Text('Import'),
+          style: OutlinedButton.styleFrom(padding: padding, shape: shape),
+        )
+      else
+        TextButton.icon(
+          onPressed: busy ? null : _importImageFile,
+          icon: const Icon(Icons.add_photo_alternate_outlined, size: 17),
+          label: const Text(
+            'Import Image File',
+            style: TextStyle(fontSize: 12.5),
+          ),
+        ),
+    ];
+  }
+
+  /// Narrow screens: capture buttons in one row above the preview.
+  Widget _buildCompactCaptureBar(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      color: isDark
+          ? AppColors.cardSurface
+          : AppColors.lightElevatedSurface.withValues(alpha: 0.5),
+      child: Row(
+        children: [
+          for (final (i, button) in _buildCaptureButtons(
+            compact: true,
+          ).indexed) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(child: button),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Narrow screens: scanned pages as a horizontal strip of thumbnails.
+  Widget _buildPageStrip(bool isDark) {
+    return SizedBox(
+      height: 84,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        itemCount: _pages.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final isSelected = _selectedIndex == index && !_isCameraMode;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              InkWell(
+                onTap: () {
+                  if (_isCameraMode) _stopCamera();
+                  setState(() {
+                    _selectedIndex = index;
+                    _isCropping = false;
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 52,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.primaryEmerald
+                          : (isDark ? AppColors.border : AppColors.lightBorder),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Image.memory(_pages[index], fit: BoxFit.cover),
+                ),
+              ),
+              Positioned(
+                left: 4,
+                bottom: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${index + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _removePage(int index) {
+    setState(() {
+      _pages.removeAt(index);
+      _filters.removeAt(index);
+      if (_selectedIndex >= _pages.length) {
+        _selectedIndex = _pages.isNotEmpty ? _pages.length - 1 : 0;
+      }
+      _isCropping = false;
+    });
+  }
+
   Widget _buildSidebar(bool isDark) {
     return Container(
       width: 250,
@@ -552,63 +753,10 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FilledButton.icon(
-                  onPressed: (_isScanning || _isProcessing)
-                      ? null
-                      : _scanFromHardware,
-                  icon: _isScanning
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.scanner_outlined, size: 18),
-                  label: Text(_isScanning ? 'Scanning...' : 'Scan Page (WIA)'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryEmeraldDark,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 11),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: (_isScanning || _isProcessing)
-                      ? null
-                      : (_isCameraMode ? _stopCamera : _startCamera),
-                  icon: Icon(
-                    _isCameraMode
-                        ? Icons.videocam_off_outlined
-                        : Icons.photo_camera_outlined,
-                    size: 18,
-                  ),
-                  label: Text(_isCameraMode ? 'Close Camera' : 'Use Webcam'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: (_isScanning || _isProcessing)
-                      ? null
-                      : _importImageFile,
-                  icon: const Icon(
-                    Icons.add_photo_alternate_outlined,
-                    size: 17,
-                  ),
-                  label: const Text(
-                    'Import Image File',
-                    style: TextStyle(fontSize: 12.5),
-                  ),
-                ),
+                for (final (i, button) in _buildCaptureButtons().indexed) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  button,
+                ],
               ],
             ),
           ),
@@ -647,7 +795,9 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Text(
-                        'No pages scanned yet.\nClick "Scan Page" or "Use Webcam" to add.',
+                        _canScanHardware
+                            ? 'No pages scanned yet.\nClick "Scan Page" or "Use Webcam" to add.'
+                            : 'No pages yet.\nUse the camera or import an image to add.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
@@ -748,18 +898,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
                                 ),
                                 color: Theme.of(context).colorScheme.error,
                                 tooltip: 'Remove page',
-                                onPressed: () {
-                                  setState(() {
-                                    _pages.removeAt(index);
-                                    _filters.removeAt(index);
-                                    if (_selectedIndex >= _pages.length) {
-                                      _selectedIndex = _pages.isNotEmpty
-                                          ? _pages.length - 1
-                                          : 0;
-                                    }
-                                    _isCropping = false;
-                                  });
-                                },
+                                onPressed: () => _removePage(index),
                               ),
                             ],
                           ),
@@ -811,56 +950,79 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
 
     if (_pages.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.scanner_outlined,
-              size: 64,
-              color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No Pages Captured',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: isDark
-                    ? AppColors.textPrimary
-                    : AppColors.lightTextPrimary,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.scanner_outlined,
+                size: 64,
+                color: isDark ? AppColors.textMuted : AppColors.lightTextMuted,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Connect a document scanner or turn on your webcam to begin scanning.',
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark
-                    ? AppColors.textSecondary
-                    : AppColors.lightTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FilledButton.icon(
-                  onPressed: _scanFromHardware,
-                  icon: const Icon(Icons.scanner_outlined, size: 18),
-                  label: const Text('Scan with Scanner'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryEmeraldDark,
-                  ),
+              const SizedBox(height: 16),
+              Text(
+                'No Pages Captured',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: isDark
+                      ? AppColors.textPrimary
+                      : AppColors.lightTextPrimary,
                 ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: _startCamera,
-                  icon: const Icon(Icons.videocam_outlined, size: 18),
-                  label: const Text('Open Webcam'),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _canScanHardware
+                    ? 'Connect a document scanner or turn on your webcam to begin scanning.'
+                    : 'Turn on your camera or import an image to begin.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.lightTextSecondary,
+                ),
+              ),
+              // On narrow screens the capture bar above already has these.
+              if (!_compact) ...[
+                const SizedBox(height: 24),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    if (_canScanHardware)
+                      FilledButton.icon(
+                        onPressed: _scanFromHardware,
+                        icon: const Icon(Icons.scanner_outlined, size: 18),
+                        label: const Text('Scan with Scanner'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryEmeraldDark,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    if (_canScanHardware)
+                      OutlinedButton.icon(
+                        onPressed: _startCamera,
+                        icon: const Icon(Icons.videocam_outlined, size: 18),
+                        label: const Text('Open Webcam'),
+                      )
+                    else
+                      FilledButton.icon(
+                        onPressed: _startCamera,
+                        icon: const Icon(Icons.videocam_outlined, size: 18),
+                        label: const Text('Open Camera'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryEmeraldDark,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                  ],
                 ),
               ],
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -1041,84 +1203,92 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
       return const SizedBox.shrink();
     }
 
+    final children = <Widget>[
+      Text(
+        'Page ${_selectedIndex + 1} of ${_pages.length}',
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+      ),
+      if (!_compact) const SizedBox(width: 16),
+      if (!_isCropping) ...[
+        if (_compact)
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20),
+            color: Theme.of(context).colorScheme.error,
+            tooltip: 'Remove page',
+            onPressed: () => _removePage(_selectedIndex),
+          ),
+        IconButton(
+          icon: const Icon(Icons.rotate_left_outlined, size: 20),
+          tooltip: 'Rotate 90° Left',
+          onPressed: () => _rotateCurrentPage(clockwise: false),
+        ),
+        IconButton(
+          icon: const Icon(Icons.rotate_right_outlined, size: 20),
+          tooltip: 'Rotate 90° Right',
+          onPressed: () => _rotateCurrentPage(clockwise: true),
+        ),
+        IconButton(
+          icon: const Icon(Icons.crop, size: 20),
+          tooltip: 'Crop page',
+          onPressed: _startCrop,
+        ),
+        if (!_compact) const Spacer(),
+        const Text('Filter: ', style: TextStyle(fontSize: 12.5)),
+        const SizedBox(width: 6),
+        SegmentedButton<ScanFilter>(
+          segments: ScanFilter.values
+              .map(
+                (f) => ButtonSegment(
+                  value: f,
+                  label: Text(f.label, style: const TextStyle(fontSize: 11.5)),
+                ),
+              )
+              .toList(),
+          selected: {_filters[_selectedIndex]},
+          onSelectionChanged: (set) {
+            setState(() {
+              _filters[_selectedIndex] = set.first;
+            });
+          },
+          style: SegmentedButton.styleFrom(
+            selectedBackgroundColor: AppColors.primaryEmeraldSubtle,
+            selectedForegroundColor: AppColors.primaryEmerald,
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+      ] else ...[
+        const Text(
+          'Drag the corners to adjust crop area',
+          style: TextStyle(fontSize: 12, color: AppColors.primaryEmerald),
+        ),
+        if (!_compact) const Spacer(),
+        TextButton(onPressed: _cancelCrop, child: const Text('Cancel Crop')),
+        const SizedBox(width: 8),
+        FilledButton.icon(
+          onPressed: _applyCrop,
+          icon: const Icon(Icons.check, size: 16),
+          label: const Text('Apply Crop'),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primaryEmeraldDark,
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+      ],
+    ];
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: isDark
           ? AppColors.sidebarBackground
           : AppColors.lightElevatedSurface,
-      child: Row(
-        children: [
-          Text(
-            'Page ${_selectedIndex + 1} of ${_pages.length}',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-          ),
-          const SizedBox(width: 16),
-          if (!_isCropping) ...[
-            IconButton(
-              icon: const Icon(Icons.rotate_left_outlined, size: 20),
-              tooltip: 'Rotate 90° Left',
-              onPressed: () => _rotateCurrentPage(clockwise: false),
-            ),
-            IconButton(
-              icon: const Icon(Icons.rotate_right_outlined, size: 20),
-              tooltip: 'Rotate 90° Right',
-              onPressed: () => _rotateCurrentPage(clockwise: true),
-            ),
-            IconButton(
-              icon: const Icon(Icons.crop, size: 20),
-              tooltip: 'Crop page',
-              onPressed: _startCrop,
-            ),
-            const Spacer(),
-            const Text('Filter: ', style: TextStyle(fontSize: 12.5)),
-            const SizedBox(width: 6),
-            SegmentedButton<ScanFilter>(
-              segments: ScanFilter.values
-                  .map(
-                    (f) => ButtonSegment(
-                      value: f,
-                      label: Text(
-                        f.label,
-                        style: const TextStyle(fontSize: 11.5),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              selected: {_filters[_selectedIndex]},
-              onSelectionChanged: (set) {
-                setState(() {
-                  _filters[_selectedIndex] = set.first;
-                });
-              },
-              style: SegmentedButton.styleFrom(
-                selectedBackgroundColor: AppColors.primaryEmeraldSubtle,
-                selectedForegroundColor: AppColors.primaryEmerald,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-          ] else ...[
-            const Text(
-              'Drag the corners to adjust crop area',
-              style: TextStyle(fontSize: 12, color: AppColors.primaryEmerald),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: _cancelCrop,
-              child: const Text('Cancel Crop'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: _applyCrop,
-              icon: const Icon(Icons.check, size: 16),
-              label: const Text('Apply Crop'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryEmeraldDark,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-          ],
-        ],
-      ),
+      child: _compact
+          ? Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 4,
+              runSpacing: 4,
+              children: children,
+            )
+          : Row(children: children),
     );
   }
 

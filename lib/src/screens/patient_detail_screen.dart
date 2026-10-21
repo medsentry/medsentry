@@ -688,7 +688,7 @@ class _PatientActionsBar extends StatelessWidget {
                         backgroundColor: AppColors.accent(
                     Theme.of(context).brightness == Brightness.dark,
                   ),
-                        foregroundColor: Colors.white,
+                        foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 9,

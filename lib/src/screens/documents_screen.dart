@@ -279,7 +279,7 @@ class _DocumentsPageHeader extends StatelessWidget {
                         backgroundColor: AppColors.accent(
                     Theme.of(context).brightness == Brightness.dark,
                   ),
-                        foregroundColor: Colors.white,
+                        foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 8,
@@ -2223,7 +2223,7 @@ class _PickedFilePanel extends StatelessWidget {
                     backgroundColor: AppColors.accent(
                     Theme.of(context).brightness == Brightness.dark,
                   ),
-                    foregroundColor: Colors.white,
+                    foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
@@ -2258,7 +2258,7 @@ class _PickedFilePanel extends StatelessWidget {
           Text(
             'Supported: PDF, JPG, PNG, WEBP (Max 10 MB). Scanned documents are encrypted with AES-GCM and stored securely.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.outline,
+              color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : AppColors.lightTextMuted,
             ),
           ),
         ],
@@ -2561,7 +2561,7 @@ class _EmptyDocumentsState extends StatelessWidget {
                   backgroundColor: AppColors.accent(
                     Theme.of(context).brightness == Brightness.dark,
                   ),
-                  foregroundColor: Colors.white,
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),

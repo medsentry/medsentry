@@ -642,7 +642,7 @@ class _CertificatesScreenState extends ConsumerState<CertificatesScreen>
                   backgroundColor: AppColors.accent(
                     Theme.of(context).brightness == Brightness.dark,
                   ),
-                  foregroundColor: Colors.white,
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textOnEmerald : Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
