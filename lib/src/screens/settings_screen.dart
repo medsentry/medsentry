@@ -3092,9 +3092,15 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
     final clinicsAsync = ref.watch(clinicsProvider);
     final isSuperAdmin = currentUser?.isSuperAdmin == true;
 
-    final availableRoles = isSuperAdmin
+    // Only a Super Admin creates or promotes Admins. An RHU Admin assigns the
+    // Staff role, and keeps their own role when editing their own profile
+    // (a Staff-only list would otherwise demote them on save).
+    final existingUser = widget.existingUser;
+    final List<UserRole> availableRoles = isSuperAdmin
         ? UserRole.values
-        : UserRole.values.where((r) => r != UserRole.superAdmin).toList();
+        : existingUser != null && existingUser.id == currentUser?.id
+        ? [existingUser.role]
+        : const [UserRole.staff];
 
     return PopScope(
       canPop: !_isDirty || _isSaving,
