@@ -18,6 +18,7 @@ import '../models/clinic.dart';
 import '../services/app_notification.dart';
 import '../services/document_service.dart';
 import '../utils/push_notification/push_notification_service.dart';
+import '../utils/single_flight.dart';
 import 'providers.dart';
 
 /// UI-facing sync state shown in the header, dashboard, and sync screen.
@@ -414,6 +415,7 @@ class SyncService extends StateNotifier<SyncServiceState> {
   static const Uuid _uuid = Uuid();
   bool _isSyncing = false;
   Future<SyncResult>? _activeSyncOperation;
+  final SingleFlight<SyncResult> _cloudSyncPass = SingleFlight<SyncResult>();
 
   static final RegExp _uuidRegex = RegExp(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
@@ -521,11 +523,13 @@ class SyncService extends StateNotifier<SyncServiceState> {
       final cloudReady = await _canSyncToCloud();
       final hasSession = _supabase.auth.currentSession != null;
       final result = cloudReady
-          ? await _performCloudSync().timeout(
-              const Duration(seconds: 45),
+          ? await _cloudSyncPass.run(
+              _performCloudSync,
+              timeout: const Duration(seconds: 45),
               onTimeout: () => const SyncResult(
                 message:
-                    'Cloud sync timed out after 45s. Local changes remain saved.',
+                    'Cloud sync is still running on a slow connection. '
+                    'Local changes remain saved.',
                 success: false,
               ),
             )

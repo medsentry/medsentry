@@ -198,7 +198,9 @@ class WebDatabaseStorage implements DatabaseStorage {
   }
 
   @override
-  Future<String> createBackup(String jsonString) async {
+  Future<String> createBackup(String jsonString, {String? passphrase}) async {
+    // Kept inside this browser's own storage, never written as a file, so
+    // there is nothing for a passphrase to protect.
     final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
     final backupKey = '$_backupKeyPrefix$timestamp';
     final existing =

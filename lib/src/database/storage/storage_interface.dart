@@ -6,7 +6,8 @@ abstract class DatabaseStorage {
   Future<void> writeStore(String jsonString);
 
   /// Creates a backup of the database storage and returns a message/path.
-  Future<String> createBackup(String jsonString);
+  /// Backups written as files are sealed with [passphrase].
+  Future<String> createBackup(String jsonString, {String? passphrase});
 
   /// Optional custom file injection for testing on IO platforms.
   void setCustomStoreFile(dynamic file) {}

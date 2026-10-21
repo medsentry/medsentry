@@ -55,6 +55,10 @@ class PasswordCrypto {
     );
   }
 
+  /// Derives a 32-byte encryption key from a passphrase (PBKDF2-HMAC-SHA256).
+  static List<int> deriveKey(String passphrase, List<int> salt, int iterations) =>
+      _pbkdf2(passphrase, salt, iterations);
+
   static List<int> _pbkdf2(String password, List<int> salt, int iterations) {
     const keyLength = 32;
     final hmac = Hmac(sha256, utf8.encode(password));

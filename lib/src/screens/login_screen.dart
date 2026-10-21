@@ -1230,7 +1230,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                'RA 10173 compliant. Records are encrypted and access is audited.',
+                'RA 10173 compliant. Access is role-restricted and audited.',
                 textAlign: TextAlign.center,
                 style: style,
               ),

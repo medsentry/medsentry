@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import '../models/models.dart';
 import 'storage/database_storage.dart';
+import 'storage/store_cipher.dart';
 
 class SimpleDatabase {
   static final SimpleDatabase _instance = SimpleDatabase._internal();
@@ -83,7 +84,13 @@ class SimpleDatabase {
   }
 
   Future<void> _ensureLoaded() {
-    return _loadFuture ??= _loadFromDisk();
+    // A failed load is retried on the next call: the OS key store can be
+    // briefly unavailable at sign-in, and caching that failure left the
+    // database unusable until the app restarted.
+    return _loadFuture ??= _loadFromDisk().catchError((Object error) {
+      _loadFuture = null;
+      throw error;
+    });
   }
 
   Future<void> _loadFromDisk() async {
@@ -324,11 +331,14 @@ class SimpleDatabase {
     }
   }
 
-  Future<String> createBackup() async {
+  Future<String> createBackup({String? passphrase}) async {
     await _ensureLoaded();
     _preferences['last_backup_at'] = DateTime.now().toIso8601String();
     final data = _serializeStore();
-    final result = await _storage.createBackup(jsonEncode(data));
+    final result = await _storage.createBackup(
+      jsonEncode(data),
+      passphrase: passphrase,
+    );
     notifyChanges();
     return result;
   }
@@ -417,11 +427,23 @@ class SimpleDatabase {
     await _saveToDisk();
   }
 
-  Future<void> restoreFromBackup(dynamic backupFile) async {
+  /// Whether [bytes] is a passphrase-protected backup.
+  static bool isEncryptedBackup(List<int> bytes) =>
+      BackupCipher.isEncrypted(bytes);
+
+  Future<void> restoreFromBackup(
+    dynamic backupFile, {
+    String? passphrase,
+  }) async {
     await _ensureLoaded();
     final String raw;
     if (backupFile is String) {
       raw = backupFile;
+    } else if (backupFile is Uint8List && BackupCipher.isEncrypted(backupFile)) {
+      if (passphrase == null) {
+        throw ArgumentError('This backup is protected by a passphrase');
+      }
+      raw = BackupCipher.open(backupFile, passphrase);
     } else if (backupFile is Uint8List) {
       raw = utf8.decode(backupFile);
     } else {

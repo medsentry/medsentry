@@ -378,24 +378,9 @@ class AuthRepository {
       return user;
     }
 
-    // 2. Fast-path: Check local offline database first for instant login
-    final localUser = await _authenticateLocal(normalizedEmail, password);
-    if (localUser != null) {
-      // Authenticated locally! Sync session with Supabase in background
-      unawaited(() async {
-        try {
-          await _supabase.auth
-              .signInWithPassword(email: normalizedEmail, password: password)
-              .timeout(_onlineTimeout);
-        } catch (e) {
-          debugPrint('Supabase background auth warning: $e');
-          await ensureOnlineSession();
-        }
-      }());
-      return localUser;
-    }
-
-    // 3. Fall back to online Supabase with strict timeout
+    // 2. The server decides whenever it answers. Checking the cached hash
+    // first kept a changed or revoked password working on every device that
+    // had cached it, so the hash is only used while the server is unreachable.
     try {
       final response = await _supabase.auth
           .signInWithPassword(email: normalizedEmail, password: password)
@@ -419,6 +404,9 @@ class AuthRepository {
 
       if (profile == null) {
         unawaited(_supabase.auth.signOut().catchError((_) {}));
+        if (cachedUser != null) {
+          await _db.clearUserPasswordHash(cachedUser.id);
+        }
         return null;
       }
 
@@ -426,6 +414,11 @@ class AuthRepository {
       final mergedUser = serverUser.copyWith(pinHash: cachedUser?.pinHash);
       if (!mergedUser.isActive) {
         unawaited(_supabase.auth.signOut().catchError((_) {}));
+        // Record the deactivation so offline sign-in refuses it too.
+        if (cachedUser != null) {
+          await _db.updateUser(mergedUser);
+          await _db.clearUserPasswordHash(mergedUser.id);
+        }
         return null;
       }
       if (mergedUser.requiresEmailOtp) {
@@ -465,15 +458,45 @@ class AuthRepository {
       return mergedUser;
     } on AuthException catch (e) {
       debugPrint('AuthException during login: ${e.message}');
-      if (_isNetworkError(e)) throw const _ServerUnreachable();
+      if (_isNetworkError(e) || _isServerOutage(e)) {
+        return _authenticateOffline(normalizedEmail, password);
+      }
+      // A rate limit is not a verdict on the password, so the hash stays; it
+      // is still not used, or forcing a 429 would bypass the server.
+      if (e.statusCode != '429') {
+        final cachedUser = await _db.getUserByEmail(normalizedEmail);
+        if (cachedUser != null) {
+          await _db.clearUserPasswordHash(cachedUser.id);
+        }
+      }
       return null;
     } catch (e) {
       debugPrint('Login exception: $e');
       // A slow or missing connection is not a wrong password; reporting it
       // as one made correct credentials look invalid on rural networks.
-      if (_isNetworkError(e)) throw const _ServerUnreachable();
+      if (_isNetworkError(e)) {
+        return _authenticateOffline(normalizedEmail, password);
+      }
       return null;
     }
+  }
+
+  /// Signs in from the cached hash when the server cannot answer. A failure
+  /// is reported as a connection problem: without the server it is unknown
+  /// whether the password is wrong or was never cached on this device.
+  Future<User> _authenticateOffline(
+    String normalizedEmail,
+    String password,
+  ) async {
+    final user = await _authenticateLocal(normalizedEmail, password);
+    if (user == null) throw const _ServerUnreachable();
+    return user;
+  }
+
+  bool _isServerOutage(AuthException e) {
+    if (e is AuthUnknownException) return true;
+    final status = int.tryParse(e.statusCode ?? '');
+    return status != null && status >= 500;
   }
 
   Future<User?> _authenticateLocal(

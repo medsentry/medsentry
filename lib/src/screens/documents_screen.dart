@@ -2256,7 +2256,7 @@ class _PickedFilePanel extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Supported: PDF, JPG, PNG, WEBP (Max 10 MB). Scanned documents are encrypted with AES-GCM and stored securely.',
+            'Supported: PDF, JPG, PNG (Max 10 MB). Files are encrypted on this device and stored privately in the cloud.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : AppColors.lightTextMuted,
             ),
