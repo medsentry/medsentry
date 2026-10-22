@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:camera/camera.dart';
 import 'package:crop_your_image/crop_your_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../config/app_design_tokens.dart';
 import '../services/document_service.dart';
+import '../services/scanner/document_camera.dart';
 import '../services/scanner/image_processing.dart';
 import '../services/scanner/scanner_service.dart';
 
@@ -43,11 +43,14 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
   String? _errorMessage;
 
   // Camera capture state
-  List<CameraDescription> _availableCameras = [];
-  CameraController? _cameraController;
-  int _selectedCameraIndex = 0;
+  final DocumentCamera _camera = createDocumentCamera();
   bool _isCameraMode = false;
   bool _isInitializingCamera = false;
+  bool _isCameraReady = false;
+
+  /// Bumped on every start/stop so a slow, superseded start does not take
+  /// over the screen (e.g. switching cameras twice in quick succession).
+  int _cameraSession = 0;
 
   /// Phones and narrow windows: the layout stacks instead of using a sidebar.
   bool _compact = false;
@@ -57,80 +60,69 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
   @override
   void initState() {
     super.initState();
-    _initCameras();
+    // Where there is no document scanner the camera is the way in, so open
+    // it straight away instead of waiting for a click.
+    if (!_canScanHardware) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startCamera();
+      });
+    }
   }
 
   @override
   void dispose() {
-    _cameraController?.dispose();
+    _cameraSession++;
+    _camera.stop();
     super.dispose();
   }
 
-  Future<void> _initCameras() async {
-    try {
-      _availableCameras = await availableCameras();
-      if (mounted) setState(() {});
-    } catch (e) {
-      debugPrint('No cameras found or camera initialization error: $e');
-    }
-  }
-
-  Future<void> _startCamera() async {
-    if (_availableCameras.isEmpty) {
-      setState(
-        () => _errorMessage = 'No camera or webcam detected on this device.',
-      );
-      return;
-    }
-
+  Future<void> _startCamera([DocumentCameraInfo? camera]) async {
+    final session = ++_cameraSession;
     setState(() {
       _isCameraMode = true;
       _isInitializingCamera = true;
+      _isCameraReady = false;
       _errorMessage = null;
     });
 
     try {
-      await _cameraController?.dispose();
-      final camera = _availableCameras[_selectedCameraIndex];
-      final controller = CameraController(
-        camera,
-        ResolutionPreset.high,
-        enableAudio: false,
-      );
-      await controller.initialize();
-      if (!mounted) {
-        await controller.dispose();
-        return;
-      }
+      await _camera.start(camera: camera);
+      if (!mounted || session != _cameraSession) return;
       setState(() {
-        _cameraController = controller;
         _isInitializingCamera = false;
+        _isCameraReady = true;
+      });
+    } on DocumentCameraException catch (e) {
+      if (!mounted || session != _cameraSession) return;
+      setState(() {
+        _isCameraMode = false;
+        _isInitializingCamera = false;
+        _errorMessage = e.message;
       });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isCameraMode = false;
-          _isInitializingCamera = false;
-          _errorMessage = 'Failed to open camera: $e';
-        });
-      }
+      if (!mounted || session != _cameraSession) return;
+      setState(() {
+        _isCameraMode = false;
+        _isInitializingCamera = false;
+        _errorMessage = 'Failed to open camera: $e';
+      });
     }
   }
 
   Future<void> _stopCamera() async {
-    await _cameraController?.dispose();
-    _cameraController = null;
+    _cameraSession++;
+    await _camera.stop();
     if (mounted) {
       setState(() {
         _isCameraMode = false;
         _isInitializingCamera = false;
+        _isCameraReady = false;
       });
     }
   }
 
   Future<void> _captureFromCamera() async {
-    final controller = _cameraController;
-    if (controller == null || !controller.value.isInitialized) return;
+    if (!_isCameraReady) return;
 
     setState(() {
       _isProcessing = true;
@@ -138,8 +130,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
     });
 
     try {
-      final photo = await controller.takePicture();
-      final bytes = await photo.readAsBytes();
+      final bytes = await _camera.capture();
       final normalized = await ImageProcessing.normalize(bytes);
 
       if (mounted) {
@@ -1094,14 +1085,13 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
           children: [
             CircularProgressIndicator(strokeWidth: 2.5),
             SizedBox(height: 14),
-            Text('Initializing camera...'),
+            Text('Starting camera...'),
           ],
         ),
       );
     }
 
-    final controller = _cameraController;
-    if (controller == null || !controller.value.isInitialized) {
+    if (!_isCameraReady) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1115,7 +1105,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
             const Text('Camera unavailable'),
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: _startCamera,
+              onPressed: () => _startCamera(),
               child: const Text('Retry Camera'),
             ),
           ],
@@ -1130,7 +1120,7 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
           color: Colors.black,
           width: double.infinity,
           height: double.infinity,
-          child: Center(child: CameraPreview(controller)),
+          child: Center(child: _camera.buildPreview()),
         ),
         // Document guide overlay box
         Positioned(
@@ -1154,15 +1144,29 @@ class _DocumentScannerDialogState extends State<DocumentScannerDialog> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_availableCameras.length > 1) ...[
-                IconButton.filledTonal(
-                  icon: const Icon(Icons.switch_camera_outlined),
-                  tooltip: 'Switch camera',
-                  onPressed: () {
-                    _selectedCameraIndex =
-                        (_selectedCameraIndex + 1) % _availableCameras.length;
-                    _startCamera();
+              if (_camera.cameras.length > 1) ...[
+                PopupMenuButton<DocumentCameraInfo>(
+                  tooltip: 'Choose camera',
+                  onSelected: (camera) {
+                    if (camera != _camera.active) _startCamera(camera);
                   },
+                  itemBuilder: (context) => [
+                    for (final camera in _camera.cameras)
+                      CheckedPopupMenuItem(
+                        value: camera,
+                        checked: camera == _camera.active,
+                        child: Text(
+                          camera.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  child: IgnorePointer(
+                    child: IconButton.filledTonal(
+                      icon: const Icon(Icons.switch_camera_outlined),
+                      onPressed: () {},
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 20),
               ],
