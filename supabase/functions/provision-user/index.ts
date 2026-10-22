@@ -257,6 +257,14 @@ Deno.serve(async (request: Request) => {
     typeof body.contact_number === 'string' && body.contact_number.trim().length > 0
       ? body.contact_number.trim()
       : null;
+  // Inline image data URL, already shrunk by the app (same limit as the
+  // medsentry_update_user_account RPC).
+  const profileImageUrl =
+    typeof body.profile_image_url === 'string' &&
+    body.profile_image_url.startsWith('data:image/') &&
+    body.profile_image_url.length <= 1000000
+      ? body.profile_image_url
+      : null;
 
   if (
     !email.includes('@') ||
@@ -317,6 +325,7 @@ Deno.serve(async (request: Request) => {
         license_number: licenseNumber,
         specialization: specialization,
         contact_number: contactNumber,
+        profile_image_url: profileImageUrl,
         is_active: true,
         updated_at: new Date().toISOString(),
       },

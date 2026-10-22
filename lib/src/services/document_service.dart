@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:encrypt/encrypt.dart' as encrypt;
 import '../models/document.dart';
@@ -80,6 +81,26 @@ class DocumentService {
     } catch (e) {
       throw Exception('Failed to pick image: $e');
     }
+  }
+
+  /// Pick a profile photo and return it as a small square JPEG data URL, so
+  /// it stays well under the server's 1 MB limit for inline photos.
+  static Future<String?> pickProfilePhotoDataUrl() async {
+    final picked = await pickImage();
+    if (picked == null) return null;
+    final decoded = img.decodeImage(
+      Uint8List.fromList(await picked.getBytes()),
+    );
+    if (decoded == null) {
+      throw DocumentValidationException('The selected image could not be read.');
+    }
+    final upright = img.bakeOrientation(decoded);
+    final square = img.copyResizeCropSquare(
+      upright,
+      size: min(512, min(upright.width, upright.height)),
+    );
+    final jpeg = img.encodeJpg(square, quality: 85);
+    return 'data:image/jpeg;base64,${base64Encode(jpeg)}';
   }
 
   static void validatePickedDocument(DocumentPickerResult document) {

@@ -3085,15 +3085,18 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
 
   Future<void> _pickProfilePhoto() async {
     try {
-      final picked = await DocumentService.pickImage();
-      if (picked == null) return;
-      final bytes = await picked.getBytes();
-      final base64String = base64Encode(bytes);
-      final mimeType = picked.extension == 'png' ? 'image/png' : 'image/jpeg';
+      final photo = await DocumentService.pickProfilePhotoDataUrl();
+      if (photo == null || !mounted) return;
       setState(() {
-        _profileImageUrl = 'data:$mimeType;base64,$base64String';
+        _profileImageUrl = photo;
         _isDirty = true;
       });
+    } on DocumentValidationException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

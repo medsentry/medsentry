@@ -823,6 +823,12 @@ class SyncService extends StateNotifier<SyncServiceState> {
               'requested_license_number': user.licenseNumber,
               'requested_specialization': user.specialization,
               'requested_contact_number': user.contactNumber,
+              // Photos saved before they were shrunk can exceed the server
+              // limit; skip those rather than fail the whole account update.
+              'requested_profile_image_url':
+                  (user.profileImageUrl?.length ?? 0) <= 1000000
+                  ? user.profileImageUrl
+                  : null,
             },
           );
           if (user.clinicId != null && _isValidUuid(user.clinicId)) {

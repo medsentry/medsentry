@@ -284,6 +284,7 @@ class AuthRepository {
           'license_number': licenseNumber,
           'specialization': specialization,
           'contact_number': contactNumber,
+          'profile_image_url': profileImageUrl,
         },
       );
       final data = response.data;
