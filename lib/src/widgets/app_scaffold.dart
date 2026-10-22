@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../models/audit_log.dart';
 import '../models/system_settings.dart';
 import '../models/system_notification.dart';
 import '../models/user.dart';
 import '../services/app_notification.dart';
 import '../providers/providers.dart';
 import '../utils/context_extensions.dart';
+import '../utils/date_time_format.dart';
 import 'package:intl/intl.dart';
 import 'layout/responsive_layout.dart';
 import 'medsentry_command_dialog.dart';
@@ -177,12 +179,13 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         ? NotificationTarget.admin
         : NotificationTarget.staff;
     final unreadCount =
-        ref
-            .watch(notificationsProvider(notificationTarget))
-            .valueOrNull
-            ?.where((notification) => !notification.isRead)
-            .length ??
-        0;
+        (ref
+                .watch(notificationsProvider(notificationTarget))
+                .valueOrNull
+                ?.where((notification) => !notification.isRead)
+                .length ??
+            0) +
+        (user == null ? 0 : ref.watch(activityUnreadCountProvider(user.id)));
 
     // Phones keep the bar to the screen title and the actions used most;
     // the theme switch stays in Settings, Appearance.
@@ -867,10 +870,11 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       notificationsProvider(notificationTarget),
     );
     final unreadCount =
-        notificationsAsync.valueOrNull
-            ?.where((notification) => !notification.isRead)
-            .length ??
-        0;
+        (notificationsAsync.valueOrNull
+                ?.where((notification) => !notification.isRead)
+                .length ??
+            0) +
+        (user == null ? 0 : ref.watch(activityUnreadCountProvider(user.id)));
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1063,10 +1067,31 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
     }
     if (!mounted || !context.mounted) return;
 
+    // Opening the list counts as seeing the team's activity; keep the old
+    // time so entries that were new stay highlighted while it is open.
+    final userId = ref.read(currentUserProvider)?.id ?? '';
+    final activitySeenBefore = ref.read(activitySeenProvider(userId));
+    final hadNewActivity = ref.read(activityUnreadCountProvider(userId)) > 0;
+    final hadUnreadAlerts =
+        ref
+            .read(notificationsProvider(target))
+            .valueOrNull
+            ?.any((notification) => !notification.isRead) ??
+        false;
+    unawaited(ref.read(activitySeenProvider(userId).notifier).markSeen());
+
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => _NotificationsDialog(
         target: target,
+        userId: userId,
+        activitySeenBefore: activitySeenBefore,
+        startOnAlerts: hadUnreadAlerts && !hadNewActivity,
+        onOpenActivity: (log) {
+          final route = _activityRoute(log);
+          Navigator.pop(dialogContext);
+          if (route != null) router.push(route);
+        },
         onOpen: (notification) async {
           try {
             await ref
@@ -1088,6 +1113,7 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
         },
         onMarkAllRead: () async {
           try {
+            await ref.read(activitySeenProvider(userId).notifier).markSeen();
             await ref.read(databaseProvider).markAllNotificationsRead(target);
             ref.invalidate(notificationsProvider(target));
           } catch (e) {
@@ -1100,15 +1126,40 @@ class _AppScaffoldState extends ConsumerState<AppScaffold> {
       ),
     );
   }
+
+  /// Where tapping an activity entry leads, if anywhere still exists.
+  String? _activityRoute(AuditLog log) {
+    if (log.action == AuditAction.delete) return null;
+    final patientId = log.patientId;
+    if (patientId != null && patientId.isNotEmpty) {
+      return '/patients/$patientId';
+    }
+    return switch (log.entityType) {
+      AuditEntityTypes.document => '/documents',
+      AuditEntityTypes.certificate => '/certificates',
+      AuditEntityTypes.report => '/reports',
+      AuditEntityTypes.user => '/staff',
+      AuditEntityTypes.clinic => '/rhus',
+      _ => null,
+    };
+  }
 }
 
 class _NotificationsDialog extends ConsumerWidget {
   final NotificationTarget target;
+  final String userId;
+  final DateTime? activitySeenBefore;
+  final bool startOnAlerts;
+  final ValueChanged<AuditLog> onOpenActivity;
   final ValueChanged<SystemNotification> onOpen;
   final Future<void> Function() onMarkAllRead;
 
   const _NotificationsDialog({
     required this.target,
+    required this.userId,
+    required this.activitySeenBefore,
+    required this.startOnAlerts,
+    required this.onOpenActivity,
     required this.onOpen,
     required this.onMarkAllRead,
   });
@@ -1116,45 +1167,99 @@ class _NotificationsDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final notificationsAsync = ref.watch(notificationsProvider(target));
+    final unreadAlerts =
+        ref
+            .watch(notificationsProvider(target))
+            .valueOrNull
+            ?.where((notification) => !notification.isRead)
+            .length ??
+        0;
+    final newActivity = countUnreadActivity(
+      ref.watch(activityFeedProvider).valueOrNull ?? const [],
+      seenAt: activitySeenBefore,
+      userId: userId,
+    );
+
+    Tab tab(String label, int count) => Tab(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Badge(label: Text(count > 99 ? '99+' : '$count')),
+          ],
+        ],
+      ),
+    );
 
     return Dialog(
       insetPadding: const EdgeInsets.all(20),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 560),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.notifications_active_outlined),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Notifications',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 600),
+        child: DefaultTabController(
+          length: 2,
+          initialIndex: startOnAlerts ? 1 : 0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.notifications_active_outlined),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Notifications',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => onMarkAllRead(),
-                    child: const Text('Mark all read'),
-                  ),
-                  IconButton(
-                    tooltip: 'Close notifications',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
+                    TextButton(
+                      onPressed: () => onMarkAllRead(),
+                      child: const Text('Mark all read'),
+                    ),
+                    IconButton(
+                      tooltip: 'Close notifications',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              TabBar(
+                tabs: [
+                  tab('Activity', newActivity),
+                  tab('Alerts', unreadAlerts),
                 ],
               ),
-            ),
-            const Divider(height: 1),
-            Flexible(
-              child: notificationsAsync.when(
+              Flexible(
+                child: TabBarView(
+                  children: [
+                    _ActivityList(
+                      userId: userId,
+                      seenBefore: activitySeenBefore,
+                      onOpen: onOpenActivity,
+                    ),
+                    _buildAlerts(context, ref),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlerts(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final notificationsAsync = ref.watch(notificationsProvider(target));
+
+    return notificationsAsync.when(
                 skipLoadingOnReload: true,
                 loading: () => const Center(
                   child: Padding(
@@ -1274,12 +1379,7 @@ class _NotificationsDialog extends ConsumerWidget {
                     },
                   );
                 },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+              );
   }
 
   IconData _notificationIcon(NotificationType type) => switch (type) {
@@ -1291,6 +1391,182 @@ class _NotificationsDialog extends ConsumerWidget {
     NotificationType.queueAlert => Icons.pending_actions_outlined,
     NotificationType.general => Icons.notifications_outlined,
   };
+}
+
+/// Team actions from the audit log, newest first.
+class _ActivityList extends ConsumerWidget {
+  final String userId;
+  final DateTime? seenBefore;
+  final ValueChanged<AuditLog> onOpen;
+
+  const _ActivityList({
+    required this.userId,
+    required this.seenBefore,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final feedAsync = ref.watch(activityFeedProvider);
+
+    return feedAsync.when(
+      skipLoadingOnReload: true,
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (error, stackTrace) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('Could not load activity: $error'),
+        ),
+      ),
+      data: (logs) {
+        if (logs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.history_toggle_off_outlined,
+                    size: 36,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('No activity yet'),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Actions by your team will appear here.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: logs.length,
+          separatorBuilder: (_, _) =>
+              const Divider(height: 1, indent: 68, endIndent: 16),
+          itemBuilder: (context, index) {
+            final log = logs[index];
+            final isMine = log.userId == userId;
+            final isNew =
+                !isMine &&
+                seenBefore != null &&
+                log.timestamp.isAfter(seenBefore!);
+            final (icon, color) = _actionStyle(log.action);
+            final actor = isMine
+                ? 'You'
+                : [
+                    log.userName ?? 'Someone',
+                    if (log.userRole != null) '(${log.userRole})',
+                  ].join(' ');
+
+            return ListTile(
+              onTap: () => onOpen(log),
+              tileColor: isNew
+                  ? theme.colorScheme.primary.withValues(alpha: 0.06)
+                  : null,
+              leading: CircleAvatar(
+                backgroundColor: color.withValues(alpha: isDark ? 0.18 : 0.12),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _activityTitle(log),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: isNew ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (isNew)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.only(left: 6),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '$actor · ${formatRelativeTime(log.timestamp)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// The recorded description, or a plain summary when there is none
+  /// (entries synced before descriptions were shared).
+  static String _activityTitle(AuditLog log) {
+    final description = log.description?.trim();
+    if (description != null && description.isNotEmpty) return description;
+    final subject = log.patientName ?? switch (log.entityType) {
+      AuditEntityTypes.patient => 'a patient record',
+      AuditEntityTypes.document => 'a document',
+      AuditEntityTypes.certificate => 'a certificate',
+      AuditEntityTypes.report => 'a report',
+      AuditEntityTypes.user => 'a user account',
+      AuditEntityTypes.clinic => 'an RHU',
+      AuditEntityTypes.settings => 'system settings',
+      _ => log.entityType.replaceAll('_', ' '),
+    };
+    return switch (log.action) {
+      AuditAction.login => 'Signed in',
+      AuditAction.logout => 'Signed out',
+      AuditAction.backup => 'Backed up data',
+      AuditAction.restore => 'Restored data',
+      AuditAction.settingsChange => 'Changed system settings',
+      AuditAction.passwordChange => 'Changed a password',
+      AuditAction.pinChange => 'Changed a PIN',
+      _ => '${log.action.displayName} $subject',
+    };
+  }
+
+  static (IconData, Color) _actionStyle(AuditAction action) =>
+      switch (action) {
+        AuditAction.create => (Icons.add_circle_outline, AppColors.success),
+        AuditAction.update => (Icons.edit_outlined, AppColors.info),
+        AuditAction.delete => (Icons.delete_outline, AppColors.critical),
+        AuditAction.login => (Icons.login, AppColors.primaryEmerald),
+        AuditAction.logout => (Icons.logout, AppColors.textMuted),
+        AuditAction.export => (Icons.file_download_outlined, AppColors.info),
+        AuditAction.print => (Icons.print_outlined, AppColors.info),
+        AuditAction.backup ||
+        AuditAction.restore => (Icons.backup_outlined, AppColors.warning),
+        AuditAction.settingsChange => (Icons.tune, AppColors.warning),
+        AuditAction.passwordChange ||
+        AuditAction.pinChange => (Icons.key_outlined, AppColors.warning),
+        AuditAction.roleChange => (
+          Icons.admin_panel_settings_outlined,
+          AppColors.warning,
+        ),
+        _ => (Icons.history, AppColors.textMuted),
+      };
 }
 
 class _IndexedNavItem {

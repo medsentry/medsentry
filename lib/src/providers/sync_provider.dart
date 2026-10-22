@@ -1202,6 +1202,16 @@ class SyncService extends StateNotifier<SyncServiceState> {
       if (log.userName != null) newVals['_user_name'] = log.userName;
       if (log.userRole != null) newVals['_user_role'] = log.userRole;
     }
+    // The table has no description or patient-name columns; carry them here
+    // so other devices can show readable activity (see _pullRemoteAuditLogs).
+    if (log.description != null && log.description!.isNotEmpty) {
+      newVals ??= <String, dynamic>{};
+      newVals['_description'] = log.description;
+    }
+    if (log.patientName != null && log.patientName!.isNotEmpty) {
+      newVals ??= <String, dynamic>{};
+      newVals['_patient_name'] = log.patientName;
+    }
 
     // Bulk inserts need identical keys in every row.
     final payload = <String, dynamic>{
@@ -1472,19 +1482,32 @@ class SyncService extends StateNotifier<SyncServiceState> {
         if (timestamp is! String) continue;
         final parsedTimestamp = DateTime.tryParse(timestamp);
         if (parsedTimestamp == null) continue;
+        // Split the metadata _auditLogPayload tucks into new_values back out.
+        final rawNew = row['new_values'];
+        final newValues = rawNew is Map
+            ? Map<String, dynamic>.from(rawNew)
+            : null;
+        final description = newValues?.remove('_description') as String?;
+        final patientName = newValues?.remove('_patient_name') as String?;
+        final metaUserName = newValues?['_user_name'] as String?;
+        final metaUserRole = newValues?['_user_role'] as String?;
         await db.insertAuditLog(
           AuditLog(
             id: id,
             clinicId: (row['clinic_id'] as String?) ?? user?.clinicId,
             userId: userId,
-            userName: user?.fullName,
-            userRole: user?.roleDisplay,
+            userName: user?.fullName ?? metaUserName,
+            userRole: user?.roleDisplay ?? metaUserRole,
             action: _auditActionFromRemote(row['action']?.toString() ?? ''),
             entityType: row['entity_type'] as String? ?? 'system',
             entityId: row['entity_id'] as String?,
             patientId: row['patient_id'] as String?,
+            patientName: patientName,
+            description: description,
             oldValues: _auditJsonValue(row['old_values']),
-            newValues: _auditJsonValue(row['new_values']),
+            newValues: newValues == null
+                ? _auditJsonValue(rawNew)
+                : (newValues.isEmpty ? null : jsonEncode(newValues)),
             timestamp: parsedTimestamp,
             isSynced: true,
             syncStatus: _synced,

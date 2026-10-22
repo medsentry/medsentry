@@ -22,6 +22,7 @@ export 'dashboard_provider.dart';
 export 'reports_provider.dart';
 export 'settings_provider.dart';
 export 'feature_providers.dart';
+export 'activity_feed_provider.dart';
 export '../utils/pwa/pwa_installer.dart';
 
 import '../utils/pwa/pwa_installer.dart';
