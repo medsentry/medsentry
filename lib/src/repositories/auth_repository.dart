@@ -905,18 +905,13 @@ class AuthRepository {
       }
     } on FunctionException catch (e) {
       final details = e.details;
-      if (details is Map && details['error'] == 'Unsupported action') {
-        throw StateError(
-          'The Supabase Edge Function "provision-user" on your server has not been deployed with the delete handler. '
-          'Please deploy the updated function to your Supabase project (hcvqmlifeuovxavthmcu).',
-        );
-      }
-      final errorMsg = details is Map && details['error'] != null
-          ? details['error'].toString()
-          : (e.reasonPhrase?.isNotEmpty == true
-                ? e.reasonPhrase!
-                : 'Server error (${e.status})');
-      throw StateError(errorMsg);
+      // Already removed on the server (e.g. from another device); only the
+      // stale local copy is left to clean up.
+      final alreadyDeleted =
+          e.status == 404 &&
+          details is Map &&
+          details['error'] == 'User not found';
+      if (!alreadyDeleted) _throwDeleteFailure(e);
     }
 
     await _db.deleteUser(target.id);
@@ -930,6 +925,22 @@ class AuthRepository {
     } catch (error) {
       debugPrint('Unable to clear deleted account from PIN login: $error');
     }
+  }
+
+  Never _throwDeleteFailure(FunctionException e) {
+    final details = e.details;
+    if (details is Map && details['error'] == 'Unsupported action') {
+      throw StateError(
+        'The Supabase Edge Function "provision-user" on your server has not been deployed with the delete handler. '
+        'Please deploy the updated function to your Supabase project (hcvqmlifeuovxavthmcu).',
+      );
+    }
+    final errorMsg = details is Map && details['error'] != null
+        ? details['error'].toString()
+        : (e.reasonPhrase?.isNotEmpty == true
+              ? e.reasonPhrase!
+              : 'Server error (${e.status})');
+    throw StateError(errorMsg);
   }
 
   // Change password

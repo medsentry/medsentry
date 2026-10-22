@@ -1398,6 +1398,24 @@ class SyncService extends StateNotifier<SyncServiceState> {
           }
         }
       }
+
+      // User deletions leave no tombstone, so drop synced local accounts the
+      // server no longer returns. Only within what RLS lets this user read:
+      // a Super Admin sees everyone, an Admin only their own RHU.
+      final actor = _ref.read(currentUserProvider);
+      if (actor == null || rows.isEmpty) return;
+      final remoteIds = {for (final raw in rows) raw['id'] as String};
+      for (final local in localUsers.values) {
+        final visible =
+            actor.isSuperAdmin ||
+            (actor.role == UserRole.admin && local.clinicId == actor.clinicId);
+        if (visible &&
+            local.id != actor.id &&
+            local.syncStatus == _synced &&
+            !remoteIds.contains(local.id)) {
+          await db.deleteUser(local.id);
+        }
+      }
     });
 
     final updated = signedInUserUpdate;
