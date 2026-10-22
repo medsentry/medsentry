@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -2745,6 +2746,21 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
           clinicContact: '0906-985-6320',
         );
 
+    final fileName =
+        'MedSentry_${patient.lastName}_${patient.firstName}_Record.pdf';
+    Future<Uint8List> buildPdf() =>
+        ReportPdfService().generateIndividualPatientRecordPdf(
+          patient: patient,
+          settings: settings,
+          preparedByName: currentUser?.fullName ?? 'Healthcare Staff',
+          preparedByRole: currentUser?.role.displayName ?? 'Staff',
+          approvedByName:
+              currentUser?.fullName ?? 'RHU Physician / Administrator',
+          approvedByRole:
+              currentUser?.role.displayName ?? 'RHU Physician / Administrator',
+          documents: documents,
+        );
+
     return Dialog(
       backgroundColor: isDark
           ? AppColors.cardSurface
@@ -2817,36 +2833,159 @@ class _PatientPrintRecordDialog extends ConsumerWidget {
                 child: ClipRRect(
                   borderRadius: AppRadius.roundedSm,
                   child: PdfPreview(
-                    build: (format) =>
-                        ReportPdfService().generateIndividualPatientRecordPdf(
-                          patient: patient,
-                          settings: settings,
-                          preparedByName:
-                              currentUser?.fullName ?? 'Healthcare Staff',
-                          preparedByRole:
-                              currentUser?.role.displayName ?? 'Staff',
-                          approvedByName:
-                              currentUser?.fullName ??
-                              'RHU Physician / Administrator',
-                          approvedByRole:
-                              currentUser?.role.displayName ??
-                              'RHU Physician / Administrator',
-                          documents: documents,
-                        ),
+                    build: (format) => buildPdf(),
+                    // Print and download live in the labelled footer below
+                    // instead of PdfPreview's icon-only toolbar.
+                    useActions: false,
                     canChangeOrientation: false,
                     canChangePageFormat: false,
-                    allowPrinting: true,
-                    allowSharing: true,
                     canDebug: false,
-                    pdfFileName:
-                        'MedSentry_${patient.lastName}_${patient.firstName}_Record.pdf',
+                    pdfFileName: fileName,
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              _PdfActionBar(buildPdf: buildPdf, fileName: fileName),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Labelled Print and Download/Share buttons under a PDF preview.
+class _PdfActionBar extends StatefulWidget {
+  const _PdfActionBar({required this.buildPdf, required this.fileName});
+
+  final Future<Uint8List> Function() buildPdf;
+  final String fileName;
+
+  @override
+  State<_PdfActionBar> createState() => _PdfActionBarState();
+}
+
+enum _PdfAction { print, share }
+
+class _PdfActionBarState extends State<_PdfActionBar> {
+  _PdfAction? _running;
+
+  Future<void> _run(_PdfAction action) async {
+    if (_running != null) return;
+    setState(() => _running = action);
+    try {
+      final bytes = await widget.buildPdf();
+      if (action == _PdfAction.print) {
+        await Printing.layoutPdf(
+          onLayout: (_) async => bytes,
+          name: widget.fileName,
+        );
+      } else {
+        // In the browser this downloads the file; on devices it opens the
+        // system share sheet.
+        await Printing.sharePdf(bytes: bytes, filename: widget.fileName);
+      }
+    } catch (e) {
+      AppNotification.error(
+        title: action == _PdfAction.print
+            ? 'Could not print the record'
+            : 'Could not save the PDF',
+        message: '$e',
+      );
+    } finally {
+      if (mounted) setState(() => _running = null);
+    }
+  }
+
+  Widget _progress(Color color) => SizedBox(
+    width: 16,
+    height: 16,
+    child: CircularProgressIndicator(strokeWidth: 2, color: color),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final busy = _running != null;
+    final shape = RoundedRectangleBorder(borderRadius: AppRadius.roundedSm);
+    const padding = EdgeInsets.symmetric(horizontal: 18, vertical: 14);
+    final shareLabel = kIsWeb ? 'Download PDF' : 'Share PDF';
+    final accent = isDark ? AppColors.primaryEmerald : theme.colorScheme.primary;
+
+    final share = OutlinedButton.icon(
+      onPressed: busy ? null : () => _run(_PdfAction.share),
+      icon: _running == _PdfAction.share
+          ? _progress(accent)
+          : Icon(
+              kIsWeb ? Icons.download_outlined : Icons.ios_share_outlined,
+              size: 18,
+            ),
+      label: Text(shareLabel),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: accent,
+        side: BorderSide(color: accent.withValues(alpha: 0.6)),
+        padding: padding,
+        shape: shape,
+        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+    );
+    final print = FilledButton.icon(
+      onPressed: busy ? null : () => _run(_PdfAction.print),
+      icon: _running == _PdfAction.print
+          ? _progress(Colors.white)
+          : const Icon(Icons.print_outlined, size: 18),
+      label: const Text('Print Record'),
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primaryEmeraldDark,
+        foregroundColor: Colors.white,
+        padding: padding,
+        shape: shape,
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Phones: full-width buttons side by side, no caption.
+        if (constraints.maxWidth < 480) {
+          return Row(
+            children: [
+              Expanded(child: share),
+              const SizedBox(width: 10),
+              Expanded(child: print),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            Icon(
+              Icons.picture_as_pdf_outlined,
+              size: 18,
+              color: isDark
+                  ? AppColors.textSecondary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                widget.fileName,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            share,
+            const SizedBox(width: 10),
+            print,
+          ],
+        );
+      },
     );
   }
 }
