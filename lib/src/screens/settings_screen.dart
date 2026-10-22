@@ -1807,12 +1807,9 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final clinics = ref.watch(clinicsProvider).valueOrNull ?? <Clinic>[];
-    final tabView = usersAsync.when(
-      skipLoadingOnReload: true,
-      data: (users) {
-        final query = _searchQuery.trim().toLowerCase();
-        final phoneQuery = query.replaceAll(RegExp(r'\D'), '');
-        final scopedUsers = users.where((u) {
+    final query = _searchQuery.trim().toLowerCase();
+    final phoneQuery = query.replaceAll(RegExp(r'\D'), '');
+    final scopedUsers = (usersAsync.valueOrNull ?? <User>[]).where((u) {
           if (currentUser == null) return false;
 
           if (!currentUser.isSuperAdmin) {
@@ -1869,7 +1866,12 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
                       .replaceAll(RegExp(r'\D'), '')
                       .contains(phoneQuery));
         }).toList();
+    final activeCount = scopedUsers.where((u) => u.isActive).length;
+    final inactiveCount = scopedUsers.length - activeCount;
 
+    final tabView = usersAsync.when(
+      skipLoadingOnReload: true,
+      data: (_) {
         return TabBarView(
           controller: _tabController,
           children: [
@@ -2170,11 +2172,13 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
         ],
     ];
 
-    final tabBar = Container(
-          padding: const EdgeInsets.all(3),
+    final tabBar = Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+          padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: isDark ? AppColors.inputSurface : AppColors.lightElevatedSurface,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: isDark ? AppColors.borderSubtle : AppColors.lightBorder,
               width: 1,
@@ -2182,7 +2186,13 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
           ),
           child: TabBar(
             controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            indicatorSize: TabBarIndicatorSize.tab,
+            labelPadding: EdgeInsets.zero,
             dividerColor: Colors.transparent,
+            overlayColor: WidgetStateProperty.all(Colors.transparent),
+            splashFactory: NoSplash.splashFactory,
             indicator: BoxDecoration(
               color: isDark ? AppColors.cardSurface : Colors.white,
               borderRadius: BorderRadius.circular(6),
@@ -2216,12 +2226,21 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
-            tabs: const [
-              Tab(text: 'Active Accounts'),
-              Tab(text: 'Inactive Accounts'),
+            tabs: [
+              _AccountStatusTab(
+                icon: Icons.verified_user_outlined,
+                label: 'Active Accounts',
+                count: activeCount,
+              ),
+              _AccountStatusTab(
+                icon: Icons.person_off_outlined,
+                label: 'Inactive Accounts',
+                count: inactiveCount,
+              ),
             ],
           ),
-        );
+        ),
+    );
 
     if (widget.scrollsAsPage) {
       return ScrollingTabLayout(
@@ -2266,6 +2285,59 @@ class _StaffManagementPanelState extends ConsumerState<StaffManagementPanel>
           onPressed: () => Navigator.pop(context),
         ),
       ],
+    );
+  }
+}
+
+/// Segment inside the account-status tab bar. Takes its colour from the
+/// TabBar's label colour so the icon and count badge follow the selection.
+class _AccountStatusTab extends StatelessWidget {
+  const _AccountStatusTab({
+    required this.icon,
+    required this.label,
+    required this.count,
+  });
+
+  final IconData icon;
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = DefaultTextStyle.of(context).style.color ?? Colors.grey;
+    return Tab(
+      height: 40,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 17, color: color),
+            const SizedBox(width: 8),
+            Text(label),
+            const SizedBox(width: 8),
+            Container(
+              constraints: const BoxConstraints(minWidth: 22),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '$count',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppType.family,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -3096,9 +3168,12 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
     final clinicsAsync = ref.watch(clinicsProvider);
     final isSuperAdmin = currentUser?.isSuperAdmin == true;
 
-    final availableRoles = isSuperAdmin
-        ? UserRole.values
-        : UserRole.values.where((r) => r != UserRole.superAdmin).toList();
+    // Super Admin is never offered as a role to assign; it is only listed
+    // when editing an existing Super Admin so their role displays correctly.
+    final editingSuperAdmin = widget.existingUser?.role == UserRole.superAdmin;
+    final availableRoles = UserRole.values
+        .where((r) => r != UserRole.superAdmin || editingSuperAdmin)
+        .toList();
 
     return PopScope(
       canPop: !_isDirty || _isSaving,
@@ -3231,12 +3306,6 @@ class _StaffFormDialogState extends ConsumerState<StaffFormDialog> {
                       icon: Icons.phone_outlined,
                       keyboardType: TextInputType.phone,
                       required: false,
-                    ),
-                    const SizedBox(height: 12),
-                    _field(
-                      controller: _specializationController,
-                      label: 'Specialization / Clinical Role',
-                      icon: Icons.medical_services_outlined,
                     ),
                     const SizedBox(height: 12),
                     _field(
